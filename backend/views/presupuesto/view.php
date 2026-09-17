@@ -27,6 +27,7 @@ $transicionesValidas = Presupuesto::transicionesPermitidas()[$model->estado] ?? 
 
     <p>
         <?= Html::a('Ver líneas del presupuesto', ['detalle', 'id' => $model->id], ['class' => 'btn btn-secondary']) ?>
+        <?= Html::a('Generar PDF', ['pdf', 'id' => $model->id], ['class' => 'btn btn-outline-secondary', 'target' => '_blank']) ?>
         <?php if ($model->puedeEditarse()): ?>
             <?= Html::a('Editar', ['update', 'id' => $model->id], ['class' => 'btn btn-primary']) ?>
         <?php else: ?>

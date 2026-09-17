@@ -58,6 +58,14 @@ y vistas en Yii2 Advanced. Úsalo junto con CLAUDE.md.
 - REGLA DE NEGOCIO: nunca clasificar todo dbo.CatalogoSigma de antemano. Los
   registros se agregan uno por uno, bajo demanda, cuando el usuario busca en
   el catalogo institucional y decide agregarlo a su subcatalogo
+- BUSQUEDA en dbo.CatalogoSigma (backend\models\CatalogoSigma::buscar()):
+  LIKE simple sobre Descripcion, RamaComercial y Clase, con parametros
+  bindeados (condicion 'like' de Yii). Aceptable hoy porque en desarrollo
+  solo hay 509 filas accesibles. PENDIENTE: si en produccion se habilita el
+  catalogo institucional completo (decenas de miles de filas), migrar a un
+  indice de Full-Text Search de SQL Server sobre dbo.CatalogoSigma para
+  mantener buen rendimiento -- requiere coordinacion con el equipo tecnico
+  institucional, ya que esa tabla no pertenece al esquema `redes`
 
 ### redes.Especificacion
 - id (PK, int, identity)

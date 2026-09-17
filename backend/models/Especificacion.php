@@ -7,6 +7,7 @@ namespace backend\models;
 use DateTime;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
+use yii\web\UploadedFile;
 
 /**
  * Modelo para la tabla "redes.Especificacion".
@@ -25,6 +26,16 @@ use yii\db\ActiveRecord;
  */
 class Especificacion extends ActiveRecord
 {
+    /**
+     * Atributo virtual: no existe como columna en la tabla. Es el PDF/DOCX
+     * que el usuario sube para (a) extraer metadatos automaticamente y
+     * (b) guardarlo como documentoRuta definitivo al confirmar el formulario.
+     * Separado de documentoRuta, que sigue siendo editable a mano como texto
+     * (por si el documento ya vive en otro lugar y solo se quiere referenciar
+     * la ruta, sin subir nada).
+     */
+    public ?UploadedFile $archivoEspecificacion = null;
+
     public static function tableName(): string
     {
         return 'redes.Especificacion';
@@ -42,6 +53,7 @@ class Especificacion extends ActiveRecord
             [['titulo'], 'string', 'max' => 300],
             [['dependencia', 'modeloSugerido'], 'string', 'max' => 200],
             [['documentoRuta'], 'string', 'max' => 500],
+            [['archivoEspecificacion'], 'file', 'extensions' => 'pdf, docx', 'maxSize' => 10 * 1024 * 1024],
             [['idSubcatalogo'], 'exist', 'skipOnError' => true, 'targetClass' => SubcatalogoItem::class, 'targetAttribute' => ['idSubcatalogo' => 'id']],
         ];
     }
@@ -58,7 +70,22 @@ class Especificacion extends ActiveRecord
             'documentoRuta' => 'Ruta del documento',
             'fechaEmision' => 'Fecha de emisión',
             'activo' => 'Activo',
+            'archivoEspecificacion' => 'Documento de especificación (PDF o DOCX)',
         ];
+    }
+
+    /**
+     * archivoEspecificacion queda fuera de los atributos "safe" por el mismo
+     * motivo que documentoFile en Cotizacion: la regla 'file' lo hace
+     * validable pero tambien asignable en masa, y si load() encuentra un
+     * valor vacio con ese nombre en $_POST intenta asignar un string a una
+     * propiedad tipada como ?UploadedFile y explota con TypeError. El
+     * controlador lo asigna explicitamente con UploadedFile::getInstance()
+     * justo despues de load().
+     */
+    public function safeAttributes(): array
+    {
+        return array_values(array_diff(parent::safeAttributes(), ['archivoEspecificacion']));
     }
 
     public function getSubcatalogoItem(): ActiveQuery

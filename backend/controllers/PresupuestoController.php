@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\components\PresupuestoPdfGenerator;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use Yii;
@@ -11,6 +12,7 @@ use yii\data\ActiveDataProvider;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
+use yii\web\Response;
 
 /**
  * Controlador CRUD para redes.Presupuesto.
@@ -181,6 +183,36 @@ class PresupuestoController extends Controller
             'nuevaLinea' => $nuevaLinea,
             'grupos' => $this->agruparPorCategoria($presupuesto),
         ]);
+    }
+
+    /**
+     * Genera y descarga el PDF consolidado del presupuesto: encabezado
+     * institucional, datos generales, lineas agrupadas por categoria (misma
+     * agrupacion que actionDetalle(), via agruparPorCategoria()) y un
+     * espacio de firma. Disponible en cualquier estado del presupuesto, no
+     * solo aprobado -- tambien sirve para generar el PDF de un presupuesto
+     * en revision.
+     */
+    public function actionPdf(int $id): Response
+    {
+        $presupuesto = $this->findModel($id);
+        $grupos = $this->agruparPorCategoria($presupuesto);
+        $totalGeneral = array_sum(array_column($grupos, 'subtotal'));
+
+        $html = $this->renderPartial('pdf', [
+            'presupuesto' => $presupuesto,
+            'grupos' => $grupos,
+            'totalGeneral' => $totalGeneral,
+        ]);
+
+        $generador = new PresupuestoPdfGenerator();
+        $contenidoPdf = $generador->generarDesdeHtml($html);
+
+        return Yii::$app->response->sendContentAsFile(
+            $contenidoPdf,
+            $generador->nombreArchivo($presupuesto),
+            ['mimeType' => 'application/pdf']
+        );
     }
 
     public function actionEliminarLinea(int $id)

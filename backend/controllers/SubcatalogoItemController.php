@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\models\CatalogoSigma;
 use backend\models\SubcatalogoItem;
 use Yii;
 use yii\data\ActiveDataProvider;
@@ -37,8 +38,21 @@ class SubcatalogoItemController extends Controller
             ],
         ]);
 
+        $textoBusqueda = trim((string) Yii::$app->request->get('q', ''));
+        $resultadosSigma = $textoBusqueda !== '' ? CatalogoSigma::buscar($textoBusqueda) : [];
+
+        // idSigma ya usados en el subcatalogo, para saber que fila del
+        // catalogo institucional ya fue agregada y no ofrecer duplicarla.
+        $idsSigmaExistentes = SubcatalogoItem::find()
+            ->select('idSigma')
+            ->andWhere(['not', ['idSigma' => null]])
+            ->column();
+
         return $this->render('index', [
             'dataProvider' => $dataProvider,
+            'textoBusqueda' => $textoBusqueda,
+            'resultadosSigma' => $resultadosSigma,
+            'idsSigmaExistentes' => $idsSigmaExistentes,
         ]);
     }
 
@@ -55,6 +69,15 @@ class SubcatalogoItemController extends Controller
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
             return $this->redirect(['view', 'id' => $model->id]);
+        }
+
+        // Prellenado desde "Buscar en catalogo institucional": llega por GET
+        // con el idSigma y la descripcion del item de dbo.CatalogoSigma que
+        // el usuario eligio agregar. El usuario solo confirma/ajusta
+        // categoria y unidad por defecto antes de guardar.
+        if (Yii::$app->request->isGet && Yii::$app->request->get('idSigma') !== null) {
+            $model->idSigma = Yii::$app->request->get('idSigma');
+            $model->descripcion = (string) Yii::$app->request->get('descripcion', '');
         }
 
         return $this->render('create', [
