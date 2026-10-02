@@ -11,8 +11,9 @@ use yii\db\ActiveRecord;
  * Modelo para la tabla "redes.PresupuestoDetalle".
  *
  * REGLA DE NEGOCIO CRITICA: precioUnitario se copia UNA SOLA VEZ desde
- * CotizacionDetalle en el momento de crear la fila (ver beforeSave() mas
- * abajo). Este modelo NO tiene, y no debe tener nunca, ningun codigo que
+ * CotizacionDetalle en el momento de crear la fila (ver
+ * PresupuestoService::agregarLinea() / congelarPrecio()). Ni este modelo ni
+ * el servicio tienen, ni deben tener nunca, ningun codigo que
  * vuelva a sincronizar precioUnitario con CotizacionDetalle despues de la
  * creacion inicial -- ni un afterFind, ni un job, ni un boton "actualizar
  * precio". Si el precio de la cotizacion de origen cambia, esta fila ya
@@ -99,14 +100,6 @@ class PresupuestoDetalle extends ActiveRecord
         return $this->hasOne(CotizacionDetalle::class, ['id' => 'idCotizacionDetalle']);
     }
 
-    /**
-     * {@inheritdoc}
-     *
-     * Aqui vive la regla del precio congelado: la copia desde
-     * CotizacionDetalle SOLO ocurre en la creacion ($insert === true). En
-     * cualquier actualizacion posterior de esta misma fila, este bloque no
-     * se ejecuta y precioUnitario queda exactamente como estaba.
-     */
     public function beforeSave($insert): bool
     {
         if (!parent::beforeSave($insert)) {
@@ -119,18 +112,6 @@ class PresupuestoDetalle extends ActiveRecord
         // seguir (mismo riesgo que idSigma en SubcatalogoItem).
         if ($this->idCotizacionDetalle === '') {
             $this->idCotizacionDetalle = null;
-        }
-
-        if ($insert && !empty($this->idCotizacionDetalle)) {
-            $cotizacionDetalle = $this->cotizacionDetalle ?? CotizacionDetalle::findOne($this->idCotizacionDetalle);
-
-            if ($cotizacionDetalle !== null) {
-                $this->precioUnitario = $cotizacionDetalle->precioUnitario;
-
-                if (empty($this->unidadMedida) && !empty($cotizacionDetalle->subcatalogoItem->unidadDefecto)) {
-                    $this->unidadMedida = $cotizacionDetalle->subcatalogoItem->unidadDefecto;
-                }
-            }
         }
 
         return true;

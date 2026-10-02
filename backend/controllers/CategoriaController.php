@@ -5,17 +5,32 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\Categoria;
+use backend\services\CategoriaService;
 use Yii;
-use yii\data\ActiveDataProvider;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 
 /**
- * Controlador CRUD para redes.Categoria.
+ * Controlador CRUD para redes.Categoria (capa de Presentacion).
+ *
+ * No consulta la base de datos directamente: todo lo delega a
+ * CategoriaService (capa de Servicio).
  */
 class CategoriaController extends Controller
 {
+    private CategoriaService $service;
+
+    /**
+     * init() es el "constructor" recomendado en Yii2 para componentes: se
+     * ejecuta una vez al crear el controlador, antes de cualquier accion.
+     */
+    public function init(): void
+    {
+        parent::init();
+        $this->service = new CategoriaService();
+    }
+
     public function behaviors(): array
     {
         return [
@@ -30,15 +45,8 @@ class CategoriaController extends Controller
 
     public function actionIndex(): string
     {
-        $dataProvider = new ActiveDataProvider([
-            'query' => Categoria::find()->orderBy(['orden' => SORT_ASC]),
-            'pagination' => [
-                'pageSize' => 20,
-            ],
-        ]);
-
         return $this->render('index', [
-            'dataProvider' => $dataProvider,
+            'dataProvider' => $this->service->listar(),
         ]);
     }
 
@@ -53,7 +61,7 @@ class CategoriaController extends Controller
     {
         $model = new Categoria();
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->crear($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -66,7 +74,7 @@ class CategoriaController extends Controller
     {
         $model = $this->findModel($id);
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->actualizar($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -77,14 +85,14 @@ class CategoriaController extends Controller
 
     public function actionDelete(int $id)
     {
-        $this->findModel($id)->delete();
+        $this->service->eliminar($this->findModel($id));
 
         return $this->redirect(['index']);
     }
 
     protected function findModel(int $id): Categoria
     {
-        $model = Categoria::findOne($id);
+        $model = $this->service->obtener($id);
 
         if ($model === null) {
             throw new NotFoundHttpException('La categoría solicitada no existe.');

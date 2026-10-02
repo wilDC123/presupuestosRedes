@@ -5,17 +5,32 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\Proveedor;
+use backend\services\ProveedorService;
 use Yii;
-use yii\data\ActiveDataProvider;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 
 /**
- * Controlador CRUD para redes.Proveedor.
+ * Controlador CRUD para redes.Proveedor (capa de Presentacion).
+ *
+ * No consulta la base de datos directamente: todo lo delega a
+ * ProveedorService (capa de Servicio).
  */
 class ProveedorController extends Controller
 {
+    private ProveedorService $service;
+
+    /**
+     * init() es el "constructor" recomendado en Yii2 para componentes: se
+     * ejecuta una vez al crear el controlador, antes de cualquier accion.
+     */
+    public function init(): void
+    {
+        parent::init();
+        $this->service = new ProveedorService();
+    }
+
     public function behaviors(): array
     {
         return [
@@ -30,15 +45,8 @@ class ProveedorController extends Controller
 
     public function actionIndex(): string
     {
-        $dataProvider = new ActiveDataProvider([
-            'query' => Proveedor::find()->orderBy(['razonSocial' => SORT_ASC]),
-            'pagination' => [
-                'pageSize' => 20,
-            ],
-        ]);
-
         return $this->render('index', [
-            'dataProvider' => $dataProvider,
+            'dataProvider' => $this->service->listar(),
         ]);
     }
 
@@ -53,7 +61,7 @@ class ProveedorController extends Controller
     {
         $model = new Proveedor();
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->crear($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -66,7 +74,7 @@ class ProveedorController extends Controller
     {
         $model = $this->findModel($id);
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->actualizar($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -77,14 +85,14 @@ class ProveedorController extends Controller
 
     public function actionDelete(int $id)
     {
-        $this->findModel($id)->delete();
+        $this->service->eliminar($this->findModel($id));
 
         return $this->redirect(['index']);
     }
 
     protected function findModel(int $id): Proveedor
     {
-        $model = Proveedor::findOne($id);
+        $model = $this->service->obtener($id);
 
         if ($model === null) {
             throw new NotFoundHttpException('El proveedor solicitado no existe.');

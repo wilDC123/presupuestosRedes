@@ -59,9 +59,9 @@ class Presupuesto extends ActiveRecord
     /**
      * Mapa de transiciones validas: estado actual => lista de estados a los
      * que se puede pasar desde ahi. Es la UNICA fuente de verdad sobre el
-     * ciclo de vida del presupuesto -- el controlador y cualquier otro lugar
-     * que necesite validar un cambio de estado deben consultar este metodo
-     * en vez de repetir la lista de transiciones por su cuenta.
+     * ciclo de vida del presupuesto. La validacion de un cambio de estado se
+     * hace en PresupuestoService::puedeTransicionarA(); la vista view.php
+     * tambien lo lee para dibujar los botones de estado.
      */
     public static function transicionesPermitidas(): array
     {
@@ -74,14 +74,12 @@ class Presupuesto extends ActiveRecord
         ];
     }
 
-    public function puedeTransicionarA(string $nuevoEstado): bool
-    {
-        return in_array($nuevoEstado, self::transicionesPermitidas()[$this->estado] ?? [], true);
-    }
-
     /**
      * REGLA DE NEGOCIO CRITICA: un presupuesto aprobado o cancelado nunca se
-     * edita directamente. Cualquier cambio requiere crearNuevaVersion().
+     * edita directamente. Cualquier cambio requiere
+     * PresupuestoService::crearNuevaVersion(). Se queda en el modelo porque
+     * las vistas (view.php, detalle.php) la usan para mostrar u ocultar
+     * botones; los controladores la consultan via PresupuestoService.
      */
     public function puedeEditarse(): bool
     {
@@ -232,50 +230,5 @@ class Presupuesto extends ActiveRecord
             self::ESTADO_CANCELADO => 'badge bg-danger',
             default => 'badge bg-secondary',
         };
-    }
-
-    /**
-     * Crea una nueva version de un presupuesto existente: copia los datos de
-     * cabecera, incrementa numeroVersion, enlaza idVersionAnterior al
-     * original, y deja la nueva version en 'en_proceso'.
-     *
-     * DECISION DE DISENO: la nueva version NACE VACIA, sin copiar las lineas
-     * de PresupuestoDetalle del original. Esto es intencional, no una
-     * limitacion pendiente: cada version representa solo el incremento o
-     * cambio solicitado sobre un presupuesto ya aprobado, no un snapshot
-     * completo. Ejemplo: un presupuesto aprobado con 5 camaras instaladas,
-     * al que luego se le pide 1 camara adicional, genera una version 2 que
-     * contiene UNICAMENTE esa linea nueva -- las 5 lineas anteriores ya
-     * fueron aprobadas y no deben volver a pasar por el ciclo de revision.
-     *
-     * PENDIENTE (no implementado aqui): como consecuencia de este diseno,
-     * el total real de un proyecto ya no esta en una sola version -- hace
-     * falta un reporte consolidado que sume las lineas de PresupuestoDetalle
-     * de TODAS las versiones aprobadas de un mismo proyecto (recorriendo la
-     * cadena idVersionAnterior / getVersionSiguiente).
-     */
-    public static function crearNuevaVersion(int $id): ?self
-    {
-        $original = self::findOne($id);
-
-        if ($original === null) {
-            return null;
-        }
-
-        $nueva = new self();
-        $nueva->idProyecto = $original->idProyecto;
-        $nueva->idVersionAnterior = $original->id;
-        $nueva->numeroVersion = $original->numeroVersion + 1;
-        $nueva->numeroPresupuesto = $original->numeroPresupuesto;
-        $nueva->oficioDtic = $original->oficioDtic;
-        $nueva->areaIntervencion = $original->areaIntervencion;
-        $nueva->fecha = $original->fecha;
-        $nueva->estado = self::ESTADO_EN_PROCESO;
-
-        if (!$nueva->save()) {
-            return null;
-        }
-
-        return $nueva;
     }
 }

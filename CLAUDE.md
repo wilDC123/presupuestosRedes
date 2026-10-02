@@ -86,7 +86,7 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   proyecto Yii2 existente (no en este repo aislado), con un controlador propio (ej.
   `ElaborarPresupuestoController`) dentro del módulo de "ejecución/modificaciones
   presupuestarias", terminando en un merge al proyecto principal
-- PENDIENTE: `Presupuesto::crearNuevaVersion()` (`backend/models/Presupuesto.php`) ahora
+- PENDIENTE: `PresupuestoService::crearNuevaVersion()` (`backend/services/PresupuestoService.php`) ahora
   crea la nueva versión VACÍA a propósito (cada versión es solo el incremento/cambio
   solicitado, no un snapshot completo de líneas ya aprobadas). Como consecuencia, falta
   construir un reporte consolidado que sume las líneas de `PresupuestoDetalle` de TODAS

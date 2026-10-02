@@ -4,19 +4,29 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
-use backend\models\CatalogoSigma;
 use backend\models\SubcatalogoItem;
+use backend\services\SubcatalogoItemService;
 use Yii;
-use yii\data\ActiveDataProvider;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 
 /**
- * Controlador CRUD para redes.SubcatalogoItem.
+ * Controlador CRUD para redes.SubcatalogoItem (capa de Presentacion).
+ *
+ * No consulta la base de datos (ni dbo.CatalogoSigma) directamente: todo lo
+ * delega a SubcatalogoItemService (capa de Servicio).
  */
 class SubcatalogoItemController extends Controller
 {
+    private SubcatalogoItemService $service;
+
+    public function init(): void
+    {
+        parent::init();
+        $this->service = new SubcatalogoItemService();
+    }
+
     public function behaviors(): array
     {
         return [
@@ -31,28 +41,13 @@ class SubcatalogoItemController extends Controller
 
     public function actionIndex(): string
     {
-        $dataProvider = new ActiveDataProvider([
-            'query' => SubcatalogoItem::find()->with('categoria')->orderBy(['descripcion' => SORT_ASC]),
-            'pagination' => [
-                'pageSize' => 20,
-            ],
-        ]);
-
         $textoBusqueda = trim((string) Yii::$app->request->get('q', ''));
-        $resultadosSigma = $textoBusqueda !== '' ? CatalogoSigma::buscar($textoBusqueda) : [];
-
-        // idSigma ya usados en el subcatalogo, para saber que fila del
-        // catalogo institucional ya fue agregada y no ofrecer duplicarla.
-        $idsSigmaExistentes = SubcatalogoItem::find()
-            ->select('idSigma')
-            ->andWhere(['not', ['idSigma' => null]])
-            ->column();
 
         return $this->render('index', [
-            'dataProvider' => $dataProvider,
+            'dataProvider' => $this->service->listar(),
             'textoBusqueda' => $textoBusqueda,
-            'resultadosSigma' => $resultadosSigma,
-            'idsSigmaExistentes' => $idsSigmaExistentes,
+            'resultadosSigma' => $this->service->buscarEnCatalogoSigma($textoBusqueda),
+            'idsSigmaExistentes' => $this->service->idsSigmaExistentes(),
         ]);
     }
 
@@ -67,17 +62,19 @@ class SubcatalogoItemController extends Controller
     {
         $model = new SubcatalogoItem();
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->crear($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
         // Prellenado desde "Buscar en catalogo institucional": llega por GET
         // con el idSigma y la descripcion del item de dbo.CatalogoSigma que
-        // el usuario eligio agregar. El usuario solo confirma/ajusta
-        // categoria y unidad por defecto antes de guardar.
+        // el usuario eligio agregar.
         if (Yii::$app->request->isGet && Yii::$app->request->get('idSigma') !== null) {
-            $model->idSigma = Yii::$app->request->get('idSigma');
-            $model->descripcion = (string) Yii::$app->request->get('descripcion', '');
+            $this->service->prellenarDesdeSigma(
+                $model,
+                (string) Yii::$app->request->get('idSigma'),
+                (string) Yii::$app->request->get('descripcion', '')
+            );
         }
 
         return $this->render('create', [
@@ -89,7 +86,7 @@ class SubcatalogoItemController extends Controller
     {
         $model = $this->findModel($id);
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->actualizar($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -100,14 +97,14 @@ class SubcatalogoItemController extends Controller
 
     public function actionDelete(int $id)
     {
-        $this->findModel($id)->delete();
+        $this->service->eliminar($this->findModel($id));
 
         return $this->redirect(['index']);
     }
 
     protected function findModel(int $id): SubcatalogoItem
     {
-        $model = SubcatalogoItem::findOne($id);
+        $model = $this->service->obtener($id);
 
         if ($model === null) {
             throw new NotFoundHttpException('El ítem de subcatálogo solicitado no existe.');

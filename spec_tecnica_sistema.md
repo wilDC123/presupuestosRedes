@@ -175,10 +175,9 @@ EstadoPresupuesto: EN_PROCESO, EN_REVISION, OBSERVADO, APROBADO, CANCELADO
    'aprobado'
 2. Sistema detecta que no es editable
 3. Sistema crea un nuevo Presupuesto con numeroVersion+1 e idVersionAnterior
-   apuntando al original
-4. Sistema copia todos los PresupuestoDetalle de la version anterior al nuevo
-   presupuesto (que queda en estado 'en_proceso')
-5. Se aplica la modificacion solicitada sobre la nueva version
+   apuntando al original, en estado 'en_proceso', SIN copiar los
+   PresupuestoDetalle de la version anterior (arranca vacio)
+4. El usuario arma desde cero las lineas de esta nueva fase
 
 ## Fuera de alcance (NO construir nada de esto)
 

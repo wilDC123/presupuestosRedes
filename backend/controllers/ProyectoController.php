@@ -5,17 +5,32 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\Proyecto;
+use backend\services\ProyectoService;
 use Yii;
-use yii\data\ActiveDataProvider;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 
 /**
- * Controlador CRUD para redes.Proyecto.
+ * Controlador CRUD para redes.Proyecto (capa de Presentacion).
+ *
+ * No consulta la base de datos directamente: todo lo delega a
+ * ProyectoService (capa de Servicio).
  */
 class ProyectoController extends Controller
 {
+    private ProyectoService $service;
+
+    /**
+     * init() es el "constructor" recomendado en Yii2 para componentes: se
+     * ejecuta una vez al crear el controlador, antes de cualquier accion.
+     */
+    public function init(): void
+    {
+        parent::init();
+        $this->service = new ProyectoService();
+    }
+
     public function behaviors(): array
     {
         return [
@@ -30,15 +45,8 @@ class ProyectoController extends Controller
 
     public function actionIndex(): string
     {
-        $dataProvider = new ActiveDataProvider([
-            'query' => Proyecto::find()->orderBy(['fechaCreacion' => SORT_DESC]),
-            'pagination' => [
-                'pageSize' => 20,
-            ],
-        ]);
-
         return $this->render('index', [
-            'dataProvider' => $dataProvider,
+            'dataProvider' => $this->service->listar(),
         ]);
     }
 
@@ -53,7 +61,7 @@ class ProyectoController extends Controller
     {
         $model = new Proyecto();
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->crear($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -66,7 +74,7 @@ class ProyectoController extends Controller
     {
         $model = $this->findModel($id);
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->actualizar($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -77,14 +85,14 @@ class ProyectoController extends Controller
 
     public function actionDelete(int $id)
     {
-        $this->findModel($id)->delete();
+        $this->service->eliminar($this->findModel($id));
 
         return $this->redirect(['index']);
     }
 
     protected function findModel(int $id): Proyecto
     {
-        $model = Proyecto::findOne($id);
+        $model = $this->service->obtener($id);
 
         if ($model === null) {
             throw new NotFoundHttpException('El proyecto solicitado no existe.');

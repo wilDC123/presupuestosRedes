@@ -4,21 +4,31 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
-use backend\components\PresupuestoPdfGenerator;
 use backend\models\Presupuesto;
-use backend\models\PresupuestoDetalle;
+use backend\services\PresupuestoService;
 use Yii;
-use yii\data\ActiveDataProvider;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
 /**
- * Controlador CRUD para redes.Presupuesto.
+ * Controlador CRUD para redes.Presupuesto (capa de Presentacion).
+ *
+ * Todas las reglas de negocio (editable o no, transiciones de estado,
+ * nueva version, precio congelado, totales) viven en PresupuestoService.
+ * Aca solo se decide que mensaje mostrar y a donde redirigir.
  */
 class PresupuestoController extends Controller
 {
+    private PresupuestoService $service;
+
+    public function init(): void
+    {
+        parent::init();
+        $this->service = new PresupuestoService();
+    }
+
     public function behaviors(): array
     {
         return [
@@ -36,15 +46,8 @@ class PresupuestoController extends Controller
 
     public function actionIndex(): string
     {
-        $dataProvider = new ActiveDataProvider([
-            'query' => Presupuesto::find()->with('proyecto')->orderBy(['id' => SORT_DESC]),
-            'pagination' => [
-                'pageSize' => 20,
-            ],
-        ]);
-
         return $this->render('index', [
-            'dataProvider' => $dataProvider,
+            'dataProvider' => $this->service->listar(),
         ]);
     }
 
@@ -59,7 +62,7 @@ class PresupuestoController extends Controller
     {
         $model = new Presupuesto();
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->crear($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -72,13 +75,13 @@ class PresupuestoController extends Controller
     {
         $model = $this->findModel($id);
 
-        if (!$model->puedeEditarse()) {
+        if (!$this->service->puedeEditarse($model)) {
             Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $model->estadoLabel() . '" no se puede editar directamente. Debe crearse una nueva versión.');
 
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        if ($this->service->actualizar($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -89,30 +92,26 @@ class PresupuestoController extends Controller
 
     public function actionDelete(int $id)
     {
-        $this->findModel($id)->delete();
+        $this->service->eliminar($this->findModel($id));
 
         return $this->redirect(['index']);
     }
 
     /**
      * Cambia el estado de un presupuesto, pero solo si la transicion pedida
-     * esta en la lista de transiciones validas del modelo (ver
-     * Presupuesto::transicionesPermitidas()). Cualquier otra combinacion se
-     * rechaza sin tocar la base de datos.
+     * es valida (ver PresupuestoService::cambiarEstado()). Cualquier otra
+     * combinacion se rechaza sin tocar la base de datos.
      */
     public function actionCambiarEstado(int $id)
     {
         $model = $this->findModel($id);
         $nuevoEstado = (string) Yii::$app->request->post('estado');
 
-        if (!$model->puedeTransicionarA($nuevoEstado)) {
+        if (!$this->service->cambiarEstado($model, $nuevoEstado)) {
             Yii::$app->session->setFlash('error', 'No se puede pasar de "' . $model->estadoLabel() . '" a ese estado.');
 
             return $this->redirect(['view', 'id' => $model->id]);
         }
-
-        $model->estado = $nuevoEstado;
-        $model->save(false);
 
         Yii::$app->session->setFlash('success', 'Estado actualizado a "' . $model->estadoLabel() . '".');
 
@@ -121,7 +120,7 @@ class PresupuestoController extends Controller
 
     /**
      * Crea una nueva version de un presupuesto aprobado/cancelado (ver
-     * Presupuesto::crearNuevaVersion()) y redirige directamente a la
+     * PresupuestoService::crearNuevaVersion()) y redirige directamente a la
      * pantalla de lineas de la version nueva para que el usuario pueda
      * empezar a editarla ahi mismo.
      */
@@ -129,13 +128,13 @@ class PresupuestoController extends Controller
     {
         $model = $this->findModel($id);
 
-        if ($model->puedeEditarse()) {
+        if ($this->service->puedeEditarse($model)) {
             Yii::$app->session->setFlash('error', 'Solo se puede crear una nueva versión de un presupuesto aprobado o cancelado.');
 
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
-        $nuevaVersion = Presupuesto::crearNuevaVersion($model->id);
+        $nuevaVersion = $this->service->crearNuevaVersion($model);
 
         if ($nuevaVersion === null) {
             Yii::$app->session->setFlash('error', 'No se pudo crear la nueva versión del presupuesto.');
@@ -156,39 +155,32 @@ class PresupuestoController extends Controller
     public function actionDetalle(int $id)
     {
         $presupuesto = $this->findModel($id);
-
-        $nuevaLinea = new PresupuestoDetalle();
-        $nuevaLinea->idPresupuesto = $presupuesto->id;
+        $nuevaLinea = $this->service->nuevaLinea($presupuesto);
 
         if (Yii::$app->request->isPost) {
-            if (!$presupuesto->puedeEditarse()) {
+            if (!$this->service->puedeEditarse($presupuesto)) {
                 Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $presupuesto->estadoLabel() . '" no se puede modificar directamente. Debe crearse una nueva versión.');
 
                 return $this->redirect(['detalle', 'id' => $presupuesto->id]);
             }
 
-            if ($nuevaLinea->load(Yii::$app->request->post())) {
-                $nuevaLinea->idPresupuesto = $presupuesto->id;
+            if ($this->service->agregarLinea($presupuesto, $nuevaLinea, Yii::$app->request->post())) {
+                Yii::$app->session->setFlash('success', 'Línea agregada al presupuesto.');
 
-                if ($nuevaLinea->save()) {
-                    Yii::$app->session->setFlash('success', 'Línea agregada al presupuesto.');
-
-                    return $this->redirect(['detalle', 'id' => $presupuesto->id]);
-                }
+                return $this->redirect(['detalle', 'id' => $presupuesto->id]);
             }
         }
 
         return $this->render('detalle', [
             'presupuesto' => $presupuesto,
             'nuevaLinea' => $nuevaLinea,
-            'grupos' => $this->agruparPorCategoria($presupuesto),
+            'grupos' => $this->service->agruparPorCategoria($presupuesto),
         ]);
     }
 
     /**
      * Genera y descarga el PDF consolidado del presupuesto: encabezado
-     * institucional, datos generales, lineas agrupadas por categoria (misma
-     * agrupacion que actionDetalle(), via agruparPorCategoria()) y un
+     * institucional, datos generales, lineas agrupadas por categoria y un
      * espacio de firma. Disponible en cualquier estado del presupuesto, no
      * solo aprobado -- tambien sirve para generar el PDF de un presupuesto
      * en revision.
@@ -196,28 +188,26 @@ class PresupuestoController extends Controller
     public function actionPdf(int $id): Response
     {
         $presupuesto = $this->findModel($id);
-        $grupos = $this->agruparPorCategoria($presupuesto);
-        $totalGeneral = array_sum(array_column($grupos, 'subtotal'));
+        $grupos = $this->service->agruparPorCategoria($presupuesto);
 
         $html = $this->renderPartial('pdf', [
             'presupuesto' => $presupuesto,
             'grupos' => $grupos,
-            'totalGeneral' => $totalGeneral,
+            'totalGeneral' => $this->service->totalGeneral($grupos),
         ]);
 
-        $generador = new PresupuestoPdfGenerator();
-        $contenidoPdf = $generador->generarDesdeHtml($html);
+        $pdf = $this->service->generarPdf($presupuesto, $html);
 
         return Yii::$app->response->sendContentAsFile(
-            $contenidoPdf,
-            $generador->nombreArchivo($presupuesto),
+            $pdf['contenido'],
+            $pdf['nombreArchivo'],
             ['mimeType' => 'application/pdf']
         );
     }
 
     public function actionEliminarLinea(int $id)
     {
-        $linea = PresupuestoDetalle::findOne($id);
+        $linea = $this->service->obtenerLinea($id);
 
         if ($linea === null) {
             throw new NotFoundHttpException('La línea solicitada no existe.');
@@ -225,57 +215,16 @@ class PresupuestoController extends Controller
 
         $presupuesto = $linea->presupuesto;
 
-        if (!$presupuesto->puedeEditarse()) {
+        if (!$this->service->eliminarLinea($linea)) {
             Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $presupuesto->estadoLabel() . '" no se puede modificar directamente.');
-
-            return $this->redirect(['detalle', 'id' => $presupuesto->id]);
         }
-
-        $linea->delete();
 
         return $this->redirect(['detalle', 'id' => $presupuesto->id]);
     }
 
-    /**
-     * Agrupa las lineas del presupuesto por el nombre de la categoria de su
-     * item de subcatalogo. Devuelve un arreglo:
-     *   ['Cable redes' => ['lineas' => PresupuestoDetalle[], 'subtotal' => float], ...]
-     * ordenado segun el campo "orden" de Categoria, mas un elemento especial
-     * '__total__' con la suma de todos los subtotales.
-     */
-    private function agruparPorCategoria(Presupuesto $presupuesto): array
-    {
-        $lineas = $presupuesto->getPresupuestoDetalles()
-            ->with(['subcatalogoItem.categoria'])
-            ->all();
-
-        $grupos = [];
-
-        foreach ($lineas as $linea) {
-            $categoria = $linea->subcatalogoItem->categoria ?? null;
-            $nombreCategoria = $categoria->nombre ?? 'Sin categoría';
-            $ordenCategoria = $categoria->orden ?? 999;
-
-            if (!isset($grupos[$nombreCategoria])) {
-                $grupos[$nombreCategoria] = [
-                    'orden' => $ordenCategoria,
-                    'lineas' => [],
-                    'subtotal' => 0.0,
-                ];
-            }
-
-            $grupos[$nombreCategoria]['lineas'][] = $linea;
-            $grupos[$nombreCategoria]['subtotal'] += (float) $linea->precioTotal;
-        }
-
-        uasort($grupos, static fn ($a, $b) => $a['orden'] <=> $b['orden']);
-
-        return $grupos;
-    }
-
     protected function findModel(int $id): Presupuesto
     {
-        $model = Presupuesto::findOne($id);
+        $model = $this->service->obtener($id);
 
         if ($model === null) {
             throw new NotFoundHttpException('El presupuesto solicitado no existe.');
