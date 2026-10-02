@@ -50,3 +50,6 @@ phpunit.phar
 /backend/web/index.php
 /backend/web/index-test.php
 /backend/web/robots.txt
+
+# archivos subidos por usuarios (cotizaciones, especificaciones)
+/backend/web/uploads/
