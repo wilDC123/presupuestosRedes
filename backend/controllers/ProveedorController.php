@@ -43,10 +43,20 @@ class ProveedorController extends Controller
         ];
     }
 
-    public function actionIndex(): string
+    /**
+     * Listado con panel lateral: ?buscar= filtra la tabla y ?id= elige el
+     * proveedor que se muestra en "Proveedor seleccionado".
+     */
+    public function actionIndex(?int $id = null): string
     {
+        $buscar = trim((string) Yii::$app->request->get('buscar', ''));
+        $seleccionado = $id === null ? null : $this->service->obtener($id);
+
         return $this->render('index', [
-            'dataProvider' => $this->service->listar(),
+            'filas' => $this->service->listar($buscar),
+            'buscar' => $buscar,
+            'seleccionado' => $seleccionado,
+            'resumen' => $seleccionado === null ? null : $this->service->resumen($seleccionado),
         ]);
     }
 
@@ -62,7 +72,9 @@ class ProveedorController extends Controller
         $model = new Proveedor();
 
         if ($this->service->crear($model, Yii::$app->request->post())) {
-            return $this->redirect(['view', 'id' => $model->id]);
+            Yii::$app->session->setFlash('success', 'Proveedor registrado.');
+
+            return $this->redirect(['index', 'id' => $model->id]);
         }
 
         return $this->render('create', [
@@ -75,7 +87,9 @@ class ProveedorController extends Controller
         $model = $this->findModel($id);
 
         if ($this->service->actualizar($model, Yii::$app->request->post())) {
-            return $this->redirect(['view', 'id' => $model->id]);
+            Yii::$app->session->setFlash('success', 'Datos del proveedor actualizados.');
+
+            return $this->redirect(['index', 'id' => $model->id]);
         }
 
         return $this->render('update', [
@@ -85,7 +99,13 @@ class ProveedorController extends Controller
 
     public function actionDelete(int $id)
     {
-        $this->service->eliminar($this->findModel($id));
+        $model = $this->findModel($id);
+
+        if (!$this->service->eliminar($model)) {
+            Yii::$app->session->setFlash('error', 'No se puede eliminar "' . $model->razonSocial . '" porque tiene cotizaciones registradas. Puede marcarlo como inactivo desde "Editar datos".');
+
+            return $this->redirect(['index', 'id' => $model->id]);
+        }
 
         return $this->redirect(['index']);
     }

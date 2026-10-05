@@ -2,8 +2,13 @@
 
 declare(strict_types=1);
 
-/** @var yii\web\View $this */
-/** @var string $content */
+/**
+ * Layout principal del modulo de Redes: barra lateral oscura a la izquierda
+ * y el contenido de cada pantalla a la derecha (ver web/css/redes.css).
+ *
+ * @var yii\web\View $this
+ * @var string $content
+ */
 
 use common\widgets\Alert;
 use yii\bootstrap5\Breadcrumbs;
@@ -13,27 +18,24 @@ $this->render('_head');
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
-<html lang="<?= Yii::$app->language ?>" class="h-100" data-bs-theme="light">
+<html lang="<?= Yii::$app->language ?>" data-bs-theme="light">
 <head>
     <?php $this->head() ?>
-    <title><?= Html::encode($this->title) ?></title>
+    <title><?= Html::encode($this->title) ?> — DTIC Redes</title>
 </head>
-<body class="d-flex flex-column h-100">
+<body class="rd">
 <?php $this->beginBody() ?>
 
-<?= $this->render('_header') ?>
+<?= $this->render('_sidebar') ?>
 
-<main id="main" class="flex-grow-1" role="main">
-    <div class="container">
-        <?php if (!empty($this->params['breadcrumbs'])): ?>
-            <?= Breadcrumbs::widget(['links' => $this->params['breadcrumbs']]) ?>
-        <?php endif ?>
-        <?= Alert::widget() ?>
-        <?= $content ?>
-    </div>
+<main id="main" class="rd-main" role="main">
+    <?= Breadcrumbs::widget([
+        'homeLink' => ['label' => 'DTIC / Redes', 'url' => Yii::$app->homeUrl],
+        'links' => $this->params['breadcrumbs'] ?? [],
+    ]) ?>
+    <?= Alert::widget() ?>
+    <?= $content ?>
 </main>
-
-<?= $this->render('_footer') ?>
 
 <?php $this->endBody() ?>
 </body>

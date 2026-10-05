@@ -24,10 +24,17 @@ class CotizacionService
 {
     private const UPLOAD_SUBPATH = 'uploads/cotizaciones';
 
-    public function listar(): ActiveDataProvider
+    /**
+     * Si llega un proveedor, se listan solo sus cotizaciones (enlace "Ver
+     * cotizaciones vinculadas" de la pantalla de Proveedores).
+     */
+    public function listar(?int $idProveedor = null): ActiveDataProvider
     {
         return new ActiveDataProvider([
-            'query' => Cotizacion::find()->with('proveedor')->orderBy(['id' => SORT_DESC]),
+            'query' => Cotizacion::find()
+                ->with('proveedor')
+                ->andFilterWhere(['idProveedor' => $idProveedor])
+                ->orderBy(['id' => SORT_DESC]),
             'pagination' => [
                 'pageSize' => 20,
             ],

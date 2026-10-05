@@ -7,6 +7,7 @@ use yii\helpers\Html;
 /**
  * @var yii\web\View $this
  * @var backend\models\SubcatalogoItem $model
+ * @var array<int, string> $categorias
  * @var backend\models\CatalogoSigma|null $sigma
  * @var string|null $partidaSigma
  * @var string[] $usadoPor
@@ -22,6 +23,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
     <?= $this->render('_form', [
         'model' => $model,
+        'categorias' => $categorias,
         'sigma' => $sigma,
         'partidaSigma' => $partidaSigma,
         'usadoPor' => $usadoPor,

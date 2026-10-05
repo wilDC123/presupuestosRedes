@@ -9,11 +9,20 @@ $params = array_merge(
 
 return [
     'id' => 'app-backend',
+    'name' => 'DTIC Redes',
+    // Idioma de los mensajes automaticos de Yii (validaciones, paginacion, etc.).
+    'language' => 'es',
     'basePath' => dirname(__DIR__),
     'controllerNamespace' => 'backend\controllers',
     'bootstrap' => ['log'],
     'modules' => [],
     'components' => [
+        // Con 'language' => 'es' Yii formatearia los numeros como 1.234,56. Se
+        // fija el formato 1,234.56 que usan los presupuestos de la DTIC.
+        'formatter' => [
+            'thousandSeparator' => ',',
+            'decimalSeparator' => '.',
+        ],
         'request' => [
             'csrfParam' => '_csrf-backend',
         ],

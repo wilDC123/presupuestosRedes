@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\SubcatalogoItem;
+use backend\services\CategoriaService;
 use backend\services\SubcatalogoItemService;
 use Yii;
 use yii\filters\VerbFilter;
@@ -39,17 +40,33 @@ class SubcatalogoItemController extends Controller
         ];
     }
 
+    /**
+     * Dos busquedas independientes en la misma pantalla: los filtros del
+     * subcatalogo propio (buscar, idCategoria, partida, estado) y el texto
+     * "q" del buscador del catalogo SIGMA.
+     */
     public function actionIndex(): string
     {
-        $textoBusqueda = trim((string) Yii::$app->request->get('q', ''));
+        $peticion = Yii::$app->request;
 
-        $partida = trim((string) Yii::$app->request->get('partida', ''));
+        $filtros = [
+            'buscar' => trim((string) $peticion->get('buscar', '')),
+            'idCategoria' => trim((string) $peticion->get('idCategoria', '')),
+            'partida' => trim((string) $peticion->get('partida', '')),
+            'estado' => trim((string) $peticion->get('estado', '')),
+        ];
+
+        $textoBusqueda = trim((string) $peticion->get('q', ''));
         $resultadosSigma = $this->service->buscarEnCatalogoSigma($textoBusqueda);
+        $totales = $this->service->totales();
 
         return $this->render('index', [
-            'dataProvider' => $this->service->listar($partida),
-            'partida' => $partida,
+            'dataProvider' => $this->service->listar($filtros),
+            'filtros' => $filtros,
+            'categorias' => (new CategoriaService())->opciones(),
             'partidasEnUso' => $this->service->partidasEnUso(),
+            'totalItems' => $totales['items'],
+            'totalSigma' => $totales['sigma'],
             'textoBusqueda' => $textoBusqueda,
             'resultadosSigma' => $resultadosSigma,
             'limiteAlcanzado' => $this->service->limiteDeBusquedaAlcanzado($resultadosSigma),
@@ -69,6 +86,8 @@ class SubcatalogoItemController extends Controller
         $model = new SubcatalogoItem();
 
         if ($this->service->crear($model, Yii::$app->request->post())) {
+            Yii::$app->session->setFlash('success', 'Ítem "' . $model->descripcion . '" agregado al subcatálogo.');
+
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -109,6 +128,7 @@ class SubcatalogoItemController extends Controller
     {
         return [
             'model' => $model,
+            'categorias' => (new CategoriaService())->opciones(),
             'sigma' => $this->service->sigmaDe($model),
             'partidaSigma' => $this->service->partidaDesdeSigma($model),
             'usadoPor' => $this->service->otrosItemsConMismoSigma($model),

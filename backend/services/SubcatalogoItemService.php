@@ -22,21 +22,42 @@ class SubcatalogoItemService
     private const PATRON_ID_SIGMA = '/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i';
 
     /**
-     * Listado paginado del subcatalogo. Si llega una partida valida (5
-     * digitos) se muestran solo los items de esa partida; cualquier otro
-     * valor se ignora y se lista todo.
+     * Listado paginado del subcatalogo, con los filtros de la pantalla:
+     *  - buscar: texto dentro del nombre DTIC (descripcion)
+     *  - idCategoria: una categoria
+     *  - partida: una partida de 5 digitos
+     *  - estado: 'activo' o 'inactivo'
+     * Un filtro vacio o con un valor que no corresponde se ignora.
      *
      * with() carga categoria y catalogoSigma de todas las filas en 2
      * consultas extra, en vez de una consulta por cada fila del listado.
+     *
+     * @param array{buscar?: string, idCategoria?: string, partida?: string, estado?: string} $filtros
      */
-    public function listar(?string $partida = null): ActiveDataProvider
+    public function listar(array $filtros = []): ActiveDataProvider
     {
         $query = SubcatalogoItem::find()
             ->with(['categoria', 'catalogoSigma'])
             ->orderBy(['descripcion' => SORT_ASC]);
 
-        if ($partida !== null && preg_match('/^\d{5}$/', $partida) === 1) {
-            $query->andWhere(['partida' => $partida]);
+        $buscar = trim((string) ($filtros['buscar'] ?? ''));
+
+        if ($buscar !== '') {
+            $query->andWhere(['like', 'descripcion', $buscar]);
+        }
+
+        if (ctype_digit((string) ($filtros['idCategoria'] ?? ''))) {
+            $query->andWhere(['idCategoria' => (int) $filtros['idCategoria']]);
+        }
+
+        if (preg_match('/^\d{5}$/', (string) ($filtros['partida'] ?? '')) === 1) {
+            $query->andWhere(['partida' => $filtros['partida']]);
+        }
+
+        $estados = ['activo' => true, 'inactivo' => false];
+
+        if (isset($estados[$filtros['estado'] ?? ''])) {
+            $query->andWhere(['activo' => $estados[$filtros['estado']]]);
         }
 
         return new ActiveDataProvider([
@@ -45,6 +66,20 @@ class SubcatalogoItemService
                 'pageSize' => 20,
             ],
         ]);
+    }
+
+    /**
+     * Cuantos items tiene el subcatalogo (sin filtrar) y cuantos items
+     * vigentes tiene el catalogo SIGMA, para el subtitulo de la pantalla.
+     *
+     * @return array{items: int, sigma: int}
+     */
+    public function totales(): array
+    {
+        return [
+            'items' => (int) SubcatalogoItem::find()->count(),
+            'sigma' => (int) CatalogoSigma::find()->andWhere(['CodigoEstado' => CatalogoSigma::ESTADO_VIGENTE])->count(),
+        ];
     }
 
     /**

@@ -46,7 +46,8 @@ class CategoriaController extends Controller
     public function actionIndex(): string
     {
         return $this->render('index', [
-            'dataProvider' => $this->service->listar(),
+            'filas' => $this->service->listarConConteo(),
+            'nueva' => new Categoria(),
         ]);
     }
 
@@ -62,7 +63,9 @@ class CategoriaController extends Controller
         $model = new Categoria();
 
         if ($this->service->crear($model, Yii::$app->request->post())) {
-            return $this->redirect(['view', 'id' => $model->id]);
+            Yii::$app->session->setFlash('success', 'Categoría "' . $model->nombre . '" creada.');
+
+            return $this->redirect(['index']);
         }
 
         return $this->render('create', [
@@ -75,7 +78,9 @@ class CategoriaController extends Controller
         $model = $this->findModel($id);
 
         if ($this->service->actualizar($model, Yii::$app->request->post())) {
-            return $this->redirect(['view', 'id' => $model->id]);
+            Yii::$app->session->setFlash('success', 'Categoría actualizada.');
+
+            return $this->redirect(['index']);
         }
 
         return $this->render('update', [
@@ -85,7 +90,11 @@ class CategoriaController extends Controller
 
     public function actionDelete(int $id)
     {
-        $this->service->eliminar($this->findModel($id));
+        $model = $this->findModel($id);
+
+        if (!$this->service->eliminar($model)) {
+            Yii::$app->session->setFlash('error', 'No se puede eliminar "' . $model->nombre . '" porque tiene ítems del subcatálogo. Mueva esos ítems a otra categoría primero.');
+        }
 
         return $this->redirect(['index']);
     }

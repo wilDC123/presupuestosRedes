@@ -40,10 +40,10 @@ class CotizacionController extends Controller
         ];
     }
 
-    public function actionIndex(): string
+    public function actionIndex(?int $idProveedor = null): string
     {
         return $this->render('index', [
-            'dataProvider' => $this->service->listar(),
+            'dataProvider' => $this->service->listar($idProveedor),
         ]);
     }
 

@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use backend\models\Categoria;
-use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 
@@ -11,16 +9,11 @@ use yii\widgets\ActiveForm;
  * @var yii\web\View $this
  * @var backend\models\SubcatalogoItem $model
  * @var yii\widgets\ActiveForm $form
+ * @var array<int, string> $categorias [id => nombre], ver CategoriaService::opciones()
  * @var backend\models\CatalogoSigma|null $sigma fila de dbo.CatalogoSigma del idSigma del item (null si no viene de SIGMA)
  * @var string[] $usadoPor nombres DTIC de otros items que apuntan al mismo idSigma
  * @var string|null $partidaSigma partida que SIGMA tiene para el idSigma del item (null si no se pudo obtener)
  */
-
-$categorias = ArrayHelper::map(
-    Categoria::find()->orderBy(['orden' => SORT_ASC])->all(),
-    'id',
-    'nombre'
-);
 ?>
 <div class="subcatalogo-item-form">
 

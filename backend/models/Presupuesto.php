@@ -217,18 +217,18 @@ class Presupuesto extends ActiveRecord
     }
 
     /**
-     * Clase de badge de Bootstrap segun el estado (HTML simple, sin CSS
-     * propio -- las clases "badge bg-*" ya vienen incluidas con el tema).
+     * Clases CSS de la insignia segun el estado. Los colores "b-*" estan
+     * definidos en web/css/redes.css (tomados de los mockups).
      */
     public function estadoBadgeClass(): string
     {
         return match ($this->estado) {
-            self::ESTADO_EN_PROCESO => 'badge bg-secondary',
-            self::ESTADO_EN_REVISION => 'badge bg-info',
-            self::ESTADO_OBSERVADO => 'badge bg-warning',
-            self::ESTADO_APROBADO => 'badge bg-success',
-            self::ESTADO_CANCELADO => 'badge bg-danger',
-            default => 'badge bg-secondary',
+            self::ESTADO_EN_PROCESO => 'badge b-proceso',
+            self::ESTADO_EN_REVISION => 'badge b-revision',
+            self::ESTADO_OBSERVADO => 'badge b-observado',
+            self::ESTADO_APROBADO => 'badge b-aprobado',
+            self::ESTADO_CANCELADO => 'badge b-cancelado',
+            default => 'badge b-inactivo',
         };
     }
 }

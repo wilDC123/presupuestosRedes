@@ -11,11 +11,17 @@ use yii\helpers\Html;
 
 $this->title = 'Nuevo proveedor';
 $this->params['breadcrumbs'][] = ['label' => 'Proveedores', 'url' => ['index']];
-$this->params['breadcrumbs'][] = $this->title;
+$this->params['breadcrumbs'][] = 'Nuevo';
 ?>
 <div class="proveedor-create">
 
-    <h1><?= Html::encode($this->title) ?></h1>
+    <div class="rd-pagehead">
+        <h1><?= Html::encode($this->title) ?></h1>
+        <div class="rd-acciones">
+            <?= Html::a('Cancelar', ['index'], ['class' => 'btn btn-outline']) ?>
+            <?= Html::submitButton('Guardar proveedor', ['class' => 'btn btn-primary', 'form' => 'proveedor-form']) ?>
+        </div>
+    </div>
 
     <?= $this->render('_form', [
         'model' => $model,

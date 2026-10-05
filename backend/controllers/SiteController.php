@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\services\DashboardService;
 use common\models\LoginForm;
 use Yii;
 use yii\filters\AccessControl;
@@ -65,7 +66,12 @@ class SiteController extends Controller
      */
     public function actionIndex(): string
     {
-        return $this->render('index');
+        $dashboard = new DashboardService();
+
+        return $this->render('index', [
+            'indicadores' => $dashboard->indicadores(),
+            'proyectosRecientes' => $dashboard->proyectosRecientes(),
+        ]);
     }
 
     /**
