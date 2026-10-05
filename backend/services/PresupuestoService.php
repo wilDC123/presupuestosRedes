@@ -19,6 +19,8 @@ use yii\data\ActiveDataProvider;
  *  - como se crea una nueva version/fase (VACIA, sin copiar lineas),
  *  - el precio unitario "congelado" al agregar una linea,
  *  - la partida presupuestaria "congelada" al agregar una linea,
+ *  - que la cotizacion elegida para una linea sea del mismo item,
+ *  - que lineas usan una cotizacion vencida (se avisa, no se bloquea),
  *  - la agrupacion por categoria con subtotales y total general.
  */
 class PresupuestoService
@@ -170,10 +172,51 @@ class PresupuestoService
             return false;
         }
 
+        if (!$this->cotizacionCorrespondeAlItem($linea)) {
+            // addError() deja el mensaje en el campo, igual que un error de
+            // rules(): la vista lo muestra debajo del desplegable.
+            $linea->addError('idCotizacionDetalle', 'La cotización elegida es de otro ítem del subcatálogo. Elija una cotización del mismo ítem o ingrese el precio manualmente.');
+
+            return false;
+        }
+
         $this->congelarPrecio($linea);
         $this->congelarPartida($linea);
 
         return $linea->save(false);
+    }
+
+    /**
+     * true si la linea tomo su precio de una cotizacion que ya esta vencida
+     * (ver Cotizacion::estaVencida()). Es solo informativo: una cotizacion
+     * vencida NO impide agregar la linea; el controlador muestra un aviso.
+     */
+    public function lineaUsaCotizacionVencida(PresupuestoDetalle $linea): bool
+    {
+        if (empty($linea->idCotizacionDetalle)) {
+            return false;
+        }
+
+        $cotizacion = $linea->cotizacionDetalle->cotizacion ?? null;
+
+        return $cotizacion !== null && $cotizacion->estaVencida();
+    }
+
+    /**
+     * Lineas del presupuesto cuyo precio viene de una cotizacion vencida.
+     * Se usa al aprobar, para advertir (sin bloquear) que hay precios que el
+     * proveedor ya no esta obligado a mantener.
+     *
+     * @return PresupuestoDetalle[]
+     */
+    public function lineasConCotizacionVencida(Presupuesto $presupuesto): array
+    {
+        $lineas = $presupuesto->getPresupuestoDetalles()
+            ->andWhere(['not', ['idCotizacionDetalle' => null]])
+            ->with(['subcatalogoItem', 'cotizacionDetalle.cotizacion'])
+            ->all();
+
+        return array_values(array_filter($lineas, fn (PresupuestoDetalle $linea) => $this->lineaUsaCotizacionVencida($linea)));
     }
 
     public function obtenerLinea(int $idLinea): ?PresupuestoDetalle
@@ -253,6 +296,26 @@ class PresupuestoService
             'contenido' => $generador->generarDesdeHtml($html),
             'nombreArchivo' => $generador->nombreArchivo($presupuesto),
         ];
+    }
+
+    /**
+     * Una linea solo puede tomar el precio de una cotizacion hecha para SU
+     * MISMO item del subcatalogo. Sin esta verificacion, el formulario
+     * permitiria presupuestar "Cable UTP" con el precio cotizado para un
+     * "Switch". Una linea sin cotizacion (precio manual) siempre es valida.
+     */
+    private function cotizacionCorrespondeAlItem(PresupuestoDetalle $linea): bool
+    {
+        if (empty($linea->idCotizacionDetalle)) {
+            return true;
+        }
+
+        $cotizacionDetalle = CotizacionDetalle::findOne($linea->idCotizacionDetalle);
+
+        // (int) en ambos lados: lo que llega del formulario es texto ("7") y
+        // lo que viene de la base es entero (7).
+        return $cotizacionDetalle !== null
+            && (int) $cotizacionDetalle->idSubcatalogo === (int) $linea->idSubcatalogo;
     }
 
     /**

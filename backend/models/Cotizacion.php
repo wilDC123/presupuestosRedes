@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\models;
 
 use DateTime;
+use DateTimeImmutable;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\web\UploadedFile;
@@ -69,6 +70,34 @@ class Cotizacion extends ActiveRecord
     public function getCotizacionDetalles(): ActiveQuery
     {
         return $this->hasMany(CotizacionDetalle::class, ['idCotizacion' => 'id']);
+    }
+
+    /**
+     * Una cotizacion esta vencida cuando ya paso su ultimo dia de validez:
+     * fecha + validezDias < hoy. Ejemplo: fecha 01/09 con 30 dias de validez
+     * vale hasta el 01/10 inclusive y esta vencida desde el 02/10.
+     *
+     * Si falta la fecha o los dias de validez (las dos columnas permiten
+     * NULL) no hay forma de saberlo, y se considera NO vencida.
+     *
+     * $hoy solo se pasa en las pruebas; en uso normal se toma la fecha actual.
+     */
+    public function estaVencida(?DateTimeImmutable $hoy = null): bool
+    {
+        if (empty($this->fecha) || $this->validezDias === null || $this->validezDias === '') {
+            return false;
+        }
+
+        $fecha = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $this->fecha);
+
+        if ($fecha === false) {
+            return false;
+        }
+
+        $venceEl = $fecha->modify('+' . (int) $this->validezDias . ' days');
+        $hoy = ($hoy ?? new DateTimeImmutable())->setTime(0, 0);
+
+        return $venceEl < $hoy;
     }
 
     /**

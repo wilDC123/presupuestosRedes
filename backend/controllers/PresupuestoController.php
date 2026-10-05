@@ -115,6 +115,16 @@ class PresupuestoController extends Controller
 
         Yii::$app->session->setFlash('success', 'Estado actualizado a "' . $model->estadoLabel() . '".');
 
+        // Advertencia que NO bloquea: el presupuesto ya quedo aprobado.
+        if ($nuevoEstado === Presupuesto::ESTADO_APROBADO) {
+            $vencidas = $this->service->lineasConCotizacionVencida($model);
+
+            if ($vencidas !== []) {
+                $nombres = array_map(static fn ($linea) => $linea->subcatalogoItem->descripcion ?? '?', $vencidas);
+                Yii::$app->session->setFlash('warning', 'Atención: ' . count($vencidas) . ' línea(s) usan una cotización vencida: ' . implode(', ', $nombres) . '.');
+            }
+        }
+
         return $this->redirect(['view', 'id' => $model->id]);
     }
 
@@ -166,6 +176,10 @@ class PresupuestoController extends Controller
 
             if ($this->service->agregarLinea($presupuesto, $nuevaLinea, Yii::$app->request->post())) {
                 Yii::$app->session->setFlash('success', 'Línea agregada al presupuesto.');
+
+                if ($this->service->lineaUsaCotizacionVencida($nuevaLinea)) {
+                    Yii::$app->session->setFlash('warning', 'Atención: la cotización elegida para esta línea ya está vencida. La línea se agregó igual, con el precio de esa cotización.');
+                }
 
                 return $this->redirect(['detalle', 'id' => $presupuesto->id]);
             }
