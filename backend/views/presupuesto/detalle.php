@@ -16,7 +16,8 @@ use yii\widgets\ActiveForm;
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $presupuesto
  * @var backend\models\PresupuestoDetalle $nuevaLinea
- * @var array $grupos Ver PresupuestoController::agruparPorCategoria()
+ * @var array $grupos Ver PresupuestoService::agruparPorCategoria()
+ * @var array $resumenPartidas Ver PresupuestoService::resumenPorPartida()
  */
 
 $this->title = 'Líneas del presupuesto #' . $presupuesto->id;
@@ -129,6 +130,8 @@ $cotizaciones = ArrayHelper::map(
         <?php endforeach; ?>
 
         <h2>Total general: <?= Yii::$app->formatter->asDecimal($totalGeneral, 2) ?></h2>
+
+        <?= $this->render('_resumen-partidas', ['resumenPartidas' => $resumenPartidas]) ?>
     <?php endif; ?>
 
     <?php if ($presupuesto->puedeEditarse()): ?>

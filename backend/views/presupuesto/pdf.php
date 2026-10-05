@@ -15,8 +15,9 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $presupuesto
- * @var array $grupos Ver PresupuestoController::agruparPorCategoria()
+ * @var array $grupos Ver PresupuestoService::agruparPorCategoria()
  * @var float $totalGeneral
+ * @var array<int, array{partida: string, lineas: int, subtotal: float}> $resumenPartidas Ver PresupuestoService::resumenPorPartida()
  */
 
 $proyecto = $presupuesto->proyecto;
@@ -107,6 +108,9 @@ $ubicacion = implode(' / ', array_filter([
         border-top: 2px solid #000;
         padding-top: 6px;
     }
+    table.resumen-partidas {
+        width: 60%;
+    }
     .firmas {
         margin-top: 60px;
     }
@@ -192,6 +196,32 @@ $ubicacion = implode(' / ', array_filter([
     <div class="total-general">
         TOTAL GENERAL: <?= Yii::$app->formatter->asDecimal($totalGeneral, 2) ?>
     </div>
+
+    <div class="categoria-titulo">Resumen por partida presupuestaria</div>
+    <table class="items resumen-partidas">
+        <thead>
+            <tr>
+                <th>Partida</th>
+                <th>N.° de líneas</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($resumenPartidas as $fila): ?>
+                <tr>
+                    <td><?= Html::encode($fila['partida']) ?></td>
+                    <td class="numero"><?= $fila['lineas'] ?></td>
+                    <td class="numero"><?= Yii::$app->formatter->asDecimal($fila['subtotal'], 2) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <tr class="subtotal">
+                <td colspan="2">Total:</td>
+                <td class="numero"><?= Yii::$app->formatter->asDecimal(array_sum(array_column($resumenPartidas, 'subtotal')), 2) ?></td>
+            </tr>
+        </tfoot>
+    </table>
 <?php endif; ?>
 
 <div class="firmas">

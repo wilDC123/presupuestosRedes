@@ -21,7 +21,8 @@ use yii\data\ActiveDataProvider;
  *  - la partida presupuestaria "congelada" al agregar una linea,
  *  - que la cotizacion elegida para una linea sea del mismo item,
  *  - que lineas usan una cotizacion vencida (se avisa, no se bloquea),
- *  - la agrupacion por categoria con subtotales y total general.
+ *  - la agrupacion por categoria con subtotales y total general,
+ *  - el resumen por partida presupuestaria (lo que consolida la parte financiera).
  */
 class PresupuestoService
 {
@@ -279,6 +280,63 @@ class PresupuestoService
     public function totalGeneral(array $grupos): float
     {
         return (float) array_sum(array_column($grupos, 'subtotal'));
+    }
+
+    /**
+     * Resumen del presupuesto por partida presupuestaria, que es como lo
+     * consolida la parte financiera. Agrupa por la partida GUARDADA en cada
+     * linea (PresupuestoDetalle.partida, congelada al crearla), no por la
+     * partida actual del item: asi el resumen de un presupuesto ya aprobado
+     * no cambia aunque despues se corrija el subcatalogo.
+     *
+     * Es otra forma de sumar las MISMAS lineas que agruparPorCategoria(), asi
+     * que la suma de estos subtotales siempre coincide con el total general.
+     *
+     * Devuelve una lista ordenada por partida; las lineas sin partida van al
+     * final, agrupadas como "Sin partida":
+     *   [['partida' => '34500', 'lineas' => 2, 'subtotal' => 150.0], ...]
+     *
+     * @return array<int, array{partida: string, lineas: int, subtotal: float}>
+     */
+    public function resumenPorPartida(Presupuesto $presupuesto): array
+    {
+        $porPartida = [];
+
+        foreach ($presupuesto->getPresupuestoDetalles()->all() as $linea) {
+            // trim(): la columna es de largo fijo; '' agrupa las lineas sin partida.
+            $partida = trim((string) $linea->partida);
+
+            if (!isset($porPartida[$partida])) {
+                $porPartida[$partida] = ['lineas' => 0, 'subtotal' => 0.0];
+            }
+
+            $porPartida[$partida]['lineas']++;
+            $porPartida[$partida]['subtotal'] += (float) $linea->precioTotal;
+        }
+
+        ksort($porPartida, SORT_STRING);
+
+        $resumen = [];
+        $sinPartida = null;
+
+        foreach ($porPartida as $partida => $datos) {
+            // (string): PHP convierte las claves numericas ("34500") a entero.
+            $fila = ['partida' => (string) $partida] + $datos;
+
+            if ($fila['partida'] === '') {
+                $fila['partida'] = 'Sin partida';
+                $sinPartida = $fila;
+                continue;
+            }
+
+            $resumen[] = $fila;
+        }
+
+        if ($sinPartida !== null) {
+            $resumen[] = $sinPartida;
+        }
+
+        return $resumen;
     }
 
     /**

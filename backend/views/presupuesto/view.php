@@ -9,6 +9,7 @@ use yii\widgets\DetailView;
 /**
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $model
+ * @var array $resumenPartidas Ver PresupuestoService::resumenPorPartida()
  */
 
 $this->title = 'Presupuesto #' . $model->id;
@@ -99,5 +100,7 @@ $transicionesValidas = Presupuesto::transicionesPermitidas()[$model->estado] ?? 
             'fechaCreacion',
         ],
     ]) ?>
+
+    <?= $this->render('_resumen-partidas', ['resumenPartidas' => $resumenPartidas]) ?>
 
 </div>

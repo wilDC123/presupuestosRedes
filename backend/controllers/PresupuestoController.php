@@ -53,8 +53,11 @@ class PresupuestoController extends Controller
 
     public function actionView(int $id): string
     {
+        $model = $this->findModel($id);
+
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'model' => $model,
+            'resumenPartidas' => $this->service->resumenPorPartida($model),
         ]);
     }
 
@@ -189,6 +192,7 @@ class PresupuestoController extends Controller
             'presupuesto' => $presupuesto,
             'nuevaLinea' => $nuevaLinea,
             'grupos' => $this->service->agruparPorCategoria($presupuesto),
+            'resumenPartidas' => $this->service->resumenPorPartida($presupuesto),
         ]);
     }
 
@@ -208,6 +212,7 @@ class PresupuestoController extends Controller
             'presupuesto' => $presupuesto,
             'grupos' => $grupos,
             'totalGeneral' => $this->service->totalGeneral($grupos),
+            'resumenPartidas' => $this->service->resumenPorPartida($presupuesto),
         ]);
 
         $pdf = $this->service->generarPdf($presupuesto, $html);
