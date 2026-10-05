@@ -16,6 +16,7 @@ use yii\helpers\Html;
  * @var bool $puedeEditarse
  * @var bool $estaAprobado
  * @var int $totalItems items en la lista del proyecto
+ * @var bool $listaEditable Ver ListaItemsService::puedeEditarse()
  */
 
 $this->title = $model->nombre;
@@ -104,7 +105,10 @@ $formato = Yii::$app->formatter;
         <div class="rd-col-1 rd-pila">
             <div class="card rd-card-pad">
                 <div class="kicker mb-2">Lista de ítems</div>
-                <div class="rd-dato"><strong><?= $totalItems ?></strong> ítems en la lista</div>
+                <div class="rd-dato">
+                    <strong><?= $totalItems ?></strong> ítems en la lista
+                    <span class="<?= $model->estadoListaBadgeClass() ?>"><?= Html::encode($model->estadoListaLabel()) ?></span>
+                </div>
                 <div class="rd-dato">
                     <strong>Origen:</strong>
                     <?php if (!$model->listaIniciada): ?>
@@ -115,11 +119,18 @@ $formato = Yii::$app->formatter;
                         plantilla "<?= Html::encode($model->plantillaOrigen->nombre) ?>"
                     <?php endif; ?>
                 </div>
-                <?php if ($puedeEditarse): ?>
-                    <?= Html::a($model->listaIniciada ? 'Cargar otra plantilla' : 'Cargar plantilla →', ['plantilla', 'id' => $model->id], [
-                        'class' => $model->listaIniciada ? 'btn btn-outline' : 'btn btn-primary',
-                    ]) ?>
-                <?php endif; ?>
+                <div class="rd-acciones">
+                    <?php if ($listaEditable): ?>
+                        <?= Html::a($model->listaIniciada ? 'Cargar otra plantilla' : 'Cargar plantilla →', ['plantilla', 'id' => $model->id], [
+                            'class' => $model->listaIniciada ? 'btn btn-outline' : 'btn btn-primary',
+                        ]) ?>
+                    <?php endif; ?>
+                    <?php if ($model->listaIniciada || $totalItems > 0): ?>
+                        <?= Html::a($listaEditable ? 'Abrir lista →' : 'Ver lista →', ['/lista-items/index', 'id' => $model->id], [
+                            'class' => $listaEditable ? 'btn btn-primary' : 'btn btn-outline',
+                        ]) ?>
+                    <?php endif; ?>
+                </div>
             </div>
 
             <div class="card rd-card-pad">

@@ -26,6 +26,7 @@ use yii\db\ActiveRecord;
  * @property-read Proyecto $proyecto
  * @property-read SubcatalogoItem $subcatalogoItem
  * @property-read Categoria $categoria
+ * @property-read PresupuestoDetalle|null $presupuestoDetalle
  */
 class ProyectoItem extends ActiveRecord
 {
@@ -72,6 +73,14 @@ class ProyectoItem extends ActiveRecord
     public function getCategoria(): ActiveQuery
     {
         return $this->hasOne(Categoria::class, ['id' => 'idCategoria']);
+    }
+
+    /**
+     * Linea del presupuesto que nacio de este item (null si aun no se presupuesto).
+     */
+    public function getPresupuestoDetalle(): ActiveQuery
+    {
+        return $this->hasOne(PresupuestoDetalle::class, ['idProyectoItem' => 'id']);
     }
 
     public function beforeSave($insert): bool

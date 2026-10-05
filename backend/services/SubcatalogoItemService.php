@@ -107,6 +107,8 @@ class SubcatalogoItemService
     {
         return SubcatalogoItem::find()
             ->andWhere(['activo' => true])
+            // with(): trae las categorias en una sola consulta extra.
+            ->with('categoria')
             ->orderBy(['descripcion' => SORT_ASC])
             ->all();
     }

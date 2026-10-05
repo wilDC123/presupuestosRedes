@@ -8,6 +8,9 @@ use backend\components\PresupuestoPdfGenerator;
 use backend\models\CotizacionDetalle;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
+use backend\models\ProyectoItem;
+use Throwable;
+use Yii;
 use yii\data\ActiveDataProvider;
 
 /**
@@ -18,6 +21,7 @@ use yii\data\ActiveDataProvider;
  *  - que cambios de estado son validos,
  *  - el precio unitario "congelado" al agregar una linea,
  *  - la partida presupuestaria "congelada" al agregar una linea,
+ *  - cada linea nace de un item de la LISTA del proyecto, una sola vez,
  *  - que la cotizacion elegida para una linea sea del mismo item,
  *  - que lineas usan una cotizacion vencida (se avisa, no se bloquea),
  *  - la agrupacion por categoria con subtotales y total general,
@@ -98,19 +102,90 @@ class PresupuestoService
 
         $presupuesto->estado = $nuevoEstado;
 
-        return $presupuesto->save(false);
+        if ($nuevoEstado !== Presupuesto::ESTADO_APROBADO) {
+            return $presupuesto->save(false);
+        }
+
+        // Al aprobar, la lista de items del proyecto queda cerrada: las dos
+        // cosas juntas (una transaccion).
+        $transaccion = Yii::$app->db->beginTransaction();
+
+        try {
+            $presupuesto->save(false);
+            (new ListaItemsService())->cerrar($presupuesto->proyecto);
+
+            $transaccion->commit();
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
+        return true;
     }
 
     /**
-     * Linea vacia, ya asociada al presupuesto, para el formulario de
-     * "Agregar linea".
+     * Linea para el formulario "Presupuestar item", ya asociada al
+     * presupuesto. Si llega un item de la lista del proyecto que aun no se
+     * presupuesto, la linea viene con su item, cantidad, unidad y
+     * observacion; si no, viene vacia (y no se puede guardar: ver agregarLinea()).
      */
-    public function nuevaLinea(Presupuesto $presupuesto): PresupuestoDetalle
+    public function nuevaLinea(Presupuesto $presupuesto, ?int $idProyectoItem = null): PresupuestoDetalle
     {
         $linea = new PresupuestoDetalle();
         $linea->idPresupuesto = $presupuesto->id;
+        $linea->idProyectoItem = $idProyectoItem;
+
+        $itemLista = $this->itemDeListaSinPresupuestar($presupuesto, $linea);
+
+        if ($itemLista === null) {
+            $linea->idProyectoItem = null;
+
+            return $linea;
+        }
+
+        $linea->idSubcatalogo = $itemLista->idSubcatalogo;
+        $linea->cantidad = $itemLista->cantidad;
+        $linea->unidadMedida = $itemLista->unidadMedida;
+        $linea->observacion = $itemLista->observacion;
 
         return $linea;
+    }
+
+    /**
+     * Cotizaciones que puede usar una linea de ese item del subcatalogo,
+     * como [idCotizacionDetalle => "Proveedor — precio (marca) [especificacion]"].
+     *
+     * @return array<int, string>
+     */
+    public function opcionesCotizacion(int $idSubcatalogo): array
+    {
+        $detalles = CotizacionDetalle::find()
+            ->andWhere(['idSubcatalogo' => $idSubcatalogo])
+            ->with(['cotizacion.proveedor', 'especificacion'])
+            ->all();
+
+        $opciones = [];
+
+        foreach ($detalles as $detalle) {
+            $texto = ($detalle->cotizacion->proveedor->razonSocial ?? '?')
+                . ' — ' . Yii::$app->formatter->asDecimal($detalle->precioUnitario, 2);
+
+            if ($detalle->marcaModelo) {
+                $texto .= " ({$detalle->marcaModelo})";
+            }
+
+            if (!empty($detalle->especificacion->titulo)) {
+                $texto .= " [{$detalle->especificacion->titulo}]";
+            }
+
+            if ($detalle->cotizacion !== null && $detalle->cotizacion->estaVencida()) {
+                $texto .= ' — VENCIDA';
+            }
+
+            $opciones[$detalle->id] = $texto;
+        }
+
+        return $opciones;
     }
 
     /**
@@ -128,6 +203,20 @@ class PresupuestoService
         // Se fuerza despues de load() para que el formulario no pueda
         // "mover" la linea a otro presupuesto.
         $linea->idPresupuesto = $presupuesto->id;
+
+        // REGLA DE NEGOCIO: el presupuesto nace de la lista de items. Cada
+        // linea corresponde a un item de la lista de ESTE proyecto que
+        // todavia no se presupuesto, y su item del subcatalogo es el de la
+        // lista (no se toma del formulario).
+        $itemLista = $this->itemDeListaSinPresupuestar($presupuesto, $linea);
+
+        if ($itemLista === null) {
+            $linea->addError('idProyectoItem', 'Elija un ítem de la lista del proyecto que todavía no esté presupuestado.');
+
+            return false;
+        }
+
+        $linea->idSubcatalogo = $itemLista->idSubcatalogo;
 
         if (!$linea->validate()) {
             return false;
@@ -314,6 +403,26 @@ class PresupuestoService
             'contenido' => $generador->generarDesdeHtml($html),
             'nombreArchivo' => $generador->nombreArchivo($presupuesto),
         ];
+    }
+
+    /**
+     * El item de la lista al que apunta la linea, solo si es de la lista del
+     * proyecto de este presupuesto y todavia no tiene linea. null en
+     * cualquier otro caso.
+     */
+    private function itemDeListaSinPresupuestar(Presupuesto $presupuesto, PresupuestoDetalle $linea): ?ProyectoItem
+    {
+        if (empty($linea->idProyectoItem)) {
+            return null;
+        }
+
+        $itemLista = ProyectoItem::findOne(['id' => (int) $linea->idProyectoItem, 'idProyecto' => $presupuesto->idProyecto]);
+
+        if ($itemLista === null || PresupuestoDetalle::find()->andWhere(['idProyectoItem' => $itemLista->id])->exists()) {
+            return null;
+        }
+
+        return $itemLista;
     }
 
     /**

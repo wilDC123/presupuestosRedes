@@ -74,6 +74,7 @@ class ProyectoController extends Controller
             'nombreTipo' => $this->parametros->nombreTipo($model->tipo),
             'monto' => $this->service->montoPresupuesto($model),
             'totalItems' => (new ListaItemsService())->contar($model),
+            'listaEditable' => (new ListaItemsService())->puedeEditarse($model),
             'puedeEditarse' => $this->service->puedeEditarse($model),
             'estaAprobado' => $this->service->estaAprobado($model),
         ]);
@@ -139,6 +140,12 @@ class ProyectoController extends Controller
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
+        if (!$lista->puedeEditarse($model)) {
+            Yii::$app->session->setFlash('error', 'La lista ya fue enviada a cotización: para cargarle una plantilla registre antes una orden de cambio.');
+
+            return $this->redirect(['/lista-items/index', 'id' => $model->id]);
+        }
+
         $peticion = Yii::$app->request;
 
         if ($peticion->isPost) {
@@ -163,7 +170,8 @@ class ProyectoController extends Controller
             $agregados = $lista->usarPlantilla($model, $plantilla);
             Yii::$app->session->setFlash('success', 'Se copiaron ' . $agregados . ' ítems de la plantilla "' . $plantilla->nombre . '" a la lista del proyecto.');
 
-            return $this->redirect(['view', 'id' => $model->id]);
+            // El paso siguiente es revisar la lista y definir cantidades.
+            return $this->redirect(['/lista-items/index', 'id' => $model->id]);
         }
 
         // Las plantillas del tipo de este proyecto van primero.

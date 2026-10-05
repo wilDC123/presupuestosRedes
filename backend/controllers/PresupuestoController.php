@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\Presupuesto;
+use backend\services\ListaItemsService;
 use backend\services\PresupuestoService;
 use backend\services\ProyectoService;
 use Yii;
@@ -142,12 +143,16 @@ class PresupuestoController extends Controller
     /**
      * Pantalla principal de trabajo de un presupuesto: lista sus lineas
      * agrupadas por categoria del item (con subtotal por grupo y total
-     * general), y procesa el formulario para agregar una linea nueva.
+     * general), los items de la lista del proyecto que faltan presupuestar,
+     * y procesa el formulario "Presupuestar item".
+     *
+     * ?idProyectoItem= llega desde el boton "Presupuestar" de un item de la
+     * lista: el formulario se abre con ese item ya cargado.
      */
-    public function actionDetalle(int $id)
+    public function actionDetalle(int $id, ?int $idProyectoItem = null)
     {
         $presupuesto = $this->findModel($id);
-        $nuevaLinea = $this->service->nuevaLinea($presupuesto);
+        $nuevaLinea = $this->service->nuevaLinea($presupuesto, $idProyectoItem);
 
         if (Yii::$app->request->isPost) {
             if (!$this->service->puedeEditarse($presupuesto)) {
@@ -170,6 +175,9 @@ class PresupuestoController extends Controller
         return $this->render('detalle', [
             'presupuesto' => $presupuesto,
             'nuevaLinea' => $nuevaLinea,
+            'pendientes' => (new ListaItemsService())->pendientesDePresupuestar($presupuesto->proyecto),
+            // Solo cotizaciones del mismo item que se esta presupuestando.
+            'cotizaciones' => empty($nuevaLinea->idSubcatalogo) ? [] : $this->service->opcionesCotizacion((int) $nuevaLinea->idSubcatalogo),
             'grupos' => $this->service->agruparPorCategoria($presupuesto),
             'resumenPartidas' => $this->service->resumenPorPartida($presupuesto),
         ]);

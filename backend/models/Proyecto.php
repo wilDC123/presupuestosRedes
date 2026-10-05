@@ -28,6 +28,7 @@ use yii\db\ActiveRecord;
  * @property int $numeroFase
  * @property int|null $idPlantillaOrigen Plantilla de la que partio la lista (solo informativo).
  * @property bool $listaIniciada true si el paso "Plantilla" ya se resolvio (se uso una o se omitio).
+ * @property string $estadoLista Estado de la lista de items: ver las constantes LISTA_*.
  * @property string $fechaCreacion
  *
  * @property-read ProyectoBloque[] $bloques
@@ -40,6 +41,15 @@ use yii\db\ActiveRecord;
  */
 class Proyecto extends ActiveRecord
 {
+    /**
+     * Estados de la lista de items. Solo los cambia ListaItemsService (y
+     * OrdenCambioService al reabrirla): estadoLista no tiene regla, asi que
+     * no se puede enviar desde un formulario.
+     */
+    public const LISTA_EDICION = 'edicion';
+    public const LISTA_EN_COTIZACION = 'en_cotizacion';
+    public const LISTA_CERRADA = 'cerrada';
+
     /**
      * Atributos virtuales: no son columnas de redes.Proyecto. Reciben del
      * formulario los bloques y proyectistas elegidos; ProyectoService los
@@ -141,6 +151,27 @@ class Proyecto extends ActiveRecord
     public function getItems(): ActiveQuery
     {
         return $this->hasMany(ProyectoItem::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    public function estadoListaLabel(): string
+    {
+        return [
+            self::LISTA_EDICION => 'En edición',
+            self::LISTA_EN_COTIZACION => 'En cotización',
+            self::LISTA_CERRADA => 'Cerrada',
+        ][$this->estadoLista] ?? (string) $this->estadoLista;
+    }
+
+    /**
+     * Clases CSS de la etiqueta de estado (las mismas del presupuesto).
+     */
+    public function estadoListaBadgeClass(): string
+    {
+        return [
+            self::LISTA_EDICION => 'badge b-proceso',
+            self::LISTA_EN_COTIZACION => 'badge b-revision',
+            self::LISTA_CERRADA => 'badge b-aprobado',
+        ][$this->estadoLista] ?? 'badge b-inactivo';
     }
 
     /**

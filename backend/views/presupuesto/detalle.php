@@ -2,20 +2,24 @@
 
 declare(strict_types=1);
 
-use backend\models\CotizacionDetalle;
-use backend\models\SubcatalogoItem;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 
 /**
  * Pantalla principal de trabajo de un Presupuesto: lineas agrupadas por
- * categoria del item, con subtotal por grupo y total general, mas el
- * formulario para agregar una linea nueva.
+ * categoria del item, con subtotal por grupo y total general; los items de
+ * la lista del proyecto que faltan presupuestar; y el formulario
+ * "Presupuestar item".
+ *
+ * El presupuesto nace de la lista de items: no se elige un item cualquiera
+ * del subcatalogo, sino uno de la lista (boton "Presupuestar").
  *
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $presupuesto
- * @var backend\models\PresupuestoDetalle $nuevaLinea
+ * @var backend\models\PresupuestoDetalle $nuevaLinea con su item de la lista ya cargado, o vacia
+ * @var backend\models\ProyectoItem[] $pendientes items de la lista sin linea en el presupuesto
+ * @var array<int, string> $cotizaciones cotizaciones del item que se esta presupuestando
  * @var array $grupos Ver PresupuestoService::agruparPorCategoria()
  * @var array $resumenPartidas Ver PresupuestoService::resumenPorPartida()
  */
@@ -26,36 +30,6 @@ $this->params['breadcrumbs'][] = ['label' => '#' . $presupuesto->id, 'url' => ['
 $this->params['breadcrumbs'][] = 'Líneas';
 
 $totalGeneral = array_sum(ArrayHelper::getColumn($grupos, 'subtotal'));
-
-$items = ArrayHelper::map(
-    SubcatalogoItem::find()->with('categoria')->orderBy(['descripcion' => SORT_ASC])->all(),
-    'id',
-    'descripcion',
-    static fn ($item) => $item->categoria->nombre ?? 'Sin categoría'
-);
-
-// Cada opcion muestra item + proveedor + precio, para que se pueda "elegir"
-// la cotizacion sin tener que abrir cada una por separado.
-$cotizaciones = ArrayHelper::map(
-    CotizacionDetalle::find()->with(['subcatalogoItem', 'cotizacion.proveedor', 'especificacion'])->all(),
-    'id',
-    static function (CotizacionDetalle $cd) {
-        $item = $cd->subcatalogoItem->descripcion ?? '?';
-        $proveedor = $cd->cotizacion->proveedor->razonSocial ?? '?';
-        $espec = $cd->especificacion->titulo ?? null;
-
-        $texto = "$item — $proveedor — " . Yii::$app->formatter->asDecimal($cd->precioUnitario, 2);
-
-        if ($cd->marcaModelo) {
-            $texto .= " ({$cd->marcaModelo})";
-        }
-        if ($espec) {
-            $texto .= " [$espec]";
-        }
-
-        return $texto;
-    }
-);
 ?>
 <div class="presupuesto-detalle">
 
@@ -135,11 +109,59 @@ $cotizaciones = ArrayHelper::map(
     <?php endif; ?>
 
     <?php if ($presupuesto->puedeEditarse()): ?>
-        <h2>Agregar línea</h2>
+        <h2>Ítems de la lista sin presupuestar</h2>
+
+        <?php if ($pendientes === []): ?>
+            <p class="text-muted">
+                No hay ítems pendientes. Los ítems se agregan en la
+                <?= Html::a('lista de ítems del proyecto', ['/lista-items/index', 'id' => $presupuesto->idProyecto]) ?>.
+            </p>
+        <?php else: ?>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Ítem</th>
+                        <th>Clasificación</th>
+                        <th>Unidad</th>
+                        <th>Cantidad</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($pendientes as $pendiente): ?>
+                        <tr>
+                            <td>
+                                <?= Html::encode($pendiente->subcatalogoItem->descripcion ?? '') ?>
+                                <?php if (!empty($pendiente->observacion)): ?>
+                                    <div class="small text-muted"><?= Html::encode($pendiente->observacion) ?></div>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= Html::encode($pendiente->categoria->nombre ?? '') ?></td>
+                            <td><?= Html::encode($pendiente->unidadMedida ?? '') ?></td>
+                            <td><?= Yii::$app->formatter->asDecimal($pendiente->cantidad, 2) ?></td>
+                            <td>
+                                <?= Html::a('Presupuestar', ['detalle', 'id' => $presupuesto->id, 'idProyectoItem' => $pendiente->id, '#' => 'presupuestar'], [
+                                    'class' => 'btn btn-sm ' . ((int) $nuevaLinea->idProyectoItem === (int) $pendiente->id ? 'btn-primary' : 'btn-outline'),
+                                ]) ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <?php if (empty($nuevaLinea->idProyectoItem)): ?>
+            <?php if ($nuevaLinea->hasErrors('idProyectoItem')): ?>
+                <div class="alert alert-danger"><?= Html::encode($nuevaLinea->getFirstError('idProyectoItem')) ?></div>
+            <?php endif; ?>
+        <?php else: ?>
+        <h2 id="presupuestar">Presupuestar: <?= Html::encode($nuevaLinea->subcatalogoItem->descripcion ?? '') ?></h2>
 
         <?php $form = ActiveForm::begin(['action' => ['detalle', 'id' => $presupuesto->id]]); ?>
 
-        <?= $form->field($nuevaLinea, 'idSubcatalogo')->dropDownList($items, ['prompt' => 'Seleccione un ítem del subcatálogo']) ?>
+        <?php // El item de la lista viaja oculto; el servidor verifica que sea de este proyecto. ?>
+        <?= Html::activeHiddenInput($nuevaLinea, 'idProyectoItem') ?>
+        <?= Html::error($nuevaLinea, 'idProyectoItem', ['class' => 'alert alert-danger']) ?>
 
         <?= $form->field($nuevaLinea, 'observacion')
             ->textInput(['maxlength' => 300])
@@ -160,6 +182,7 @@ $cotizaciones = ArrayHelper::map(
         </div>
 
         <?php ActiveForm::end(); ?>
+        <?php endif; ?>
     <?php else: ?>
         <p class="text-muted">Este presupuesto está "<?= Html::encode($presupuesto->estadoLabel()) ?>" — las líneas ya no se pueden agregar ni quitar. Una ampliación se registra como un proyecto nuevo de fase siguiente.</p>
     <?php endif; ?>

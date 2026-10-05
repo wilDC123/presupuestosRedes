@@ -238,11 +238,20 @@ class ProyectoService
             ? ['/presupuesto/create', 'idProyecto' => $proyecto->id]
             : ['/presupuesto/view', 'id' => $presupuesto->id];
 
+        $listaEnEdicion = $proyecto->estadoLista === Proyecto::LISTA_EDICION;
+
         if ($presupuesto === null) {
-            // Mientras no se resuelva el paso Plantilla, ese es el paso actual.
-            $estadoPresupuesto = $proyecto->listaIniciada ? 'actual' : 'pendiente';
+            // El presupuesto nace de la lista: mientras la lista este en
+            // edicion, el paso actual es la lista (o la plantilla).
+            $estadoPresupuesto = $listaEnEdicion ? 'pendiente' : 'actual';
         } else {
             $estadoPresupuesto = $presupuesto->puedeEditarse() ? 'actual' : 'hecho';
+        }
+
+        if (!$proyecto->listaIniciada) {
+            $estadoLista = 'pendiente';
+        } else {
+            $estadoLista = $listaEnEdicion ? 'actual' : 'hecho';
         }
 
         return [
@@ -250,10 +259,11 @@ class ProyectoService
             [
                 'titulo' => 'Plantilla',
                 'estado' => $proyecto->listaIniciada ? 'hecho' : 'actual',
-                // Con el proyecto cerrado la pantalla de plantilla ya no aplica.
-                'url' => $this->puedeEditarse($proyecto) ? ['/proyecto/plantilla', 'id' => $proyecto->id] : null,
+                // Con el proyecto cerrado o la lista ya enviada a cotizacion,
+                // la pantalla de plantilla ya no aplica.
+                'url' => $this->puedeEditarse($proyecto) && $listaEnEdicion ? ['/proyecto/plantilla', 'id' => $proyecto->id] : null,
             ],
-            ['titulo' => 'Lista de ítems', 'estado' => 'pendiente', 'url' => null],
+            ['titulo' => 'Lista de ítems', 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
             ['titulo' => 'Especificaciones', 'estado' => 'pendiente', 'url' => null],
             ['titulo' => 'Cotización', 'estado' => 'pendiente', 'url' => null],
             ['titulo' => 'Presupuesto', 'estado' => $estadoPresupuesto, 'url' => $urlPresupuesto],

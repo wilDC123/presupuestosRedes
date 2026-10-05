@@ -34,7 +34,9 @@ use yii\db\ActiveRecord;
  * @property string $precioTotal Columna calculada por SQL Server, solo lectura.
  * @property string|null $partida Partida presupuestaria congelada (5 digitos).
  * @property string|null $observacion Texto libre de la linea (medidas, "segun especificacion", etc.).
+ * @property int|null $idProyectoItem Item de la lista del proyecto del que nacio la linea.
  *
+ * @property-read ProyectoItem|null $proyectoItem
  * @property-read Presupuesto $presupuesto
  * @property-read SubcatalogoItem $subcatalogoItem
  * @property-read CotizacionDetalle|null $cotizacionDetalle
@@ -50,7 +52,9 @@ class PresupuestoDetalle extends ActiveRecord
     {
         return [
             [['idPresupuesto', 'idSubcatalogo', 'cantidad'], 'required'],
-            [['idPresupuesto', 'idSubcatalogo', 'idCotizacionDetalle'], 'integer'],
+            // idProyectoItem: que sea de la lista de ESTE proyecto y que no
+            // este ya presupuestado lo verifica PresupuestoService::agregarLinea().
+            [['idPresupuesto', 'idSubcatalogo', 'idCotizacionDetalle', 'idProyectoItem'], 'integer'],
             [['cantidad'], 'number', 'min' => 0],
             [['unidadMedida'], 'string', 'max' => 20],
             // precioUnitario solo es obligatorio cuando NO se eligio una
@@ -98,7 +102,13 @@ class PresupuestoDetalle extends ActiveRecord
             'precioTotal' => 'Precio total',
             'partida' => 'Partida',
             'observacion' => 'Observación',
+            'idProyectoItem' => 'Ítem de la lista',
         ];
+    }
+
+    public function getProyectoItem(): ActiveQuery
+    {
+        return $this->hasOne(ProyectoItem::class, ['id' => 'idProyectoItem']);
     }
 
     public function getPresupuesto(): ActiveQuery
