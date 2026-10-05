@@ -7,6 +7,7 @@ use yii\helpers\Html;
 /**
  * @var yii\web\View $this
  * @var backend\models\SubcatalogoItem $model
+ * @var string|null $partidaSigma
  */
 
 $this->title = 'Nuevo ítem de subcatálogo';
@@ -19,6 +20,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
     <?= $this->render('_form', [
         'model' => $model,
+        'partidaSigma' => $partidaSigma,
     ]) ?>
 
 </div>

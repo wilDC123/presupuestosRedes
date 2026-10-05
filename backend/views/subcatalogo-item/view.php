@@ -39,6 +39,11 @@ $this->params['breadcrumbs'][] = $this->title;
                 'label' => 'Categoría',
             ],
             'descripcion',
+            [
+                'label' => 'Nombre SIGMA',
+                'value' => $model->catalogoSigma->Descripcion ?? null,
+            ],
+            'partida',
             'unidadDefecto',
             [
                 'attribute' => 'activo',

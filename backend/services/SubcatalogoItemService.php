@@ -19,6 +19,8 @@ use yii\data\ActiveDataProvider;
  */
 class SubcatalogoItemService
 {
+    private const PATRON_ID_SIGMA = '/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i';
+
     public function listar(): ActiveDataProvider
     {
         return new ActiveDataProvider([
@@ -69,12 +71,62 @@ class SubcatalogoItemService
 
     public function crear(SubcatalogoItem $item, array $datosFormulario): bool
     {
-        return $item->load($datosFormulario) && $item->save();
+        return $this->guardar($item, $datosFormulario);
     }
 
     public function actualizar(SubcatalogoItem $item, array $datosFormulario): bool
     {
-        return $item->load($datosFormulario) && $item->save();
+        return $this->guardar($item, $datosFormulario);
+    }
+
+    /**
+     * Partida presupuestaria (IdGasto) que dbo.CatalogoSigma tiene para el
+     * idSigma del item, o null si no se puede obtener: el item no tiene
+     * idSigma (ej. mano de obra), el idSigma no existe en el catalogo, o
+     * SIGMA no trae una partida de 5 digitos.
+     *
+     * El controlador tambien la usa para decirle al formulario si el campo
+     * partida se muestra en solo lectura (copiada) o editable (a mano).
+     */
+    public function partidaDesdeSigma(SubcatalogoItem $item): ?string
+    {
+        $idSigma = trim((string) $item->idSigma);
+
+        // Si el texto no tiene forma de uniqueidentifier, SQL Server daria un
+        // error de conversion al compararlo con IdSigma: no se consulta.
+        if (preg_match(self::PATRON_ID_SIGMA, $idSigma) !== 1) {
+            return null;
+        }
+
+        $sigma = CatalogoSigma::findOne(['IdSigma' => $idSigma]);
+        $partida = trim((string) ($sigma->IdGasto ?? ''));
+
+        return preg_match('/^\d{5}$/', $partida) === 1 ? $partida : null;
+    }
+
+    /**
+     * ORDEN IMPORTANTE: en Yii2 la validacion corre DENTRO de save(). Por eso
+     * la partida se copia desde SIGMA despues de load() (ya se conoce el
+     * idSigma enviado) y ANTES de save(): asi la regla 'required' de
+     * SubcatalogoItem::rules() ya encuentra el valor puesto.
+     *
+     * Si SIGMA trae partida, siempre gana sobre lo que venga del formulario
+     * (el dato oficial no se edita a mano). Si no se pudo obtener, queda lo
+     * que el usuario escribio y la validacion exige que no este vacio.
+     */
+    private function guardar(SubcatalogoItem $item, array $datosFormulario): bool
+    {
+        if (!$item->load($datosFormulario)) {
+            return false;
+        }
+
+        $partidaSigma = $this->partidaDesdeSigma($item);
+
+        if ($partidaSigma !== null) {
+            $item->partida = $partidaSigma;
+        }
+
+        return $item->save();
     }
 
     public function eliminar(SubcatalogoItem $item): bool

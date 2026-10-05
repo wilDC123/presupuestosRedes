@@ -79,6 +79,7 @@ class SubcatalogoItemController extends Controller
 
         return $this->render('create', [
             'model' => $model,
+            'partidaSigma' => $this->service->partidaDesdeSigma($model),
         ]);
     }
 
@@ -92,6 +93,7 @@ class SubcatalogoItemController extends Controller
 
         return $this->render('update', [
             'model' => $model,
+            'partidaSigma' => $this->service->partidaDesdeSigma($model),
         ]);
     }
 
