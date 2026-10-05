@@ -77,6 +77,7 @@ $cotizaciones = ArrayHelper::map(
                 <thead>
                     <tr>
                         <th>Ítem</th>
+                        <th>Partida</th>
                         <th>Unidad</th>
                         <th>Cantidad</th>
                         <th>Precio unitario</th>
@@ -88,7 +89,13 @@ $cotizaciones = ArrayHelper::map(
                 <tbody>
                     <?php foreach ($grupo['lineas'] as $linea): ?>
                         <tr>
-                            <td><?= Html::encode($linea->subcatalogoItem->descripcion ?? '') ?></td>
+                            <td>
+                                <?= Html::encode($linea->subcatalogoItem->descripcion ?? '') ?>
+                                <?php if (!empty($linea->observacion)): ?>
+                                    <div class="small text-muted"><?= Html::encode($linea->observacion) ?></div>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= Html::encode($linea->partida ?? '') ?></td>
                             <td><?= Html::encode($linea->unidadMedida ?? '') ?></td>
                             <td><?= Yii::$app->formatter->asDecimal($linea->cantidad, 2) ?></td>
                             <td><?= Yii::$app->formatter->asDecimal($linea->precioUnitario, 2) ?></td>
@@ -113,7 +120,7 @@ $cotizaciones = ArrayHelper::map(
                 </tbody>
                 <tfoot>
                     <tr>
-                        <th colspan="4" style="text-align:right">Subtotal <?= Html::encode($nombreCategoria) ?>:</th>
+                        <th colspan="5" style="text-align:right">Subtotal <?= Html::encode($nombreCategoria) ?>:</th>
                         <th><?= Yii::$app->formatter->asDecimal($grupo['subtotal'], 2) ?></th>
                         <th colspan="2"></th>
                     </tr>
@@ -130,6 +137,10 @@ $cotizaciones = ArrayHelper::map(
         <?php $form = ActiveForm::begin(['action' => ['detalle', 'id' => $presupuesto->id]]); ?>
 
         <?= $form->field($nuevaLinea, 'idSubcatalogo')->dropDownList($items, ['prompt' => 'Seleccione un ítem del subcatálogo']) ?>
+
+        <?= $form->field($nuevaLinea, 'observacion')
+            ->textInput(['maxlength' => 300])
+            ->hint('Opcional. Detalle propio de esta línea: medidas ("12mm x 4 metros"), "según especificación técnica", etc. Sale junto al nombre del ítem en el PDF.') ?>
 
         <?= $form->field($nuevaLinea, 'idCotizacionDetalle')->dropDownList($cotizaciones, [
             'prompt' => '(ninguna — voy a ingresar el precio manualmente)',

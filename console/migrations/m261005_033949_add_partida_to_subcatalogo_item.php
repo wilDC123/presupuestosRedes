@@ -12,8 +12,9 @@ class m261005_033949_add_partida_to_subcatalogo_item extends Migration
      */
     public function safeUp()
     {
-        // Se escribe 'char(5) NULL' a mano porque $this->char(5) en SQL Server
-        // genera nchar(5); la partida son solo digitos, no necesita Unicode.
+        // OJO: aunque aqui dice 'char(5)', Yii2 traduce el tipo "char" a
+        // "nchar" en SQL Server, asi que la columna real queda nchar(5)
+        // (igual que el resto de textos del esquema redes, que son nvarchar).
         // NULL porque los items que no vienen de SIGMA (ej. mano de obra) la
         // reciben a mano desde el formulario, no desde esta migracion.
         $this->addColumn('redes.SubcatalogoItem', 'partida', 'char(5) NULL');

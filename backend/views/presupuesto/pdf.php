@@ -89,6 +89,11 @@ $ubicacion = implode(' / ', array_filter([
         padding: 4px;
         margin-top: 10px;
     }
+    .observacion {
+        font-style: italic;
+        font-size: 9px;
+        color: #333;
+    }
     tr.subtotal td {
         font-weight: bold;
         text-align: right;
@@ -151,6 +156,7 @@ $ubicacion = implode(' / ', array_filter([
             <thead>
                 <tr>
                     <th>Ítem</th>
+                    <th>Partida</th>
                     <th>Unidad</th>
                     <th>Cantidad</th>
                     <th>Precio unitario</th>
@@ -160,7 +166,13 @@ $ubicacion = implode(' / ', array_filter([
             <tbody>
                 <?php foreach ($grupo['lineas'] as $linea): ?>
                     <tr>
-                        <td><?= Html::encode($linea->subcatalogoItem->descripcion ?? '') ?></td>
+                        <td>
+                            <?= Html::encode($linea->subcatalogoItem->descripcion ?? '') ?>
+                            <?php if (!empty($linea->observacion)): ?>
+                                <br><span class="observacion"><?= Html::encode($linea->observacion) ?></span>
+                            <?php endif; ?>
+                        </td>
+                        <td><?= Html::encode($linea->partida ?? '') ?></td>
                         <td><?= Html::encode($linea->unidadMedida ?? '') ?></td>
                         <td class="numero"><?= Yii::$app->formatter->asDecimal($linea->cantidad, 2) ?></td>
                         <td class="numero"><?= Yii::$app->formatter->asDecimal($linea->precioUnitario, 2) ?></td>
@@ -170,7 +182,7 @@ $ubicacion = implode(' / ', array_filter([
             </tbody>
             <tfoot>
                 <tr class="subtotal">
-                    <td colspan="4">Subtotal <?= Html::encode($nombreCategoria) ?>:</td>
+                    <td colspan="5">Subtotal <?= Html::encode($nombreCategoria) ?>:</td>
                     <td class="numero"><?= Yii::$app->formatter->asDecimal($grupo['subtotal'], 2) ?></td>
                 </tr>
             </tfoot>

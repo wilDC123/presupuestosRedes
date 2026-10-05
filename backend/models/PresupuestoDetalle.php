@@ -19,6 +19,11 @@ use yii\db\ActiveRecord;
  * precio". Si el precio de la cotizacion de origen cambia, esta fila ya
  * guardada se queda con el precio viejo a proposito.
  *
+ * MISMA REGLA para partida: se copia UNA SOLA VEZ desde SubcatalogoItem al
+ * crear la fila (PresupuestoService::congelarPartida()) y nunca se vuelve a
+ * sincronizar. La parte financiera consolida por la partida que la linea
+ * tenia cuando se elaboro el presupuesto.
+ *
  * @property int $id
  * @property int $idPresupuesto
  * @property int $idSubcatalogo
@@ -27,6 +32,8 @@ use yii\db\ActiveRecord;
  * @property string|null $unidadMedida
  * @property string $precioUnitario
  * @property string $precioTotal Columna calculada por SQL Server, solo lectura.
+ * @property string|null $partida Partida presupuestaria congelada (5 digitos).
+ * @property string|null $observacion Texto libre de la linea (medidas, "segun especificacion", etc.).
  *
  * @property-read Presupuesto $presupuesto
  * @property-read SubcatalogoItem $subcatalogoItem
@@ -47,8 +54,9 @@ class PresupuestoDetalle extends ActiveRecord
             [['cantidad'], 'number', 'min' => 0],
             [['unidadMedida'], 'string', 'max' => 20],
             // precioUnitario solo es obligatorio cuando NO se eligio una
-            // cotizacion (precio manual); si se eligio una, beforeSave() lo
-            // llena solo a partir de CotizacionDetalle. 'whenClient' es
+            // cotizacion (precio manual); si se eligio una,
+            // PresupuestoService::congelarPrecio() lo llena solo a partir de
+            // CotizacionDetalle. 'whenClient' es
             // necesario ademas de 'when': sin el, Yii igual genera la
             // validacion JS de "required" en el navegador (que no conoce el
             // callback PHP) y bloquea el envio del formulario aunque el
@@ -65,6 +73,12 @@ class PresupuestoDetalle extends ActiveRecord
                 }",
             ],
             [['precioUnitario'], 'number', 'min' => 0],
+            [['observacion'], 'trim'],
+            [['observacion'], 'string', 'max' => 300],
+            // partida NO tiene regla a proposito: en Yii2 un atributo sin
+            // reglas no es "seguro" y load() lo ignora, asi que nadie puede
+            // enviarlo desde el formulario. Solo lo escribe
+            // PresupuestoService::congelarPartida().
             [['idPresupuesto'], 'exist', 'skipOnError' => true, 'targetClass' => Presupuesto::class, 'targetAttribute' => ['idPresupuesto' => 'id']],
             [['idSubcatalogo'], 'exist', 'skipOnError' => true, 'targetClass' => SubcatalogoItem::class, 'targetAttribute' => ['idSubcatalogo' => 'id']],
             [['idCotizacionDetalle'], 'exist', 'skipOnError' => true, 'targetClass' => CotizacionDetalle::class, 'targetAttribute' => ['idCotizacionDetalle' => 'id']],
@@ -82,6 +96,8 @@ class PresupuestoDetalle extends ActiveRecord
             'unidadMedida' => 'Unidad de medida',
             'precioUnitario' => 'Precio unitario',
             'precioTotal' => 'Precio total',
+            'partida' => 'Partida',
+            'observacion' => 'Observación',
         ];
     }
 
@@ -112,6 +128,11 @@ class PresupuestoDetalle extends ActiveRecord
         // seguir (mismo riesgo que idSigma en SubcatalogoItem).
         if ($this->idCotizacionDetalle === '') {
             $this->idCotizacionDetalle = null;
+        }
+
+        // Observacion vacia se guarda como NULL ("sin observacion"), no como ''.
+        if ($this->observacion === '') {
+            $this->observacion = null;
         }
 
         return true;

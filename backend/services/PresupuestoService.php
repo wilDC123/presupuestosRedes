@@ -18,6 +18,7 @@ use yii\data\ActiveDataProvider;
  *  - que cambios de estado son validos,
  *  - como se crea una nueva version/fase (VACIA, sin copiar lineas),
  *  - el precio unitario "congelado" al agregar una linea,
+ *  - la partida presupuestaria "congelada" al agregar una linea,
  *  - la agrupacion por categoria con subtotales y total general.
  */
 class PresupuestoService
@@ -150,7 +151,8 @@ class PresupuestoService
     }
 
     /**
-     * Agrega una linea al presupuesto, congelando su precio unitario. Devuelve
+     * Agrega una linea al presupuesto, congelando su precio unitario y su
+     * partida presupuestaria. Devuelve
      * false si el presupuesto no es editable, si no llegaron datos, o si la
      * validacion fallo (los errores quedan en $linea->errors).
      */
@@ -169,6 +171,7 @@ class PresupuestoService
         }
 
         $this->congelarPrecio($linea);
+        $this->congelarPartida($linea);
 
         return $linea->save(false);
     }
@@ -277,5 +280,22 @@ class PresupuestoService
         if (empty($linea->unidadMedida) && !empty($cotizacionDetalle->subcatalogoItem->unidadDefecto)) {
             $linea->unidadMedida = $cotizacionDetalle->subcatalogoItem->unidadDefecto;
         }
+    }
+
+    /**
+     * REGLA DE NEGOCIO CRITICA -- partida congelada: la partida
+     * presupuestaria de la linea se copia desde su SubcatalogoItem UNA SOLA
+     * VEZ, aqui, al crear la linea (mismo criterio que congelarPrecio()). No
+     * existe (ni debe existir) ningun codigo que vuelva a sincronizarla
+     * despues: si la partida del item cambia en el subcatalogo, las lineas ya
+     * guardadas se quedan con la partida vieja a proposito, porque asi fue
+     * presentado y aprobado ese presupuesto.
+     *
+     * Se asigna siempre (aunque el item no tenga partida y quede null) para
+     * que nunca se guarde un valor de partida enviado desde el formulario.
+     */
+    private function congelarPartida(PresupuestoDetalle $linea): void
+    {
+        $linea->partida = $linea->subcatalogoItem->partida ?? null;
     }
 }
