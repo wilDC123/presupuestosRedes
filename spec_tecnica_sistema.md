@@ -51,21 +51,55 @@ y vistas en Yii2 Advanced. Úsalo junto con CLAUDE.md.
 - idSigma (uniqueidentifier, NULL permitido) -- FK logica a dbo.CatalogoSigma,
   SOLO LECTURA de esa tabla, nunca escribir ahi
 - idCategoria (FK -> Categoria, requerido)
-- descripcion (varchar 300, requerido)
+- descripcion (varchar 300, requerido) -- es el NOMBRE DTIC: corto y generico
+  ("Switch PoE", "Regleta tapacable", "Jack RJ45 hembra categoria 6"). Es el
+  que usan listados, presupuesto y PDF. El nombre oficial SIGMA NO se copia:
+  se lee por la relacion SubcatalogoItem::getCatalogoSigma()
 - unidadDefecto (varchar 20) -- ej "Caja" "Unidad" "Metro" "Pieza"
 - activo (bit, default 1)
 - fechaRegistro (datetime, default now)
+- partida (nchar 5, NULL en la base pero obligatoria al guardar) -- partida
+  presupuestaria de 5 digitos (ej "39700"), que es dbo.CatalogoSigma.IdGasto
+- REGLA DE NEGOCIO (partida): categoria y partida son datos DISTINTOS y se
+  guardan los dos -- una misma categoria DTIC mezcla varias partidas (ej
+  "Dispositivos de comunicacion": switch 43120, camara 43500, disco duro
+  39800). Si el item tiene idSigma y SIGMA trae IdGasto, el servicio copia
+  esa partida al guardar (despues de load() y antes de save(), porque la
+  validacion corre dentro de save()) y gana sobre lo que venga del
+  formulario. Si no tiene idSigma (ej mano de obra, partida 25xxx) o SIGMA no
+  trae partida, se ingresa a mano
+- REGLA DE NEGOCIO (reutilizacion de idSigma): SIGMA es generico, asi que
+  VARIOS items DTIC pueden apuntar al mismo idSigma (ej "Switch PoE 24p" y
+  "Switch 48p"). No hay restriccion de unicidad sobre idSigma: al elegir una
+  fila de SIGMA ya usada se muestra el aviso "ya usado por: <nombres DTIC>",
+  que NO bloquea. Las comparaciones de idSigma en PHP se hacen en minusculas
+  (strtolower), porque un uniqueidentifier puede llegar en mayusculas o
+  minusculas segun el origen
+- REGLA DE NEGOCIO (nombre DTIC): al agregar desde SIGMA, descripcion se
+  prellena con la Clase de SIGMA ("JACK" -> "Jack") y el usuario la edita. Los
+  detalles de una compra concreta ("2 metros", "12mm x 4 metros", "segun
+  especificacion") NO van en el subcatalogo: van en la observacion de la
+  linea del presupuesto
+- LISTADO: nombre DTIC, categoria, nombre SIGMA (puede ser vacio), partida,
+  unidad, activo; con filtro por partida
 - REGLA DE NEGOCIO: nunca clasificar todo dbo.CatalogoSigma de antemano. Los
   registros se agregan uno por uno, bajo demanda, cuando el usuario busca en
   el catalogo institucional y decide agregarlo a su subcatalogo
 - BUSQUEDA en dbo.CatalogoSigma (backend\models\CatalogoSigma::buscar()):
-  LIKE simple sobre Descripcion, RamaComercial y Clase, con parametros
-  bindeados (condicion 'like' de Yii). Aceptable hoy porque en desarrollo
-  solo hay 509 filas accesibles. PENDIENTE: si en produccion se habilita el
-  catalogo institucional completo (decenas de miles de filas), migrar a un
-  indice de Full-Text Search de SQL Server sobre dbo.CatalogoSigma para
-  mantener buen rendimiento -- requiere coordinacion con el equipo tecnico
-  institucional, ya que esa tabla no pertenece al esquema `redes`
+  solo items vigentes (CodigoEstado = 'V'). El texto se separa en palabras y
+  deben aparecer TODAS (AND), cada una en Clase, Descripcion o RamaComercial
+  (OR), con parametros bindeados (condicion 'like' de Yii). "jack cat 6"
+  encuentra "JACK ... RJ45 CAT 6". Maximo 100 filas, con aviso en pantalla al
+  alcanzarlo; la tabla de resultados muestra la partida (IdGasto).
+  Limitacion conocida: "RJ45" no encuentra "RJ-45". La copia local de
+  desarrollo tiene 51.636 filas y cada busqueda tarda ~0,4 s (LIKE
+  '%palabra%' recorre toda la tabla). PENDIENTE: si se vuelve lenta, migrar a
+  un indice de Full-Text Search de SQL Server sobre dbo.CatalogoSigma --
+  requiere coordinacion con el equipo tecnico institucional, ya que esa tabla
+  no pertenece al esquema `redes`
+- DATOS REALES de dbo.CatalogoSigma (verificado 2026-10-04): IdSigma
+  uniqueidentifier; IdGasto varchar(20), siempre 5 digitos, sin nulos;
+  CodigoEstado char(1), unico valor 'V'; collation Modern_Spanish_CI_AS
 
 ### redes.Especificacion
 - id (PK, int, identity)
@@ -91,6 +125,10 @@ y vistas en Yii2 Advanced. Úsalo junto con CLAUDE.md.
 - documentoRuta (varchar 500) -- PDF original de la cotizacion, adjunto de
   respaldo
 - validezDias (int)
+- REGLA DE NEGOCIO (vencimiento, Cotizacion::estaVencida()): vencida cuando
+  fecha + validezDias < hoy. Si falta fecha o validezDias (ambas permiten
+  NULL) se considera NO vencida. Una cotizacion vencida nunca bloquea: solo
+  genera avisos (ver PresupuestoDetalle)
 
 ### redes.CotizacionDetalle
 - id (PK, int, identity)
@@ -140,6 +178,33 @@ y vistas en Yii2 Advanced. Úsalo junto con CLAUDE.md.
   JAMAS se recalcula automaticamente despues, aunque cambie el precio de la
   cotizacion origen
 - precioTotal (calculado = cantidad * precioUnitario)
+- partida (nchar 5, NULL permitido) -- CONGELADA: se copia de
+  SubcatalogoItem.partida EN EL MOMENTO de crear la fila
+  (PresupuestoService::congelarPartida()) y JAMAS se recalcula, aunque cambie
+  la partida del item. No tiene regla en rules() a proposito, para que no se
+  pueda enviar desde el formulario
+- observacion (nvarchar 300, NULL permitido) -- texto libre de la linea:
+  medidas ("12mm x 4 metros"), "segun especificacion tecnica", etc. Se
+  muestra junto al nombre DTIC en la pantalla de lineas y en el PDF
+- REGLA DE NEGOCIO: si la linea usa una cotizacion (idCotizacionDetalle), esa
+  cotizacion debe ser del MISMO item (CotizacionDetalle.idSubcatalogo ==
+  PresupuestoDetalle.idSubcatalogo); si no coincide, error de validacion en
+  el campo de cotizacion y la linea no se guarda
+- REGLA DE NEGOCIO: cotizacion vencida -> se permite, con aviso (flash
+  warning) al agregar la linea y al pasar el presupuesto a 'aprobado'
+
+### Resumen por partida presupuestaria (no es tabla, es un calculo)
+- PresupuestoService::resumenPorPartida(Presupuesto): agrupa las lineas por
+  la partida GUARDADA en PresupuestoDetalle -> partida, n. de lineas,
+  subtotal; ordenado por partida; lineas sin partida al final como "Sin
+  partida"
+- Se muestra en presupuesto/view.php, en presupuesto/detalle.php (debajo del
+  total general) y como seccion final del PDF
+- El total por partidas SIEMPRE coincide con el total por categorias (son las
+  mismas lineas sumadas de otra forma). Verificado con un caso de 10 lineas y
+  8 partidas: 13.536,33 por ambos caminos y por SUM() en SQL Server
+- PENDIENTE: es por presupuesto (una version). El consolidado de todas las
+  versiones aprobadas de un proyecto sigue sin construirse
 
 ### redes.ComputoMetrico
 - id (PK, int, identity)
@@ -165,9 +230,12 @@ EstadoPresupuesto: EN_PROCESO, EN_REVISION, OBSERVADO, APROBADO, CANCELADO
 2. Usuario selecciona el item -> sistema muestra las Especificacion asociadas
 3. Usuario selecciona una especificacion -> sistema muestra los
    CotizacionDetalle disponibles con sus precios
-4. Usuario elige una cotizacion (o ingresa precio manual) y una cantidad
-5. Sistema crea un PresupuestoDetalle con el precioUnitario congelado en ese
-   momento y calcula precioTotal
+4. Usuario elige una cotizacion DEL MISMO ITEM (o ingresa precio manual), una
+   cantidad y, si hace falta, una observacion
+5. Sistema crea un PresupuestoDetalle con el precioUnitario y la partida
+   congelados en ese momento y calcula precioTotal
+6. El presupuesto muestra el detalle por categoria y el resumen por partida
+   presupuestaria
 
 ## Flujo de versionado (del diagrama de Secuencia "Crear nueva version")
 
@@ -189,6 +257,11 @@ EstadoPresupuesto: EN_PROCESO, EN_REVISION, OBSERVADO, APROBADO, CANCELADO
 - Adquisiciones/compras
 - Calculo automatico de computos metricos
 - Clasificacion automatica del catalogo SIGMA completo
+- Codigo UNSPSC / "Catalogo de Bienes y Servicios de cuarto nivel" (SIGEP):
+  se evaluara cuando se consigan las guias operativas del SIGEP y se sepa si
+  la universidad ya lo relaciona con SIGMA en alguna tabla
+- Indice unico sobre SubcatalogoItem.descripcion: se decide despues de ver
+  como queda el subcatalogo recargado
 
 ## Decisiones de captura de datos (relevante para las vistas/formularios)
 

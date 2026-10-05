@@ -25,7 +25,8 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 - Base real: `POAPresupuestos` (servidor institucional en 172.16.1.250:1433)
 - Copia local de desarrollo: `POAPresupuestos` en localhost:1433 (Windows Authentication)
 - Tabla compartida/fija, NUNCA modificar su estructura: `dbo.CatalogoSigma` (catálogo
-  nacional del gobierno, ~72,000 ítems, actualmente solo 509 accesibles en desarrollo)
+  nacional del gobierno, ~72,000 ítems; la copia local de desarrollo tiene 51,636,
+  verificado el 2026-10-04 -- la cifra anterior de "509 accesibles" ya no es vigente)
 - Esquema propio del proyecto: `redes` — aquí van TODAS las tablas nuevas
 - Las tablas del proyecto se crean con MIGRACIONES de Yii2 (`php yii migrate/create nombre`),
   nunca con scripts SQL sueltos ejecutados a mano
@@ -35,6 +36,20 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 - Gestión de proyectos (`redes.Proyecto`)
 - Subcatálogo curado de ítems de redes, con referencia lógica a `dbo.CatalogoSigma.IdSigma`
   (NUNCA duplicar el catálogo completo; selección manual/bajo demanda, no clasificación automática)
+- Nombre DTIC vs. nombre SIGMA: `SubcatalogoItem.descripcion` es el nombre DTIC (corto y
+  genérico, el que sale en listados, presupuesto y PDF). El nombre oficial SIGMA no se copia:
+  se lee con la relación `getCatalogoSigma()`. Varios ítems DTIC pueden apuntar al mismo
+  `idSigma` (SIGMA es genérico); se avisa "ya usado por: ..." pero NO se bloquea
+- Partida presupuestaria (5 dígitos, `dbo.CatalogoSigma.IdGasto`): columna `partida` en
+  `redes.SubcatalogoItem` (copiada desde SIGMA al guardar, o a mano si el ítem no viene de
+  SIGMA) y en `redes.PresupuestoDetalle` (CONGELADA al crear la línea, igual que el precio).
+  Categoría y partida son datos distintos: una categoría DTIC mezcla varias partidas
+- `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
+  los detalles de una compra concreta van ahí, no en el subcatálogo
+- Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
+  del presupuesto y en el PDF; su total coincide siempre con el total por categorías
+- Una línea solo puede usar una cotización de su mismo ítem; cotización vencida
+  (`fecha + validezDias < hoy`) se permite pero genera aviso al agregar la línea y al aprobar
 - Especificaciones técnicas por ítem (formato institucional con código `NET:xxx/26`)
 - Cotizaciones de proveedores (relación N:N con ítems/especificaciones)
 - Presupuestos versionados por proyecto, con estados: en_proceso, en_revision, observado,
@@ -70,12 +85,22 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   temporal hasta integrar autenticación institucional real)
 
 ## Riesgos y pendientes activos
-- PENDIENTE INMEDIATO: existe la migración `console/migrations/m260831_014824_create_schema_redes.php`
-  con el código para crear el esquema `redes` (patrón IF NOT EXISTS + EXEC), pero
-  falta CONFIRMAR si ya se aplicó con `php yii migrate`. Verificar antes de crear
-  las migraciones de las tablas (Categoria, Proyecto, Presupuesto, etc.), ya que
-  el esquema debe existir primero.
-- Falta gestionar acceso al catálogo SIGMA completo (solo 509 de ~72,000 ítems disponibles)
+- RESUELTO: las 16 migraciones están aplicadas (verificado con `php yii migrate/history` el
+  2026-10-04), incluida `m260831_014824_create_schema_redes` y las dos de partida
+  (`m261005_033949_add_partida_to_subcatalogo_item`,
+  `m261005_034753_add_partida_observacion_to_presupuesto_detalle`).
+- OJO con los tipos en migraciones: Yii2 traduce "char" a "nchar" en SQL Server aunque se
+  escriba como texto (`'char(5) NULL'`), así que las columnas `partida` son `nchar(5)`. Se
+  decidió dejarlas así (coherente con el resto del esquema, que es `nvarchar`).
+- Falta gestionar acceso al catálogo SIGMA completo (la copia local tiene 51,636 de ~72,000 ítems)
+- La búsqueda en SIGMA usa `LIKE '%palabra%'` (~0,4 s por búsqueda con 51,636 filas). Si se
+  vuelve lenta, migrar a Full-Text Search de SQL Server; requiere coordinación con DTIC porque
+  `dbo.CatalogoSigma` no es del esquema `redes`
+- PENDIENTE (fuera de alcance por ahora): código UNSPSC / "Catálogo de Bienes y Servicios de
+  cuarto nivel" (SIGEP). Se evaluará cuando se consigan las guías operativas del SIGEP y se
+  sepa si la universidad ya lo relaciona con SIGMA en alguna tabla
+- PENDIENTE (fuera de alcance por ahora): índice único sobre `SubcatalogoItem.descripcion`. Se
+  decide después de ver cómo queda el subcatálogo recargado
 - Autenticación en producción no resuelta: Windows Auth funciona en entorno local, pero en
   el servidor Linux real con Nginx/PHP-FPM probablemente se necesite un usuario SQL Server
   dedicado — validar con el equipo técnico antes de dar por sentado el mecanismo
@@ -91,6 +116,8 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   solicitado, no un snapshot completo de líneas ya aprobadas). Como consecuencia, falta
   construir un reporte consolidado que sume las líneas de `PresupuestoDetalle` de TODAS
   las versiones aprobadas de un mismo proyecto, para saber el total real del proyecto.
+  El resumen por partida (`resumenPorPartida()`) ya existe pero es por presupuesto (una
+  versión); el consolidado debería reutilizarlo sumando todas las versiones aprobadas.
 
 ## Diseño UML (ya completado, sirve como referencia del modelo de datos)
 Se diseñaron los siguientes diagramas, con el modelo de datos ya validado:
