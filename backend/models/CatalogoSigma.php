@@ -45,39 +45,65 @@ class CatalogoSigma extends ActiveRecord
     }
 
     /**
-     * Busca por texto libre en Descripcion, RamaComercial y Clase con un
-     * LIKE simple. La condicion 'like' de Yii arma la consulta con
-     * parametros bindeados automaticamente, asi que esto ya es seguro
-     * contra inyeccion SQL sin necesidad de escapar el texto a mano.
+     * Maximo de filas que devuelve buscar(). La pantalla avisa cuando se
+     * alcanza, porque en ese caso puede haber mas resultados sin mostrar.
+     */
+    public const LIMITE_BUSQUEDA = 100;
+
+    /**
+     * Unico valor de CodigoEstado que se considera vigente. Hoy todas las
+     * filas del catalogo estan en 'V', pero se filtra igual para que un item
+     * dado de baja en SIGMA no se pueda agregar al subcatalogo.
+     */
+    public const ESTADO_VIGENTE = 'V';
+
+    /**
+     * Busca por texto libre entre los items vigentes. El texto se separa en
+     * palabras y se exige que aparezcan TODAS (AND), cada una en Clase,
+     * Descripcion o RamaComercial (OR), en cualquier orden. Asi "jack cat 6"
+     * encuentra "JACK; TIPO RJ-45 HEMBRA AUTOPONCHABLE CAT 6; ...", que una
+     * busqueda de la frase completa no encontraba.
      *
-     * NOTA DE RENDIMIENTO / PENDIENTE: este LIKE simple es aceptable hoy
-     * porque en desarrollo solo hay 509 filas accesibles en
-     * dbo.CatalogoSigma. Si en producción se habilita el catálogo
-     * institucional completo (decenas de miles de filas), esta búsqueda
-     * debería migrarse a un índice de Full-Text Search de SQL Server sobre
-     * dbo.CatalogoSigma para mantener buen rendimiento -- eso requiere
-     * coordinación con el equipo técnico institucional, ya que esa tabla no
-     * pertenece al esquema `redes` y no se administra desde las migraciones
-     * de este proyecto.
+     * La condicion 'like' de Yii arma la consulta con parametros bindeados
+     * y escapa los comodines % y _, asi que esto ya es seguro contra
+     * inyeccion SQL sin necesidad de escapar el texto a mano.
+     *
+     * LIMITACION CONOCIDA (no es un bug): cada palabra se busca tal cual, asi
+     * que "RJ45" no encuentra "RJ-45". Hay que escribirla como esta en SIGMA.
+     *
+     * NOTA DE RENDIMIENTO / PENDIENTE: un LIKE '%palabra%' no puede usar
+     * indices, asi que SQL Server recorre toda la tabla por cada busqueda.
+     * Es aceptable con el tamano actual de dbo.CatalogoSigma (decenas de
+     * miles de filas), pero si la busqueda se vuelve lenta deberia migrarse
+     * a un indice de Full-Text Search de SQL Server sobre dbo.CatalogoSigma
+     * -- eso requiere coordinacion con el equipo tecnico institucional, ya
+     * que esa tabla no pertenece al esquema `redes` y no se administra desde
+     * las migraciones de este proyecto.
      *
      * @return static[]
      */
     public static function buscar(string $texto): array
     {
-        $texto = trim($texto);
+        $palabras = preg_split('/\s+/u', trim($texto), -1, PREG_SPLIT_NO_EMPTY);
 
-        if ($texto === '') {
+        if ($palabras === false || $palabras === []) {
             return [];
         }
 
-        return self::find()
-            ->andWhere(['or',
-                ['like', 'Descripcion', $texto],
-                ['like', 'RamaComercial', $texto],
-                ['like', 'Clase', $texto],
-            ])
+        $query = self::find()->andWhere(['CodigoEstado' => self::ESTADO_VIGENTE]);
+
+        // Un andWhere() por palabra: Yii los une con AND entre si.
+        foreach ($palabras as $palabra) {
+            $query->andWhere(['or',
+                ['like', 'Clase', $palabra],
+                ['like', 'Descripcion', $palabra],
+                ['like', 'RamaComercial', $palabra],
+            ]);
+        }
+
+        return $query
             ->orderBy(['Descripcion' => SORT_ASC])
-            ->limit(100)
+            ->limit(self::LIMITE_BUSQUEDA)
             ->all();
     }
 

@@ -76,6 +76,17 @@ class SubcatalogoItemService
     }
 
     /**
+     * true si la busqueda devolvio el maximo de filas permitido: puede haber
+     * mas resultados que no se muestran, y conviene afinar el texto.
+     *
+     * @param CatalogoSigma[] $resultados resultado de buscarEnCatalogoSigma()
+     */
+    public function limiteDeBusquedaAlcanzado(array $resultados): bool
+    {
+        return count($resultados) >= CatalogoSigma::LIMITE_BUSQUEDA;
+    }
+
+    /**
      * Nombres DTIC de los items del subcatalogo, agrupados por el idSigma al
      * que apuntan. Sirve para AVISAR (sin bloquear) que una fila de SIGMA ya
      * fue usada: SIGMA es generico, asi que varios items DTIC pueden apuntar

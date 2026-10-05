@@ -13,6 +13,7 @@ use yii\widgets\Pjax;
  * @var yii\data\ActiveDataProvider $dataProvider
  * @var string $textoBusqueda
  * @var backend\models\CatalogoSigma[] $resultadosSigma
+ * @var bool $limiteAlcanzado true si la busqueda llego al maximo de filas (puede haber mas)
  * @var string $partida partida por la que se esta filtrando ('' = todas)
  * @var string[] $partidasEnUso
  * @var array<string, string[]> $nombresDticPorIdSigma idSigma en minusculas => nombres DTIC que ya lo usan
@@ -77,7 +78,10 @@ $this->params['breadcrumbs'][] = $this->title;
 
     <p>
         Catálogo nacional SIGMA (<code>dbo.CatalogoSigma</code>), de solo lectura.
-        Busca por descripción, rama comercial o clase.
+        Escriba una o varias palabras: se muestran los ítems vigentes que las contienen
+        <strong>todas</strong>, en cualquier orden, en la descripción, la clase o la rama comercial
+        (ej. <em>jack cat 6</em>). Cada palabra se busca tal como está escrita en SIGMA:
+        <em>RJ45</em> no encuentra <em>RJ-45</em>.
     </p>
 
     <?php $form = ActiveForm::begin([
@@ -87,7 +91,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
     <div class="form-group">
         <?= Html::label('Texto a buscar', 'q') ?>
-        <?= Html::textInput('q', $textoBusqueda, ['class' => 'form-control', 'placeholder' => 'Ej. camara, switch, cable...']) ?>
+        <?= Html::textInput('q', $textoBusqueda, ['class' => 'form-control', 'placeholder' => 'Ej. jack cat 6, switch poe, cable utp...']) ?>
     </div>
 
     <div class="form-group">
@@ -100,12 +104,19 @@ $this->params['breadcrumbs'][] = $this->title;
         <?php if ($resultadosSigma === []): ?>
             <p>No se encontraron resultados en el catálogo institucional para "<?= Html::encode($textoBusqueda) ?>".</p>
         <?php else: ?>
+            <?php if ($limiteAlcanzado): ?>
+                <div class="alert alert-warning">
+                    Se muestran solo los primeros <?= count($resultadosSigma) ?> resultados y puede haber más.
+                    Agregue otra palabra para afinar la búsqueda.
+                </div>
+            <?php endif; ?>
             <table class="table table-bordered">
                 <thead>
                     <tr>
                         <th>Descripción</th>
                         <th>Clase</th>
                         <th>Rama comercial</th>
+                        <th>Partida</th>
                         <th>Precio referencial</th>
                         <th></th>
                     </tr>
@@ -118,6 +129,7 @@ $this->params['breadcrumbs'][] = $this->title;
                             <td><?= Html::encode($itemSigma->Descripcion) ?></td>
                             <td><?= Html::encode($itemSigma->Clase) ?></td>
                             <td><?= Html::encode($itemSigma->RamaComercial) ?></td>
+                            <td><?= Html::encode($itemSigma->IdGasto) ?></td>
                             <td><?= Html::encode($itemSigma->PrecioReferencial) ?></td>
                             <td>
                                 <?= Html::a('Agregar a mi subcatálogo', [

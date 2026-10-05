@@ -44,13 +44,15 @@ class SubcatalogoItemController extends Controller
         $textoBusqueda = trim((string) Yii::$app->request->get('q', ''));
 
         $partida = trim((string) Yii::$app->request->get('partida', ''));
+        $resultadosSigma = $this->service->buscarEnCatalogoSigma($textoBusqueda);
 
         return $this->render('index', [
             'dataProvider' => $this->service->listar($partida),
             'partida' => $partida,
             'partidasEnUso' => $this->service->partidasEnUso(),
             'textoBusqueda' => $textoBusqueda,
-            'resultadosSigma' => $this->service->buscarEnCatalogoSigma($textoBusqueda),
+            'resultadosSigma' => $resultadosSigma,
+            'limiteAlcanzado' => $this->service->limiteDeBusquedaAlcanzado($resultadosSigma),
             'nombresDticPorIdSigma' => $this->service->nombresDticPorIdSigma(),
         ]);
     }
