@@ -34,7 +34,9 @@ class DashboardService
      * - montoAprobado: suma de las lineas de los presupuestos aprobados
      *   creados en el anio en curso.
      *
-     * @return array{proyectosActivos: int, proyectosSinPresupuesto: int, enRevision: int, montoAprobado: float, anio: int, itemsSubcatalogo: int, totalSigma: int}
+     * - proyectosFaseSuperior: cuantos de los activos son fase 2 o superior.
+     *
+     * @return array{proyectosActivos: int, proyectosFaseSuperior: int, proyectosSinPresupuesto: int, enRevision: int, montoAprobado: float, anio: int, itemsSubcatalogo: int, totalSigma: int}
      */
     public function indicadores(): array
     {
@@ -43,12 +45,22 @@ class DashboardService
         $sinPresupuesto = $totalProyectos - count($ultimos);
 
         $abiertos = 0;
+        $idsCerrados = [];
 
-        foreach ($ultimos as $presupuesto) {
+        foreach ($ultimos as $idProyecto => $presupuesto) {
             if (in_array($presupuesto->estado, self::ESTADOS_ABIERTOS, true)) {
                 $abiertos++;
+            } else {
+                $idsCerrados[] = $idProyecto;
             }
         }
+
+        // Activos de fase 2 o superior: todos los de esa fase menos los que
+        // ya tienen su presupuesto aprobado o cancelado.
+        $faseSuperior = (int) Proyecto::find()
+            ->andWhere(['>=', 'numeroFase', 2])
+            ->andFilterWhere(['not in', 'id', $idsCerrados])
+            ->count();
 
         $anio = (int) date('Y');
 
@@ -62,6 +74,7 @@ class DashboardService
 
         return [
             'proyectosActivos' => $sinPresupuesto + $abiertos,
+            'proyectosFaseSuperior' => $faseSuperior,
             'proyectosSinPresupuesto' => $sinPresupuesto,
             'enRevision' => (int) Presupuesto::find()->andWhere(['estado' => Presupuesto::ESTADO_EN_REVISION])->count(),
             'montoAprobado' => $montoAprobado,

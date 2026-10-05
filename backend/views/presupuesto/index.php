@@ -29,11 +29,20 @@ $this->params['breadcrumbs'][] = $this->title;
         'columns' => [
             ['class' => \yii\grid\SerialColumn::class],
             [
+                'label' => 'Código',
+                'contentOptions' => ['class' => 'mono'],
+                'value' => static fn ($model) => $model->proyecto->codigo ?? '—',
+            ],
+            [
                 'attribute' => 'proyecto.nombre',
                 'label' => 'Proyecto',
             ],
+            [
+                'label' => 'Fase',
+                'format' => 'raw',
+                'value' => static fn ($model) => '<span class="pill-fase">Fase ' . (int) ($model->proyecto->numeroFase ?? 1) . '</span>',
+            ],
             'numeroPresupuesto',
-            'numeroVersion',
             [
                 'label' => 'Estado',
                 'format' => 'raw',

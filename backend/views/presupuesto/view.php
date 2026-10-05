@@ -32,14 +32,10 @@ $transicionesValidas = Presupuesto::transicionesPermitidas()[$model->estado] ?? 
         <?php if ($model->puedeEditarse()): ?>
             <?= Html::a('Editar', ['update', 'id' => $model->id], ['class' => 'btn btn-primary']) ?>
         <?php else: ?>
-            <span class="text-muted">Este presupuesto está "<?= Html::encode($model->estadoLabel()) ?>" y no se puede editar directamente.</span>
-            <?= Html::a('Crear nueva versión', ['crear-nueva-version', 'id' => $model->id], [
-                'class' => 'btn btn-warning',
-                'data' => [
-                    'confirm' => '¿Crear una nueva versión de este presupuesto? Podrá agregar o modificar líneas en la nueva versión.',
-                    'method' => 'post',
-                ],
-            ]) ?>
+            <span class="text-muted">Este presupuesto está "<?= Html::encode($model->estadoLabel()) ?>" y no se puede editar.</span>
+            <?php if ($model->estado === Presupuesto::ESTADO_APROBADO): ?>
+                <?= Html::a('Crear proyecto de fase siguiente →', ['/proyecto/create', 'idAnterior' => $model->idProyecto], ['class' => 'btn btn-primary']) ?>
+            <?php endif; ?>
         <?php endif; ?>
         <?= Html::a('Eliminar', ['delete', 'id' => $model->id], [
             'class' => 'btn btn-danger',
@@ -67,25 +63,12 @@ $transicionesValidas = Presupuesto::transicionesPermitidas()[$model->estado] ?? 
         'attributes' => [
             'id',
             [
-                'attribute' => 'proyecto.nombre',
                 'label' => 'Proyecto',
+                'format' => 'raw',
+                'value' => Html::a(Html::encode($model->proyecto->etiqueta()), ['/proyecto/view', 'id' => $model->idProyecto])
+                    . ' <span class="pill-fase">Fase ' . (int) $model->proyecto->numeroFase . '</span>',
             ],
             'numeroPresupuesto',
-            'numeroVersion',
-            [
-                'label' => 'Versión anterior',
-                'format' => 'raw',
-                'value' => $model->versionAnterior === null
-                    ? 'Ninguna (primera versión)'
-                    : Html::a('Presupuesto #' . $model->versionAnterior->id, ['view', 'id' => $model->versionAnterior->id]),
-            ],
-            [
-                'label' => 'Versión siguiente',
-                'format' => 'raw',
-                'value' => $model->versionSiguiente === null
-                    ? 'Ninguna (última versión)'
-                    : Html::a('Presupuesto #' . $model->versionSiguiente->id, ['view', 'id' => $model->versionSiguiente->id]),
-            ],
             'oficioDtic',
             'areaIntervencion',
             [

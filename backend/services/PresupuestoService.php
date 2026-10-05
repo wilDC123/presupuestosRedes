@@ -16,7 +16,6 @@ use yii\data\ActiveDataProvider;
  * Es el servicio con mas reglas de negocio del sistema:
  *  - que presupuestos se pueden editar (aprobado/cancelado NO),
  *  - que cambios de estado son validos,
- *  - como se crea una nueva version/fase (VACIA, sin copiar lineas),
  *  - el precio unitario "congelado" al agregar una linea,
  *  - la partida presupuestaria "congelada" al agregar una linea,
  *  - que la cotizacion elegida para una linea sea del mismo item,
@@ -65,7 +64,8 @@ class PresupuestoService
 
     /**
      * REGLA DE NEGOCIO CRITICA: un presupuesto 'aprobado' o 'cancelado' no se
-     * edita directamente; cualquier cambio requiere crearNuevaVersion().
+     * edita directamente; una ampliacion se registra como un proyecto nuevo
+     * de fase siguiente (ProyectoService::nuevo()).
      *
      * La condicion en si esta en Presupuesto::puedeEditarse() porque las
      * vistas (view.php, detalle.php) la consultan para mostrar u ocultar
@@ -99,46 +99,6 @@ class PresupuestoService
         $presupuesto->estado = $nuevoEstado;
 
         return $presupuesto->save(false);
-    }
-
-    /**
-     * Crea una nueva version (FASE) de un presupuesto aprobado/cancelado:
-     * copia los datos de cabecera, incrementa numeroVersion, enlaza
-     * idVersionAnterior al original y deja la nueva version en 'en_proceso'.
-     *
-     * DECISION DE DISENO: la nueva version NACE VACIA, sin copiar las lineas
-     * de PresupuestoDetalle del original. Cada version representa solo el
-     * incremento o cambio solicitado sobre un presupuesto ya aprobado, no un
-     * snapshot completo. Ejemplo: un presupuesto aprobado con 5 camaras, al
-     * que luego se le pide 1 camara adicional, genera una version 2 que
-     * contiene UNICAMENTE esa linea nueva. La version anterior queda intacta
-     * como historial.
-     *
-     * PENDIENTE: como consecuencia, el total real de un proyecto ya no esta
-     * en una sola version -- falta un reporte consolidado que sume las
-     * lineas de TODAS las versiones aprobadas de un mismo proyecto.
-     *
-     * Devuelve null si el original todavia es editable (no corresponde
-     * versionarlo) o si no se pudo guardar.
-     */
-    public function crearNuevaVersion(Presupuesto $original): ?Presupuesto
-    {
-        if ($this->puedeEditarse($original)) {
-            return null;
-        }
-
-        $nueva = new Presupuesto();
-        $nueva->idProyecto = $original->idProyecto;
-        $nueva->idVersionAnterior = $original->id;
-        $nueva->numeroVersion = $original->numeroVersion + 1;
-        $nueva->numeroPresupuesto = $original->numeroPresupuesto;
-        $nueva->oficioDtic = $original->oficioDtic;
-        $nueva->areaIntervencion = $original->areaIntervencion;
-        $nueva->fecha = $original->fecha;
-        $nueva->estado = Presupuesto::ESTADO_EN_PROCESO;
-
-        // Sin copiar PresupuestoDetalle: la fase nueva empieza vacia.
-        return $nueva->save() ? $nueva : null;
     }
 
     /**

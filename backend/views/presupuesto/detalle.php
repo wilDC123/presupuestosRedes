@@ -161,7 +161,7 @@ $cotizaciones = ArrayHelper::map(
 
         <?php ActiveForm::end(); ?>
     <?php else: ?>
-        <p class="text-muted">Este presupuesto está "<?= Html::encode($presupuesto->estadoLabel()) ?>" — las líneas ya no se pueden agregar ni quitar. Para modificarlo hay que crear una nueva versión.</p>
+        <p class="text-muted">Este presupuesto está "<?= Html::encode($presupuesto->estadoLabel()) ?>" — las líneas ya no se pueden agregar ni quitar. Una ampliación se registra como un proyecto nuevo de fase siguiente.</p>
     <?php endif; ?>
 
 </div>

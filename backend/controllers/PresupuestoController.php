@@ -6,6 +6,7 @@ namespace backend\controllers;
 
 use backend\models\Presupuesto;
 use backend\services\PresupuestoService;
+use backend\services\ProyectoService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -16,7 +17,7 @@ use yii\web\Response;
  * Controlador CRUD para redes.Presupuesto (capa de Presentacion).
  *
  * Todas las reglas de negocio (editable o no, transiciones de estado,
- * nueva version, precio congelado, totales) viven en PresupuestoService.
+ * precio congelado, totales) viven en PresupuestoService.
  * Aca solo se decide que mensaje mostrar y a donde redirigir.
  */
 class PresupuestoController extends Controller
@@ -37,7 +38,6 @@ class PresupuestoController extends Controller
                 'actions' => [
                     'delete' => ['POST'],
                     'cambiar-estado' => ['POST'],
-                    'crear-nueva-version' => ['POST'],
                     'eliminar-linea' => ['POST'],
                 ],
             ],
@@ -61,9 +61,14 @@ class PresupuestoController extends Controller
         ]);
     }
 
-    public function actionCreate()
+    /**
+     * ?idProyecto= llega desde "Iniciar presupuesto" en la pantalla del
+     * proyecto: el formulario se abre con ese proyecto ya elegido.
+     */
+    public function actionCreate(?int $idProyecto = null)
     {
         $model = new Presupuesto();
+        $model->idProyecto = $idProyecto;
 
         if ($this->service->crear($model, Yii::$app->request->post())) {
             return $this->redirect(['view', 'id' => $model->id]);
@@ -71,6 +76,8 @@ class PresupuestoController extends Controller
 
         return $this->render('create', [
             'model' => $model,
+            // Solo proyectos sin presupuesto: cada proyecto tiene uno.
+            'proyectos' => (new ProyectoService())->opcionesParaPresupuesto(),
         ]);
     }
 
@@ -79,7 +86,7 @@ class PresupuestoController extends Controller
         $model = $this->findModel($id);
 
         if (!$this->service->puedeEditarse($model)) {
-            Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $model->estadoLabel() . '" no se puede editar directamente. Debe crearse una nueva versión.');
+            Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $model->estadoLabel() . '" no se puede editar. Una ampliación se registra como un proyecto nuevo de fase siguiente.');
 
             return $this->redirect(['view', 'id' => $model->id]);
         }
@@ -90,6 +97,7 @@ class PresupuestoController extends Controller
 
         return $this->render('update', [
             'model' => $model,
+            'proyectos' => (new ProyectoService())->opcionesParaPresupuesto($model->idProyecto),
         ]);
     }
 
@@ -132,35 +140,6 @@ class PresupuestoController extends Controller
     }
 
     /**
-     * Crea una nueva version de un presupuesto aprobado/cancelado (ver
-     * PresupuestoService::crearNuevaVersion()) y redirige directamente a la
-     * pantalla de lineas de la version nueva para que el usuario pueda
-     * empezar a editarla ahi mismo.
-     */
-    public function actionCrearNuevaVersion(int $id)
-    {
-        $model = $this->findModel($id);
-
-        if ($this->service->puedeEditarse($model)) {
-            Yii::$app->session->setFlash('error', 'Solo se puede crear una nueva versión de un presupuesto aprobado o cancelado.');
-
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        $nuevaVersion = $this->service->crearNuevaVersion($model);
-
-        if ($nuevaVersion === null) {
-            Yii::$app->session->setFlash('error', 'No se pudo crear la nueva versión del presupuesto.');
-
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        Yii::$app->session->setFlash('success', 'Se creó la versión #' . $nuevaVersion->numeroVersion . ' del presupuesto. Ya puede agregar o modificar líneas.');
-
-        return $this->redirect(['detalle', 'id' => $nuevaVersion->id]);
-    }
-
-    /**
      * Pantalla principal de trabajo de un presupuesto: lista sus lineas
      * agrupadas por categoria del item (con subtotal por grupo y total
      * general), y procesa el formulario para agregar una linea nueva.
@@ -172,7 +151,7 @@ class PresupuestoController extends Controller
 
         if (Yii::$app->request->isPost) {
             if (!$this->service->puedeEditarse($presupuesto)) {
-                Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $presupuesto->estadoLabel() . '" no se puede modificar directamente. Debe crearse una nueva versión.');
+                Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $presupuesto->estadoLabel() . '" no se puede modificar. Una ampliación se registra como un proyecto nuevo de fase siguiente.');
 
                 return $this->redirect(['detalle', 'id' => $presupuesto->id]);
             }

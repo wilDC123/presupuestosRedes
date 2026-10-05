@@ -1,0 +1,69 @@
+{
+    "_nota": "DATOS DE EJEMPLO tomados de los mockups. Reemplazar por la lista real de la USFX. Los codigos se guardan en redes.Proyecto: no cambiarlos una vez que haya proyectos que los usen.",
+    "tiposProyecto": [
+        { "codigo": "ampliacion_red", "nombre": "Ampliación de red" },
+        { "codigo": "cableado_estructurado", "nombre": "Cableado estructurado" },
+        { "codigo": "videovigilancia", "nombre": "Videovigilancia" },
+        { "codigo": "equipamiento_activo", "nombre": "Equipamiento activo" }
+    ],
+    "facultades": [
+        {
+            "codigo": "TEC",
+            "nombre": "Facultad de Tecnología",
+            "edificios": [
+                {
+                    "codigo": "TEC-CEN",
+                    "nombre": "Edificio Central",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "TEC-ANX",
+                    "nombre": "Edificio Anexo A",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "ODO",
+            "nombre": "Facultad de Odontología",
+            "edificios": [
+                {
+                    "codigo": "ODO-CEN",
+                    "nombre": "Edificio Central",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "DER",
+            "nombre": "Facultad de Derecho",
+            "edificios": [
+                {
+                    "codigo": "DER-CEN",
+                    "nombre": "Edificio Central",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" }
+                    ]
+                }
+            ]
+        }
+    ],
+    "proyectistas": [
+        "Ing. Wilbert Dias",
+        "Ing. Paola Rojas"
+    ]
+}

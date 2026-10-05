@@ -7,6 +7,7 @@ use yii\helpers\Html;
 /**
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $model
+ * @var array<int, string> $proyectos
  */
 
 $this->title = 'Editar presupuesto #' . $model->id;
@@ -20,6 +21,7 @@ $this->params['breadcrumbs'][] = 'Editar';
 
     <?= $this->render('_form', [
         'model' => $model,
+        'proyectos' => $proyectos,
     ]) ?>
 
 </div>

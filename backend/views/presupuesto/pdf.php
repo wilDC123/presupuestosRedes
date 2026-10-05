@@ -22,11 +22,7 @@ use yii\helpers\Html;
 
 $proyecto = $presupuesto->proyecto;
 
-$ubicacion = implode(' / ', array_filter([
-    $proyecto->facultad ?? null,
-    $proyecto->edificio ?? null,
-    $proyecto->bloque ?? null,
-]));
+$ubicacion = $proyecto->ubicacion();
 ?>
 <!DOCTYPE html>
 <html>
@@ -135,7 +131,7 @@ $ubicacion = implode(' / ', array_filter([
 <table class="datos-generales">
     <tr>
         <td><strong>N.° de presupuesto:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?? '—') ?></td>
-        <td><strong>N.° de versión:</strong> <?= Html::encode((string) $presupuesto->numeroVersion) ?></td>
+        <td><strong>Código de proyecto:</strong> <?= Html::encode($proyecto->codigo ?: '—') ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
     </tr>
     <tr>
         <td><strong>Oficio DTIC:</strong> <?= Html::encode($presupuesto->oficioDtic ?? '—') ?></td>
@@ -143,7 +139,7 @@ $ubicacion = implode(' / ', array_filter([
     </tr>
     <tr>
         <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre ?? '—') ?></td>
-        <td><strong>Facultad / Edificio / Bloque:</strong> <?= Html::encode($ubicacion !== '' ? $ubicacion : '—') ?></td>
+        <td><strong>Facultad / Edificio / Bloques:</strong> <?= Html::encode($ubicacion !== '' ? $ubicacion : '—') ?></td>
     </tr>
     <tr>
         <td><strong>Fecha:</strong> <?= Html::encode($presupuesto->fechaFormateada() ?: '—') ?></td>

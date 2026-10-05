@@ -9,7 +9,7 @@ use yii\helpers\Html;
  * de la base), la vista solo los muestra.
  *
  * @var yii\web\View $this
- * @var array{proyectosActivos: int, proyectosSinPresupuesto: int, enRevision: int, montoAprobado: float, anio: int, itemsSubcatalogo: int, totalSigma: int} $indicadores
+ * @var array{proyectosActivos: int, proyectosFaseSuperior: int, proyectosSinPresupuesto: int, enRevision: int, montoAprobado: float, anio: int, itemsSubcatalogo: int, totalSigma: int} $indicadores
  * @var array<int, array{proyecto: backend\models\Proyecto, presupuesto: backend\models\Presupuesto|null, monto: float|null}> $proyectosRecientes
  */
 
@@ -29,7 +29,7 @@ $formato = Yii::$app->formatter;
         <div class="card rd-card-pad">
             <div class="kicker">Proyectos activos</div>
             <div class="rd-kpi-valor"><?= $formato->asInteger($indicadores['proyectosActivos']) ?></div>
-            <div class="rd-kpi-nota"><?= $formato->asInteger($indicadores['proyectosSinPresupuesto']) ?> sin presupuesto todavía</div>
+            <div class="rd-kpi-nota"><?= $formato->asInteger($indicadores['proyectosFaseSuperior']) ?> en fase 2 o superior</div>
         </div>
         <div class="card rd-card-pad">
             <div class="kicker">En revisión</div>
@@ -64,6 +64,7 @@ $formato = Yii::$app->formatter;
                         <tr>
                             <th>Código</th>
                             <th>Proyecto</th>
+                            <th>Fase</th>
                             <th>Estado</th>
                             <th class="rd-num">Monto Bs.</th>
                         </tr>
@@ -73,6 +74,7 @@ $formato = Yii::$app->formatter;
                             <tr>
                                 <td class="mono"><?= Html::encode($fila['proyecto']->codigo ?: '—') ?></td>
                                 <td><?= Html::a(Html::encode($fila['proyecto']->nombre), ['/proyecto/view', 'id' => $fila['proyecto']->id]) ?></td>
+                                <td>Fase <?= (int) $fila['proyecto']->numeroFase ?></td>
                                 <td>
                                     <?php if ($fila['presupuesto'] === null): ?>
                                         <span class="badge b-inactivo">Sin presupuesto</span>

@@ -16,6 +16,18 @@ return [
     'controllerNamespace' => 'backend\controllers',
     'bootstrap' => ['log'],
     'modules' => [],
+    // Contenedor de dependencias: aqui se decide que clase concreta se usa
+    // cuando alguien pide una interface. Para que facultades, edificios,
+    // bloques, tipos y proyectistas vengan de un servicio web en vez del
+    // JSON, basta con cambiar la clase de esta definicion.
+    'container' => [
+        'definitions' => [
+            \backend\services\contracts\ParametrosProyectoProvider::class => [
+                'class' => \backend\services\JsonParametrosProyectoProvider::class,
+                '__construct()' => ['@backend/config/parametros-proyecto.json'],
+            ],
+        ],
+    ],
     'components' => [
         // Con 'language' => 'es' Yii formatearia los numeros como 1.234,56. Se
         // fija el formato 1,234.56 que usan los presupuestos de la DTIC.

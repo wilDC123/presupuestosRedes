@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use backend\models\Proyecto;
-use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 
@@ -11,24 +9,19 @@ use yii\widgets\ActiveForm;
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $model
  * @var yii\widgets\ActiveForm $form
+ * @var array<int, string> $proyectos [id => "codigo — nombre"], ver ProyectoService::opcionesParaPresupuesto()
  */
 
-// idVersionAnterior, numeroVersion y estado NO aparecen en este formulario a
-// proposito: los maneja el sistema (crearNuevaVersion() y el boton "Cambiar
-// estado" de la vista), nunca se editan a mano para no romper el versionado
-// ni saltarse las transiciones de estado validas.
-
-$proyectos = ArrayHelper::map(
-    Proyecto::find()->orderBy(['nombre' => SORT_ASC])->all(),
-    'id',
-    'nombre'
-);
+// "estado" NO aparece en este formulario a proposito: lo maneja el sistema
+// con el boton "Cambiar estado" de la vista, nunca se edita a mano para no
+// saltarse las transiciones de estado validas.
 ?>
 <div class="presupuesto-form">
 
     <?php $form = ActiveForm::begin(); ?>
 
-    <?= $form->field($model, 'idProyecto')->dropDownList($proyectos, ['prompt' => 'Seleccione un proyecto']) ?>
+    <?= $form->field($model, 'idProyecto')->dropDownList($proyectos, ['prompt' => 'Seleccione un proyecto', 'class' => 'form-select'])
+        ->hint('Cada proyecto tiene un solo presupuesto: aquí aparecen los proyectos que todavía no tienen uno.') ?>
 
     <?= $form->field($model, 'numeroPresupuesto')->textInput(['maxlength' => 20]) ?>
 

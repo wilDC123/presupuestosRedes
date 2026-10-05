@@ -39,18 +39,21 @@ class PresupuestoPdfGenerator
     }
 
     /**
-     * Ej: "presupuesto_PRUEBA-001_v1.pdf". Si no hay numeroPresupuesto
-     * cargado todavia, usa el id como respaldo para que el nombre nunca
-     * quede vacio.
+     * Nombre del archivo PDF: usa el codigo del proyecto (RD-PI-PT-08), que
+     * es unico. Si el proyecto no tiene codigo, usa el numero de presupuesto
+     * y, como ultimo respaldo, su id, para que el nombre nunca quede vacio.
+     * Se reemplaza cualquier caracter que no sea seguro en un nombre de archivo.
      */
     public function nombreArchivo(Presupuesto $presupuesto): string
     {
-        $numero = $presupuesto->numeroPresupuesto !== null && $presupuesto->numeroPresupuesto !== ''
-            ? $presupuesto->numeroPresupuesto
-            : (string) $presupuesto->id;
+        $referencia = $presupuesto->proyecto->codigo ?? null;
 
-        $numeroSeguro = preg_replace('/[^A-Za-z0-9_-]/', '_', $numero);
+        if ($referencia === null || $referencia === '') {
+            $referencia = $presupuesto->numeroPresupuesto !== null && $presupuesto->numeroPresupuesto !== ''
+                ? $presupuesto->numeroPresupuesto
+                : (string) $presupuesto->id;
+        }
 
-        return "presupuesto_{$numeroSeguro}_v{$presupuesto->numeroVersion}.pdf";
+        return 'presupuesto_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf';
     }
 }

@@ -11,10 +11,12 @@ use yii\db\ActiveRecord;
 /**
  * Modelo para la tabla "redes.Presupuesto".
  *
+ * Cada proyecto tiene UN solo presupuesto (indice unico sobre idProyecto).
+ * No hay versiones: una ampliacion es un proyecto nuevo de fase siguiente
+ * (ver Proyecto::$idProyectoAnterior), con su propio presupuesto.
+ *
  * @property int $id
  * @property int $idProyecto
- * @property int|null $idVersionAnterior
- * @property int $numeroVersion
  * @property string|null $numeroPresupuesto
  * @property string|null $oficioDtic
  * @property string|null $areaIntervencion
@@ -23,8 +25,6 @@ use yii\db\ActiveRecord;
  * @property string $fechaCreacion
  *
  * @property-read Proyecto $proyecto
- * @property-read Presupuesto|null $versionAnterior
- * @property-read Presupuesto|null $versionSiguiente
  * @property-read PresupuestoDetalle[] $presupuestoDetalles
  */
 class Presupuesto extends ActiveRecord
@@ -76,8 +76,8 @@ class Presupuesto extends ActiveRecord
 
     /**
      * REGLA DE NEGOCIO CRITICA: un presupuesto aprobado o cancelado nunca se
-     * edita directamente. Cualquier cambio requiere
-     * PresupuestoService::crearNuevaVersion(). Se queda en el modelo porque
+     * edita directamente. Una ampliacion se registra como un proyecto nuevo
+     * de fase siguiente. Se queda en el modelo porque
      * las vistas (view.php, detalle.php) la usan para mostrar u ocultar
      * botones; los controladores la consultan via PresupuestoService.
      */
@@ -90,8 +90,9 @@ class Presupuesto extends ActiveRecord
     {
         return [
             [['idProyecto'], 'required'],
-            [['idProyecto', 'idVersionAnterior', 'numeroVersion'], 'integer'],
-            [['numeroVersion'], 'default', 'value' => 1],
+            [['idProyecto'], 'integer'],
+            // Mensaje claro en vez del error de la base por el indice unico.
+            [['idProyecto'], 'unique', 'message' => 'Este proyecto ya tiene un presupuesto.'],
             [['estado'], 'default', 'value' => self::ESTADO_EN_PROCESO],
             [['estado'], 'required'],
             [['estado'], 'in', 'range' => array_keys(self::estados())],
@@ -100,7 +101,6 @@ class Presupuesto extends ActiveRecord
             [['oficioDtic'], 'string', 'max' => 100],
             [['areaIntervencion'], 'string', 'max' => 300],
             [['idProyecto'], 'exist', 'skipOnError' => true, 'targetClass' => Proyecto::class, 'targetAttribute' => ['idProyecto' => 'id']],
-            [['idVersionAnterior'], 'exist', 'skipOnError' => true, 'targetClass' => self::class, 'targetAttribute' => ['idVersionAnterior' => 'id']],
         ];
     }
 
@@ -109,8 +109,6 @@ class Presupuesto extends ActiveRecord
         return [
             'id' => 'ID',
             'idProyecto' => 'Proyecto',
-            'idVersionAnterior' => 'Versión anterior',
-            'numeroVersion' => 'N.° de versión',
             'numeroPresupuesto' => 'N.° de presupuesto',
             'oficioDtic' => 'Oficio DTIC',
             'areaIntervencion' => 'Área de intervención',
@@ -123,20 +121,6 @@ class Presupuesto extends ActiveRecord
     public function getProyecto(): ActiveQuery
     {
         return $this->hasOne(Proyecto::class, ['id' => 'idProyecto']);
-    }
-
-    public function getVersionAnterior(): ActiveQuery
-    {
-        return $this->hasOne(self::class, ['id' => 'idVersionAnterior']);
-    }
-
-    /**
-     * Version siguiente: el presupuesto (si existe) cuyo idVersionAnterior
-     * apunta a este. Es la relacion inversa de getVersionAnterior().
-     */
-    public function getVersionSiguiente(): ActiveQuery
-    {
-        return $this->hasOne(self::class, ['idVersionAnterior' => 'id']);
     }
 
     public function getPresupuestoDetalles(): ActiveQuery
