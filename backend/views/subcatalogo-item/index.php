@@ -119,10 +119,13 @@ $formato = Yii::$app->formatter;
             <em>RJ45</em> no encuentra <em>RJ-45</em>.
         </p>
 
-        <?= Html::beginForm(['index', '#' => 'buscar-sigma'], 'get', ['class' => 'rd-filtros mb-0']) ?>
+        <?php // Sin '#' en la ruta: en un formulario GET, Yii pasa la ruta al campo oculto "r" y el ancla quedaria pegada a ella (404). ?>
+        <?= Html::beginForm(['index'], 'get', ['class' => 'rd-filtros mb-0']) ?>
             <?= Html::textInput('q', $textoBusqueda, [
                 'class' => 'form-control',
                 'placeholder' => 'Ej. jack cat 6, switch poe, cable utp...',
+                // Tras buscar, el foco lleva la pantalla hasta aqui (lo que hacia el ancla).
+                'autofocus' => $textoBusqueda !== '',
             ]) ?>
             <?= Html::submitButton('Buscar en SIGMA', ['class' => 'btn btn-primary']) ?>
         <?= Html::endForm() ?>
