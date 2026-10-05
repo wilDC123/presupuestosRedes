@@ -60,7 +60,7 @@ class SubcatalogoItem extends ActiveRecord
             'id' => 'ID',
             'idSigma' => 'ID Sigma',
             'idCategoria' => 'Categoría',
-            'descripcion' => 'Descripción',
+            'descripcion' => 'Nombre DTIC',
             'unidadDefecto' => 'Unidad por defecto',
             'activo' => 'Activo',
             'fechaRegistro' => 'Fecha de registro',

@@ -11,6 +11,8 @@ use yii\widgets\ActiveForm;
  * @var yii\web\View $this
  * @var backend\models\SubcatalogoItem $model
  * @var yii\widgets\ActiveForm $form
+ * @var backend\models\CatalogoSigma|null $sigma fila de dbo.CatalogoSigma del idSigma del item (null si no viene de SIGMA)
+ * @var string[] $usadoPor nombres DTIC de otros items que apuntan al mismo idSigma
  * @var string|null $partidaSigma partida que SIGMA tiene para el idSigma del item (null si no se pudo obtener)
  */
 
@@ -26,7 +28,24 @@ $categorias = ArrayHelper::map(
 
     <?= $form->field($model, 'idCategoria')->dropDownList($categorias, ['prompt' => 'Seleccione una categoría']) ?>
 
-    <?= $form->field($model, 'descripcion')->textInput(['maxlength' => 300]) ?>
+    <?= $form->field($model, 'descripcion')
+        ->textInput(['maxlength' => 300])
+        ->hint('Nombre corto y genérico que usa la DTIC (ej. "Switch PoE", "Regleta tapacable"). Las medidas o detalles de una compra concreta van en la observación de la línea del presupuesto, no aquí.') ?>
+
+    <?php if ($sigma !== null): ?>
+        <div class="alert alert-secondary">
+            <strong>Ítem SIGMA elegido (solo lectura):</strong><br>
+            <?= Html::encode($sigma->Descripcion) ?><br>
+            Partida: <?= Html::encode($partidaSigma ?? 'SIGMA no la indica') ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($usadoPor !== []): ?>
+        <div class="alert alert-warning">
+            Este ítem SIGMA ya está usado por: <?= Html::encode(implode(', ', $usadoPor)) ?>.
+            Puede guardarlo igual si se trata de un ítem DTIC distinto.
+        </div>
+    <?php endif; ?>
 
     <?= $form->field($model, 'unidadDefecto')->textInput(['maxlength' => 20]) ?>
 

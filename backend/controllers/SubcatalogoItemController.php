@@ -43,11 +43,15 @@ class SubcatalogoItemController extends Controller
     {
         $textoBusqueda = trim((string) Yii::$app->request->get('q', ''));
 
+        $partida = trim((string) Yii::$app->request->get('partida', ''));
+
         return $this->render('index', [
-            'dataProvider' => $this->service->listar(),
+            'dataProvider' => $this->service->listar($partida),
+            'partida' => $partida,
+            'partidasEnUso' => $this->service->partidasEnUso(),
             'textoBusqueda' => $textoBusqueda,
             'resultadosSigma' => $this->service->buscarEnCatalogoSigma($textoBusqueda),
-            'idsSigmaExistentes' => $this->service->idsSigmaExistentes(),
+            'nombresDticPorIdSigma' => $this->service->nombresDticPorIdSigma(),
         ]);
     }
 
@@ -67,20 +71,13 @@ class SubcatalogoItemController extends Controller
         }
 
         // Prellenado desde "Buscar en catalogo institucional": llega por GET
-        // con el idSigma y la descripcion del item de dbo.CatalogoSigma que
-        // el usuario eligio agregar.
+        // solo el idSigma de la fila de dbo.CatalogoSigma que el usuario
+        // eligio; el servicio busca el resto en la base.
         if (Yii::$app->request->isGet && Yii::$app->request->get('idSigma') !== null) {
-            $this->service->prellenarDesdeSigma(
-                $model,
-                (string) Yii::$app->request->get('idSigma'),
-                (string) Yii::$app->request->get('descripcion', '')
-            );
+            $this->service->prellenarDesdeSigma($model, (string) Yii::$app->request->get('idSigma'));
         }
 
-        return $this->render('create', [
-            'model' => $model,
-            'partidaSigma' => $this->service->partidaDesdeSigma($model),
-        ]);
+        return $this->render('create', $this->datosFormulario($model));
     }
 
     public function actionUpdate(int $id)
@@ -91,10 +88,7 @@ class SubcatalogoItemController extends Controller
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
-        return $this->render('update', [
-            'model' => $model,
-            'partidaSigma' => $this->service->partidaDesdeSigma($model),
-        ]);
+        return $this->render('update', $this->datosFormulario($model));
     }
 
     public function actionDelete(int $id)
@@ -102,6 +96,21 @@ class SubcatalogoItemController extends Controller
         $this->service->eliminar($this->findModel($id));
 
         return $this->redirect(['index']);
+    }
+
+    /**
+     * Variables que necesita _form.php (via create.php / update.php): ademas
+     * del item, lo que SIGMA dice de su idSigma, para mostrarlo en solo
+     * lectura. Se arma aqui para que la vista no consulte la base.
+     */
+    private function datosFormulario(SubcatalogoItem $model): array
+    {
+        return [
+            'model' => $model,
+            'sigma' => $this->service->sigmaDe($model),
+            'partidaSigma' => $this->service->partidaDesdeSigma($model),
+            'usadoPor' => $this->service->otrosItemsConMismoSigma($model),
+        ];
     }
 
     protected function findModel(int $id): SubcatalogoItem

@@ -13,7 +13,9 @@ use yii\widgets\Pjax;
  * @var yii\data\ActiveDataProvider $dataProvider
  * @var string $textoBusqueda
  * @var backend\models\CatalogoSigma[] $resultadosSigma
- * @var string[] $idsSigmaExistentes
+ * @var string $partida partida por la que se esta filtrando ('' = todas)
+ * @var string[] $partidasEnUso
+ * @var array<string, string[]> $nombresDticPorIdSigma idSigma en minusculas => nombres DTIC que ya lo usan
  */
 
 $this->title = 'Subcatálogo de ítems';
@@ -29,6 +31,20 @@ $this->params['breadcrumbs'][] = $this->title;
         <?= Html::a('Nuevo ítem', ['create'], ['class' => 'btn btn-success']) ?>
     </p>
 
+    <?= Html::beginForm(['index'], 'get', ['class' => 'row g-2 align-items-end mb-3']) ?>
+        <div class="col-auto">
+            <?= Html::label('Filtrar por partida', 'partida', ['class' => 'form-label']) ?>
+            <?= Html::dropDownList('partida', $partida, array_combine($partidasEnUso, $partidasEnUso), [
+                'id' => 'partida',
+                'class' => 'form-select',
+                'prompt' => 'Todas',
+            ]) ?>
+        </div>
+        <div class="col-auto">
+            <?= Html::submitButton('Filtrar', ['class' => 'btn btn-outline-primary']) ?>
+        </div>
+    <?= Html::endForm() ?>
+
     <?php Pjax::begin(); ?>
     <?= GridView::widget([
         'dataProvider' => $dataProvider,
@@ -39,6 +55,11 @@ $this->params['breadcrumbs'][] = $this->title;
                 'attribute' => 'categoria.nombre',
                 'label' => 'Categoría',
             ],
+            [
+                'label' => 'Nombre SIGMA',
+                'value' => static fn ($model) => $model->catalogoSigma->Descripcion ?? null,
+            ],
+            'partida',
             'unidadDefecto',
             [
                 'attribute' => 'activo',
@@ -91,21 +112,20 @@ $this->params['breadcrumbs'][] = $this->title;
                 </thead>
                 <tbody>
                     <?php foreach ($resultadosSigma as $itemSigma): ?>
-                        <?php $yaExiste = in_array($itemSigma->IdSigma, $idsSigmaExistentes, true); ?>
+                        <?php // strtolower(): el mapa viene con las claves en minusculas (ver SubcatalogoItemService::nombresDticPorIdSigma()). ?>
+                        <?php $usadoPor = $nombresDticPorIdSigma[strtolower((string) $itemSigma->IdSigma)] ?? []; ?>
                         <tr>
                             <td><?= Html::encode($itemSigma->Descripcion) ?></td>
                             <td><?= Html::encode($itemSigma->Clase) ?></td>
                             <td><?= Html::encode($itemSigma->RamaComercial) ?></td>
                             <td><?= Html::encode($itemSigma->PrecioReferencial) ?></td>
                             <td>
-                                <?php if ($yaExiste): ?>
-                                    Ya está en tu subcatálogo
-                                <?php else: ?>
-                                    <?= Html::a('Agregar a mi subcatálogo', [
-                                        'create',
-                                        'idSigma' => $itemSigma->IdSigma,
-                                        'descripcion' => $itemSigma->Descripcion,
-                                    ], ['class' => 'btn btn-sm btn-outline-primary']) ?>
+                                <?= Html::a('Agregar a mi subcatálogo', [
+                                    'create',
+                                    'idSigma' => $itemSigma->IdSigma,
+                                ], ['class' => 'btn btn-sm btn-outline-primary']) ?>
+                                <?php if ($usadoPor !== []): ?>
+                                    <div class="small text-muted">Ya usado por: <?= Html::encode(implode(', ', $usadoPor)) ?></div>
                                 <?php endif; ?>
                             </td>
                         </tr>

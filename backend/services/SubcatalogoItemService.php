@@ -21,14 +21,45 @@ class SubcatalogoItemService
 {
     private const PATRON_ID_SIGMA = '/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i';
 
-    public function listar(): ActiveDataProvider
+    /**
+     * Listado paginado del subcatalogo. Si llega una partida valida (5
+     * digitos) se muestran solo los items de esa partida; cualquier otro
+     * valor se ignora y se lista todo.
+     *
+     * with() carga categoria y catalogoSigma de todas las filas en 2
+     * consultas extra, en vez de una consulta por cada fila del listado.
+     */
+    public function listar(?string $partida = null): ActiveDataProvider
     {
+        $query = SubcatalogoItem::find()
+            ->with(['categoria', 'catalogoSigma'])
+            ->orderBy(['descripcion' => SORT_ASC]);
+
+        if ($partida !== null && preg_match('/^\d{5}$/', $partida) === 1) {
+            $query->andWhere(['partida' => $partida]);
+        }
+
         return new ActiveDataProvider([
-            'query' => SubcatalogoItem::find()->with('categoria')->orderBy(['descripcion' => SORT_ASC]),
+            'query' => $query,
             'pagination' => [
                 'pageSize' => 20,
             ],
         ]);
+    }
+
+    /**
+     * Partidas distintas que ya tienen items, para el filtro del listado.
+     *
+     * @return string[]
+     */
+    public function partidasEnUso(): array
+    {
+        return SubcatalogoItem::find()
+            ->select('partida')
+            ->distinct()
+            ->andWhere(['not', ['partida' => null]])
+            ->orderBy(['partida' => SORT_ASC])
+            ->column();
     }
 
     public function obtener(int $id): ?SubcatalogoItem
@@ -45,28 +76,82 @@ class SubcatalogoItemService
     }
 
     /**
-     * idSigma ya usados en el subcatalogo, para saber que fila del catalogo
-     * institucional ya fue agregada y no ofrecer duplicarla.
+     * Nombres DTIC de los items del subcatalogo, agrupados por el idSigma al
+     * que apuntan. Sirve para AVISAR (sin bloquear) que una fila de SIGMA ya
+     * fue usada: SIGMA es generico, asi que varios items DTIC pueden apuntar
+     * al mismo idSigma (ej. "Switch PoE 24p" y "Switch 48p").
+     *
+     * La clave va en minusculas porque un uniqueidentifier puede llegar en
+     * mayusculas o minusculas segun de donde venga; quien consulte el mapa
+     * debe buscar tambien con strtolower().
+     *
+     * @return array<string, string[]> idSigma en minusculas => nombres DTIC
+     */
+    public function nombresDticPorIdSigma(): array
+    {
+        $filas = SubcatalogoItem::find()
+            ->select(['idSigma', 'descripcion'])
+            ->andWhere(['not', ['idSigma' => null]])
+            ->orderBy(['descripcion' => SORT_ASC])
+            ->asArray()
+            ->all();
+
+        $mapa = [];
+
+        foreach ($filas as $fila) {
+            $mapa[strtolower((string) $fila['idSigma'])][] = $fila['descripcion'];
+        }
+
+        return $mapa;
+    }
+
+    /**
+     * Nombres DTIC de los OTROS items que apuntan al mismo idSigma que este
+     * (para el aviso del formulario). No hace falta strtolower() aqui: la
+     * comparacion la hace SQL Server, que no distingue mayusculas en un
+     * uniqueidentifier.
      *
      * @return string[]
      */
-    public function idsSigmaExistentes(): array
+    public function otrosItemsConMismoSigma(SubcatalogoItem $item): array
     {
-        return SubcatalogoItem::find()
-            ->select('idSigma')
-            ->andWhere(['not', ['idSigma' => null]])
-            ->column();
+        $idSigma = $this->idSigmaValido($item);
+
+        if ($idSigma === null) {
+            return [];
+        }
+
+        $query = SubcatalogoItem::find()
+            ->select('descripcion')
+            ->andWhere(['idSigma' => $idSigma])
+            ->orderBy(['descripcion' => SORT_ASC]);
+
+        if (!$item->isNewRecord) {
+            $query->andWhere(['<>', 'id', $item->id]);
+        }
+
+        return $query->column();
     }
 
     /**
      * Prellenado desde "Buscar en catalogo institucional": el usuario eligio
-     * una fila de dbo.CatalogoSigma y solo le falta confirmar/ajustar
-     * categoria y unidad por defecto antes de guardar.
+     * una fila de dbo.CatalogoSigma.
+     *
+     * "descripcion" es el NOMBRE DTIC (corto y generico, el que sale en
+     * listados, presupuesto y PDF), no el nombre SIGMA. Por eso arranca solo
+     * con la Clase de SIGMA ("JACK" -> "Jack") para que el usuario la
+     * complete a su manera, en vez de copiar la descripcion larga oficial.
+     * La Clase se lee aqui desde la base con el idSigma, no desde la URL.
      */
-    public function prellenarDesdeSigma(SubcatalogoItem $item, string $idSigma, string $descripcion): void
+    public function prellenarDesdeSigma(SubcatalogoItem $item, string $idSigma): void
     {
         $item->idSigma = $idSigma;
-        $item->descripcion = $descripcion;
+
+        $clase = trim((string) ($this->sigmaDe($item)->Clase ?? ''));
+
+        if ($clase !== '') {
+            $item->descripcion = mb_strtoupper(mb_substr($clase, 0, 1)) . mb_strtolower(mb_substr($clase, 1));
+        }
     }
 
     public function crear(SubcatalogoItem $item, array $datosFormulario): bool
@@ -80,6 +165,18 @@ class SubcatalogoItemService
     }
 
     /**
+     * Fila de dbo.CatalogoSigma a la que apunta el idSigma del item, o null
+     * si no tiene idSigma o no existe en el catalogo. El formulario la usa
+     * para mostrar, en solo lectura, que eligio el usuario.
+     */
+    public function sigmaDe(SubcatalogoItem $item): ?CatalogoSigma
+    {
+        $idSigma = $this->idSigmaValido($item);
+
+        return $idSigma === null ? null : CatalogoSigma::findOne(['IdSigma' => $idSigma]);
+    }
+
+    /**
      * Partida presupuestaria (IdGasto) que dbo.CatalogoSigma tiene para el
      * idSigma del item, o null si no se puede obtener: el item no tiene
      * idSigma (ej. mano de obra), el idSigma no existe en el catalogo, o
@@ -90,18 +187,21 @@ class SubcatalogoItemService
      */
     public function partidaDesdeSigma(SubcatalogoItem $item): ?string
     {
-        $idSigma = trim((string) $item->idSigma);
-
-        // Si el texto no tiene forma de uniqueidentifier, SQL Server daria un
-        // error de conversion al compararlo con IdSigma: no se consulta.
-        if (preg_match(self::PATRON_ID_SIGMA, $idSigma) !== 1) {
-            return null;
-        }
-
-        $sigma = CatalogoSigma::findOne(['IdSigma' => $idSigma]);
-        $partida = trim((string) ($sigma->IdGasto ?? ''));
+        $partida = trim((string) ($this->sigmaDe($item)->IdGasto ?? ''));
 
         return preg_match('/^\d{5}$/', $partida) === 1 ? $partida : null;
+    }
+
+    /**
+     * idSigma del item solo si tiene forma de uniqueidentifier. Si no la
+     * tiene, SQL Server daria un error de conversion al compararlo con
+     * IdSigma, asi que no se debe consultar con el.
+     */
+    private function idSigmaValido(SubcatalogoItem $item): ?string
+    {
+        $idSigma = trim((string) $item->idSigma);
+
+        return preg_match(self::PATRON_ID_SIGMA, $idSigma) === 1 ? $idSigma : null;
     }
 
     /**
