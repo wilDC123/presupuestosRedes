@@ -10,6 +10,7 @@ use backend\models\Plantilla;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
+use backend\models\SolicitudCotizacionItem;
 use backend\models\SubcatalogoItem;
 use Throwable;
 use Yii;
@@ -164,6 +165,12 @@ class ListaItemsService
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
+            // Un item que se quita de la lista sale tambien de su solicitud
+            // de cotizacion (esa llave foranea no borra en cascada).
+            if ($quitados !== []) {
+                SolicitudCotizacionItem::deleteAll(['idProyectoItem' => array_keys($quitados)]);
+            }
+
             foreach ($quitados as $item) {
                 $item->delete();
             }

@@ -265,7 +265,12 @@ class ProyectoService
             ],
             ['titulo' => 'Lista de ítems', 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
             ['titulo' => 'Especificaciones', 'estado' => 'pendiente', 'url' => null],
-            ['titulo' => 'Cotización', 'estado' => 'pendiente', 'url' => null],
+            [
+                // Solicitudes de cotizacion: se arman con la lista ya enviada a cotizar.
+                'titulo' => 'Cotización',
+                'estado' => $listaEnEdicion ? 'pendiente' : ($presupuesto === null ? 'actual' : 'hecho'),
+                'url' => ['/solicitud-cotizacion/index', 'id' => $proyecto->id],
+            ],
             ['titulo' => 'Presupuesto', 'estado' => $estadoPresupuesto, 'url' => $urlPresupuesto],
             ['titulo' => 'Documentos', 'estado' => 'pendiente', 'url' => null],
         ];

@@ -83,6 +83,9 @@ $grupoCierra = static fn (int $cantidad): string =>
         </div>
         <div class="rd-acciones">
             <?= Html::a('Imprimir lista', ['imprimir', 'id' => $proyecto->id], ['class' => 'btn btn-outline', 'target' => '_blank', 'id' => 'lista-imprimir']) ?>
+            <?php if ($proyecto->estadoLista === Proyecto::LISTA_EN_COTIZACION): ?>
+                <?= Html::a('Solicitudes de cotización →', ['/solicitud-cotizacion/index', 'id' => $proyecto->id], ['class' => 'btn btn-primary']) ?>
+            <?php endif; ?>
             <?php if ($editable): ?>
                 <?= Html::submitButton('Guardar y enviar a cotización', [
                     'class' => 'btn btn-outline',

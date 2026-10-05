@@ -21,7 +21,7 @@ $menu = [
     ['Proveedores', ['/proveedor/index'], ['proveedor']],
     ['Subcatálogo', ['/subcatalogo-item/index'], ['subcatalogo-item']],
     ['Plantillas', ['/plantilla/index'], ['plantilla']],
-    ['Proyectos', ['/proyecto/index'], ['proyecto', 'lista-items']],
+    ['Proyectos', ['/proyecto/index'], ['proyecto', 'lista-items', 'solicitud-cotizacion']],
     ['Especificaciones', ['/especificacion/index'], ['especificacion']],
     ['Cotizaciones', ['/cotizacion/index'], ['cotizacion']],
     ['Presupuestos', ['/presupuesto/index'], ['presupuesto']],
