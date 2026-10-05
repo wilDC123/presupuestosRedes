@@ -1,5 +1,5 @@
 {
-    "_nota": "DATOS DE EJEMPLO tomados de los mockups. Reemplazar por la lista real de la USFX. Los codigos se guardan en redes.Proyecto: no cambiarlos una vez que haya proyectos que los usen.",
+    "_nota": "Facultades y edificios de la USFX. Todos los edificios tienen definidos los bloques A a E; ajustar por edificio cuando se conozca la distribucion real. Los codigos se guardan en redes.Proyecto: no cambiarlos una vez que haya proyectos que los usen. Tipos de proyecto y proyectistas siguen siendo DATOS DE EJEMPLO tomados de los mockups.",
     "tiposProyecto": [
         { "codigo": "ampliacion_red", "nombre": "Ampliación de red" },
         { "codigo": "cableado_estructurado", "nombre": "Cableado estructurado" },
@@ -8,12 +8,12 @@
     ],
     "facultades": [
         {
-            "codigo": "TEC",
-            "nombre": "Facultad de Tecnología",
+            "codigo": "DER",
+            "nombre": "Facultad de Derecho, Ciencias Políticas y Sociales",
             "edificios": [
                 {
-                    "codigo": "TEC-CEN",
-                    "nombre": "Edificio Central",
+                    "codigo": "DER-CEN",
+                    "nombre": "Edificio Central de Derecho",
                     "bloques": [
                         { "codigo": "A", "nombre": "Bloque A" },
                         { "codigo": "B", "nombre": "Bloque B" },
@@ -23,11 +23,75 @@
                     ]
                 },
                 {
-                    "codigo": "TEC-ANX",
-                    "nombre": "Edificio Anexo A",
+                    "codigo": "DER-HIS",
+                    "nombre": "Edificio Histórico de Derecho",
                     "bloques": [
                         { "codigo": "A", "nombre": "Bloque A" },
-                        { "codigo": "B", "nombre": "Bloque B" }
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "DER-SOC",
+                    "nombre": "Edificio de Sociología",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "DER-HTA",
+                    "nombre": "Edificio de Historia",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "MED",
+            "nombre": "Facultad de Medicina",
+            "edificios": [
+                {
+                    "codigo": "MED-MED",
+                    "nombre": "Edificio de Medicina",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "MED-BIC",
+                    "nombre": "Instituto del Bicentenario",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "MED-ANF",
+                    "nombre": "Anfiteatro de Anatomía",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
                     ]
                 }
             ]
@@ -37,26 +101,244 @@
             "nombre": "Facultad de Odontología",
             "edificios": [
                 {
-                    "codigo": "ODO-CEN",
-                    "nombre": "Edificio Central",
+                    "codigo": "ODO-ODO",
+                    "nombre": "Edificio de Odontología",
                     "bloques": [
                         { "codigo": "A", "nombre": "Bloque A" },
-                        { "codigo": "B", "nombre": "Bloque B" }
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "ODO-CLI",
+                    "nombre": "Clínicas Odontológicas",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
                     ]
                 }
             ]
         },
         {
-            "codigo": "DER",
-            "nombre": "Facultad de Derecho",
+            "codigo": "FAR",
+            "nombre": "Facultad de Ciencias Químico-Farmacéuticas y Bioquímicas",
             "edificios": [
                 {
-                    "codigo": "DER-CEN",
-                    "nombre": "Edificio Central",
+                    "codigo": "FAR-FAR",
+                    "nombre": "Edificio de Farmacia y Bioquímica",
                     "bloques": [
                         { "codigo": "A", "nombre": "Bloque A" },
                         { "codigo": "B", "nombre": "Bloque B" },
-                        { "codigo": "C", "nombre": "Bloque C" }
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "FAR-INV",
+                    "nombre": "Instituto de Investigaciones Farmacéuticas",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "HUM",
+            "nombre": "Facultad de Humanidades y Ciencias de la Educación",
+            "edificios": [
+                {
+                    "codigo": "HUM-HUM",
+                    "nombre": "Edificio de Humanidades",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "HUM-IDI",
+                    "nombre": "Edificio de Idiomas",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "HUM-PSI",
+                    "nombre": "Edificio de Psicología",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "AGR",
+            "nombre": "Facultad de Ciencias Agrarias",
+            "edificios": [
+                {
+                    "codigo": "AGR-AGR",
+                    "nombre": "Edificio de Ciencias Agrarias",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "AGR-YOT",
+                    "nombre": "Centro Experimental Yotala",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "TEC",
+            "nombre": "Facultad de Ciencias Tecnológicas",
+            "edificios": [
+                {
+                    "codigo": "TEC-COM",
+                    "nombre": "Edificio Complejo Tecnológico",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "TEC-DTI",
+                    "nombre": "Edificio D.T.I.C.",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "ECO",
+            "nombre": "Facultad de Ciencias Económicas y Empresariales",
+            "edificios": [
+                {
+                    "codigo": "ECO-ECO",
+                    "nombre": "Edificio de Ciencias Económicas",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                },
+                {
+                    "codigo": "ECO-POS",
+                    "nombre": "Edificio de Posgrado",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "CHA",
+            "nombre": "Facultad Integral del Chaco (Monteagudo)",
+            "edificios": [
+                {
+                    "codigo": "CHA-MON",
+                    "nombre": "Edificio Académico de Monteagudo",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "ENF",
+            "nombre": "Facultad de Ciencias de Enfermería y Obstetricia",
+            "edificios": [
+                {
+                    "codigo": "ENF-ENF",
+                    "nombre": "Edificio de Enfermería",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "ARQ",
+            "nombre": "Facultad de Arquitectura y Urbanismo",
+            "edificios": [
+                {
+                    "codigo": "ARQ-ARQ",
+                    "nombre": "Edificio de Arquitectura y Urbanismo",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
+                    ]
+                }
+            ]
+        },
+        {
+            "codigo": "FTE",
+            "nombre": "Facultad Técnica",
+            "edificios": [
+                {
+                    "codigo": "FTE-FTE",
+                    "nombre": "Edificio de la Facultad Técnica",
+                    "bloques": [
+                        { "codigo": "A", "nombre": "Bloque A" },
+                        { "codigo": "B", "nombre": "Bloque B" },
+                        { "codigo": "C", "nombre": "Bloque C" },
+                        { "codigo": "D", "nombre": "Bloque D" },
+                        { "codigo": "E", "nombre": "Bloque E" }
                     ]
                 }
             ]
