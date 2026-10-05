@@ -26,6 +26,8 @@ use yii\db\ActiveRecord;
  * @property string|null $edificio Nombre del edificio, copiado al guardar.
  * @property int|null $idProyectoAnterior
  * @property int $numeroFase
+ * @property int|null $idPlantillaOrigen Plantilla de la que partio la lista (solo informativo).
+ * @property bool $listaIniciada true si el paso "Plantilla" ya se resolvio (se uso una o se omitio).
  * @property string $fechaCreacion
  *
  * @property-read ProyectoBloque[] $bloques
@@ -33,6 +35,8 @@ use yii\db\ActiveRecord;
  * @property-read Proyecto|null $proyectoAnterior
  * @property-read Proyecto[] $fasesSiguientes
  * @property-read Presupuesto|null $presupuesto
+ * @property-read Plantilla|null $plantillaOrigen
+ * @property-read ProyectoItem[] $items
  */
 class Proyecto extends ActiveRecord
 {
@@ -124,6 +128,19 @@ class Proyecto extends ActiveRecord
     public function getPresupuesto(): ActiveQuery
     {
         return $this->hasOne(Presupuesto::class, ['idProyecto' => 'id']);
+    }
+
+    public function getPlantillaOrigen(): ActiveQuery
+    {
+        return $this->hasOne(Plantilla::class, ['id' => 'idPlantillaOrigen']);
+    }
+
+    /**
+     * Lista de items del proyecto (sin precios).
+     */
+    public function getItems(): ActiveQuery
+    {
+        return $this->hasMany(ProyectoItem::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
     }
 
     /**

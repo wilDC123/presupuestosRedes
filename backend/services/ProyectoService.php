@@ -239,14 +239,20 @@ class ProyectoService
             : ['/presupuesto/view', 'id' => $presupuesto->id];
 
         if ($presupuesto === null) {
-            $estadoPresupuesto = 'actual';
+            // Mientras no se resuelva el paso Plantilla, ese es el paso actual.
+            $estadoPresupuesto = $proyecto->listaIniciada ? 'actual' : 'pendiente';
         } else {
             $estadoPresupuesto = $presupuesto->puedeEditarse() ? 'actual' : 'hecho';
         }
 
         return [
             ['titulo' => 'Datos', 'estado' => 'hecho', 'url' => ['/proyecto/view', 'id' => $proyecto->id]],
-            ['titulo' => 'Plantilla', 'estado' => 'pendiente', 'url' => null],
+            [
+                'titulo' => 'Plantilla',
+                'estado' => $proyecto->listaIniciada ? 'hecho' : 'actual',
+                // Con el proyecto cerrado la pantalla de plantilla ya no aplica.
+                'url' => $this->puedeEditarse($proyecto) ? ['/proyecto/plantilla', 'id' => $proyecto->id] : null,
+            ],
             ['titulo' => 'Lista de ítems', 'estado' => 'pendiente', 'url' => null],
             ['titulo' => 'Especificaciones', 'estado' => 'pendiente', 'url' => null],
             ['titulo' => 'Cotización', 'estado' => 'pendiente', 'url' => null],

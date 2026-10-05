@@ -15,6 +15,7 @@ use yii\helpers\Html;
  * @var float|null $monto total del presupuesto (null si no tiene)
  * @var bool $puedeEditarse
  * @var bool $estaAprobado
+ * @var int $totalItems items en la lista del proyecto
  */
 
 $this->title = $model->nombre;
@@ -101,6 +102,26 @@ $formato = Yii::$app->formatter;
         </div>
 
         <div class="rd-col-1 rd-pila">
+            <div class="card rd-card-pad">
+                <div class="kicker mb-2">Lista de ítems</div>
+                <div class="rd-dato"><strong><?= $totalItems ?></strong> ítems en la lista</div>
+                <div class="rd-dato">
+                    <strong>Origen:</strong>
+                    <?php if (!$model->listaIniciada): ?>
+                        todavía sin definir
+                    <?php elseif ($model->plantillaOrigen === null): ?>
+                        en blanco (sin plantilla)
+                    <?php else: ?>
+                        plantilla "<?= Html::encode($model->plantillaOrigen->nombre) ?>"
+                    <?php endif; ?>
+                </div>
+                <?php if ($puedeEditarse): ?>
+                    <?= Html::a($model->listaIniciada ? 'Cargar otra plantilla' : 'Cargar plantilla →', ['plantilla', 'id' => $model->id], [
+                        'class' => $model->listaIniciada ? 'btn btn-outline' : 'btn btn-primary',
+                    ]) ?>
+                <?php endif; ?>
+            </div>
+
             <div class="card rd-card-pad">
                 <div class="kicker mb-2">Presupuesto</div>
                 <?php if ($presupuesto === null): ?>

@@ -20,6 +20,7 @@ $menu = [
     ['Categorías', ['/categoria/index'], ['categoria']],
     ['Proveedores', ['/proveedor/index'], ['proveedor']],
     ['Subcatálogo', ['/subcatalogo-item/index'], ['subcatalogo-item']],
+    ['Plantillas', ['/plantilla/index'], ['plantilla']],
     ['Proyectos', ['/proyecto/index'], ['proyecto']],
     ['Especificaciones', ['/especificacion/index'], ['especificacion']],
     ['Cotizaciones', ['/cotizacion/index'], ['cotizacion']],

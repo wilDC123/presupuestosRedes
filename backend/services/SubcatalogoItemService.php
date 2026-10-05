@@ -97,6 +97,20 @@ class SubcatalogoItemService
             ->column();
     }
 
+    /**
+     * Items activos del subcatalogo, por nombre DTIC, para las pantallas que
+     * dejan elegir items (plantillas, lista del proyecto).
+     *
+     * @return SubcatalogoItem[]
+     */
+    public function activos(): array
+    {
+        return SubcatalogoItem::find()
+            ->andWhere(['activo' => true])
+            ->orderBy(['descripcion' => SORT_ASC])
+            ->all();
+    }
+
     public function obtener(int $id): ?SubcatalogoItem
     {
         return SubcatalogoItem::findOne($id);
