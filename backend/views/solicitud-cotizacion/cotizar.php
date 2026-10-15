@@ -158,7 +158,7 @@ $formato = Yii::$app->formatter;
                     <td colspan="5">
                         Total cotizado (<span id="cotizar-cotizados">0</span> de <?= count($filas) ?> ítems)
                     </td>
-                    <td class="rd-num mono" id="cotizar-total-general">0,00</td>
+                    <td class="rd-num mono" id="cotizar-total-general">0.00</td>
                 </tr>
             </tfoot>
         </table>

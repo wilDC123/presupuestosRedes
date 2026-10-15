@@ -17,8 +17,10 @@ $(function () {
 
     var $error = $('#cotizar-error-cliente');
 
+    // Mismo formato que el formatter de Yii (backend/config/main.php):
+    // 1,234.56, el que usan los presupuestos de la DTIC.
     function formatear(numero) {
-        return numero.toLocaleString('es-BO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        return numero.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
 
     function recalcular() {

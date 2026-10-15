@@ -249,9 +249,14 @@ class SolicitudCotizacionService
         return null;
     }
 
+    /**
+     * OJO: no usar $solicitud->getCotizaciones()->exists(). Esa relacion trae
+     * ORDER BY, Yii la mete dentro de un EXISTS(...) y SQL Server no admite
+     * ORDER BY en una subconsulta (error 42000).
+     */
     public function tieneCotizaciones(SolicitudCotizacion $solicitud): bool
     {
-        return $solicitud->getCotizaciones()->exists();
+        return Cotizacion::find()->andWhere(['idSolicitudCotizacion' => $solicitud->id])->exists();
     }
 
     /**
