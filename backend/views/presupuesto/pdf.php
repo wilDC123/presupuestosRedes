@@ -171,6 +171,11 @@ $ubicacion = $proyecto->ubicacion();
                             <?php if (!empty($linea->observacion)): ?>
                                 <br><span class="observacion"><?= Html::encode($linea->observacion) ?></span>
                             <?php endif; ?>
+                            <?php if ($linea->proyectoItem->especificacion ?? null): ?>
+                                <br><span class="observacion">
+                                    Según especificación técnica <?= Html::encode($linea->proyectoItem->especificacion->referencia()) ?><?= $proyecto->codigo ? ' — proyecto ' . Html::encode($proyecto->codigo) : '' ?>
+                                </span>
+                            <?php endif; ?>
                         </td>
                         <td><?= Html::encode($linea->partida ?? '') ?></td>
                         <td><?= Html::encode($linea->unidadMedida ?? '') ?></td>

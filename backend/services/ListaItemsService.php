@@ -260,7 +260,7 @@ class ListaItemsService
 
         return $proyecto->getItems()
             ->andWhere(['not in', 'id', $presupuestados])
-            ->with(['subcatalogoItem', 'categoria'])
+            ->with(['subcatalogoItem', 'categoria', 'especificacion'])
             ->all();
     }
 

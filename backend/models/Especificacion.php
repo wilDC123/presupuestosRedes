@@ -137,17 +137,6 @@ class Especificacion extends ActiveRecord
     }
 
     /**
-     * Texto para los selectores: "Titulo · Categoria" (sin la categoria si
-     * la ficha no esta clasificada).
-     */
-    public function etiqueta(): string
-    {
-        $categoria = $this->categoria->nombre ?? null;
-
-        return $categoria === null ? $this->nombre() : $this->nombre() . ' · ' . $categoria;
-    }
-
-    /**
      * Como se cita en los impresos ("Segun especificacion tecnica NET:012/26"):
      * el codigo NET si lo tiene; si no, el titulo.
      */

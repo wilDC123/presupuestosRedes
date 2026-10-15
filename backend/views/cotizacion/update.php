@@ -8,6 +8,8 @@ use yii\helpers\Html;
  * @var yii\web\View $this
  * @var backend\models\Cotizacion $model
  * @var backend\models\CotizacionDetalle[] $modelsDetalle
+ * @var array<int, string> $items Ver SubcatalogoItemService::opciones()
+ * @var array $especificaciones Ver EspecificacionService::selector()
  */
 
 $this->title = 'Editar cotización #' . $model->id;
@@ -22,6 +24,8 @@ $this->params['breadcrumbs'][] = 'Editar';
     <?= $this->render('_form', [
         'model' => $model,
         'modelsDetalle' => $modelsDetalle,
+        'items' => $items,
+        'especificaciones' => $especificaciones,
     ]) ?>
 
 </div>

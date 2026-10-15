@@ -2,9 +2,6 @@
 
 declare(strict_types=1);
 
-use backend\models\Especificacion;
-use backend\models\SubcatalogoItem;
-use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 
 /**
@@ -13,25 +10,19 @@ use yii\helpers\Html;
  * se cargan, validan y guardan junto con la cabecera en
  * CotizacionController::actionUpdate().
  *
+ * Las opciones de los desplegables llegan del controlador (esta vista no
+ * consulta la base). La especificacion es opcional: "(ninguna)".
+ *
  * @var backend\models\CotizacionDetalle[] $modelsDetalle
+ * @var array<int, string> $items Ver SubcatalogoItemService::opciones()
+ * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>} $especificaciones Ver EspecificacionService::selector()
  */
 
-$items = ArrayHelper::map(
-    SubcatalogoItem::find()->orderBy(['descripcion' => SORT_ASC])->all(),
-    'id',
-    'descripcion'
-);
-
-// Se muestra el item al que pertenece cada especificacion para que sea mas
-// facil identificarla en la lista (no se filtra por el item seleccionado en
-// la fila todavia -- eso requeriria JS/AJAX y queda para una mejora futura).
-$especificaciones = ArrayHelper::map(
-    Especificacion::find()->with('subcatalogoItem')->all(),
-    'id',
-    static fn ($especificacion) => trim(
-        ($especificacion->subcatalogoItem->descripcion ?? '?') . ' — ' . ($especificacion->titulo ?: $especificacion->codigoNet ?: ('#' . $especificacion->id))
-    )
-);
+// Un <optgroup> por categoria de la libreria.
+$opcionesEspecificacion = [];
+foreach ($especificaciones['grupos'] as $grupo) {
+    $opcionesEspecificacion[$grupo['nombre']] = $grupo['opciones'];
+}
 ?>
 <h2>Líneas de la cotización</h2>
 
@@ -58,7 +49,7 @@ $especificaciones = ArrayHelper::map(
                     ]) ?>
                 </td>
                 <td>
-                    <?= Html::activeDropDownList($modelDetalle, "[$i]idEspecificacion", $especificaciones, [
+                    <?= Html::activeDropDownList($modelDetalle, "[$i]idEspecificacion", $opcionesEspecificacion, [
                         'class' => 'form-control',
                         'prompt' => '(ninguna)',
                     ]) ?>

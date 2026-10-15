@@ -6,8 +6,11 @@ namespace backend\controllers;
 
 use backend\models\Cotizacion;
 use backend\services\CotizacionService;
+use backend\services\EspecificacionService;
+use backend\services\SubcatalogoItemService;
 use Yii;
 use yii\filters\VerbFilter;
+use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
@@ -84,9 +87,16 @@ class CotizacionController extends Controller
             }
         }
 
+        $modelsDetalle = $this->service->detallesParaFormulario($model, $modelsDetalle);
+
         return $this->render('update', [
             'model' => $model,
-            'modelsDetalle' => $this->service->detallesParaFormulario($model, $modelsDetalle),
+            'modelsDetalle' => $modelsDetalle,
+            // Opciones de los desplegables de cada linea: las vistas no
+            // consultan la base. Se incluyen las especificaciones que ya
+            // tienen las lineas aunque esten desactivadas.
+            'items' => (new SubcatalogoItemService())->opciones(),
+            'especificaciones' => (new EspecificacionService())->selector(ArrayHelper::getColumn($modelsDetalle, 'idEspecificacion')),
         ]);
     }
 

@@ -162,6 +162,11 @@ $numero = 0;
                             <?php if (!empty($item->observacion)): ?>
                                 <br><span class="observacion"><?= Html::encode($item->observacion) ?></span>
                             <?php endif; ?>
+                            <?php if ($item->especificacion !== null): ?>
+                                <br><span class="observacion">
+                                    Según especificación técnica <?= Html::encode($item->especificacion->referencia()) ?><?= $proyecto->codigo ? ' — proyecto ' . Html::encode($proyecto->codigo) : '' ?>
+                                </span>
+                            <?php endif; ?>
                         </td>
                         <td><?= Html::encode((string) $item->unidadMedida) ?></td>
                         <td class="numero"><?= Yii::$app->formatter->asDecimal($item->cantidad, 2) ?></td>

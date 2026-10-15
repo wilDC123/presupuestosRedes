@@ -264,7 +264,9 @@ class ProyectoService
                 'url' => $this->puedeEditarse($proyecto) && $listaEnEdicion ? ['/proyecto/plantilla', 'id' => $proyecto->id] : null,
             ],
             ['titulo' => 'Lista de ítems', 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
-            ['titulo' => 'Especificaciones', 'estado' => 'pendiente', 'url' => null],
+            // Las especificaciones se enlazan item por item EN la lista (son
+            // opcionales): el paso avanza junto con la lista.
+            ['titulo' => 'Especificaciones', 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
             [
                 // Solicitudes de cotizacion: se arman con la lista ya enviada a cotizar.
                 'titulo' => 'Cotización',

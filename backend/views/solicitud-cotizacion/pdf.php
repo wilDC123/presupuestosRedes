@@ -16,7 +16,7 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var backend\models\SolicitudCotizacion $solicitud
- * @var array<int, string[]> $especificaciones [idSubcatalogo => codigos NET] Ver SolicitudCotizacionService::especificacionesPorItem()
+ * @var array<int, string> $especificaciones [idProyectoItem => codigo NET] Ver SolicitudCotizacionService::especificacionesPorItem()
  */
 
 $proyecto = $solicitud->proyecto;
@@ -164,7 +164,7 @@ $numero = 0;
             <?php foreach ($solicitud->items as $fila): ?>
                 <?php
                 $item = $fila->proyectoItem;
-                $codigos = $especificaciones[(int) ($item->idSubcatalogo ?? 0)] ?? [];
+                $especificacion = $especificaciones[(int) $fila->idProyectoItem] ?? null;
                 ?>
                 <tr>
                     <td class="numero"><?= ++$numero ?></td>
@@ -173,8 +173,10 @@ $numero = 0;
                         <?php if (!empty($item->observacion)): ?>
                             <br><span class="observacion"><?= Html::encode($item->observacion) ?></span>
                         <?php endif; ?>
-                        <?php if ($codigos !== []): ?>
-                            <br><span class="observacion">Según especificación técnica <?= Html::encode(implode(', ', $codigos)) ?></span>
+                        <?php if ($especificacion !== null): ?>
+                            <br><span class="observacion">
+                                Según especificación técnica <?= Html::encode($especificacion) ?><?= $solicitud->proyecto->codigo ? ' — proyecto ' . Html::encode($solicitud->proyecto->codigo) : '' ?>
+                            </span>
                         <?php endif; ?>
                     </td>
                     <td><?= Html::encode((string) ($item->unidadMedida ?? '')) ?></td>

@@ -69,6 +69,9 @@ $totalGeneral = array_sum(ArrayHelper::getColumn($grupos, 'subtotal'));
                                 <?php if (!empty($linea->observacion)): ?>
                                     <div class="small text-muted"><?= Html::encode($linea->observacion) ?></div>
                                 <?php endif; ?>
+                                <?php if ($linea->proyectoItem->especificacion ?? null): ?>
+                                    <div class="small text-muted">Especificación técnica: <?= Html::encode($linea->proyectoItem->especificacion->referencia()) ?></div>
+                                <?php endif; ?>
                             </td>
                             <td><?= Html::encode($linea->partida ?? '') ?></td>
                             <td><?= Html::encode($linea->unidadMedida ?? '') ?></td>
@@ -134,6 +137,9 @@ $totalGeneral = array_sum(ArrayHelper::getColumn($grupos, 'subtotal'));
                                 <?= Html::encode($pendiente->subcatalogoItem->descripcion ?? '') ?>
                                 <?php if (!empty($pendiente->observacion)): ?>
                                     <div class="small text-muted"><?= Html::encode($pendiente->observacion) ?></div>
+                                <?php endif; ?>
+                                <?php if ($pendiente->especificacion !== null): ?>
+                                    <div class="small text-muted">Especificación técnica: <?= Html::encode($pendiente->especificacion->referencia()) ?></div>
                                 <?php endif; ?>
                             </td>
                             <td><?= Html::encode($pendiente->categoria->nombre ?? '') ?></td>

@@ -296,7 +296,9 @@ class PresupuestoService
     public function agruparPorCategoria(Presupuesto $presupuesto): array
     {
         $lineas = $presupuesto->getPresupuestoDetalles()
-            ->with(['subcatalogoItem.categoria'])
+            // proyectoItem.especificacion: la especificacion enlazada en la
+            // lista, que se muestra junto a la linea (vista y PDF).
+            ->with(['subcatalogoItem.categoria', 'proyectoItem.especificacion'])
             ->all();
 
         $grupos = [];

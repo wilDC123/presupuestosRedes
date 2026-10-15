@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
-use backend\models\Especificacion;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SolicitudCotizacion;
@@ -219,32 +218,36 @@ class SolicitudCotizacionService
     }
 
     /**
-     * Codigos de las especificaciones tecnicas activas de cada item del
-     * subcatalogo, para citarlas en el documento: [idSubcatalogo => ['NET:012/26', ...]].
+     * Especificacion tecnica ENLAZADA a cada item de la solicitud (la que se
+     * eligio en la lista del proyecto), para citarla en el documento:
+     * [idProyectoItem => 'NET:012/26']. Los items sin especificacion no
+     * aparecen: es un caso normal y el documento sale igual.
      *
-     * @return array<int, string[]>
+     * @return array<int, string>
      */
     public function especificacionesPorItem(SolicitudCotizacion $solicitud): array
     {
-        $idsSubcatalogo = [];
+        $idsItems = array_map(static fn ($fila) => (int) $fila->idProyectoItem, $solicitud->items);
 
-        foreach ($solicitud->items as $fila) {
-            $idsSubcatalogo[] = (int) ($fila->proyectoItem->idSubcatalogo ?? 0);
+        if ($idsItems === []) {
+            return [];
         }
 
-        $codigos = [];
-
-        $especificaciones = Especificacion::find()
-            ->andWhere(['idSubcatalogo' => array_unique($idsSubcatalogo), 'activo' => true])
-            ->andWhere(['not', ['codigoNet' => null]])
-            ->orderBy(['codigoNet' => SORT_ASC])
+        $items = ProyectoItem::find()
+            ->andWhere(['id' => $idsItems])
+            ->andWhere(['not', ['idEspecificacion' => null]])
+            ->with('especificacion')
             ->all();
 
-        foreach ($especificaciones as $especificacion) {
-            $codigos[(int) $especificacion->idSubcatalogo][] = (string) $especificacion->codigoNet;
+        $referencias = [];
+
+        foreach ($items as $item) {
+            if ($item->especificacion !== null) {
+                $referencias[$item->id] = $item->especificacion->referencia();
+            }
         }
 
-        return $codigos;
+        return $referencias;
     }
 
     /**

@@ -11,6 +11,8 @@ use yii\widgets\ActiveForm;
  * @var yii\web\View $this
  * @var backend\models\Cotizacion $model
  * @var backend\models\CotizacionDetalle[]|null $modelsDetalle Solo se pasa desde update.php
+ * @var array<int, string> $items Solo desde update.php. Ver SubcatalogoItemService::opciones()
+ * @var array $especificaciones Solo desde update.php. Ver EspecificacionService::selector()
  * @var yii\widgets\ActiveForm $form
  */
 
@@ -46,7 +48,11 @@ $proveedores = ArrayHelper::map(
     <?= $form->field($model, 'documentoFile')->fileInput()->hint('Solo archivos PDF, máximo 10 MB. Dejar vacío para no cambiar el archivo actual.') ?>
 
     <?php if ($modelsDetalle !== null): ?>
-        <?= $this->render('_detalle-form', ['modelsDetalle' => $modelsDetalle]) ?>
+        <?= $this->render('_detalle-form', [
+            'modelsDetalle' => $modelsDetalle,
+            'items' => $items,
+            'especificaciones' => $especificaciones,
+        ]) ?>
     <?php endif; ?>
 
     <div class="form-group">
