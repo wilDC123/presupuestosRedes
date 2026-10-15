@@ -113,6 +113,22 @@ class SubcatalogoItemService
             ->all();
     }
 
+    /**
+     * Todos los items como [id => nombre DTIC], por nombre, para los
+     * desplegables (especificacion, lineas de cotizacion). Las vistas la
+     * reciben del controlador: asi ninguna vista consulta la base de datos.
+     *
+     * @return array<int, string>
+     */
+    public function opciones(): array
+    {
+        return SubcatalogoItem::find()
+            ->select(['descripcion', 'id'])
+            ->orderBy(['descripcion' => SORT_ASC])
+            ->indexBy('id')
+            ->column();
+    }
+
     public function obtener(int $id): ?SubcatalogoItem
     {
         return SubcatalogoItem::findOne($id);

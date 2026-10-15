@@ -5,15 +5,22 @@ declare(strict_types=1);
 namespace backend\models;
 
 use DateTime;
+use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\web\UploadedFile;
 
 /**
- * Modelo para la tabla "redes.Especificacion".
+ * Modelo para la tabla "redes.Especificacion": una ficha de la LIBRERIA de
+ * especificaciones tecnicas.
+ *
+ * La especificacion no pertenece a un item ni a un proyecto: se clasifica
+ * por categoria y se ENLAZA a los items de la lista de un proyecto
+ * (ProyectoItem::idEspecificacion). Siempre es opcional.
  *
  * @property int $id
- * @property int $idSubcatalogo
+ * @property int|null $idSubcatalogo Item de referencia (opcional): solo informativo.
+ * @property int|null $idCategoria Clasificacion en la libreria (mismas categorias del subcatalogo).
  * @property string|null $codigoNet
  * @property string|null $titulo
  * @property string|null $dependencia
@@ -22,7 +29,10 @@ use yii\web\UploadedFile;
  * @property string|null $fechaEmision
  * @property bool $activo
  *
- * @property-read SubcatalogoItem $subcatalogoItem
+ * @property-read SubcatalogoItem|null $subcatalogoItem
+ * @property-read Categoria|null $categoria
+ * @property-read ProyectoItem[] $proyectoItems
+ * @property-read CotizacionDetalle[] $cotizacionDetalles
  */
 class Especificacion extends ActiveRecord
 {
@@ -44,8 +54,10 @@ class Especificacion extends ActiveRecord
     public function rules(): array
     {
         return [
-            [['idSubcatalogo'], 'required'],
-            [['idSubcatalogo'], 'integer'],
+            // La columna permite NULL (fichas antiguas o importadas), pero
+            // toda ficha creada o editada desde el formulario queda clasificada.
+            [['idCategoria'], 'required'],
+            [['idSubcatalogo', 'idCategoria'], 'integer'],
             [['activo'], 'default', 'value' => true],
             [['activo'], 'boolean'],
             [['fechaEmision'], 'date', 'format' => 'php:Y-m-d'],
@@ -55,6 +67,7 @@ class Especificacion extends ActiveRecord
             [['documentoRuta'], 'string', 'max' => 500],
             [['archivoEspecificacion'], 'file', 'extensions' => 'pdf, docx', 'maxSize' => 10 * 1024 * 1024],
             [['idSubcatalogo'], 'exist', 'skipOnError' => true, 'targetClass' => SubcatalogoItem::class, 'targetAttribute' => ['idSubcatalogo' => 'id']],
+            [['idCategoria'], 'exist', 'skipOnError' => true, 'targetClass' => Categoria::class, 'targetAttribute' => ['idCategoria' => 'id']],
         ];
     }
 
@@ -62,7 +75,8 @@ class Especificacion extends ActiveRecord
     {
         return [
             'id' => 'ID',
-            'idSubcatalogo' => 'Ítem de subcatálogo',
+            'idSubcatalogo' => 'Ítem de referencia (opcional)',
+            'idCategoria' => 'Categoría',
             'codigoNet' => 'Código NET',
             'titulo' => 'Título',
             'dependencia' => 'Dependencia',
@@ -93,6 +107,75 @@ class Especificacion extends ActiveRecord
         return $this->hasOne(SubcatalogoItem::class, ['id' => 'idSubcatalogo']);
     }
 
+    public function getCategoria(): ActiveQuery
+    {
+        return $this->hasOne(Categoria::class, ['id' => 'idCategoria']);
+    }
+
+    /**
+     * Items de listas de proyecto que tienen enlazada esta especificacion.
+     */
+    public function getProyectoItems(): ActiveQuery
+    {
+        return $this->hasMany(ProyectoItem::class, ['idEspecificacion' => 'id']);
+    }
+
+    /**
+     * Lineas de cotizacion que citan esta especificacion.
+     */
+    public function getCotizacionDetalles(): ActiveQuery
+    {
+        return $this->hasMany(CotizacionDetalle::class, ['idEspecificacion' => 'id']);
+    }
+
+    /**
+     * Nombre corto para listados: el titulo, o el codigo NET, o "#id".
+     */
+    public function nombre(): string
+    {
+        return $this->titulo ?: ($this->codigoNet ?: '#' . $this->id);
+    }
+
+    /**
+     * Texto para los selectores: "Titulo · Categoria" (sin la categoria si
+     * la ficha no esta clasificada).
+     */
+    public function etiqueta(): string
+    {
+        $categoria = $this->categoria->nombre ?? null;
+
+        return $categoria === null ? $this->nombre() : $this->nombre() . ' · ' . $categoria;
+    }
+
+    /**
+     * Como se cita en los impresos ("Segun especificacion tecnica NET:012/26"):
+     * el codigo NET si lo tiene; si no, el titulo.
+     */
+    public function referencia(): string
+    {
+        return $this->codigoNet ?: $this->nombre();
+    }
+
+    /**
+     * Enlace para abrir el documento (null si no tiene). documentoRuta puede
+     * ser un archivo subido (ruta relativa a backend/web) o un enlace externo
+     * escrito a mano (ej. Google Drive), que se usa tal cual.
+     */
+    public function urlDocumento(): ?string
+    {
+        $ruta = trim((string) $this->documentoRuta);
+
+        if ($ruta === '') {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $ruta) === 1) {
+            return $ruta;
+        }
+
+        return Yii::getAlias('@web/' . ltrim($ruta, '/'));
+    }
+
     /**
      * fechaEmision permite NULL, pero el input tipo "date" envia '' cuando se
      * deja en blanco. SQL Server no puede convertir '' a date, asi que hay
@@ -105,8 +188,12 @@ class Especificacion extends ActiveRecord
             return false;
         }
 
-        if ($this->fechaEmision === '') {
-            $this->fechaEmision = null;
+        // Los selects opcionales y el input de fecha envian '' cuando se
+        // dejan en blanco; SQL Server no convierte '' a int ni a date.
+        foreach (['fechaEmision', 'idSubcatalogo', 'idCategoria'] as $atributo) {
+            if ($this->$atributo === '') {
+                $this->$atributo = null;
+            }
         }
 
         return true;

@@ -2,23 +2,21 @@
 
 declare(strict_types=1);
 
-use backend\models\SubcatalogoItem;
-use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use yii\widgets\ActiveForm;
 
 /**
+ * Formulario de una ficha de la libreria. ActiveForm valida en el navegador
+ * (jQuery) las mismas reglas de Especificacion::rules() -- por ejemplo que
+ * la categoria es obligatoria -- y el servidor las vuelve a validar al guardar.
+ *
  * @var yii\web\View $this
  * @var backend\models\Especificacion $model
+ * @var array<int, string> $categorias Ver CategoriaService::opciones()
+ * @var array<int, string> $items Ver SubcatalogoItemService::opciones()
  * @var yii\widgets\ActiveForm $form
  */
-
-$items = ArrayHelper::map(
-    SubcatalogoItem::find()->orderBy(['descripcion' => SORT_ASC])->all(),
-    'id',
-    'descripcion'
-);
 
 $extraerMetadatosUrl = Url::to(['especificacion/extraer-metadatos']);
 ?>
@@ -26,7 +24,11 @@ $extraerMetadatosUrl = Url::to(['especificacion/extraer-metadatos']);
 
     <?php $form = ActiveForm::begin(['options' => ['enctype' => 'multipart/form-data']]); ?>
 
-    <?= $form->field($model, 'idSubcatalogo')->dropDownList($items, ['prompt' => 'Seleccione un ítem de subcatálogo']) ?>
+    <?= $form->field($model, 'idCategoria')->dropDownList($categorias, ['prompt' => 'Seleccione una categoría'])
+        ->hint('Las mismas categorías del subcatálogo. Sirve para encontrar la ficha en la librería y para sugerirla primero a los ítems de esa categoría.') ?>
+
+    <?= $form->field($model, 'idSubcatalogo')->dropDownList($items, ['prompt' => '— Ninguno —'])
+        ->hint('Solo informativo: el ítem para el que se pensó la ficha. No limita dónde se puede usar; el enlace real se hace en la lista de ítems de cada proyecto.') ?>
 
     <div class="card mb-3">
         <div class="card-body">
@@ -48,7 +50,7 @@ $extraerMetadatosUrl = Url::to(['especificacion/extraer-metadatos']);
 
     <?= $form->field($model, 'modeloSugerido')->textInput(['maxlength' => 200]) ?>
 
-    <?= $form->field($model, 'documentoRuta')->textInput(['maxlength' => 500])->hint('Ruta al PDF/DOCX original con el detalle técnico completo. Se completa sola si sube un archivo arriba; también se puede escribir a mano si el documento ya vive en otro lugar.') ?>
+    <?= $form->field($model, 'documentoRuta')->textInput(['maxlength' => 500])->hint('Ruta al PDF/DOCX original con el detalle técnico completo. Se completa sola si sube un archivo arriba; también se puede pegar un enlace (ej. Google Drive, https://...) si el documento ya vive en otro lugar.') ?>
 
     <?= $form->field($model, 'fechaEmision')->textInput([
         'value' => $model->fechaEmisionFormateada(),
