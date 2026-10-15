@@ -14,6 +14,7 @@ use yii\web\JqueryAsset;
  *   items[n][idSubcatalogo]  item del subcatalogo
  *   items[n][cantidad]
  *   items[n][observacion]
+ *   items[n][idEspecificacion] especificacion de la libreria ('' = ninguna)
  *
  * web/js/lista-items.js agrega y quita filas y filtra el subcatalogo. Cada
  * clasificacion es un <tbody> (data-categoria); las dos plantillas ocultas
@@ -25,6 +26,7 @@ use yii\web\JqueryAsset;
  * @var string[] $errores mensajes si el guardado fallo
  * @var bool $editable Ver ListaItemsService::puedeEditarse()
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
+ * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>} $especificaciones Ver EspecificacionService::selector()
  * @var backend\models\OrdenCambio[] $ordenes ordenes de cambio del proyecto
  */
 
@@ -39,19 +41,70 @@ $this->params['breadcrumbs'][] = 'Lista de ítems';
 
 $formato = Yii::$app->formatter;
 $totalItems = array_sum(array_map(static fn ($grupo) => count($grupo['items']), $grupos));
+$conEspecificacion = 0;
+foreach ($grupos as $grupo) {
+    foreach ($grupo['items'] as $item) {
+        $conEspecificacion += $item->idEspecificacion ? 1 : 0;
+    }
+}
 $n = 0;
+
+// Cada opcion lleva el enlace a su documento (data-url): el JS lo usa para
+// el enlace "ver documento" sin volver a consultar al servidor.
+$atributosOpciones = [];
+foreach ($especificaciones['urls'] as $idEspecificacion => $url) {
+    $atributosOpciones[$idEspecificacion] = ['data-url' => $url];
+}
+
+/**
+ * Selector "Especificación técnica" de una fila: un <optgroup> por
+ * categoria, con el de la categoria del item primero. El JS reordena los
+ * grupos de las filas que se agregan en el navegador.
+ */
+$selectorEspecificacion = static function (string $n, string $seleccionada, string $idCategoria) use ($especificaciones, $atributosOpciones): string {
+    $opciones = [];
+    $atributosGrupos = [];
+
+    foreach ($especificaciones['grupos'] as $idGrupo => $grupo) {
+        $atributosGrupos[$grupo['nombre']] = ['data-categoria' => $idGrupo];
+
+        if ((string) $idGrupo === $idCategoria) {
+            $opciones = [$grupo['nombre'] => $grupo['opciones']] + $opciones;
+        } else {
+            $opciones[$grupo['nombre']] = $grupo['opciones'];
+        }
+    }
+
+    $url = $especificaciones['urls'][(int) $seleccionada] ?? '';
+
+    return '<div class="d-flex align-items-center gap-2 mt-1">'
+        . Html::dropDownList("items[$n][idEspecificacion]", $seleccionada, $opciones, [
+            'class' => 'form-control lista-item-esp',
+            'prompt' => '— Sin especificación técnica —',
+            'aria-label' => 'Especificación técnica (opcional)',
+            'options' => $atributosOpciones,
+            'groups' => $atributosGrupos,
+        ])
+        . Html::a('Ver documento', $url ?: '#', [
+            'class' => 'lista-item-doc text-nowrap' . ($url === '' ? ' d-none' : ''),
+            'target' => '_blank',
+            'rel' => 'noopener',
+        ])
+        . '</div>';
+};
 
 /**
  * Fila editable de un item. $n es su indice en items[n][...]; el JS usa
  * "__n__" como marcador y lo reemplaza por un numero nuevo.
  */
-$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion): string {
+$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '') use ($selectorEspecificacion): string {
     return '<tr class="lista-item">'
         . '<td>'
         . Html::hiddenInput("items[$n][id]", $id)
         . Html::hiddenInput("items[$n][idSubcatalogo]", $idSubcatalogo, ['class' => 'lista-item-subcatalogo'])
         . '<div class="lista-item-nombre">' . Html::encode($nombre) . '</div>'
-        . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, según especificación...'])
+        . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
+        . $selectorEspecificacion($n, $idEspecificacion, $idCategoria)
         . '</td>'
         . '<td class="lista-item-unidad">' . Html::encode($unidad) . '</td>'
         . '<td class="rd-num">' . Html::textInput("items[$n][cantidad]", $cantidad, ['class' => 'qty', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'required' => true, 'aria-label' => 'Cantidad']) . '</td>'
@@ -157,7 +210,8 @@ $grupoCierra = static fn (int $cantidad): string =>
                 <div class="rd-card-titulo">Ítems del proyecto — <?= Html::encode($proyecto->codigo ?: '#' . $proyecto->id) ?></div>
                 <div class="kicker">
                     <span id="lista-total"><?= $totalItems ?></span> ítems en
-                    <span id="lista-total-grupos"><?= count($grupos) ?></span> clasificaciones
+                    <span id="lista-total-grupos"><?= count($grupos) ?></span> clasificaciones ·
+                    <span id="lista-total-esp"><?= $conEspecificacion ?></span> con especificación técnica
                 </div>
             </div>
 
@@ -182,7 +236,9 @@ $grupoCierra = static fn (int $cantidad): string =>
                                 (string) $item->unidadMedida,
                                 // Sin ceros de mas: 25.00 se muestra 25; lo enviado con error se muestra tal cual.
                                 is_numeric($item->cantidad) ? (string) (float) $item->cantidad : (string) $item->cantidad,
-                                (string) $item->observacion
+                                (string) $item->observacion,
+                                (string) $item->idEspecificacion,
+                                (string) $item->idCategoria
                             ) ?>
                         <?php endforeach; ?>
                         <?= $grupoCierra(count($grupo['items'])) ?>
@@ -195,6 +251,15 @@ $grupoCierra = static fn (int $cantidad): string =>
                                         <?= Html::encode($item->subcatalogoItem->descripcion ?? 'Ítem no disponible') ?>
                                         <?php if (!empty($item->observacion)): ?>
                                             <div class="rd-celda-sub"><?= Html::encode($item->observacion) ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($item->especificacion !== null): ?>
+                                            <?php $url = $item->especificacion->urlDocumento(); ?>
+                                            <div class="rd-celda-sub">
+                                                Especificación técnica:
+                                                <?= $url === null
+                                                    ? Html::encode($item->especificacion->referencia())
+                                                    : Html::a(Html::encode($item->especificacion->referencia()), $url, ['target' => '_blank', 'rel' => 'noopener']) ?>
+                                            </div>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= Html::encode((string) $item->unidadMedida) ?></td>

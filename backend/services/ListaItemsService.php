@@ -25,6 +25,9 @@ use Yii;
  *  - toda la lista se guarda junta (una transaccion), conservando el id de
  *    cada item (las fases siguientes apuntan a ese id),
  *  - un item que ya tiene linea en el presupuesto no se quita,
+ *  - cada item puede tener COMO MAXIMO una especificacion de la libreria
+ *    (opcional): solo se enlazan especificaciones activas; una que se
+ *    desactivo despues se conserva donde ya estaba,
  *  - estados: edicion -> en_cotizacion -> cerrada (al aprobar el presupuesto).
  */
 class ListaItemsService
@@ -59,7 +62,7 @@ class ListaItemsService
      */
     public function agrupar(Proyecto $proyecto, ?array $items = null): array
     {
-        $items ??= $proyecto->getItems()->with(['subcatalogoItem', 'categoria'])->all();
+        $items ??= $proyecto->getItems()->with(['subcatalogoItem', 'categoria', 'especificacion'])->all();
 
         $grupos = [];
         $orden = [];
@@ -86,6 +89,7 @@ class ListaItemsService
      *   items[n][idSubcatalogo]  item del subcatalogo (solo cuenta en los nuevos)
      *   items[n][cantidad]
      *   items[n][observacion]
+     *   items[n][idEspecificacion] especificacion de la libreria ('' = ninguna)
      *
      * Los items guardados que ya no vienen en el formulario se quitan. Los
      * que siguen se ACTUALIZAN (no se borran y recrean) para conservar su id.
@@ -113,6 +117,7 @@ class ListaItemsService
         $guardados = ProyectoItem::find()->andWhere(['idProyecto' => $proyecto->id])->indexBy('id')->all();
         $conservados = [];
         $numero = 0;
+        $especificacionesActivas = (new EspecificacionService())->idsActivas();
 
         foreach ((array) $filas as $fila) {
             if (!is_array($fila)) {
@@ -144,9 +149,15 @@ class ListaItemsService
             $item->cantidad = $this->texto($fila['cantidad'] ?? '');
             $item->observacion = $this->texto($fila['observacion'] ?? '');
             $enviados[] = $item;
+            $nombre = $item->subcatalogoItem->descripcion ?? "Ítem $numero";
+
+            $errorEspecificacion = $this->asignarEspecificacion($item, $this->texto($fila['idEspecificacion'] ?? ''), $especificacionesActivas);
+            if ($errorEspecificacion !== null) {
+                $errores[] = "$nombre: $errorEspecificacion";
+            }
 
             if (!$item->validate(['cantidad', 'observacion'])) {
-                $errores[] = ($item->subcatalogoItem->descripcion ?? "Ítem $numero") . ': ' . implode(' ', $item->getFirstErrors());
+                $errores[] = "$nombre: " . implode(' ', $item->getFirstErrors());
             }
         }
 
@@ -251,6 +262,22 @@ class ListaItemsService
             ->andWhere(['not in', 'id', $presupuestados])
             ->with(['subcatalogoItem', 'categoria'])
             ->all();
+    }
+
+    /**
+     * Ids de las especificaciones enlazadas en la lista (para que el
+     * selector las siga ofreciendo aunque se hayan desactivado).
+     *
+     * @return int[]
+     */
+    public function especificacionesEnlazadas(Proyecto $proyecto): array
+    {
+        return array_map('intval', ProyectoItem::find()
+            ->select('idEspecificacion')
+            ->distinct()
+            ->andWhere(['idProyecto' => $proyecto->id])
+            ->andWhere(['not', ['idEspecificacion' => null]])
+            ->column());
     }
 
     public function obtenerItem(int $id): ?ProyectoItem
@@ -373,6 +400,40 @@ class ListaItemsService
         $item->populateRelation('subcatalogoItem', $origen);
 
         return $item;
+    }
+
+    /**
+     * Asigna la especificacion elegida en el formulario ('' = ninguna).
+     * Devuelve el mensaje de error, o null si es valida.
+     *
+     * REGLA DE NEGOCIO: solo se ENLAZAN especificaciones activas. Si la fila
+     * ya tenia una que despues se desactivo, se conserva (el selector la
+     * sigue mostrando) para no perderla al volver a guardar la lista.
+     *
+     * @param array<int, true> $activas Ver EspecificacionService::idsActivas()
+     */
+    private function asignarEspecificacion(ProyectoItem $item, string $valor, array $activas): ?string
+    {
+        if ($valor === '') {
+            $item->idEspecificacion = null;
+
+            return null;
+        }
+
+        if (!ctype_digit($valor)) {
+            return 'la especificación elegida no es válida.';
+        }
+
+        $id = (int) $valor;
+        $yaEnlazada = $id === (int) $item->getOldAttribute('idEspecificacion');
+
+        if (!$yaEnlazada && !isset($activas[$id])) {
+            return 'la especificación elegida no existe o está inactiva.';
+        }
+
+        $item->idEspecificacion = $id;
+
+        return null;
     }
 
     /**

@@ -6,6 +6,7 @@ namespace backend\controllers;
 
 use backend\models\OrdenCambio;
 use backend\models\Proyecto;
+use backend\services\EspecificacionService;
 use backend\services\ListaItemsService;
 use backend\services\OrdenCambioService;
 use backend\services\ProyectoService;
@@ -86,12 +87,18 @@ class ListaItemsController extends Controller
             $enviados = $items;
         }
 
+        $editable = $this->service->puedeEditarse($proyecto);
+
         return $this->render('index', [
             'proyecto' => $proyecto,
             'grupos' => $this->service->agrupar($proyecto, $enviados),
             'errores' => $errores,
-            'editable' => $this->service->puedeEditarse($proyecto),
-            'subcatalogo' => (new SubcatalogoItemService())->activos(),
+            'editable' => $editable,
+            'subcatalogo' => $editable ? (new SubcatalogoItemService())->activos() : [],
+            // Opciones del selector "Especificación técnica" de cada fila.
+            'especificaciones' => $editable
+                ? (new EspecificacionService())->selector($this->service->especificacionesEnlazadas($proyecto))
+                : ['grupos' => [], 'urls' => []],
             'ordenes' => $this->ordenes->historial($proyecto),
         ]);
     }

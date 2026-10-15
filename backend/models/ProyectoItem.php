@@ -22,10 +22,12 @@ use yii\db\ActiveRecord;
  * @property string|null $unidadMedida
  * @property string|null $observacion Detalle de la linea ("de 1 metro", "segun especificacion").
  * @property int $orden
+ * @property int|null $idEspecificacion Ficha de la libreria enlazada (opcional: NULL = no la necesita).
  *
  * @property-read Proyecto $proyecto
  * @property-read SubcatalogoItem $subcatalogoItem
  * @property-read Categoria $categoria
+ * @property-read Especificacion|null $especificacion
  * @property-read PresupuestoDetalle|null $presupuestoDetalle
  */
 class ProyectoItem extends ActiveRecord
@@ -39,13 +41,14 @@ class ProyectoItem extends ActiveRecord
     {
         return [
             [['idProyecto', 'idSubcatalogo', 'idCategoria', 'cantidad'], 'required'],
-            [['idProyecto', 'idSubcatalogo', 'idCategoria', 'orden'], 'integer'],
+            [['idProyecto', 'idSubcatalogo', 'idCategoria', 'orden', 'idEspecificacion'], 'integer'],
             [['cantidad'], 'number', 'min' => 0, 'max' => 99999999.99],
             [['unidadMedida'], 'string', 'max' => 20],
             [['observacion'], 'trim'],
             [['observacion'], 'string', 'max' => 300],
             [['idSubcatalogo'], 'exist', 'skipOnError' => true, 'targetClass' => SubcatalogoItem::class, 'targetAttribute' => ['idSubcatalogo' => 'id']],
             [['idCategoria'], 'exist', 'skipOnError' => true, 'targetClass' => Categoria::class, 'targetAttribute' => ['idCategoria' => 'id']],
+            [['idEspecificacion'], 'exist', 'skipOnError' => true, 'targetClass' => Especificacion::class, 'targetAttribute' => ['idEspecificacion' => 'id']],
         ];
     }
 
@@ -57,6 +60,7 @@ class ProyectoItem extends ActiveRecord
             'cantidad' => 'Cantidad',
             'unidadMedida' => 'Unidad',
             'observacion' => 'Observación',
+            'idEspecificacion' => 'Especificación técnica',
         ];
     }
 
@@ -75,6 +79,11 @@ class ProyectoItem extends ActiveRecord
         return $this->hasOne(Categoria::class, ['id' => 'idCategoria']);
     }
 
+    public function getEspecificacion(): ActiveQuery
+    {
+        return $this->hasOne(Especificacion::class, ['id' => 'idEspecificacion']);
+    }
+
     /**
      * Linea del presupuesto que nacio de este item (null si aun no se presupuesto).
      */
@@ -89,7 +98,7 @@ class ProyectoItem extends ActiveRecord
             return false;
         }
 
-        foreach (['unidadMedida', 'observacion'] as $atributo) {
+        foreach (['unidadMedida', 'observacion', 'idEspecificacion'] as $atributo) {
             if ($this->$atributo === '') {
                 $this->$atributo = null;
             }

@@ -76,77 +76,65 @@ class EspecificacionService
     }
 
     /**
-     * Especificaciones ACTIVAS para un <select>, como grupos de opciones
-     * (Html::dropDownList() convierte un arreglo anidado en <optgroup>):
-     *   ['Misma categoría' => [id => etiqueta], 'Otras categorías' => [...]]
+     * Opciones para los selectores de especificacion (lista del proyecto,
+     * lineas de cotizacion), en UNA consulta para toda la pantalla:
      *
-     * Con $idCategoria, las de esa categoria van primero; sin ella, todas en
-     * un solo grupo. $idIncluir agrega esa especificacion aunque este
-     * desactivada (la que ya tenia enlazada la fila, para no perderla al
-     * volver a guardar).
+     *  - grupos: [idCategoria => ['nombre' => ..., 'opciones' => [id => titulo]]]
+     *    en el orden de las categorias ("Sin categoría" al final). La vista
+     *    lo convierte en <optgroup> y pone primero el de la categoria del item.
+     *  - urls: [id => enlace al documento] para el enlace "ver documento".
      *
-     * @return array<string, array<int, string>>
+     * Solo especificaciones ACTIVAS, mas las de $incluirIds aunque esten
+     * desactivadas: son las que ya estan enlazadas en la pantalla y no deben
+     * perderse al volver a guardar.
+     *
+     * @param int[] $incluirIds
+     * @return array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>}
      */
-    public function opcionesSelector(?int $idCategoria = null, ?int $idIncluir = null): array
+    public function selector(array $incluirIds = []): array
     {
-        $query = Especificacion::find()
-            ->with('categoria')
-            ->andWhere(['activo' => true])
-            ->orderBy(['titulo' => SORT_ASC, 'id' => SORT_ASC]);
+        $query = Especificacion::find()->with('categoria')->andWhere(['activo' => true]);
+        $incluirIds = array_values(array_filter(array_map('intval', $incluirIds)));
 
-        if ($idIncluir !== null) {
-            $query->orWhere(['id' => $idIncluir]);
+        if ($incluirIds !== []) {
+            $query->orWhere(['id' => $incluirIds]);
         }
 
-        return $this->agruparOpciones($query->all(), $idCategoria);
-    }
+        $especificaciones = $query->all();
 
-    /**
-     * Como opcionesSelector(), pero de una lista ya cargada: la lista del
-     * proyecto arma un selector por fila y no debe consultar la base por
-     * cada una.
-     *
-     * @param Especificacion[] $especificaciones
-     * @return array<string, array<int, string>>
-     */
-    public function agruparOpciones(array $especificaciones, ?int $idCategoria = null): array
-    {
-        $misma = [];
-        $otras = [];
+        usort($especificaciones, static fn (Especificacion $a, Especificacion $b) =>
+            [$a->categoria->orden ?? PHP_INT_MAX, $a->nombre()] <=> [$b->categoria->orden ?? PHP_INT_MAX, $b->nombre()]);
+
+        $grupos = [];
+        $urls = [];
 
         foreach ($especificaciones as $especificacion) {
-            $etiqueta = $especificacion->etiqueta() . ($especificacion->activo ? '' : ' (inactiva)');
+            $idCategoria = (int) $especificacion->idCategoria;
+            $grupos[$idCategoria]['nombre'] ??= $especificacion->categoria->nombre ?? 'Sin categoría';
+            $grupos[$idCategoria]['opciones'][$especificacion->id] = $especificacion->nombre()
+                . ($especificacion->codigoNet && $especificacion->titulo ? " ({$especificacion->codigoNet})" : '')
+                . ($especificacion->activo ? '' : ' — inactiva');
 
-            if ($idCategoria !== null && (int) $especificacion->idCategoria === $idCategoria) {
-                $misma[$especificacion->id] = $etiqueta;
-            } else {
-                $otras[$especificacion->id] = $etiqueta;
+            $url = $especificacion->urlDocumento();
+            if ($url !== null) {
+                $urls[$especificacion->id] = $url;
             }
         }
 
-        if ($idCategoria === null) {
-            return $otras === [] ? [] : ['Especificaciones' => $otras];
-        }
-
-        return array_filter([
-            'Misma categoría' => $misma,
-            'Otras categorías' => $otras,
-        ]);
+        return ['grupos' => $grupos, 'urls' => $urls];
     }
 
     /**
-     * Todas las especificaciones ACTIVAS (para armar varios selectores con
-     * agruparOpciones() sin repetir la consulta).
+     * Ids de las especificaciones ACTIVAS: las unicas que se pueden enlazar
+     * de nuevo (una desactivada solo se conserva donde ya estaba).
      *
-     * @return Especificacion[]
+     * @return array<int, true>
      */
-    public function activas(): array
+    public function idsActivas(): array
     {
-        return Especificacion::find()
-            ->with('categoria')
-            ->andWhere(['activo' => true])
-            ->orderBy(['titulo' => SORT_ASC, 'id' => SORT_ASC])
-            ->all();
+        $ids = Especificacion::find()->select('id')->andWhere(['activo' => true])->column();
+
+        return array_fill_keys(array_map('intval', $ids), true);
     }
 
     /**

@@ -8,6 +8,9 @@
  *  3. Boton "×": quita la fila (y el grupo, si queda vacio).
  *  4. Antes de enviar: las cantidades deben ser numeros >= 0.
  *  5. Avisa que hay cambios sin guardar.
+ *  6. Especificacion tecnica por fila (opcional): al elegirla muestra el
+ *     enlace "Ver documento" y actualiza el contador; en las filas nuevas
+ *     pone primero las especificaciones de la categoria del item.
  *
  * El servidor vuelve a validar todo en ListaItemsService::guardar().
  */
@@ -42,7 +45,22 @@ $(function () {
 
         $('#lista-total').text(total);
         $('#lista-total-grupos').text($tabla.find('tbody.lista-grupo').length);
+        $('#lista-total-esp').text($tabla.find('.lista-item-esp').filter(function () {
+            return $(this).val() !== '';
+        }).length);
         $('#lista-vacia').toggleClass('d-none', total > 0);
+    }
+
+    // Muestra u oculta el enlace al documento de la especificacion elegida.
+    function actualizarEnlaceDocumento($select) {
+        var url = $select.find('option:selected').data('url');
+        var $enlace = $select.siblings('.lista-item-doc');
+
+        if (url) {
+            $enlace.attr('href', url).removeClass('d-none');
+        } else {
+            $enlace.attr('href', '#').addClass('d-none');
+        }
     }
 
     // Devuelve el grupo de esa clasificacion; si no existe, lo crea al final.
@@ -78,6 +96,12 @@ $(function () {
         $fila.find('.lista-item-unidad').text($origen.data('unidad'));
         $fila.find('.qty').val('1');
 
+        // Las especificaciones de la categoria del item, primero (despues
+        // de la opcion "Sin especificacion").
+        var $selectEsp = $fila.find('.lista-item-esp');
+        $selectEsp.find('optgroup[data-categoria="' + $origen.data('categoria') + '"]')
+            .insertAfter($selectEsp.find('option[value=""]'));
+
         grupoDe(String($origen.data('categoria')), String($origen.data('categoriaNombre')))
             .find('tr.subtotal-row').before($fila);
 
@@ -100,6 +124,12 @@ $(function () {
     });
 
     $tabla.on('input', 'input', marcarCambios);
+
+    $tabla.on('change', '.lista-item-esp', function () {
+        actualizarEnlaceDocumento($(this));
+        actualizarTotales();
+        marcarCambios();
+    });
 
     $form.on('submit', function (evento) {
         var valido = true;
