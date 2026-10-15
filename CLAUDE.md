@@ -50,7 +50,14 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   del presupuesto y en el PDF; su total coincide siempre con el total por categorías
 - Una línea solo puede usar una cotización de su mismo ítem; cotización vencida
   (`fecha + validezDias < hoy`) se permite pero genera aviso al agregar la línea y al aprobar
-- Especificaciones técnicas por ítem (formato institucional con código `NET:xxx/26`)
+- Librería de especificaciones técnicas (formato institucional con código `NET:xxx/26`):
+  `redes.Especificacion` NO pertenece a un ítem ni a un proyecto; se clasifica por categoría
+  (`idCategoria`) y `idSubcatalogo` es solo un "ítem de referencia" opcional. Se ENLAZA a los
+  ítems de la lista de cada proyecto con `redes.ProyectoItem.idEspecificacion` (como máximo una
+  por ítem, desde la pantalla de la lista y con su mismo bloqueo). La especificación es
+  OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud, cotización, presupuesto ni
+  PDF. El código del proyecto no se guarda en la especificación; los impresos lo muestran junto
+  a ella. Solo se enlazan especificaciones activas; una en uso no se elimina, se desactiva
 - Cotizaciones de proveedores (relación N:N con ítems/especificaciones)
 - Presupuestos versionados por proyecto, con estados: en_proceso, en_revision, observado,
   aprobado, cancelado
@@ -101,6 +108,8 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   sepa si la universidad ya lo relaciona con SIGMA en alguna tabla
 - PENDIENTE (fuera de alcance por ahora): índice único sobre `SubcatalogoItem.descripcion`. Se
   decide después de ver cómo queda el subcatálogo recargado
+- PENDIENTE (mejora posible): enlazar especificaciones desde las plantillas (`PlantillaItem`)
+  para que se copien a la lista al cargar una plantilla
 - Autenticación en producción no resuelta: Windows Auth funciona en entorno local, pero en
   el servidor Linux real con Nginx/PHP-FPM probablemente se necesite un usuario SQL Server
   dedicado — validar con el equipo técnico antes de dar por sentado el mecanismo

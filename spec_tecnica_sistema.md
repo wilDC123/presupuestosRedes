@@ -11,7 +11,7 @@ y vistas en Yii2 Advanced. Úsalo junto con CLAUDE.md.
 2. Proveedor (sin dependencias)
 3. Proyecto (sin dependencias)
 4. SubcatalogoItem (depende de Categoria, referencia externa a dbo.CatalogoSigma)
-5. Especificacion (depende de SubcatalogoItem)
+5. Especificacion (depende de Categoria; SubcatalogoItem solo como referencia opcional)
 6. Cotizacion (depende de Proveedor)
 7. CotizacionDetalle (depende de Cotizacion, SubcatalogoItem, Especificacion)
 8. Presupuesto (depende de Proyecto, auto-referencia a si misma)
@@ -101,9 +101,12 @@ y vistas en Yii2 Advanced. Úsalo junto con CLAUDE.md.
   uniqueidentifier; IdGasto varchar(20), siempre 5 digitos, sin nulos;
   CodigoEstado char(1), unico valor 'V'; collation Modern_Spanish_CI_AS
 
-### redes.Especificacion
+### redes.Especificacion (LIBRERIA de especificaciones tecnicas)
 - id (PK, int, identity)
-- idSubcatalogo (FK -> SubcatalogoItem, requerido)
+- idCategoria (FK -> Categoria, NULL en la base pero obligatoria al guardar
+  desde el formulario) -- mismas categorias del subcatalogo
+- idSubcatalogo (FK -> SubcatalogoItem, NULL permitido) -- "item de
+  referencia", solo informativo: NO limita donde se puede usar la ficha
 - codigoNet (varchar 20) -- formato "NET:832/26"
 - titulo (varchar 300)
 - dependencia (varchar 200)
@@ -113,9 +116,32 @@ y vistas en Yii2 Advanced. Úsalo junto con CLAUDE.md.
   columnas de base de datos
 - fechaEmision (date)
 - activo (bit, default 1)
-- REGLA DE NEGOCIO: un mismo SubcatalogoItem puede tener VARIAS Especificacion
-  distintas segun rango de precio o gama (ej "Enterprise" vs "Lite" para el
-  mismo tipo de item "antena wifi")
+- REGLA DE NEGOCIO (libreria, decidida en la demo con el ingeniero): la
+  especificacion NO pertenece a un item ni a un proyecto. Se carga una vez, se
+  clasifica por categoria y se ENLAZA a los items de la lista de cada proyecto
+  (redes.ProyectoItem.idEspecificacion). Asi un mismo tipo de item puede usar
+  fichas distintas segun el proyecto (ej "Camara IP basica" vs "Camara IP alta
+  gama") y una ficha sirve a muchos items de muchos proyectos
+- REGLA DE NEGOCIO (opcional): no todos los items tienen especificacion. Un
+  item sin especificacion es un caso normal: ni la lista, ni la solicitud de
+  cotizacion, ni la cotizacion, ni el presupuesto, ni los PDF fallan por eso
+- REGLA DE NEGOCIO: el codigo del proyecto NO se guarda en la especificacion;
+  los impresos lo muestran junto a ella ("Segun especificacion tecnica
+  NET:012/26 — proyecto RD-...")
+- REGLA DE NEGOCIO: los selectores solo ofrecen especificaciones ACTIVAS; una
+  desactivada se conserva donde ya estaba enlazada. Una especificacion en uso
+  (ProyectoItem o CotizacionDetalle) no se elimina: se desactiva
+- No se redactan especificaciones en el sistema: se suben (PDF/DOCX, con
+  "Extraer datos automaticamente") o se enlazan (documentoRuta acepta un
+  enlace https://, ej Google Drive)
+
+### redes.ProyectoItem (solo la parte de especificaciones)
+- idEspecificacion (FK -> Especificacion, NULL permitido, sin ON DELETE
+  CASCADE) -- COMO MAXIMO una especificacion por item de la lista. Se elige en
+  la pantalla de la lista del proyecto y sigue el mismo bloqueo que el resto de
+  la lista (con la lista enviada a cotizacion, hace falta una orden de cambio)
+- La solicitud de cotizacion, el PDF de la lista y el presupuesto (vista y
+  PDF) citan la especificacion enlazada del item
 
 ### redes.Cotizacion
 - id (PK, int, identity)
@@ -227,9 +253,10 @@ EstadoPresupuesto: EN_PROCESO, EN_REVISION, OBSERVADO, APROBADO, CANCELADO
 
 1. Usuario busca un item -> primero en SubcatalogoItem, si no esta ahi, en
    dbo.CatalogoSigma (con boton para agregarlo al subcatalogo)
-2. Usuario selecciona el item -> sistema muestra las Especificacion asociadas
-3. Usuario selecciona una especificacion -> sistema muestra los
-   CotizacionDetalle disponibles con sus precios
+2. En la lista de items del proyecto, el usuario enlaza (opcionalmente) una
+   especificacion de la libreria a cada item que la necesite
+3. Al presupuestar un item, el sistema muestra los CotizacionDetalle
+   disponibles con sus precios (y la especificacion que cita cada uno)
 4. Usuario elige una cotizacion DEL MISMO ITEM (o ingresa precio manual), una
    cantidad y, si hace falta, una observacion
 5. Sistema crea un PresupuestoDetalle con el precioUnitario y la partida
@@ -269,5 +296,7 @@ EstadoPresupuesto: EN_PROCESO, EN_REVISION, OBSERVADO, APROBADO, CANCELADO
   adjunto de respaldo. No automatizar (formato variable entre proveedores)
 - Especificaciones tecnicas: candidatas a extraccion SEMIAUTOMATICA desde PDF
   (formato institucional fijo, columnas predecibles: CodigoNet Titulo
-  Dependencia ModeloSugerido FechaEmision) -- esto es una mejora futura, no
-  bloqueante para la primera version funcional del sistema
+  Dependencia ModeloSugerido FechaEmision). Ya implementado: boton "Extraer
+  datos automaticamente" del formulario de la libreria
+- PENDIENTE (mejora posible): enlazar especificaciones desde las plantillas
+  (PlantillaItem), para que se copien a la lista al cargar una plantilla
