@@ -23,6 +23,7 @@ use yii\db\ActiveRecord;
  *
  * @property-read Proyecto $proyecto
  * @property-read SolicitudCotizacionItem[] $items
+ * @property-read Cotizacion[] $cotizaciones respuestas de los proveedores
  */
 class SolicitudCotizacion extends ActiveRecord
 {
@@ -59,6 +60,11 @@ class SolicitudCotizacion extends ActiveRecord
     public function getItems(): ActiveQuery
     {
         return $this->hasMany(SolicitudCotizacionItem::class, ['idSolicitud' => 'id'])->orderBy(['id' => SORT_ASC]);
+    }
+
+    public function getCotizaciones(): ActiveQuery
+    {
+        return $this->hasMany(Cotizacion::class, ['idSolicitudCotizacion' => 'id'])->orderBy(['id' => SORT_ASC]);
     }
 
     /**

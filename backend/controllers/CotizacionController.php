@@ -77,6 +77,11 @@ class CotizacionController extends Controller
         $model = $this->findModel($id);
         $modelsDetalle = null;
 
+        // Las cotizaciones de una solicitud se corrigen desde la solicitud.
+        if ($model->idSolicitudCotizacion !== null) {
+            return $this->redirect(['/solicitud-cotizacion/editar-cotizacion', 'id' => $model->id]);
+        }
+
         if (Yii::$app->request->isPost) {
             $post = Yii::$app->request->post();
             $modelsDetalle = $this->service->cargarDetallesDesdeFormulario($model, $post);
@@ -102,7 +107,16 @@ class CotizacionController extends Controller
 
     public function actionDelete(int $id)
     {
-        $this->service->eliminar($this->findModel($id));
+        $model = $this->findModel($id);
+        $motivo = $this->service->eliminar($model);
+
+        if ($motivo !== null) {
+            Yii::$app->session->setFlash('error', $motivo);
+
+            return $this->redirect(['view', 'id' => $model->id]);
+        }
+
+        Yii::$app->session->setFlash('success', 'Cotización eliminada.');
 
         return $this->redirect(['index']);
     }

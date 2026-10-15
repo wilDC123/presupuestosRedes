@@ -13,15 +13,21 @@ use yii\web\UploadedFile;
 /**
  * Modelo para la tabla "redes.Cotizacion".
  *
+ * idSolicitudCotizacion no tiene regla a proposito: lo pone
+ * CotizacionService al registrar la cotizacion desde su solicitud, y asi no
+ * se puede enviar ni cambiar desde un formulario.
+ *
  * @property int $id
  * @property int $idProveedor
  * @property string|null $numeroReferencia
  * @property string|null $fecha
  * @property string|null $documentoRuta
  * @property int|null $validezDias
+ * @property int|null $idSolicitudCotizacion Solicitud del proyecto a la que responde (NULL = cotizacion suelta).
  *
  * @property-read Proveedor $proveedor
  * @property-read CotizacionDetalle[] $cotizacionDetalles
+ * @property-read SolicitudCotizacion|null $solicitud
  */
 class Cotizacion extends ActiveRecord
 {
@@ -70,6 +76,19 @@ class Cotizacion extends ActiveRecord
     public function getCotizacionDetalles(): ActiveQuery
     {
         return $this->hasMany(CotizacionDetalle::class, ['idCotizacion' => 'id']);
+    }
+
+    public function getSolicitud(): ActiveQuery
+    {
+        return $this->hasOne(SolicitudCotizacion::class, ['id' => 'idSolicitudCotizacion']);
+    }
+
+    /**
+     * Suma de las lineas (precioTotal lo calcula SQL Server).
+     */
+    public function total(): float
+    {
+        return array_sum(array_map(static fn (CotizacionDetalle $detalle) => (float) $detalle->precioTotal, $this->cotizacionDetalles));
     }
 
     /**

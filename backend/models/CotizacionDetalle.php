@@ -12,7 +12,12 @@ use yii\helpers\ArrayHelper;
 /**
  * Modelo para la tabla "redes.CotizacionDetalle".
  *
+ * idProyectoItem no tiene regla a proposito: lo pone CotizacionService al
+ * registrar la cotizacion desde su solicitud (el item, la cantidad y la
+ * especificacion salen de la lista, no del formulario).
+ *
  * @property int $id
+ * @property int|null $idProyectoItem Item de la lista que cotiza (NULL = linea suelta, o item ya quitado de la lista).
  * @property int $idCotizacion
  * @property int $idSubcatalogo
  * @property int|null $idEspecificacion
@@ -24,6 +29,7 @@ use yii\helpers\ArrayHelper;
  * @property-read Cotizacion $cotizacion
  * @property-read SubcatalogoItem $subcatalogoItem
  * @property-read Especificacion|null $especificacion
+ * @property-read ProyectoItem|null $proyectoItem
  */
 class CotizacionDetalle extends ActiveRecord
 {
@@ -71,6 +77,11 @@ class CotizacionDetalle extends ActiveRecord
     public function getEspecificacion(): ActiveQuery
     {
         return $this->hasOne(Especificacion::class, ['id' => 'idEspecificacion']);
+    }
+
+    public function getProyectoItem(): ActiveQuery
+    {
+        return $this->hasOne(ProyectoItem::class, ['id' => 'idProyectoItem']);
     }
 
     /**

@@ -115,8 +115,10 @@ class SolicitudCotizacionController extends Controller
     {
         $proyecto = $this->findProyecto($id);
 
-        if (!$this->service->quitarItem($proyecto, $item)) {
-            Yii::$app->session->setFlash('error', 'No se pudo quitar el ítem: las solicitudes de este proyecto ya no se modifican.');
+        $motivo = $this->service->quitarItem($proyecto, $item);
+
+        if ($motivo !== null) {
+            Yii::$app->session->setFlash('error', $motivo);
         }
 
         return $this->redirect(['index', 'id' => $proyecto->id]);
@@ -145,10 +147,12 @@ class SolicitudCotizacionController extends Controller
     {
         $solicitud = $this->findSolicitud($id);
 
-        if ($this->service->eliminar($solicitud)) {
+        $motivo = $this->service->eliminar($solicitud);
+
+        if ($motivo === null) {
             Yii::$app->session->setFlash('success', $solicitud->codigoCorto() . ' eliminada. Sus ítems volvieron a "sin asignar".');
         } else {
-            Yii::$app->session->setFlash('error', 'No se pudo eliminar: las solicitudes de este proyecto ya no se modifican.');
+            Yii::$app->session->setFlash('error', $motivo);
         }
 
         return $this->redirect(['index', 'id' => $solicitud->idProyecto]);

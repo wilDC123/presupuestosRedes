@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\models\Cotizacion;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SolicitudCotizacion;
@@ -24,7 +25,9 @@ use Yii;
  *    cantidades ya fijos) y mientras el presupuesto no este cerrado,
  *  - cada item de la lista va en UNA sola solicitud,
  *  - solo entran items de la lista de ESE proyecto,
- *  - las cantidades no se copian: se leen de la lista.
+ *  - las cantidades no se copian: se leen de la lista,
+ *  - una solicitud con cotizaciones registradas no se borra, y sus items
+ *    no se mueven ni se quitan (ni se le agregan otros).
  */
 class SolicitudCotizacionService
 {
@@ -45,7 +48,7 @@ class SolicitudCotizacionService
     {
         return SolicitudCotizacion::find()
             ->andWhere(['idProyecto' => $proyecto->id])
-            ->with(['items.proyectoItem.subcatalogoItem'])
+            ->with(['items.proyectoItem.subcatalogoItem', 'cotizaciones.proveedor', 'cotizaciones.cotizacionDetalles'])
             ->orderBy(['numero' => SORT_ASC])
             ->all();
     }
@@ -96,6 +99,12 @@ class SolicitudCotizacionService
             return null;
         }
 
+        if ($this->contarEnSolicitudesCotizadas($ids) > 0) {
+            $error = 'Algunos de los ítems marcados están en una solicitud que ya tiene cotizaciones registradas: no se pueden mover.';
+
+            return null;
+        }
+
         if ($idSolicitud === null) {
             $solicitud = new SolicitudCotizacion();
             $solicitud->nombre = $nombreNueva;
@@ -110,6 +119,12 @@ class SolicitudCotizacionService
 
             if ($solicitud === null) {
                 $error = 'La solicitud elegida no es de este proyecto.';
+
+                return null;
+            }
+
+            if ($this->tieneCotizaciones($solicitud)) {
+                $error = $solicitud->codigoCorto() . ' ya tiene cotizaciones registradas: no se le agregan ítems. Póngalos en una solicitud nueva.';
 
                 return null;
             }
@@ -176,17 +191,22 @@ class SolicitudCotizacionService
     }
 
     /**
-     * Devuelve el item a "sin asignar". false si no se puede editar.
+     * Devuelve el item a "sin asignar". Devuelve null si se hizo, o el motivo
+     * por el que no.
      */
-    public function quitarItem(Proyecto $proyecto, int $idProyectoItem): bool
+    public function quitarItem(Proyecto $proyecto, int $idProyectoItem): ?string
     {
         if (!$this->puedeEditarse($proyecto) || $this->idsDeLaLista($proyecto, [$idProyectoItem]) === []) {
-            return false;
+            return 'No se pudo quitar el ítem: las solicitudes de este proyecto ya no se modifican.';
+        }
+
+        if ($this->contarEnSolicitudesCotizadas([$idProyectoItem]) > 0) {
+            return 'No se puede quitar: su solicitud ya tiene cotizaciones registradas.';
         }
 
         SolicitudCotizacionItem::deleteAll(['idProyectoItem' => $idProyectoItem]);
 
-        return true;
+        return null;
     }
 
     /**
@@ -207,14 +227,44 @@ class SolicitudCotizacionService
     /**
      * Borra la solicitud; sus items vuelven a "sin asignar" (la llave
      * foranea borra en cascada las filas de redes.SolicitudCotizacionItem).
+     * Devuelve null si se borro, o el motivo por el que no.
+     *
+     * REGLA DE NEGOCIO: una solicitud con cotizaciones registradas no se
+     * borra (son la respuesta de los proveedores a ese documento).
      */
-    public function eliminar(SolicitudCotizacion $solicitud): bool
+    public function eliminar(SolicitudCotizacion $solicitud): ?string
     {
         if (!$this->puedeEditarse($solicitud->proyecto)) {
-            return false;
+            return 'No se pudo eliminar: las solicitudes de este proyecto ya no se modifican.';
         }
 
-        return $solicitud->delete() !== false;
+        $cotizaciones = (int) $solicitud->getCotizaciones()->count();
+
+        if ($cotizaciones > 0) {
+            return "No se puede eliminar {$solicitud->codigoCorto()}: tiene $cotizaciones cotización(es) registrada(s). Elimine primero las cotizaciones.";
+        }
+
+        $solicitud->delete();
+
+        return null;
+    }
+
+    public function tieneCotizaciones(SolicitudCotizacion $solicitud): bool
+    {
+        return $solicitud->getCotizaciones()->exists();
+    }
+
+    /**
+     * Cuantos de esos items estan en una solicitud que ya tiene cotizaciones.
+     *
+     * @param int[] $idsProyectoItem
+     */
+    private function contarEnSolicitudesCotizadas(array $idsProyectoItem): int
+    {
+        return (int) SolicitudCotizacionItem::find()
+            ->andWhere(['idProyectoItem' => $idsProyectoItem])
+            ->andWhere(['idSolicitud' => Cotizacion::find()->select('idSolicitudCotizacion')->andWhere(['not', ['idSolicitudCotizacion' => null]])])
+            ->count();
     }
 
     /**
