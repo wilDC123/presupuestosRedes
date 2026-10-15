@@ -92,10 +92,13 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   temporal hasta integrar autenticación institucional real)
 
 ## Riesgos y pendientes activos
-- RESUELTO: las 16 migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-04), incluida `m260831_014824_create_schema_redes` y las dos de partida
+- RESUELTO: las 23 migraciones están aplicadas (verificado con `php yii migrate/history` el
+  2026-10-15), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
-  `m261005_034753_add_partida_observacion_to_presupuesto_detalle`).
+  `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y la de la librería de
+  especificaciones (`m261015_035448_libreria_especificaciones`).
+- OJO con `sqlcmd` a mano: usar `-I` (QUOTED_IDENTIFIER ON). Sin eso, los DELETE/UPDATE sobre
+  tablas con columnas calculadas (ej. `CotizacionDetalle.precioTotal`) fallan con el error 1934.
 - OJO con los tipos en migraciones: Yii2 traduce "char" a "nchar" en SQL Server aunque se
   escriba como texto (`'char(5) NULL'`), así que las columnas `partida` son `nchar(5)`. Se
   decidió dejarlas así (coherente con el resto del esquema, que es `nvarchar`).
