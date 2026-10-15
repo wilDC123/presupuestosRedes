@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\models\Cotizacion;
 use backend\models\Proyecto;
 use backend\models\SolicitudCotizacion;
+use backend\services\CotizacionService;
+use backend\services\ProveedorService;
 use backend\services\ProyectoService;
 use backend\services\SolicitudCotizacionService;
 use Yii;
@@ -13,20 +16,26 @@ use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
+use yii\web\UploadedFile;
 
 /**
  * "Solicitudes de cotizacion" de un proyecto (capa de Presentacion): repartir
- * los items de la lista en grupos por rubro de proveedor e imprimir el
- * documento de cada grupo. Las reglas viven en SolicitudCotizacionService.
+ * los items de la lista en grupos por rubro de proveedor, imprimir el
+ * documento de cada grupo, y registrar las cotizaciones que responden los
+ * proveedores (con su cuadro comparativo).
+ *
+ * Las reglas viven en SolicitudCotizacionService y CotizacionService.
  */
 class SolicitudCotizacionController extends Controller
 {
     private SolicitudCotizacionService $service;
+    private CotizacionService $cotizaciones;
 
     public function init(): void
     {
         parent::init();
         $this->service = new SolicitudCotizacionService();
+        $this->cotizaciones = new CotizacionService();
     }
 
     public function behaviors(): array
@@ -40,6 +49,7 @@ class SolicitudCotizacionController extends Controller
                     'quitar-item' => ['POST'],
                     'actualizar' => ['POST'],
                     'eliminar' => ['POST'],
+                    'eliminar-cotizacion' => ['POST'],
                 ],
             ],
         ];
@@ -159,6 +169,63 @@ class SolicitudCotizacionController extends Controller
     }
 
     /**
+     * Registra la respuesta de un proveedor a la solicitud: los items ya
+     * vienen cargados; solo se escriben marca/modelo y precio.
+     *
+     * @param int $id id de la solicitud
+     */
+    public function actionCotizar(int $id)
+    {
+        $solicitud = $this->findSolicitud($id);
+
+        return $this->formularioCotizacion($solicitud, $this->cotizaciones->nuevaDesdeSolicitud($solicitud));
+    }
+
+    /**
+     * Corrige una cotizacion ya registrada desde su solicitud.
+     *
+     * @param int $id id de la cotizacion
+     */
+    public function actionEditarCotizacion(int $id)
+    {
+        $cotizacion = $this->findCotizacionDeSolicitud($id);
+
+        return $this->formularioCotizacion($cotizacion->solicitud, $cotizacion);
+    }
+
+    /**
+     * @param int $id id de la cotizacion
+     */
+    public function actionEliminarCotizacion(int $id)
+    {
+        $cotizacion = $this->findCotizacionDeSolicitud($id);
+        $solicitud = $cotizacion->solicitud;
+        $motivo = $this->cotizaciones->eliminar($cotizacion);
+
+        Yii::$app->session->setFlash(
+            $motivo === null ? 'success' : 'error',
+            $motivo ?? 'Cotización eliminada de ' . $solicitud->codigoCorto() . '.'
+        );
+
+        return $this->redirect(['index', 'id' => $solicitud->idProyecto]);
+    }
+
+    /**
+     * Cuadro comparativo de precios de la solicitud (item x proveedor).
+     *
+     * @param int $id id de la solicitud
+     */
+    public function actionComparativo(int $id): string
+    {
+        $solicitud = $this->findSolicitud($id);
+
+        return $this->render('comparativo', [
+            'solicitud' => $solicitud,
+            'comparativo' => $this->cotizaciones->comparativo($solicitud),
+        ]);
+    }
+
+    /**
      * Documento de la solicitud en PDF, para imprimir o enviar al proveedor.
      * Se abre en el navegador ('inline') en vez de descargarse.
      *
@@ -202,5 +269,54 @@ class SolicitudCotizacionController extends Controller
         }
 
         return $solicitud;
+    }
+
+    /**
+     * Solo cotizaciones registradas desde una solicitud: las sueltas se
+     * editan en el menu Cotizaciones.
+     */
+    protected function findCotizacionDeSolicitud(int $id): Cotizacion
+    {
+        $cotizacion = $this->cotizaciones->obtener($id);
+
+        if ($cotizacion === null || $cotizacion->solicitud === null) {
+            throw new NotFoundHttpException('La cotización no existe o no es de una solicitud de cotización.');
+        }
+
+        return $cotizacion;
+    }
+
+    /**
+     * GET muestra el formulario; POST guarda y vuelve a las solicitudes.
+     */
+    private function formularioCotizacion(SolicitudCotizacion $solicitud, Cotizacion $cotizacion)
+    {
+        $peticion = Yii::$app->request;
+        $filas = $this->cotizaciones->filasDesdeSolicitud($solicitud, $cotizacion);
+        $errores = [];
+
+        if ($peticion->isPost) {
+            $archivo = UploadedFile::getInstance($cotizacion, 'documentoFile');
+
+            if ($this->cotizaciones->guardarDesdeSolicitud($solicitud, $cotizacion, $peticion->post(), $archivo, $filas, $errores)) {
+                Yii::$app->session->setFlash('success', 'Cotización de ' . ($cotizacion->proveedor->razonSocial ?? 'proveedor') . ' guardada en ' . $solicitud->codigoCorto() . '.');
+
+                // Aviso que NO bloquea, igual que en el presupuesto.
+                if ($cotizacion->estaVencida()) {
+                    Yii::$app->session->setFlash('warning', 'Atención: según su fecha y días de validez, esta cotización ya está vencida.');
+                }
+
+                return $this->redirect(['index', 'id' => $solicitud->idProyecto]);
+            }
+        }
+
+        return $this->render('cotizar', [
+            'solicitud' => $solicitud,
+            'cotizacion' => $cotizacion,
+            'filas' => $filas,
+            'errores' => $errores,
+            'editable' => $this->service->puedeEditarse($solicitud->proyecto),
+            'proveedores' => (new ProveedorService())->opcionesActivos($cotizacion->idProveedor ? (int) $cotizacion->idProveedor : null),
+        ]);
     }
 }

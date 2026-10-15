@@ -18,7 +18,11 @@ use yii\web\JqueryAsset;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
- * @var backend\models\SolicitudCotizacion[] $solicitudes
+ * Cada solicitud muestra las cotizaciones que respondieron los proveedores
+ * ("+ Registrar cotización recibida") y el enlace a su comparativo. Una
+ * solicitud con cotizaciones ya no se elimina ni cambia sus items.
+ *
+ * @var backend\models\SolicitudCotizacion[] $solicitudes con items y cotizaciones cargados
  * @var backend\models\ProyectoItem[] $sinAsignar items de la lista sin solicitud
  * @var bool $editable Ver SolicitudCotizacionService::puedeEditarse()
  */
@@ -37,7 +41,10 @@ $formato = Yii::$app->formatter;
 $destinos = [];
 
 foreach ($solicitudes as $solicitud) {
-    $destinos[$solicitud->id] = $solicitud->codigoCorto() . ' · ' . $solicitud->nombre;
+    // Una solicitud que ya tiene cotizaciones no recibe mas items.
+    if ($solicitud->cotizaciones === []) {
+        $destinos[$solicitud->id] = $solicitud->codigoCorto() . ' · ' . $solicitud->nombre;
+    }
 }
 
 $destinos['nueva'] = '+ Nueva solicitud...';
@@ -159,6 +166,7 @@ $destinos['nueva'] = '+ Nueva solicitud...';
             <?php endif; ?>
 
             <?php foreach ($solicitudes as $solicitud): ?>
+                <?php $conCotizaciones = $solicitud->cotizaciones !== []; ?>
                 <div class="card">
                     <div class="rd-card-head">
                         <div>
@@ -173,7 +181,7 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                         <div class="rd-acciones">
                             <span class="kicker"><?= count($solicitud->items) ?> ítems</span>
                             <?= Html::a('Imprimir', ['imprimir', 'id' => $solicitud->id], ['class' => 'btn btn-outline btn-sm', 'target' => '_blank']) ?>
-                            <?php if ($editable): ?>
+                            <?php if ($editable && !$conCotizaciones): ?>
                                 <?= Html::a('Eliminar', ['eliminar', 'id' => $solicitud->id], [
                                     'class' => 'btn btn-danger btn-sm',
                                     'data' => [
@@ -210,7 +218,7 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                                         <td><?= Html::encode((string) ($item->unidadMedida ?? '')) ?></td>
                                         <td class="rd-num mono"><?= $formato->asDecimal($item->cantidad ?? 0, 2) ?></td>
                                         <td class="rd-num">
-                                            <?php if ($editable): ?>
+                                            <?php if ($editable && !$conCotizaciones): ?>
                                                 <?= Html::a('Quitar', ['quitar-item', 'id' => $proyecto->id, 'item' => $fila->idProyectoItem], [
                                                     'class' => 'btn btn-outline btn-sm',
                                                     'data' => ['method' => 'post'],
@@ -222,6 +230,72 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                             </tbody>
                         </table>
                     <?php endif; ?>
+
+                    <div class="rd-card-pad">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="rd-card-titulo">Cotizaciones recibidas</div>
+                            <div class="rd-acciones">
+                                <?php if ($conCotizaciones): ?>
+                                    <?= Html::a('Comparativo', ['comparativo', 'id' => $solicitud->id], ['class' => 'btn btn-outline btn-sm']) ?>
+                                <?php endif; ?>
+                                <?php if ($editable && $solicitud->items !== []): ?>
+                                    <?= Html::a('+ Registrar cotización recibida', ['cotizar', 'id' => $solicitud->id], ['class' => 'btn btn-primary btn-sm']) ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <?php if (!$conCotizaciones): ?>
+                            <div class="rd-nota">
+                                Ningún proveedor ha respondido todavía. Cuando llegue una cotización, regístrela aquí:
+                                los ítems ya vienen cargados, solo se escriben los precios.
+                            </div>
+                        <?php else: ?>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Proveedor</th>
+                                        <th>Fecha</th>
+                                        <th class="rd-num">Ítems</th>
+                                        <th class="rd-num">Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($solicitud->cotizaciones as $cotizacion): ?>
+                                        <tr>
+                                            <td>
+                                                <?= Html::encode($cotizacion->proveedor->razonSocial ?? '?') ?>
+                                                <?php if (!empty($cotizacion->numeroReferencia)): ?>
+                                                    <div class="rd-celda-sub">Ref. <?= Html::encode($cotizacion->numeroReferencia) ?></div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?= Html::encode($cotizacion->fechaFormateada() ?: '—') ?>
+                                                <?= $cotizacion->estaVencida() ? '<span class="badge b-cancelado">Vencida</span>' : '' ?>
+                                            </td>
+                                            <td class="rd-num mono"><?= count($cotizacion->cotizacionDetalles) ?> de <?= count($solicitud->items) ?></td>
+                                            <td class="rd-num mono"><?= $formato->asDecimal($cotizacion->total(), 2) ?></td>
+                                            <td class="rd-num">
+                                                <?php if (!empty($cotizacion->documentoRuta)): ?>
+                                                    <?= Html::a('PDF', Yii::getAlias('@web/' . $cotizacion->documentoRuta), ['class' => 'btn btn-outline btn-sm', 'target' => '_blank']) ?>
+                                                <?php endif; ?>
+                                                <?php if ($editable): ?>
+                                                    <?= Html::a('Corregir', ['editar-cotizacion', 'id' => $cotizacion->id], ['class' => 'btn btn-outline btn-sm']) ?>
+                                                    <?= Html::a('Eliminar', ['eliminar-cotizacion', 'id' => $cotizacion->id], [
+                                                        'class' => 'btn btn-danger btn-sm',
+                                                        'data' => [
+                                                            'method' => 'post',
+                                                            'confirm' => '¿Eliminar la cotización de ' . ($cotizacion->proveedor->razonSocial ?? 'este proveedor') . '?',
+                                                        ],
+                                                    ]) ?>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
+                    </div>
 
                     <?php if ($editable): ?>
                         <?php // <details>: el formulario para renombrar queda plegado hasta que se pulsa. ?>

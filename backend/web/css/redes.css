@@ -331,6 +331,8 @@ body.rd {
 .rd .b-aprobado, .rd .b-activo { background: #d1fae5; color: #065f46; }
 .rd .b-cancelado { background: #fee2e2; color: #991b1b; }
 .rd .b-inactivo { background: #e2e8ef; color: #4a5a70; }
+/* Comparativo de cotizaciones: el menor precio de cada item. */
+.rd .table td.rd-menor { background: #d1fae5; color: #065f46; font-weight: 600; }
 .rd .cat-chip {
     display: inline-flex;
     align-items: center;

@@ -243,7 +243,7 @@ class CotizacionService
     {
         return new ActiveDataProvider([
             'query' => Cotizacion::find()
-                ->with('proveedor')
+                ->with(['proveedor', 'solicitud.proyecto'])
                 ->andFilterWhere(['idProveedor' => $idProveedor])
                 ->orderBy(['id' => SORT_DESC]),
             'pagination' => [
