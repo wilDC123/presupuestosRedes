@@ -35,14 +35,14 @@ $cotizaciones = $comparativo['cotizaciones'];
         <div class="rd-acciones">
             <?= Html::a('← Solicitudes', ['index', 'id' => $proyecto->id], ['class' => 'btn btn-outline']) ?>
             <?php if ($cotizaciones !== []): ?>
-                <?= Html::a('Armar presupuesto →', ['/presupuesto/armar', 'idProyecto' => $proyecto->id], ['class' => 'btn btn-primary']) ?>
+                <?= Html::a('Ir al presupuesto →', ['/elaborar-presupuesto/index', 'idProyecto' => $proyecto->id], ['class' => 'btn btn-primary']) ?>
             <?php endif; ?>
         </div>
     </div>
 
     <p class="rd-nota">
         Precio unitario de cada proveedor; el menor de cada ítem va resaltado. Es una ayuda para comparar: el precio
-        que va al presupuesto se elige en "Armar presupuesto", donde el menor ya viene marcado.
+        que va al presupuesto se elige en el paso "Presupuesto" del proyecto, donde el menor ya viene marcado.
     </p>
 
     <div class="card">

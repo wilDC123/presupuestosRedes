@@ -127,18 +127,13 @@ $formato = Yii::$app->formatter;
                 <div class="kicker mb-2">Presupuesto</div>
                 <?php if ($presupuesto === null): ?>
                     <div class="rd-dato"><span class="badge b-inactivo">Sin presupuesto</span></div>
-                    <?= Html::a('Armar presupuesto →', $urlPresupuesto, ['class' => 'btn btn-primary']) ?>
+                    <?= Html::a('Elaborar presupuesto →', $urlPresupuesto, ['class' => 'btn btn-primary']) ?>
                 <?php else: ?>
                     <div class="rd-dato">
                         <span class="<?= $presupuesto->estadoBadgeClass() ?>"><?= Html::encode($presupuesto->estadoLabel()) ?></span>
                     </div>
                     <div class="rd-dato"><strong>Total:</strong> Bs. <?= $formato->asDecimal((float) $monto, 2) ?></div>
-                    <div class="rd-acciones">
-                        <?php if ($urlPresupuesto[0] === '/presupuesto/armar'): ?>
-                            <?= Html::a('Armar presupuesto →', $urlPresupuesto, ['class' => 'btn btn-primary']) ?>
-                        <?php endif; ?>
-                        <?= Html::a('Ver presupuesto →', ['/presupuesto/view', 'id' => $presupuesto->id], ['class' => 'btn btn-outline']) ?>
-                    </div>
+                    <?= Html::a('Abrir presupuesto →', $urlPresupuesto, ['class' => $presupuesto->esBorrador() ? 'btn btn-primary' : 'btn btn-outline']) ?>
                 <?php endif; ?>
                 <?php if (!$puedeEditarse): ?>
                     <p class="rd-nota mt-3 mb-0">

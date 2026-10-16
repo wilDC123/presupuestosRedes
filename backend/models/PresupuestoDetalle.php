@@ -66,21 +66,11 @@ class PresupuestoDetalle extends ActiveRecord
             // precioUnitario solo es obligatorio cuando NO se eligio una
             // cotizacion (precio manual); si se eligio una,
             // PresupuestoService::congelarPrecio() lo llena solo a partir de
-            // CotizacionDetalle. 'whenClient' es
-            // necesario ademas de 'when': sin el, Yii igual genera la
-            // validacion JS de "required" en el navegador (que no conoce el
-            // callback PHP) y bloquea el envio del formulario aunque el
-            // servidor nunca llegaria a exigirlo. El selector jQuery apunta
-            // al id que genera Html::getInputId() para
-            // PresupuestoDetalle[idCotizacionDetalle], el dropDownList con
-            // prompt en presupuesto/detalle.php.
+            // CotizacionDetalle.
             [
                 ['precioUnitario'],
                 'required',
                 'when' => static fn (self $model) => empty($model->idCotizacionDetalle),
-                'whenClient' => "function (attribute, value) {
-                    return $('#presupuestodetalle-idcotizaciondetalle').val() === '';
-                }",
             ],
             [['precioUnitario'], 'number', 'min' => 0],
             [['observacion'], 'trim'],

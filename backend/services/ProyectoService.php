@@ -194,50 +194,12 @@ class ProyectoService
     }
 
     /**
-     * Proyectos que todavia no tienen presupuesto, como [id => etiqueta],
-     * para el formulario de presupuesto (cada proyecto tiene uno solo).
-     *
-     * @param int|null $incluirId proyecto que debe aparecer aunque ya tenga presupuesto (al editar el suyo)
-     * @return array<int, string>
-     */
-    public function opcionesParaPresupuesto(?int $incluirId = null): array
-    {
-        $conPresupuesto = Presupuesto::find()->select('idProyecto')->column();
-
-        $query = Proyecto::find()->orderBy(['codigo' => SORT_ASC, 'nombre' => SORT_ASC]);
-
-        if ($conPresupuesto !== []) {
-            $query->andWhere(['or', ['not in', 'id', $conPresupuesto], ['id' => $incluirId]]);
-        }
-
-        $opciones = [];
-
-        foreach ($query->all() as $proyecto) {
-            $opciones[$proyecto->id] = $proyecto->etiqueta();
-        }
-
-        return $opciones;
-    }
-
-    /**
-     * A donde lleva "Presupuesto" desde el proyecto: a "Armar presupuesto"
-     * mientras el presupuesto no exista, o exista, se pueda editar y queden
-     * items de la lista sin linea; si no, a la vista del presupuesto.
+     * El paso "Presupuesto" del proyecto: la pantalla unica donde se elabora
+     * (ElaborarPresupuestoController).
      */
     public function urlPresupuesto(Proyecto $proyecto): array
     {
-        $presupuesto = $proyecto->presupuesto;
-        $armar = ['/presupuesto/armar', 'idProyecto' => $proyecto->id];
-
-        if ($presupuesto === null) {
-            return $armar;
-        }
-
-        if ($presupuesto->puedeEditarse() && (new ListaItemsService())->pendientesDePresupuestar($proyecto) !== []) {
-            return $armar;
-        }
-
-        return ['/presupuesto/view', 'id' => $presupuesto->id];
+        return ['/elaborar-presupuesto/index', 'idProyecto' => $proyecto->id];
     }
 
     /**
