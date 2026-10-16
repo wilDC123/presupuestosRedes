@@ -86,6 +86,8 @@ class PresupuestoDetalle extends ActiveRecord
             [['observacion'], 'trim'],
             [['observacion'], 'string', 'max' => 300],
             [['justificacion'], 'trim'],
+            // trim convierte null en '': se vuelve a null ("sin justificacion").
+            [['justificacion'], 'default', 'value' => null],
             [['justificacion'], 'string', 'max' => 300],
             // partida NO tiene regla a proposito: en Yii2 un atributo sin
             // reglas no es "seguro" y load() lo ignora, asi que nadie puede

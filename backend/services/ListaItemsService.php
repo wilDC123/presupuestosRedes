@@ -162,8 +162,20 @@ class ListaItemsService
         }
 
         $quitados = array_diff_key($guardados, $conservados);
+        // Mientras el presupuesto es un borrador ("en proceso"), sus
+        // lineas siguen a la lista: quitar un item borra su linea, y la
+        // cantidad y la observacion se copian otra vez. El PRECIO no se toca
+        // (sigue congelado). Con el presupuesto en revision o aprobado, un
+        // item con linea no se puede quitar.
+        $presupuestoBorrador = $proyecto->presupuesto !== null && $proyecto->presupuesto->esBorrador();
+        $lineasABorrar = [];
 
         foreach ($this->conLineaDePresupuesto($quitados) as $item) {
+            if ($presupuestoBorrador) {
+                $lineasABorrar[] = $item->id;
+                continue;
+            }
+
             $errores[] = 'No se puede quitar "' . ($item->subcatalogoItem->descripcion ?? '?') . '": ya tiene una línea en el presupuesto.';
             // Vuelve a la pantalla, para que no parezca que se quito.
             $enviados[] = $item;
@@ -182,6 +194,10 @@ class ListaItemsService
                 SolicitudCotizacionItem::deleteAll(['idProyectoItem' => array_keys($quitados)]);
             }
 
+            if ($lineasABorrar !== []) {
+                PresupuestoDetalle::deleteAll(['idPresupuesto' => $proyecto->presupuesto->id, 'idProyectoItem' => $lineasABorrar]);
+            }
+
             foreach ($quitados as $item) {
                 $item->delete();
             }
@@ -189,6 +205,13 @@ class ListaItemsService
             foreach ($enviados as $posicion => $item) {
                 $item->orden = $posicion + 1;
                 $item->save(false);
+
+                if ($presupuestoBorrador) {
+                    PresupuestoDetalle::updateAll(
+                        ['cantidad' => $item->cantidad, 'observacion' => $item->observacion],
+                        ['idPresupuesto' => $proyecto->presupuesto->id, 'idProyectoItem' => $item->id]
+                    );
+                }
             }
 
             // Editar la lista a mano tambien resuelve el paso "Plantilla".

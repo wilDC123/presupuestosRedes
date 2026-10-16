@@ -86,6 +86,16 @@ class Presupuesto extends ActiveRecord
         return !in_array($this->estado, [self::ESTADO_APROBADO, self::ESTADO_CANCELADO], true);
     }
 
+    /**
+     * true mientras el presupuesto es un BORRADOR ("en proceso"): solo
+     * entonces se eligen precios y sus lineas siguen a la lista. En revision
+     * queda de solo lectura; si lo observan, vuelve a "en proceso".
+     */
+    public function esBorrador(): bool
+    {
+        return $this->estado === self::ESTADO_EN_PROCESO;
+    }
+
     public function rules(): array
     {
         return [

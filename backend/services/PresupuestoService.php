@@ -689,7 +689,7 @@ class PresupuestoService
         return $opciones;
     }
 
-    private function congelarPrecio(PresupuestoDetalle $linea): void
+    public function congelarPrecio(PresupuestoDetalle $linea): void
     {
         if (empty($linea->idCotizacionDetalle)) {
             return;
@@ -720,7 +720,7 @@ class PresupuestoService
      * Se asigna siempre (aunque el item no tenga partida y quede null) para
      * que nunca se guarde un valor de partida enviado desde el formulario.
      */
-    private function congelarPartida(PresupuestoDetalle $linea): void
+    public function congelarPartida(PresupuestoDetalle $linea): void
     {
         $linea->partida = $linea->subcatalogoItem->partida ?? null;
     }
