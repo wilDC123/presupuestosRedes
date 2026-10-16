@@ -26,8 +26,9 @@ use yii\widgets\ActiveForm;
  */
 
 $this->title = 'Líneas del presupuesto #' . $presupuesto->id;
-$this->params['breadcrumbs'][] = ['label' => 'Presupuestos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = ['label' => '#' . $presupuesto->id, 'url' => ['view', 'id' => $presupuesto->id]];
+$this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
+$this->params['breadcrumbs'][] = ['label' => $presupuesto->proyecto->codigo ?: '#' . $presupuesto->idProyecto, 'url' => ['/proyecto/view', 'id' => $presupuesto->idProyecto]];
+$this->params['breadcrumbs'][] = ['label' => 'Presupuesto', 'url' => ['view', 'id' => $presupuesto->id]];
 $this->params['breadcrumbs'][] = 'Líneas';
 
 $totalGeneral = array_sum(ArrayHelper::getColumn($grupos, 'subtotal'));
@@ -121,6 +122,10 @@ $totalGeneral = array_sum(ArrayHelper::getColumn($grupos, 'subtotal'));
                 <?= Html::a('lista de ítems del proyecto', ['/lista-items/index', 'id' => $presupuesto->idProyecto]) ?>.
             </p>
         <?php else: ?>
+            <p>
+                <?= Html::a('Armar con las cotizaciones →', ['armar', 'idProyecto' => $presupuesto->idProyecto], ['class' => 'btn btn-primary']) ?>
+                <span class="text-muted">Todos los pendientes de una vez, con el menor precio cotizado ya marcado. O presupueste uno por uno abajo.</span>
+            </p>
             <table class="table">
                 <thead>
                     <tr>

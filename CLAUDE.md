@@ -53,7 +53,13 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
   del presupuesto y en el PDF; su total coincide siempre con el total por categorías
-- Una línea solo puede usar una cotización de su mismo ítem; cotización vencida
+- "Armar presupuesto" (`PresupuestoController::actionArmar`, `PresupuestoService::armar()`): desde
+  el proyecto, todos los ítems pendientes de la lista en una tabla, con el MENOR precio cotizado para
+  esa fila ya marcado, y un solo botón que crea todas las líneas (una transacción). Reutiliza el
+  presupuesto del proyecto o lo crea en "en proceso". Ítem sin precio = queda pendiente, no bloquea.
+  El formulario de una sola línea queda para excepciones
+- Una línea solo puede usar una cotización de su mismo ítem, y si la cotización es de una fila de
+  la lista (`CotizacionDetalle.idProyectoItem`), solo esa fila puede usarla; cotización vencida
   (`fecha + validezDias < hoy`) se permite pero genera aviso al agregar la línea y al aprobar
 - Librería de especificaciones técnicas (formato institucional con código `NET:xxx/26`):
   `redes.Especificacion` NO pertenece a un ítem ni a un proyecto; se clasifica por categoría

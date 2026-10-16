@@ -71,6 +71,7 @@ class ProyectoController extends Controller
         return $this->render('view', [
             'model' => $model,
             'pasos' => $this->service->pasos($model),
+            'urlPresupuesto' => $this->service->urlPresupuesto($model),
             'nombreTipo' => $this->parametros->nombreTipo($model->tipo),
             'monto' => $this->service->montoPresupuesto($model),
             'totalItems' => (new ListaItemsService())->contar($model),

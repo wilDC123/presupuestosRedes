@@ -11,8 +11,9 @@ use yii\helpers\Html;
  */
 
 $this->title = 'Editar presupuesto #' . $model->id;
-$this->params['breadcrumbs'][] = ['label' => 'Presupuestos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = ['label' => '#' . $model->id, 'url' => ['view', 'id' => $model->id]];
+$this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
+$this->params['breadcrumbs'][] = ['label' => $model->proyecto->codigo ?: '#' . $model->idProyecto, 'url' => ['/proyecto/view', 'id' => $model->idProyecto]];
+$this->params['breadcrumbs'][] = ['label' => 'Presupuesto', 'url' => ['view', 'id' => $model->id]];
 $this->params['breadcrumbs'][] = 'Editar';
 ?>
 <div class="presupuesto-update">

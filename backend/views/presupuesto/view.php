@@ -13,8 +13,9 @@ use yii\widgets\DetailView;
  */
 
 $this->title = 'Presupuesto #' . $model->id;
-$this->params['breadcrumbs'][] = ['label' => 'Presupuestos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = $this->title;
+$this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
+$this->params['breadcrumbs'][] = ['label' => $model->proyecto->codigo ?: '#' . $model->idProyecto, 'url' => ['/proyecto/view', 'id' => $model->idProyecto]];
+$this->params['breadcrumbs'][] = 'Presupuesto';
 
 $estados = Presupuesto::estados();
 $transicionesValidas = Presupuesto::transicionesPermitidas()[$model->estado] ?? [];
@@ -27,6 +28,9 @@ $transicionesValidas = Presupuesto::transicionesPermitidas()[$model->estado] ?? 
     </h1>
 
     <p>
+        <?php if ($model->puedeEditarse()): ?>
+            <?= Html::a('Armar presupuesto', ['armar', 'idProyecto' => $model->idProyecto], ['class' => 'btn btn-primary']) ?>
+        <?php endif; ?>
         <?= Html::a('Ver líneas del presupuesto', ['detalle', 'id' => $model->id], ['class' => 'btn btn-secondary']) ?>
         <?= Html::a('Generar PDF', ['pdf', 'id' => $model->id], ['class' => 'btn btn-outline-secondary', 'target' => '_blank']) ?>
         <?php if ($model->puedeEditarse()): ?>

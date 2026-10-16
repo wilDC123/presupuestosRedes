@@ -220,6 +220,27 @@ class ProyectoService
     }
 
     /**
+     * A donde lleva "Presupuesto" desde el proyecto: a "Armar presupuesto"
+     * mientras el presupuesto no exista, o exista, se pueda editar y queden
+     * items de la lista sin linea; si no, a la vista del presupuesto.
+     */
+    public function urlPresupuesto(Proyecto $proyecto): array
+    {
+        $presupuesto = $proyecto->presupuesto;
+        $armar = ['/presupuesto/armar', 'idProyecto' => $proyecto->id];
+
+        if ($presupuesto === null) {
+            return $armar;
+        }
+
+        if ($presupuesto->puedeEditarse() && (new ListaItemsService())->pendientesDePresupuestar($proyecto) !== []) {
+            return $armar;
+        }
+
+        return ['/presupuesto/view', 'id' => $presupuesto->id];
+    }
+
+    /**
      * Pasos del proyecto, para la barra de navegacion de su pantalla
      * principal. Cada paso dice en que estado esta:
      *  - 'hecho'      ya se completo
@@ -233,10 +254,7 @@ class ProyectoService
     public function pasos(Proyecto $proyecto): array
     {
         $presupuesto = $proyecto->presupuesto;
-
-        $urlPresupuesto = $presupuesto === null
-            ? ['/presupuesto/create', 'idProyecto' => $proyecto->id]
-            : ['/presupuesto/view', 'id' => $presupuesto->id];
+        $urlPresupuesto = $this->urlPresupuesto($proyecto);
 
         $listaEnEdicion = $proyecto->estadoLista === Proyecto::LISTA_EDICION;
 

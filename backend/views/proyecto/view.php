@@ -13,6 +13,7 @@ use yii\helpers\Html;
  * @var array<int, array{titulo: string, estado: string, url: array|null}> $pasos Ver ProyectoService::pasos()
  * @var string|null $nombreTipo
  * @var float|null $monto total del presupuesto (null si no tiene)
+ * @var array $urlPresupuesto Ver ProyectoService::urlPresupuesto()
  * @var bool $puedeEditarse
  * @var bool $estaAprobado
  * @var int $totalItems items en la lista del proyecto
@@ -137,13 +138,18 @@ $formato = Yii::$app->formatter;
                 <div class="kicker mb-2">Presupuesto</div>
                 <?php if ($presupuesto === null): ?>
                     <div class="rd-dato"><span class="badge b-inactivo">Sin presupuesto</span></div>
-                    <?= Html::a('Iniciar presupuesto →', ['/presupuesto/create', 'idProyecto' => $model->id], ['class' => 'btn btn-primary']) ?>
+                    <?= Html::a('Armar presupuesto →', $urlPresupuesto, ['class' => 'btn btn-primary']) ?>
                 <?php else: ?>
                     <div class="rd-dato">
                         <span class="<?= $presupuesto->estadoBadgeClass() ?>"><?= Html::encode($presupuesto->estadoLabel()) ?></span>
                     </div>
                     <div class="rd-dato"><strong>Total:</strong> Bs. <?= $formato->asDecimal((float) $monto, 2) ?></div>
-                    <?= Html::a('Ver presupuesto →', ['/presupuesto/view', 'id' => $presupuesto->id], ['class' => 'btn btn-outline']) ?>
+                    <div class="rd-acciones">
+                        <?php if ($urlPresupuesto[0] === '/presupuesto/armar'): ?>
+                            <?= Html::a('Armar presupuesto →', $urlPresupuesto, ['class' => 'btn btn-primary']) ?>
+                        <?php endif; ?>
+                        <?= Html::a('Ver presupuesto →', ['/presupuesto/view', 'id' => $presupuesto->id], ['class' => 'btn btn-outline']) ?>
+                    </div>
                 <?php endif; ?>
                 <?php if (!$puedeEditarse): ?>
                     <p class="rd-nota mt-3 mb-0">
