@@ -35,6 +35,7 @@ use yii\db\ActiveRecord;
  * @property string|null $partida Partida presupuestaria congelada (5 digitos).
  * @property string|null $observacion Texto libre de la linea (medidas, "segun especificacion", etc.).
  * @property int|null $idProyectoItem Item de la lista del proyecto del que nacio la linea.
+ * @property string|null $justificacion Por que se eligio un precio que no es el menor cotizado.
  *
  * @property-read ProyectoItem|null $proyectoItem
  * @property-read Presupuesto $presupuesto
@@ -84,6 +85,8 @@ class PresupuestoDetalle extends ActiveRecord
             [['precioUnitario'], 'number', 'min' => 0],
             [['observacion'], 'trim'],
             [['observacion'], 'string', 'max' => 300],
+            [['justificacion'], 'trim'],
+            [['justificacion'], 'string', 'max' => 300],
             // partida NO tiene regla a proposito: en Yii2 un atributo sin
             // reglas no es "seguro" y load() lo ignora, asi que nadie puede
             // enviarlo desde el formulario. Solo lo escribe
@@ -108,6 +111,7 @@ class PresupuestoDetalle extends ActiveRecord
             'partida' => 'Partida',
             'observacion' => 'Observación',
             'idProyectoItem' => 'Ítem de la lista',
+            'justificacion' => 'Justificación',
         ];
     }
 
