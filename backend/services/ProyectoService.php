@@ -208,8 +208,9 @@ class ProyectoService
      *  - 'hecho'      ya se completo
      *  - 'actual'     es el siguiente por hacer
      *  - 'pendiente'  todavia no corresponde
-     * y, si ya tiene pantalla, la ruta a la que lleva ('url' => null: la
-     * pantalla de ese paso aun no esta construida).
+     * y la ruta a la que lleva ('url' => null: ese paso ya no se puede
+     * abrir en el estado actual del proyecto, ej. Plantilla con la lista
+     * enviada a cotizar).
      *
      * @return array<int, array{titulo: string, estado: string, url: array|null}>
      */
@@ -254,7 +255,6 @@ class ProyectoService
                 'url' => ['/solicitud-cotizacion/index', 'id' => $proyecto->id],
             ],
             ['titulo' => 'Presupuesto', 'estado' => $estadoPresupuesto, 'url' => $urlPresupuesto],
-            ['titulo' => 'Documentos', 'estado' => 'pendiente', 'url' => null],
         ];
     }
 
