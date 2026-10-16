@@ -18,6 +18,7 @@ use yii\helpers\Html;
  * @var array $grupos Ver PresupuestoService::agruparPorCategoria()
  * @var float $totalGeneral
  * @var array<int, array{partida: string, lineas: int, subtotal: float}> $resumenPartidas Ver PresupuestoService::resumenPorPartida()
+ * @var array $comparativo Ver ElaborarPresupuestoService::tabla() (anexo)
  */
 
 $proyecto = $presupuesto->proyecto;
@@ -107,6 +108,10 @@ $ubicacion = $proyecto->ubicacion();
     table.resumen-partidas {
         width: 60%;
     }
+    .elegido {
+        font-weight: bold;
+        text-decoration: underline;
+    }
     .firmas {
         margin-top: 60px;
     }
@@ -156,6 +161,7 @@ $ubicacion = $proyecto->ubicacion();
             <thead>
                 <tr>
                     <th>Ítem</th>
+                    <th>Proveedor</th>
                     <th>Partida</th>
                     <th>Unidad</th>
                     <th>Cantidad</th>
@@ -177,6 +183,7 @@ $ubicacion = $proyecto->ubicacion();
                                 </span>
                             <?php endif; ?>
                         </td>
+                        <td><?= Html::encode($linea->cotizacionDetalle->cotizacion->proveedor->razonSocial ?? 'Precio manual') ?></td>
                         <td><?= Html::encode($linea->partida ?? '') ?></td>
                         <td><?= Html::encode($linea->unidadMedida ?? '') ?></td>
                         <td class="numero"><?= Yii::$app->formatter->asDecimal($linea->cantidad, 2) ?></td>
@@ -187,7 +194,7 @@ $ubicacion = $proyecto->ubicacion();
             </tbody>
             <tfoot>
                 <tr class="subtotal">
-                    <td colspan="5">Subtotal <?= Html::encode($nombreCategoria) ?>:</td>
+                    <td colspan="6">Subtotal <?= Html::encode($nombreCategoria) ?>:</td>
                     <td class="numero"><?= Yii::$app->formatter->asDecimal($grupo['subtotal'], 2) ?></td>
                 </tr>
             </tfoot>
@@ -223,6 +230,90 @@ $ubicacion = $proyecto->ubicacion();
             </tr>
         </tfoot>
     </table>
+<?php endif; ?>
+
+<?php if (!empty($grupos)): ?>
+    <?php
+    $proveedores = $comparativo['proveedores'];
+    $justificaciones = [];
+    ?>
+    <pagebreak />
+    <div class="encabezado">
+        <div class="titulo">ANEXO: CUADRO COMPARATIVO DE COTIZACIONES</div>
+    </div>
+    <p class="observacion">
+        Precio unitario cotizado por cada proveedor. Subrayado: el precio elegido para el presupuesto.
+        (*) el menor precio vigente del ítem.
+    </p>
+    <table class="items">
+        <thead>
+            <tr>
+                <th>Ítem</th>
+                <th>Cantidad</th>
+                <?php foreach ($proveedores as $nombreProveedor): ?>
+                    <th><?= Html::encode($nombreProveedor) ?></th>
+                <?php endforeach; ?>
+                <th>Precio manual</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($comparativo['grupos'] as $grupoComparativo): ?>
+                <?php foreach ($grupoComparativo['filas'] as $fila): ?>
+                    <?php
+                    $linea = $fila['linea'];
+                    $nombreItem = $fila['item']->subcatalogoItem->descripcion ?? '';
+                    // Todo item cuyo precio elegido no es el menor cotizado,
+                    // con su justificacion (o el aviso de que falta: lineas
+                    // anteriores a la regla de justificacion).
+                    if ($linea !== null && $fila['menor'] !== null && (int) $linea->idCotizacionDetalle !== $fila['menor']) {
+                        $justificaciones[] = [$nombreItem, $linea->justificacion ?: '(sin justificación registrada)'];
+                    }
+                    ?>
+                    <tr>
+                        <td><?= Html::encode($nombreItem) ?></td>
+                        <td class="numero"><?= Yii::$app->formatter->asDecimal($fila['item']->cantidad, 2) ?></td>
+                        <?php foreach ($proveedores as $idProveedor => $nombreProveedor): ?>
+                            <?php $detalle = $fila['celdas'][$idProveedor] ?? null; ?>
+                            <td class="numero">
+                                <?php if ($detalle === null): ?>
+                                    —
+                                <?php else: ?>
+                                    <span class="<?= $linea !== null && (int) $linea->idCotizacionDetalle === (int) $detalle->id ? 'elegido' : '' ?>"><?= Yii::$app->formatter->asDecimal($detalle->precioUnitario, 2) ?></span><?= (int) $detalle->id === $fila['menor'] ? ' (*)' : '' ?>
+                                <?php endif; ?>
+                            </td>
+                        <?php endforeach; ?>
+                        <td class="numero">
+                            <?= $linea !== null && $linea->idCotizacionDetalle === null
+                                ? '<span class="elegido">' . Yii::$app->formatter->asDecimal($linea->precioUnitario, 2) . '</span>'
+                                : '—' ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <div class="categoria-titulo">Justificación de precios que no son el menor</div>
+    <?php if ($justificaciones === []): ?>
+        <p>En todos los ítems se eligió el menor precio cotizado.</p>
+    <?php else: ?>
+        <table class="items">
+            <thead>
+                <tr>
+                    <th>Ítem</th>
+                    <th>Justificación</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($justificaciones as [$nombreItem, $texto]): ?>
+                    <tr>
+                        <td><?= Html::encode($nombreItem) ?></td>
+                        <td><?= Html::encode($texto) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
 <?php endif; ?>
 
 <div class="firmas">

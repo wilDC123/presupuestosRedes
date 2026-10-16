@@ -21,7 +21,12 @@ use Mpdf\Output\Destination;
  */
 class PresupuestoPdfGenerator
 {
-    public function generarDesdeHtml(string $html): string
+    /**
+     * $marcaDeAgua: texto en diagonal, muy claro, detras de cada pagina (ej.
+     * "BORRADOR"), para que un presupuesto sin aprobar no se confunda con el
+     * definitivo. null = sin marca.
+     */
+    public function generarDesdeHtml(string $html, ?string $marcaDeAgua = null): string
     {
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
@@ -33,6 +38,11 @@ class PresupuestoPdfGenerator
         ]);
 
         $mpdf->SetFooter('Página {PAGENO} de {nbpg}');
+
+        if ($marcaDeAgua !== null) {
+            $mpdf->SetWatermarkText($marcaDeAgua, 0.08);
+            $mpdf->showWatermarkText = true;
+        }
         $mpdf->WriteHTML($html);
 
         return $mpdf->Output('', Destination::STRING_RETURN);

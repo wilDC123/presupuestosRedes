@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\Presupuesto;
+use backend\services\ElaborarPresupuestoService;
 use backend\services\ListaItemsService;
 use backend\services\PresupuestoService;
 use backend\services\ProyectoService;
@@ -264,6 +265,8 @@ class PresupuestoController extends Controller
             'grupos' => $grupos,
             'totalGeneral' => $this->service->totalGeneral($grupos),
             'resumenPartidas' => $this->service->resumenPorPartida($presupuesto),
+            // Anexo: cuadro comparativo de cotizaciones y justificaciones.
+            'comparativo' => (new ElaborarPresupuestoService())->tabla($presupuesto),
         ]);
 
         $pdf = $this->service->generarPdf($presupuesto, $html);

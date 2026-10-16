@@ -484,7 +484,8 @@ class PresupuestoService
         $lineas = $presupuesto->getPresupuestoDetalles()
             // proyectoItem.especificacion: la especificacion enlazada en la
             // lista, que se muestra junto a la linea (vista y PDF).
-            ->with(['subcatalogoItem.categoria', 'proyectoItem.especificacion'])
+            // cotizacionDetalle...proveedor: de quien es el precio (vista y PDF).
+            ->with(['subcatalogoItem.categoria', 'proyectoItem.especificacion', 'cotizacionDetalle.cotizacion.proveedor'])
             ->all();
 
         $grupos = [];
@@ -586,9 +587,12 @@ class PresupuestoService
     public function generarPdf(Presupuesto $presupuesto, string $html): array
     {
         $generador = new PresupuestoPdfGenerator();
+        // Solo el aprobado sale limpio: cualquier otro estado lleva marca.
+        $marcas = [Presupuesto::ESTADO_APROBADO => null, Presupuesto::ESTADO_CANCELADO => 'CANCELADO'];
+        $marca = array_key_exists($presupuesto->estado, $marcas) ? $marcas[$presupuesto->estado] : 'BORRADOR';
 
         return [
-            'contenido' => $generador->generarDesdeHtml($html),
+            'contenido' => $generador->generarDesdeHtml($html, $marca),
             'nombreArchivo' => $generador->nombreArchivo($presupuesto),
         ];
     }
