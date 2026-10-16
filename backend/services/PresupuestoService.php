@@ -8,6 +8,7 @@ use backend\components\PresupuestoPdfGenerator;
 use backend\models\CotizacionDetalle;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
+use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use Throwable;
 use Yii;
@@ -22,6 +23,8 @@ use yii\data\ActiveDataProvider;
  *  - el precio unitario "congelado" al agregar una linea,
  *  - la partida presupuestaria "congelada" al agregar una linea,
  *  - cada linea nace de un item de la LISTA del proyecto, una sola vez,
+ *  - "Armar presupuesto": todas las lineas de una vez, con el precio que
+ *    cada proveedor cotizo para ESA fila de la lista (el menor, marcado),
  *  - que la cotizacion elegida para una linea sea del mismo item,
  *  - que lineas usan una cotizacion vencida (se avisa, no se bloquea),
  *  - la agrupacion por categoria con subtotales y total general,
@@ -155,20 +158,35 @@ class PresupuestoService
      * Cotizaciones que puede usar una linea de ese item del subcatalogo,
      * como [idCotizacionDetalle => "Proveedor — precio (marca) [especificacion]"].
      *
+     * Si la linea viene de un item de la lista, primero van los precios
+     * cotizados para ESA fila y despues las cotizaciones sueltas (las que no
+     * salen de una solicitud). Los precios cotizados para OTRA fila de la
+     * lista no se ofrecen: con el mismo item dos veces en la lista (cable de
+     * 2 cajas y de 1 caja) seria facil cruzarlos.
+     *
      * @return array<int, string>
      */
-    public function opcionesCotizacion(int $idSubcatalogo): array
+    public function opcionesCotizacion(int $idSubcatalogo, ?int $idProyectoItem = null): array
     {
-        $detalles = CotizacionDetalle::find()
+        $query = CotizacionDetalle::find()
             ->andWhere(['idSubcatalogo' => $idSubcatalogo])
-            ->with(['cotizacion.proveedor', 'especificacion'])
-            ->all();
+            ->with(['cotizacion.proveedor', 'especificacion']);
+
+        if ($idProyectoItem !== null) {
+            $query->andWhere(['or', ['idProyectoItem' => $idProyectoItem], ['idProyectoItem' => null]])
+                // SQL Server ordena los NULL primero: DESC deja la fila arriba.
+                ->orderBy(['idProyectoItem' => SORT_DESC, 'precioUnitario' => SORT_ASC]);
+        }
 
         $opciones = [];
 
-        foreach ($detalles as $detalle) {
+        foreach ($query->all() as $detalle) {
             $texto = ($detalle->cotizacion->proveedor->razonSocial ?? '?')
                 . ' — ' . Yii::$app->formatter->asDecimal($detalle->precioUnitario, 2);
+
+            if ($idProyectoItem !== null && $detalle->idProyectoItem === null) {
+                $texto .= ' (cotización suelta)';
+            }
 
             if ($detalle->marcaModelo) {
                 $texto .= " ({$detalle->marcaModelo})";
@@ -225,7 +243,7 @@ class PresupuestoService
         if (!$this->cotizacionCorrespondeAlItem($linea)) {
             // addError() deja el mensaje en el campo, igual que un error de
             // rules(): la vista lo muestra debajo del desplegable.
-            $linea->addError('idCotizacionDetalle', 'La cotización elegida es de otro ítem del subcatálogo. Elija una cotización del mismo ítem o ingrese el precio manualmente.');
+            $linea->addError('idCotizacionDetalle', 'La cotización elegida es de otro ítem. Elija una cotización de este mismo ítem de la lista o ingrese el precio manualmente.');
 
             return false;
         }
@@ -234,6 +252,174 @@ class PresupuestoService
         $this->congelarPartida($linea);
 
         return $linea->save(false);
+    }
+
+    /**
+     * Tabla de "Armar presupuesto": los items de la lista que todavia no
+     * tienen linea, agrupados por clasificacion, cada uno con los precios
+     * que puede usar:
+     *  - los cotizados para ESA fila de la lista (desde una solicitud),
+     *  - si no tiene ninguno, las cotizaciones sueltas de su mismo item del
+     *    subcatalogo (las que no salen de ninguna solicitud).
+     * 'menor' es el idCotizacionDetalle con el menor precio unitario: la
+     * opcion que la pantalla marca por defecto.
+     *
+     * @return array<int, array{nombre: string, filas: array<int, array{item: ProyectoItem, opciones: CotizacionDetalle[], menor: int|null}>}>
+     */
+    public function filasParaArmar(Proyecto $proyecto): array
+    {
+        $listaItems = new ListaItemsService();
+        $pendientes = $listaItems->pendientesDePresupuestar($proyecto);
+        $opciones = $this->opcionesParaArmar($pendientes);
+        $grupos = [];
+
+        foreach ($listaItems->agrupar($proyecto, $pendientes) as $idCategoria => $grupo) {
+            $filas = [];
+
+            foreach ($grupo['items'] as $item) {
+                $opcionesItem = $opciones[$item->id] ?? [];
+                $filas[] = [
+                    'item' => $item,
+                    'opciones' => $opcionesItem,
+                    // Ya vienen ordenadas por precio: la primera es la menor.
+                    'menor' => $opcionesItem === [] ? null : (int) $opcionesItem[0]->id,
+                ];
+            }
+
+            $grupos[$idCategoria] = ['nombre' => $grupo['nombre'], 'filas' => $filas];
+        }
+
+        return $grupos;
+    }
+
+    /**
+     * Guarda de una vez las lineas elegidas en "Armar presupuesto":
+     *   lineas[idProyectoItem][opcion]  idCotizacionDetalle, 'manual' o '' (pendiente)
+     *   lineas[idProyectoItem][precio]  solo con 'manual'
+     *
+     * Usa el presupuesto del proyecto si ya tiene uno (cada proyecto tiene
+     * uno solo); si no, lo crea en "en proceso", sin el formulario previo:
+     * numero, oficio y area se completan despues con "Editar".
+     *
+     * Un item con 'manual' y sin precio, o con '', queda pendiente (no es un
+     * error). Todo va en UNA transaccion: si una fila no es valida no se
+     * guarda ninguna (ni el presupuesto nuevo). Devuelve el presupuesto, o
+     * null con los mensajes en $errores ([idProyectoItem => mensaje], o
+     * [0 => mensaje] si el error es general).
+     *
+     * @param mixed $elecciones lo que llega en POST "lineas"
+     * @param array<int, string> $errores (por referencia)
+     * @param int $agregadas cuantas lineas se guardaron (por referencia)
+     */
+    public function armar(Proyecto $proyecto, $elecciones, array &$errores = [], int &$agregadas = 0): ?Presupuesto
+    {
+        $elecciones = is_array($elecciones) ? $elecciones : [];
+        $presupuesto = $proyecto->presupuesto;
+
+        if ($presupuesto !== null && !$this->puedeEditarse($presupuesto)) {
+            $errores[0] = 'El presupuesto está "' . $presupuesto->estadoLabel() . '" y ya no se le agregan líneas.';
+
+            return null;
+        }
+
+        $pendientes = (new ListaItemsService())->pendientesDePresupuestar($proyecto);
+        $opciones = $this->opcionesParaArmar($pendientes);
+        $lineas = [];
+
+        foreach ($pendientes as $item) {
+            $eleccion = $elecciones[$item->id] ?? [];
+            $opcion = is_array($eleccion) ? trim((string) ($eleccion['opcion'] ?? '')) : '';
+            $precio = is_array($eleccion) ? trim((string) ($eleccion['precio'] ?? '')) : '';
+
+            if ($opcion === '' || ($opcion === 'manual' && $precio === '')) {
+                continue;
+            }
+
+            $linea = new PresupuestoDetalle();
+            $linea->idProyectoItem = $item->id;
+            $linea->idSubcatalogo = $item->idSubcatalogo;
+            $linea->cantidad = $item->cantidad;
+            $linea->unidadMedida = $item->unidadMedida;
+            $linea->observacion = $item->observacion;
+            // Para congelarPartida(), sin volver a consultar el item.
+            $linea->populateRelation('subcatalogoItem', $item->subcatalogoItem);
+
+            if ($opcion === 'manual') {
+                if (!is_numeric($precio) || (float) $precio < 0) {
+                    $errores[$item->id] = 'El precio manual debe ser un número mayor o igual a 0.';
+                    continue;
+                }
+
+                $linea->precioUnitario = $precio;
+            } else {
+                // REGLA DE NEGOCIO: solo un precio ofrecido para ESTA fila
+                // (el formulario podria enviar cualquier id).
+                $permitidos = array_map(static fn (CotizacionDetalle $d) => (int) $d->id, $opciones[$item->id] ?? []);
+
+                if (!ctype_digit($opcion) || !in_array((int) $opcion, $permitidos, true)) {
+                    $errores[$item->id] = 'La cotización elegida no corresponde a este ítem.';
+                    continue;
+                }
+
+                $linea->idCotizacionDetalle = (int) $opcion;
+            }
+
+            $lineas[] = $linea;
+        }
+
+        if ($errores !== []) {
+            return null;
+        }
+
+        if ($lineas === []) {
+            $errores[0] = 'No eligió ningún precio. Marque una cotización o escriba un precio manual en al menos un ítem.';
+
+            return null;
+        }
+
+        $transaccion = Yii::$app->db->beginTransaction();
+
+        try {
+            if ($presupuesto === null) {
+                $presupuesto = new Presupuesto();
+                $presupuesto->idProyecto = $proyecto->id;
+                $presupuesto->estado = Presupuesto::ESTADO_EN_PROCESO;
+
+                if (!$presupuesto->save()) {
+                    $transaccion->rollBack();
+                    $errores[0] = implode(' ', $presupuesto->getErrorSummary(true));
+
+                    return null;
+                }
+            }
+
+            foreach ($lineas as $linea) {
+                $linea->idPresupuesto = $presupuesto->id;
+                $this->congelarPrecio($linea);
+                $this->congelarPartida($linea);
+
+                // La unidad no se vuelve a validar contra el catalogo: viene
+                // de la lista, donde ya quedo congelada (aunque despues se
+                // haya desactivado esa unidad).
+                if (!$linea->validate(array_diff($linea->activeAttributes(), ['unidadMedida']))) {
+                    $transaccion->rollBack();
+                    $errores[(int) $linea->idProyectoItem] = implode(' ', $linea->getErrorSummary(true));
+
+                    return null;
+                }
+
+                $linea->save(false);
+            }
+
+            $transaccion->commit();
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
+        $agregadas = count($lineas);
+
+        return $presupuesto;
     }
 
     /**
@@ -442,9 +628,11 @@ class PresupuestoService
         $cotizacionDetalle = CotizacionDetalle::findOne($linea->idCotizacionDetalle);
 
         // (int) en ambos lados: lo que llega del formulario es texto ("7") y
-        // lo que viene de la base es entero (7).
+        // lo que viene de la base es entero (7). Un precio cotizado para OTRA
+        // fila de la lista tampoco vale (ver opcionesCotizacion()).
         return $cotizacionDetalle !== null
-            && (int) $cotizacionDetalle->idSubcatalogo === (int) $linea->idSubcatalogo;
+            && (int) $cotizacionDetalle->idSubcatalogo === (int) $linea->idSubcatalogo
+            && ($cotizacionDetalle->idProyectoItem === null || (int) $cotizacionDetalle->idProyectoItem === (int) $linea->idProyectoItem);
     }
 
     /**
@@ -455,6 +643,52 @@ class PresupuestoService
      * cambia, las lineas ya guardadas se quedan con el precio viejo a
      * proposito.
      */
+    /**
+     * Precios que puede usar cada item en "Armar presupuesto", del menor al
+     * mayor: los cotizados para esa fila o, si no tiene ninguno, las
+     * cotizaciones sueltas de su item del subcatalogo. Dos consultas en
+     * total, no una por item.
+     *
+     * @param ProyectoItem[] $items
+     * @return array<int, CotizacionDetalle[]> [idProyectoItem => opciones]
+     */
+    private function opcionesParaArmar(array $items): array
+    {
+        if ($items === []) {
+            return [];
+        }
+
+        $propias = CotizacionDetalle::find()
+            ->andWhere(['idProyectoItem' => array_map(static fn (ProyectoItem $i) => $i->id, $items)])
+            ->with('cotizacion.proveedor')
+            ->orderBy(['precioUnitario' => SORT_ASC, 'id' => SORT_ASC])
+            ->all();
+
+        $sueltas = CotizacionDetalle::find()
+            ->andWhere(['idProyectoItem' => null])
+            ->andWhere(['idSubcatalogo' => array_unique(array_map(static fn (ProyectoItem $i) => $i->idSubcatalogo, $items))])
+            ->with('cotizacion.proveedor')
+            ->orderBy(['precioUnitario' => SORT_ASC, 'id' => SORT_ASC])
+            ->all();
+
+        $porItem = [];
+        foreach ($propias as $detalle) {
+            $porItem[(int) $detalle->idProyectoItem][] = $detalle;
+        }
+
+        $porSubcatalogo = [];
+        foreach ($sueltas as $detalle) {
+            $porSubcatalogo[(int) $detalle->idSubcatalogo][] = $detalle;
+        }
+
+        $opciones = [];
+        foreach ($items as $item) {
+            $opciones[$item->id] = $porItem[$item->id] ?? $porSubcatalogo[(int) $item->idSubcatalogo] ?? [];
+        }
+
+        return $opciones;
+    }
+
     private function congelarPrecio(PresupuestoDetalle $linea): void
     {
         if (empty($linea->idCotizacionDetalle)) {

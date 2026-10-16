@@ -177,11 +177,65 @@ class PresupuestoController extends Controller
             'presupuesto' => $presupuesto,
             'nuevaLinea' => $nuevaLinea,
             'pendientes' => (new ListaItemsService())->pendientesDePresupuestar($presupuesto->proyecto),
-            // Solo cotizaciones del mismo item que se esta presupuestando.
-            'cotizaciones' => empty($nuevaLinea->idSubcatalogo) ? [] : $this->service->opcionesCotizacion((int) $nuevaLinea->idSubcatalogo),
+            // Solo cotizaciones de ESTA fila de la lista (y las sueltas del mismo item).
+            'cotizaciones' => empty($nuevaLinea->idSubcatalogo) ? [] : $this->service->opcionesCotizacion(
+                (int) $nuevaLinea->idSubcatalogo,
+                empty($nuevaLinea->idProyectoItem) ? null : (int) $nuevaLinea->idProyectoItem
+            ),
             'unidades' => (new UnidadMedidaService())->opcionesPorAbreviatura($nuevaLinea->unidadMedida),
             'grupos' => $this->service->agruparPorCategoria($presupuesto),
             'resumenPartidas' => $this->service->resumenPorPartida($presupuesto),
+        ]);
+    }
+
+    /**
+     * "Armar presupuesto": todos los items pendientes de la lista en una
+     * tabla, con el menor precio cotizado ya marcado, y un solo boton que
+     * crea todas las lineas. Si el proyecto aun no tiene presupuesto, se
+     * crea aqui mismo (ver PresupuestoService::armar()).
+     */
+    public function actionArmar(int $idProyecto)
+    {
+        $proyecto = (new ProyectoService())->obtener($idProyecto);
+
+        if ($proyecto === null) {
+            throw new NotFoundHttpException('El proyecto solicitado no existe.');
+        }
+
+        $presupuesto = $proyecto->presupuesto;
+
+        if ($presupuesto !== null && !$this->service->puedeEditarse($presupuesto)) {
+            Yii::$app->session->setFlash('error', 'El presupuesto está "' . $presupuesto->estadoLabel() . '" y ya no se le agregan líneas.');
+
+            return $this->redirect(['view', 'id' => $presupuesto->id]);
+        }
+
+        $errores = [];
+        $elecciones = [];
+
+        if (Yii::$app->request->isPost) {
+            $elecciones = Yii::$app->request->post('lineas', []);
+            $agregadas = 0;
+            $presupuesto = $this->service->armar($proyecto, $elecciones, $errores, $agregadas);
+
+            if ($presupuesto !== null) {
+                Yii::$app->session->setFlash('success', $agregadas === 1 ? 'Se agregó 1 línea al presupuesto.' : "Se agregaron $agregadas líneas al presupuesto.");
+
+                $vencidas = count($this->service->lineasConCotizacionVencida($presupuesto));
+                if ($vencidas > 0) {
+                    Yii::$app->session->setFlash('warning', "Atención: el presupuesto tiene $vencidas línea(s) con el precio de una cotización vencida. Se agregaron igual.");
+                }
+
+                return $this->redirect(['view', 'id' => $presupuesto->id]);
+            }
+        }
+
+        return $this->render('armar', [
+            'proyecto' => $proyecto,
+            'presupuesto' => $presupuesto,
+            'grupos' => $this->service->filasParaArmar($proyecto),
+            'elecciones' => is_array($elecciones) ? $elecciones : [],
+            'errores' => $errores,
         ]);
     }
 
