@@ -188,14 +188,14 @@ $grupoCierra = static fn (int $cantidad): string =>
                         <div class="row-item"
                              data-id="<?= $itemSubcatalogo->id ?>"
                              data-nombre="<?= Html::encode($itemSubcatalogo->descripcion) ?>"
-                             data-unidad="<?= Html::encode((string) $itemSubcatalogo->unidadDefecto) ?>"
+                             data-unidad="<?= Html::encode((string) $itemSubcatalogo->abreviaturaUnidad()) ?>"
                              data-categoria="<?= $itemSubcatalogo->idCategoria ?>"
                              data-categoria-nombre="<?= Html::encode($itemSubcatalogo->categoria->nombre ?? 'Sin clasificación') ?>">
                             <div>
                                 <div class="rd-celda-titulo"><?= Html::encode($itemSubcatalogo->descripcion) ?></div>
                                 <div class="rd-celda-sub">
                                     <?= Html::encode($itemSubcatalogo->categoria->nombre ?? '') ?>
-                                    <?= $itemSubcatalogo->unidadDefecto ? ' · Unidad: ' . Html::encode($itemSubcatalogo->unidadDefecto) : '' ?>
+                                    <?= $itemSubcatalogo->unidad ? ' · Unidad: ' . Html::encode($itemSubcatalogo->unidad->abreviatura) : '' ?>
                                 </div>
                             </div>
                             <button type="button" class="addbtn" aria-label="Agregar a la lista">+</button>

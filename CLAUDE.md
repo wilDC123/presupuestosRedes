@@ -44,6 +44,11 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   `redes.SubcatalogoItem` (copiada desde SIGMA al guardar, o a mano si el ítem no viene de
   SIGMA) y en `redes.PresupuestoDetalle` (CONGELADA al crear la línea, igual que el precio).
   Categoría y partida son datos distintos: una categoría DTIC mezcla varias partidas
+- Unidades de medida: catálogo `redes.UnidadMedida` (nombre, abreviatura, activo).
+  `SubcatalogoItem.idUnidadMedida` es FK; `ProyectoItem.unidadMedida`,
+  `PresupuestoDetalle.unidadMedida` y `ComputoMetrico.unidad` guardan la ABREVIATURA como texto
+  (congelada al crear la fila, como el precio y la partida). Se muestra la abreviatura en
+  listados y PDF. Solo se eligen unidades activas; una en uso no se elimina, se desactiva
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
@@ -92,8 +97,8 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   temporal hasta integrar autenticación institucional real)
 
 ## Riesgos y pendientes activos
-- RESUELTO: las 23 migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-15), incluida `m260831_014824_create_schema_redes`, las dos de partida
+- RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
+  2026-10-15; la última es `m261015_233726_create_unidad_medida`), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y la de la librería de
   especificaciones (`m261015_035448_libreria_especificaciones`).

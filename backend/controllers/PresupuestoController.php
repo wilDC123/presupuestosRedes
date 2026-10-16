@@ -8,6 +8,7 @@ use backend\models\Presupuesto;
 use backend\services\ListaItemsService;
 use backend\services\PresupuestoService;
 use backend\services\ProyectoService;
+use backend\services\UnidadMedidaService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -178,6 +179,7 @@ class PresupuestoController extends Controller
             'pendientes' => (new ListaItemsService())->pendientesDePresupuestar($presupuesto->proyecto),
             // Solo cotizaciones del mismo item que se esta presupuestando.
             'cotizaciones' => empty($nuevaLinea->idSubcatalogo) ? [] : $this->service->opcionesCotizacion((int) $nuevaLinea->idSubcatalogo),
+            'unidades' => (new UnidadMedidaService())->opcionesPorAbreviatura($nuevaLinea->unidadMedida),
             'grupos' => $this->service->agruparPorCategoria($presupuesto),
             'resumenPartidas' => $this->service->resumenPorPartida($presupuesto),
         ]);

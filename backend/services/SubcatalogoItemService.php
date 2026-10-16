@@ -29,7 +29,7 @@ class SubcatalogoItemService
      *  - estado: 'activo' o 'inactivo'
      * Un filtro vacio o con un valor que no corresponde se ignora.
      *
-     * with() carga categoria y catalogoSigma de todas las filas en 2
+     * with() carga categoria, catalogoSigma y unidad de todas las filas en 3
      * consultas extra, en vez de una consulta por cada fila del listado.
      *
      * @param array{buscar?: string, idCategoria?: string, partida?: string, estado?: string} $filtros
@@ -37,7 +37,7 @@ class SubcatalogoItemService
     public function listar(array $filtros = []): ActiveDataProvider
     {
         $query = SubcatalogoItem::find()
-            ->with(['categoria', 'catalogoSigma'])
+            ->with(['categoria', 'catalogoSigma', 'unidad'])
             ->orderBy(['descripcion' => SORT_ASC]);
 
         $buscar = trim((string) ($filtros['buscar'] ?? ''));
@@ -107,8 +107,8 @@ class SubcatalogoItemService
     {
         return SubcatalogoItem::find()
             ->andWhere(['activo' => true])
-            // with(): trae las categorias en una sola consulta extra.
-            ->with('categoria')
+            // with(): trae categorias y unidades en una consulta extra cada una.
+            ->with(['categoria', 'unidad'])
             ->orderBy(['descripcion' => SORT_ASC])
             ->all();
     }

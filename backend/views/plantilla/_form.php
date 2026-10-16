@@ -108,7 +108,7 @@ $fila = static function (string $n, string $idSubcatalogo, string $nombre, strin
                         <div class="rd-celda-titulo"><?= Html::encode($itemSubcatalogo->descripcion) ?></div>
                         <div class="rd-celda-sub">
                             <?= Html::encode($categorias[$itemSubcatalogo->idCategoria] ?? '') ?>
-                            <?= $itemSubcatalogo->unidadDefecto ? ' · Unidad: ' . Html::encode($itemSubcatalogo->unidadDefecto) : '' ?>
+                            <?= $itemSubcatalogo->unidad ? ' · Unidad: ' . Html::encode($itemSubcatalogo->unidad->abreviatura) : '' ?>
                         </div>
                     </div>
                     <button type="button" class="addbtn" aria-label="Agregar a la plantilla">+</button>

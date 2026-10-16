@@ -14,13 +14,14 @@ use yii\db\ActiveRecord;
  * @property string|null $idSigma
  * @property int $idCategoria
  * @property string $descripcion
- * @property string|null $unidadDefecto
+ * @property int|null $idUnidadMedida
  * @property bool $activo
  * @property string $fechaRegistro
  * @property string|null $partida Partida presupuestaria (5 digitos, ej. 39700).
  *
  * @property-read Categoria $categoria
  * @property-read CatalogoSigma|null $catalogoSigma
+ * @property-read UnidadMedida|null $unidad
  */
 class SubcatalogoItem extends ActiveRecord
 {
@@ -33,7 +34,7 @@ class SubcatalogoItem extends ActiveRecord
     {
         return [
             [['idCategoria', 'descripcion'], 'required'],
-            [['idCategoria'], 'integer'],
+            [['idCategoria', 'idUnidadMedida'], 'integer'],
             [['activo'], 'default', 'value' => true],
             [['activo'], 'boolean'],
             [['idSigma'], 'string', 'max' => 36],
@@ -41,7 +42,6 @@ class SubcatalogoItem extends ActiveRecord
             // falla con "Conversion failed ... to uniqueidentifier" (error 500).
             [['idSigma'], 'match', 'pattern' => '/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i', 'message' => 'El ID Sigma no tiene el formato del catálogo (ej. 82ABD46D-EDFA-4A4C-BDF8-004414DF97EE).'],
             [['descripcion'], 'string', 'max' => 300],
-            [['unidadDefecto'], 'string', 'max' => 20],
             // La partida es obligatoria SIEMPRE al guardar. Cuando el item
             // viene de SIGMA, SubcatalogoItemService la copia desde
             // dbo.CatalogoSigma.IdGasto antes de save(), asi que esta regla
@@ -51,6 +51,7 @@ class SubcatalogoItem extends ActiveRecord
             [['partida'], 'required', 'message' => 'Ingrese la partida presupuestaria: no se pudo obtener del catálogo SIGMA para este ítem.'],
             [['partida'], 'match', 'pattern' => '/^\d{5}$/', 'message' => 'La partida debe tener exactamente 5 dígitos (ej. 39700).'],
             [['idCategoria'], 'exist', 'skipOnError' => true, 'targetClass' => Categoria::class, 'targetAttribute' => ['idCategoria' => 'id']],
+            [['idUnidadMedida'], 'exist', 'skipOnError' => true, 'targetClass' => UnidadMedida::class, 'targetAttribute' => ['idUnidadMedida' => 'id']],
         ];
     }
 
@@ -61,7 +62,7 @@ class SubcatalogoItem extends ActiveRecord
             'idSigma' => 'ID Sigma',
             'idCategoria' => 'Categoría',
             'descripcion' => 'Nombre DTIC',
-            'unidadDefecto' => 'Unidad por defecto',
+            'idUnidadMedida' => 'Unidad de medida',
             'activo' => 'Activo',
             'fechaRegistro' => 'Fecha de registro',
             'partida' => 'Partida',
@@ -71,6 +72,20 @@ class SubcatalogoItem extends ActiveRecord
     public function getCategoria(): ActiveQuery
     {
         return $this->hasOne(Categoria::class, ['id' => 'idCategoria']);
+    }
+
+    public function getUnidad(): ActiveQuery
+    {
+        return $this->hasOne(UnidadMedida::class, ['id' => 'idUnidadMedida']);
+    }
+
+    /**
+     * Abreviatura de su unidad (ej. "pza"), o null si no tiene. Es el texto
+     * que se copia a la lista del proyecto y a la linea del presupuesto.
+     */
+    public function abreviaturaUnidad(): ?string
+    {
+        return $this->unidad->abreviatura ?? null;
     }
 
     /**
@@ -103,6 +118,10 @@ class SubcatalogoItem extends ActiveRecord
 
         if ($this->partida === '') {
             $this->partida = null;
+        }
+
+        if ($this->idUnidadMedida === '') {
+            $this->idUnidadMedida = null;
         }
 
         return true;

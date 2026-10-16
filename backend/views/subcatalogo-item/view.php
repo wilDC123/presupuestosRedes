@@ -44,7 +44,10 @@ $this->params['breadcrumbs'][] = $this->title;
                 'value' => $model->catalogoSigma->Descripcion ?? null,
             ],
             'partida',
-            'unidadDefecto',
+            [
+                'label' => 'Unidad de medida',
+                'value' => $model->unidad?->etiqueta(),
+            ],
             [
                 'attribute' => 'activo',
                 'value' => $model->activo ? 'Sí' : 'No',

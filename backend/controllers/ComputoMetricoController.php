@@ -6,6 +6,7 @@ namespace backend\controllers;
 
 use backend\models\ComputoMetrico;
 use backend\services\ComputoMetricoService;
+use backend\services\UnidadMedidaService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -67,6 +68,7 @@ class ComputoMetricoController extends Controller
 
         return $this->render('create', [
             'model' => $model,
+            'unidades' => (new UnidadMedidaService())->opcionesPorAbreviatura($model->unidad),
         ]);
     }
 
@@ -80,6 +82,7 @@ class ComputoMetricoController extends Controller
 
         return $this->render('update', [
             'model' => $model,
+            'unidades' => (new UnidadMedidaService())->opcionesPorAbreviatura($model->unidad),
         ]);
     }
 

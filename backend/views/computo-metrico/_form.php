@@ -10,6 +10,7 @@ use yii\widgets\ActiveForm;
 /**
  * @var yii\web\View $this
  * @var backend\models\ComputoMetrico $model
+ * @var array<string, string> $unidades [abreviatura => "Metro (m)"], ver UnidadMedidaService::opcionesPorAbreviatura()
  * @var yii\widgets\ActiveForm $form
  */
 
@@ -29,7 +30,7 @@ $proyectos = ArrayHelper::map(
 
     <?= $form->field($model, 'valor')->textInput(['type' => 'number', 'step' => '0.01']) ?>
 
-    <?= $form->field($model, 'unidad')->textInput(['maxlength' => 20, 'placeholder' => 'Ej. Metro, Unidad, Caja']) ?>
+    <?= $form->field($model, 'unidad')->dropDownList($unidades, ['prompt' => 'Seleccione una unidad']) ?>
 
     <?= $form->field($model, 'referenciaOrigen')->textInput(['maxlength' => 500])->hint('Especifica el plano o documento que sustenta este valor.') ?>
 

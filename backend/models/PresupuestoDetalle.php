@@ -57,6 +57,11 @@ class PresupuestoDetalle extends ActiveRecord
             [['idPresupuesto', 'idSubcatalogo', 'idCotizacionDetalle', 'idProyectoItem'], 'integer'],
             [['cantidad'], 'number', 'min' => 0],
             [['unidadMedida'], 'string', 'max' => 20],
+            // La unidad se guarda como texto (la abreviatura, congelada), pero
+            // solo se acepta una unidad ACTIVA del catalogo redes.UnidadMedida.
+            // 'when': solo se revisa si el valor cambio, para que una linea
+            // con una unidad que despues se desactivo se pueda volver a guardar.
+            [['unidadMedida'], 'exist', 'targetClass' => UnidadMedida::class, 'targetAttribute' => 'abreviatura', 'filter' => ['activo' => true], 'when' => static fn ($model) => $model->isAttributeChanged('unidadMedida'), 'message' => 'Elija una unidad de la lista.'],
             // precioUnitario solo es obligatorio cuando NO se eligio una
             // cotizacion (precio manual); si se eligio una,
             // PresupuestoService::congelarPrecio() lo llena solo a partir de

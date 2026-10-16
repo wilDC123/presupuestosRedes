@@ -469,8 +469,8 @@ class PresupuestoService
 
         $linea->precioUnitario = $cotizacionDetalle->precioUnitario;
 
-        if (empty($linea->unidadMedida) && !empty($cotizacionDetalle->subcatalogoItem->unidadDefecto)) {
-            $linea->unidadMedida = $cotizacionDetalle->subcatalogoItem->unidadDefecto;
+        if (empty($linea->unidadMedida)) {
+            $linea->unidadMedida = $cotizacionDetalle->subcatalogoItem?->abreviaturaUnidad();
         }
     }
 

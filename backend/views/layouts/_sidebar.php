@@ -18,6 +18,7 @@ $controladorActual = Yii::$app->controller->id;
 $menu = [
     ['Dashboard', ['/site/index'], ['site']],
     ['Categorías', ['/categoria/index'], ['categoria']],
+    ['Unidades de medida', ['/unidad-medida/index'], ['unidad-medida']],
     ['Proveedores', ['/proveedor/index'], ['proveedor']],
     ['Subcatálogo', ['/subcatalogo-item/index'], ['subcatalogo-item']],
     ['Plantillas', ['/plantilla/index'], ['plantilla']],

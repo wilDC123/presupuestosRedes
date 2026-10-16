@@ -20,6 +20,7 @@ use yii\widgets\ActiveForm;
  * @var backend\models\PresupuestoDetalle $nuevaLinea con su item de la lista ya cargado, o vacia
  * @var backend\models\ProyectoItem[] $pendientes items de la lista sin linea en el presupuesto
  * @var array<int, string> $cotizaciones cotizaciones del item que se esta presupuestando
+ * @var array<string, string> $unidades [abreviatura => "Metro (m)"], ver UnidadMedidaService::opcionesPorAbreviatura()
  * @var array $grupos Ver PresupuestoService::agruparPorCategoria()
  * @var array $resumenPartidas Ver PresupuestoService::resumenPorPartida()
  */
@@ -179,7 +180,7 @@ $totalGeneral = array_sum(ArrayHelper::getColumn($grupos, 'subtotal'));
 
         <?= $form->field($nuevaLinea, 'cantidad')->textInput(['type' => 'number', 'step' => '0.01']) ?>
 
-        <?= $form->field($nuevaLinea, 'unidadMedida')->textInput(['maxlength' => 20])->hint('Se completa sola con la unidad del ítem si elige una cotización y la deja vacía.') ?>
+        <?= $form->field($nuevaLinea, 'unidadMedida')->dropDownList($unidades, ['prompt' => '(la del ítem)'])->hint('Viene con la unidad del ítem de la lista. Si la deja vacía y elige una cotización, se usa la unidad del ítem en el subcatálogo.') ?>
 
         <?= $form->field($nuevaLinea, 'precioUnitario')->textInput(['type' => 'number', 'step' => '0.01'])->hint('Solo obligatorio si no eligió una cotización arriba.') ?>
 

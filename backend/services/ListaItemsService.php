@@ -331,7 +331,7 @@ class ListaItemsService
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            foreach ($plantilla->getItems()->with('subcatalogoItem')->all() as $itemPlantilla) {
+            foreach ($plantilla->getItems()->with('subcatalogoItem.unidad')->all() as $itemPlantilla) {
                 if (in_array($itemPlantilla->idSubcatalogo, $yaEnLista, false)) {
                     continue;
                 }
@@ -341,7 +341,7 @@ class ListaItemsService
                 $item->idSubcatalogo = $itemPlantilla->idSubcatalogo;
                 $item->idCategoria = $itemPlantilla->idCategoria;
                 $item->cantidad = $itemPlantilla->cantidadSugerida ?? 0;
-                $item->unidadMedida = $itemPlantilla->subcatalogoItem->unidadDefecto ?? null;
+                $item->unidadMedida = $itemPlantilla->subcatalogoItem?->abreviaturaUnidad();
                 $item->observacion = $itemPlantilla->observacion;
                 $item->orden = ++$orden;
                 $item->save(false);
@@ -394,7 +394,7 @@ class ListaItemsService
         $item->idProyecto = $proyecto->id;
         $item->idSubcatalogo = $origen->id;
         $item->idCategoria = $origen->idCategoria;
-        $item->unidadMedida = $origen->unidadDefecto;
+        $item->unidadMedida = $origen->abreviaturaUnidad();
         // Deja el item del subcatalogo ya cargado en la relacion, para no
         // volver a consultarlo al mostrar su nombre.
         $item->populateRelation('subcatalogoItem', $origen);

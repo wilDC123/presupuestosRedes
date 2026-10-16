@@ -91,8 +91,8 @@ $formato = Yii::$app->formatter;
                 'contentOptions' => ['class' => 'mono'],
             ],
             [
-                'attribute' => 'unidadDefecto',
                 'label' => 'Unidad',
+                'value' => static fn ($model) => $model->unidad->abreviatura ?? '—',
             ],
             [
                 'label' => 'Estado',

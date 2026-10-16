@@ -7,6 +7,7 @@ namespace backend\controllers;
 use backend\models\SubcatalogoItem;
 use backend\services\CategoriaService;
 use backend\services\SubcatalogoItemService;
+use backend\services\UnidadMedidaService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -129,6 +130,7 @@ class SubcatalogoItemController extends Controller
         return [
             'model' => $model,
             'categorias' => (new CategoriaService())->opciones(),
+            'unidades' => (new UnidadMedidaService())->opcionesPorId($model->idUnidadMedida === null || $model->idUnidadMedida === '' ? null : (int) $model->idUnidadMedida),
             'sigma' => $this->service->sigmaDe($model),
             'partidaSigma' => $this->service->partidaDesdeSigma($model),
             'usadoPor' => $this->service->otrosItemsConMismoSigma($model),

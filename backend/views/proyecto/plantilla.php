@@ -113,7 +113,7 @@ $primera = $plantillas[0]['plantilla']->id ?? null;
                                                 <div class="rd-celda-sub"><?= Html::encode($item->observacion) ?></div>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= Html::encode($item->subcatalogoItem->unidadDefecto ?? '') ?></td>
+                                        <td><?= Html::encode($item->subcatalogoItem?->abreviaturaUnidad() ?? '') ?></td>
                                         <td class="rd-num mono"><?= $item->cantidadSugerida === null ? '—' : Yii::$app->formatter->asDecimal($item->cantidadSugerida, 2) ?></td>
                                     </tr>
                                 <?php endforeach; ?>

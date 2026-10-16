@@ -38,6 +38,11 @@ class ComputoMetrico extends ActiveRecord
             [['valor'], 'number'],
             [['descripcion'], 'string', 'max' => 300],
             [['unidad'], 'string', 'max' => 20],
+            // La unidad se guarda como texto (la abreviatura, congelada), pero
+            // solo se acepta una unidad ACTIVA del catalogo redes.UnidadMedida.
+            // 'when': solo se revisa si el valor cambio, para que una linea
+            // con una unidad que despues se desactivo se pueda volver a guardar.
+            [['unidad'], 'exist', 'targetClass' => UnidadMedida::class, 'targetAttribute' => 'abreviatura', 'filter' => ['activo' => true], 'when' => static fn ($model) => $model->isAttributeChanged('unidad'), 'message' => 'Elija una unidad de la lista.'],
             [['referenciaOrigen'], 'string', 'max' => 500],
             [['idProyecto'], 'exist', 'skipOnError' => true, 'targetClass' => Proyecto::class, 'targetAttribute' => ['idProyecto' => 'id']],
         ];
