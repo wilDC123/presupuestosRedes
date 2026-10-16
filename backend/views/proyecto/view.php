@@ -54,18 +54,7 @@ $formato = Yii::$app->formatter;
         </div>
     </div>
 
-    <div class="rd-pasos">
-        <?php foreach ($pasos as $numero => $paso): ?>
-            <?php
-            $contenido = '<span class="rd-paso-num">' . ($paso['estado'] === 'hecho' ? '✓' : $numero + 1) . '</span>'
-                . '<span class="rd-paso-titulo">' . Html::encode($paso['titulo']) . '</span>';
-            $clase = 'rd-paso rd-paso-' . $paso['estado'];
-            ?>
-            <?= $paso['url'] === null
-                ? Html::tag('span', $contenido, ['class' => $clase . ' rd-paso-sin-pantalla', 'title' => 'Esta pantalla todavía no está disponible'])
-                : Html::a($contenido, $paso['url'], ['class' => $clase]) ?>
-        <?php endforeach; ?>
-    </div>
+    <?= $this->render('_pasos', ['pasos' => $pasos]) ?>
 
     <div class="rd-cols">
 
