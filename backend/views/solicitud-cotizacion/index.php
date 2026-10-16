@@ -226,7 +226,7 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                                                 <?= Html::textInput('referencias[' . $fila->idProyectoItem . ']', (string) $fila->marcaModeloReferencia, [
                                                     'class' => 'form-control form-control-sm',
                                                     'maxlength' => 300,
-                                                    'placeholder' => $sugerido !== null ? 'Sugerido por la especificación: ' . $sugerido : 'Opcional: marca tal, modelo tal',
+                                                    'placeholder' => $sugerido !== null ? 'Sugerido por la especificación: ' . $sugerido : 'Opcional: marca, modelo',
                                                     'aria-label' => 'Marca y modelo de referencia',
                                                 ]) ?>
                                             <?php else: ?>
