@@ -74,7 +74,7 @@ $columnas = 5 + count($proveedores);
                 <?= Html::textInput('justificacion', '', [
                     'class' => 'form-control',
                     'maxlength' => 300,
-                    'placeholder' => 'Justificación (si no es el menor en todo)',
+                    'placeholder' => 'Justificación (opcional)',
                 ]) ?>
                 <?= Html::submitButton('Adjudicar todo', ['class' => 'btn btn-outline', 'name' => 'modo', 'value' => 'proveedor']) ?>
             <?= Html::endForm() ?>
@@ -126,16 +126,22 @@ $columnas = 5 + count($proveedores);
                                 <?php if ($item->especificacion !== null): ?>
                                     <div class="rd-celda-sub">Especificación técnica: <?= Html::encode($item->especificacion->referencia()) ?></div>
                                 <?php endif; ?>
-                                <div class="elaborar-justificacion<?= ($linea->justificacion ?? null) === null ? ' d-none' : '' ?> mt-1">
+                                <?php
+                                // Visible cuando el precio guardado no es el menor (en
+                                // borrador, para escribirla; despues, solo si hay texto).
+                                $noEsElMenor = $guardada !== '' && $fila['menor'] !== null && $guardada !== (string) $fila['menor'];
+                                $verJustificacion = $borrador ? $noEsElMenor : !empty($linea?->justificacion);
+                                ?>
+                                <div class="elaborar-justificacion<?= $verJustificacion ? '' : ' d-none' ?> mt-1">
                                     <?php if ($borrador): ?>
                                         <div class="d-flex gap-2">
                                             <?= Html::textInput('justificacion', (string) ($linea->justificacion ?? ''), [
                                                 'class' => 'form-control form-control-sm elaborar-texto-justificacion',
                                                 'maxlength' => 300,
-                                                'placeholder' => '¿Por qué no el menor precio?',
+                                                'placeholder' => 'Justificación (opcional): ¿por qué no el menor precio?',
                                                 'aria-label' => 'Justificación',
                                             ]) ?>
-                                            <button type="button" class="btn btn-primary btn-sm elaborar-guardar">Guardar</button>
+                                            <button type="button" class="btn btn-outline btn-sm elaborar-guardar text-nowrap">Guardar justificación</button>
                                         </div>
                                     <?php else: ?>
                                         <div class="rd-celda-sub">Justificación: <?= Html::encode((string) ($linea?->justificacion)) ?></div>

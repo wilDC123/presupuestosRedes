@@ -24,7 +24,9 @@ use Yii;
  *    partida congelados en ese momento (PresupuestoService::congelarPrecio()
  *    y congelarPartida()); el precio de una linea guardada nunca se
  *    recalcula,
- *  - elegir un precio que no es el menor exige una justificacion,
+ *  - elegir un precio que no es el menor admite una justificacion OPCIONAL
+ *    (el presupuesto es un precio referencial, no la adjudicacion de una
+ *    compra; si se escribe, sale en el anexo del PDF),
  *  - solo se modifica mientras el presupuesto es un borrador ("en proceso").
  */
 class ElaborarPresupuestoService
@@ -171,7 +173,7 @@ class ElaborarPresupuestoService
      * Elige el precio de un item:
      *   $opcion  idCotizacionDetalle de una cotizacion de ESTA fila, o 'manual'
      *   $precio  solo con 'manual'
-     *   $justificacion  obligatoria si lo elegido no es el menor precio
+     *   $justificacion  opcional; se guarda solo si lo elegido no es el menor precio
      *
      * Devuelve null si se guardo, o el mensaje de por que no.
      */
@@ -215,12 +217,6 @@ class ElaborarPresupuestoService
 
         $esMenor = $menor !== null && $idCotizacionDetalle === (int) $menor->id;
 
-        if ($menor !== null && !$esMenor && $justificacion === '') {
-            return 'Justifique por qué no se eligió el menor precio ('
-                . ($menor->cotizacion->proveedor->razonSocial ?? '?') . ' — '
-                . Yii::$app->formatter->asDecimal($menor->precioUnitario, 2) . ').';
-        }
-
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
@@ -229,7 +225,8 @@ class ElaborarPresupuestoService
                 $item,
                 $idCotizacionDetalle,
                 $idCotizacionDetalle === null ? $precio : null,
-                $esMenor || $menor === null ? null : $justificacion
+                // La justificacion solo tiene sentido si NO es el menor precio.
+                $esMenor || $menor === null || $justificacion === '' ? null : $justificacion
             );
 
             if ($error === null) {
@@ -250,7 +247,7 @@ class ElaborarPresupuestoService
      *  - 'menor': el menor precio vigente de cada item,
      *  - 'proveedor': todo a $idProveedor, en los items que ese proveedor
      *    cotizo (los demas se quedan como estaban). Donde su precio no es el
-     *    menor, la linea lleva $justificacion, que entonces es obligatoria.
+     *    menor, la linea lleva $justificacion (opcional).
      *
      * Devuelve null si se aplico, o el mensaje de por que no. $cambiadas y
      * $sinCotizar (por referencia) son para el mensaje de la pantalla.
@@ -296,12 +293,7 @@ class ElaborarPresupuestoService
             }
 
             $esMenor = (int) $elegida->id === (int) $menor->id;
-
-            if (!$esMenor && $justificacion === '') {
-                return 'Escriba la justificación: el proveedor elegido no tiene el menor precio en todos los ítems.';
-            }
-
-            $elecciones[] = [$item, (int) $elegida->id, $esMenor ? null : $justificacion];
+            $elecciones[] = [$item, (int) $elegida->id, $esMenor || $justificacion === '' ? null : $justificacion];
         }
 
         if ($elecciones === []) {

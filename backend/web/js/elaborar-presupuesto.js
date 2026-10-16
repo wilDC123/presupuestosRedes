@@ -7,9 +7,9 @@
  * reemplazan. El token CSRF lo agrega solo yii.js (lee la etiqueta meta
  * que registra layouts/_head.php).
  *
- *  1. Marcar el menor precio (o un item sin cotizaciones) se guarda al instante.
- *  2. Marcar otro precio, o "Manual" teniendo cotizaciones, primero pide la
- *     justificacion: se guarda con el boton "Guardar" (o Enter).
+ *  1. Marcar un precio se guarda al instante (el manual, al salir del campo).
+ *  2. Si no es el menor precio, aparece la caja de justificacion, OPCIONAL:
+ *     lo que se escriba se guarda con su boton "Guardar" (o Enter).
  *  3. Si el servidor rechaza el cambio, la fila vuelve a lo que estaba
  *     guardado y se muestra el motivo.
  *
@@ -39,8 +39,8 @@ $(function () {
         };
     }
 
-    // true si lo marcado necesita justificacion (no es el menor precio).
-    function necesitaJustificacion($fila, opcion) {
+    // true si lo marcado no es el menor precio (muestra la justificacion).
+    function noEsElMenor($fila, opcion) {
         var menor = String($fila.data('menor'));
 
         return menor !== '' && opcion !== menor;
@@ -53,7 +53,7 @@ $(function () {
         $fila.find('.elaborar-opcion').prop('checked', false);
         $fila.find('.elaborar-opcion[value="' + guardada + '"]').prop('checked', true);
         $fila.find('.elaborar-precio').val(guardada === 'manual' ? $fila.data('precioGuardado') : '');
-        $fila.find('.elaborar-justificacion').toggleClass('d-none', !necesitaJustificacion($fila, guardada) || guardada === '');
+        $fila.find('.elaborar-justificacion').toggleClass('d-none', !noEsElMenor($fila, guardada) || guardada === '');
     }
 
     function enviar($fila) {
@@ -73,11 +73,7 @@ $(function () {
             justificacion: $.trim($fila.find('.elaborar-texto-justificacion').val())
         }).done(function (respuesta) {
             if (!respuesta.ok) {
-                // El motivo se ve, pero la fila vuelve a lo guardado solo si
-                // no falta la justificacion (para que la escriba ahi mismo).
-                if (!/[Jj]ustifique/.test(respuesta.error)) {
-                    volverAGuardado($fila);
-                }
+                volverAGuardado($fila);
                 estado($fila, respuesta.error, 'text-danger');
                 return;
             }
@@ -100,23 +96,16 @@ $(function () {
         });
     }
 
-    // Decide si se guarda ya o si primero hace falta la justificacion.
+    // Muestra la caja de justificacion (opcional) si no es el menor precio y
+    // guarda.
     function intentar($fila) {
         var datos = marcado($fila);
-        var $caja = $fila.find('.elaborar-justificacion');
-        var conJustificacion = necesitaJustificacion($fila, datos.opcion);
 
-        $caja.toggleClass('d-none', !conJustificacion);
+        $fila.find('.elaborar-justificacion').toggleClass('d-none', !noEsElMenor($fila, datos.opcion));
 
         if (datos.opcion === 'manual' && datos.precio === '') {
             $fila.find('.elaborar-precio').trigger('focus');
             estado($fila, 'Escriba el precio unitario.', 'text-muted');
-            return;
-        }
-
-        if (conJustificacion && $.trim($caja.find('.elaborar-texto-justificacion').val()) === '') {
-            $caja.find('.elaborar-texto-justificacion').trigger('focus');
-            estado($fila, 'No es el menor precio: escriba la justificación y pulse Guardar.', 'text-muted');
             return;
         }
 

@@ -15,7 +15,8 @@ Ahora el presupuesto se elabora en **una sola pantalla**, dentro del proyecto (p
 2. Al entrar, el sistema propone el **menor precio vigente** cotizado para cada ítem.
 3. La pantalla es el cuadro comparativo: una columna por proveedor. El encargado solo cambia lo que
    no le convence, con un clic. Se guarda automáticamente.
-4. Si elige un precio que **no** es el menor, el sistema exige una **justificación**.
+4. Si elige un precio que **no** es el menor, puede escribir una **justificación** (opcional: el
+   presupuesto es un precio referencial, no la adjudicación de una compra, que está fuera del alcance).
 5. Los datos de cabecera (número, oficio DTIC, área, fecha) se piden recién al **enviar a revisión**,
    y no se puede enviar si algún ítem no tiene precio.
 6. El PDF lleva la marca "BORRADOR" mientras no esté aprobado, e incluye un anexo con el cuadro
@@ -50,8 +51,9 @@ congelado (repetido por cada ítem).
 2. El sistema crea el presupuesto (si no existe) y, por cada ítem de la lista sin línea, crea la línea
    con el menor precio vigente (precio y partida congelados).
 3. El sistema muestra el cuadro comparativo con los precios elegidos y los totales.
-4. *[opcional, repetible]* El encargado elige otro precio para un ítem → si no es el menor, ingresa la
-   justificación → el sistema reemplaza la línea y devuelve los totales actualizados.
+4. *[opcional, repetible]* El encargado elige otro precio para un ítem → el sistema reemplaza la línea
+   y devuelve los totales actualizados → *[opcional]* si no es el menor, el encargado escribe la
+   justificación.
 5. El encargado envía a revisión con la cabecera → el sistema verifica que todos los ítems tengan
    precio → estado "en revisión".
 
@@ -67,7 +69,7 @@ congelado (repetido por cada ítem).
 - "Elaborar presupuesto" ya no incluye "Buscar ítem" (los ítems vienen de la lista del proyecto).
   Sigue incluyendo "Calcular precio referencial", que ahora es la propuesta automática del menor
   precio.
-- Nuevo caso que extiende "Elaborar presupuesto": "Justificar precio que no es el menor".
+- Nuevo caso que extiende "Elaborar presupuesto" (opcional): "Justificar precio que no es el menor".
 
 ## Dónde está en el código
 

@@ -62,7 +62,9 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   un proveedor"
 - Elegir otro precio REEMPLAZA la línea (borra y crea otra con precio y partida congelados en ese
   momento); el precio de una línea guardada nunca se modifica. Elegir un precio que NO es el menor
-  exige `PresupuestoDetalle.justificacion` (sale en el anexo del PDF)
+  admite una `PresupuestoDetalle.justificacion` OPCIONAL (decidido el 2026-10-16: el presupuesto es
+  un precio referencial, no la adjudicación de una compra). El anexo del PDF lista los ítems con un
+  precio distinto del menor cotizado, con su justificación si la tienen
 - Solo se eligen precios con el presupuesto "en proceso" (`Presupuesto::esBorrador()`); en
   revisión, aprobado o cancelado la tabla es de solo lectura. Mientras es borrador, sus líneas siguen
   a la lista: quitar un ítem borra su línea y la cantidad se vuelve a copiar (el precio no)

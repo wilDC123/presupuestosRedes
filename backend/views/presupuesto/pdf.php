@@ -262,11 +262,17 @@ $ubicacion = $proyecto->ubicacion();
                     <?php
                     $linea = $fila['linea'];
                     $nombreItem = $fila['item']->subcatalogoItem->descripcion ?? '';
-                    // Todo item cuyo precio elegido no es el menor cotizado,
-                    // con su justificacion (o el aviso de que falta: lineas
-                    // anteriores a la regla de justificacion).
-                    if ($linea !== null && $fila['menor'] !== null && (int) $linea->idCotizacionDetalle !== $fila['menor']) {
-                        $justificaciones[] = [$nombreItem, $linea->justificacion ?: '(sin justificación registrada)'];
+                    // Todo item cuyo precio es DISTINTO del menor cotizado (un
+                    // precio manual igual al menor no cuenta), con su
+                    // justificacion si se escribio (es opcional).
+                    $precioMenor = null;
+                    foreach ($fila['celdas'] as $detalle) {
+                        if ((int) $detalle->id === $fila['menor']) {
+                            $precioMenor = $detalle->precioUnitario;
+                        }
+                    }
+                    if ($linea !== null && $precioMenor !== null && (float) $linea->precioUnitario !== (float) $precioMenor) {
+                        $justificaciones[] = [$nombreItem, $linea->precioUnitario, $precioMenor, (string) $linea->justificacion];
                     }
                     ?>
                     <tr>
@@ -293,21 +299,25 @@ $ubicacion = $proyecto->ubicacion();
         </tbody>
     </table>
 
-    <div class="categoria-titulo">Justificación de precios que no son el menor</div>
+    <div class="categoria-titulo">Ítems con un precio distinto del menor cotizado</div>
     <?php if ($justificaciones === []): ?>
-        <p>En todos los ítems se eligió el menor precio cotizado.</p>
+        <p>En todos los ítems con cotizaciones el precio es el menor vigente.</p>
     <?php else: ?>
         <table class="items">
             <thead>
                 <tr>
                     <th>Ítem</th>
+                    <th>Precio elegido</th>
+                    <th>Menor cotizado</th>
                     <th>Justificación</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($justificaciones as [$nombreItem, $texto]): ?>
+                <?php foreach ($justificaciones as [$nombreItem, $precioElegido, $precioMenor, $texto]): ?>
                     <tr>
                         <td><?= Html::encode($nombreItem) ?></td>
+                        <td class="numero"><?= Yii::$app->formatter->asDecimal($precioElegido, 2) ?></td>
+                        <td class="numero"><?= $precioMenor === null ? '—' : Yii::$app->formatter->asDecimal($precioMenor, 2) ?></td>
                         <td><?= Html::encode($texto) ?></td>
                     </tr>
                 <?php endforeach; ?>
