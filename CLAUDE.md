@@ -53,14 +53,27 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
   del presupuesto y en el PDF; su total coincide siempre con el total por categorías
-- "Armar presupuesto" (`PresupuestoController::actionArmar`, `PresupuestoService::armar()`): desde
-  el proyecto, todos los ítems pendientes de la lista en una tabla, con el MENOR precio cotizado para
-  esa fila ya marcado, y un solo botón que crea todas las líneas (una transacción). Reutiliza el
-  presupuesto del proyecto o lo crea en "en proceso". Ítem sin precio = queda pendiente, no bloquea.
-  El formulario de una sola línea queda para excepciones
+- Presupuesto como DOCUMENTO VIVO: se elabora en UNA pantalla, el paso "Presupuesto" del
+  proyecto (`ElaborarPresupuestoController`, `ElaborarPresupuestoService`). No hay "crear
+  presupuesto" ni "agregar líneas": cada ítem de la lista ES una línea (`PresupuestoDetalle`, como
+  máximo una por `idProyectoItem`, índice único filtrado). Al entrar, el presupuesto se crea solo
+  en "en proceso" y cada ítem sin línea recibe el MENOR precio vigente. La tabla tiene una columna
+  por proveedor; marcar otro precio se guarda por AJAX. Atajos: "menor precio por ítem" y "todo a
+  un proveedor"
+- Elegir otro precio REEMPLAZA la línea (borra y crea otra con precio y partida congelados en ese
+  momento); el precio de una línea guardada nunca se modifica. Elegir un precio que NO es el menor
+  exige `PresupuestoDetalle.justificacion` (sale en el anexo del PDF)
+- Solo se eligen precios con el presupuesto "en proceso" (`Presupuesto::esBorrador()`); en
+  revisión, aprobado o cancelado la tabla es de solo lectura. Mientras es borrador, sus líneas siguen
+  a la lista: quitar un ítem borra su línea y la cantidad se vuelve a copiar (el precio no)
+- La cabecera (número, oficio, área, fecha) se exige recién al "Enviar a revisión" (escenario
+  `Presupuesto::SCENARIO_ENVIAR`), junto con que todos los ítems tengan precio. Los estados se
+  cambian en la misma pantalla. El menú "Presupuestos" es solo un listado de consulta; las rutas
+  viejas (`presupuesto/view`, `detalle`, `armar`, `create`, `update`) redirigen al paso Presupuesto
 - Una línea solo puede usar una cotización de su mismo ítem, y si la cotización es de una fila de
-  la lista (`CotizacionDetalle.idProyectoItem`), solo esa fila puede usarla; cotización vencida
-  (`fecha + validezDias < hoy`) se permite pero genera aviso al agregar la línea y al aprobar
+  la lista (`CotizacionDetalle.idProyectoItem`), solo esa fila puede usarla (las sueltas, sin
+  `idProyectoItem`, se ofrecen solo si la fila no tiene cotizaciones propias); cotización vencida
+  (`fecha + validezDias < hoy`) se permite pero genera aviso al enviar y al aprobar
 - Librería de especificaciones técnicas (formato institucional con código `NET:xxx/26`):
   `redes.Especificacion` NO pertenece a un ítem ni a un proyecto; se clasifica por categoría
   (`idCategoria`) y `idSubcatalogo` es solo un "ítem de referencia" opcional. Se ENLAZA a los
@@ -74,7 +87,8 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   aprobado, cancelado
 - Precio unitario "congelado" en el detalle del presupuesto al momento de crearlo
   (nunca se recalcula retroactivamente si cambia el precio de una cotización nueva)
-- Generación de PDF consolidado del presupuesto
+- Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
+  aprobado, proveedor por línea y anexo con el cuadro comparativo y las justificaciones
 - Cómputos métricos: el sistema SOLO los almacena (con referencia de origen: plano,
   relevamiento), NUNCA los calcula
 
@@ -104,7 +118,7 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-15; la última es `m261015_233726_create_unidad_medida`), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-16; la última es `m261016_012942_justificacion_y_linea_unica_presupuesto`), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y la de la librería de
   especificaciones (`m261015_035448_libreria_especificaciones`).
@@ -131,9 +145,11 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   informar formalmente al equipo de DTIC (política dice no sacar la BD completa de la
   institución, solo los ítems SIGMA que son públicos)
 - Al integrarse al repositorio institucional real: se trabajará en una RAMA dentro del
-  proyecto Yii2 existente (no en este repo aislado), con un controlador propio (ej.
-  `ElaborarPresupuestoController`) dentro del módulo de "ejecución/modificaciones
-  presupuestarias", terminando en un merge al proyecto principal
+  proyecto Yii2 existente (no en este repo aislado), con un controlador propio
+  (`ElaborarPresupuestoController`, que ya existe en este repo) dentro del módulo de
+  "ejecución/modificaciones presupuestarias", terminando en un merge al proyecto principal
+- PENDIENTE (tutor): el flujo "documento vivo" cambia los diagramas de secuencia "Elaborar
+  presupuesto" y de actividades; resumen de los cambios en `docs/cambios-presupuesto-vivo.md`
 - PENDIENTE: `PresupuestoService::crearNuevaVersion()` (`backend/services/PresupuestoService.php`) ahora
   crea la nueva versión VACÍA a propósito (cada versión es solo el incremento/cambio
   solicitado, no un snapshot completo de líneas ya aprobadas). Como consecuencia, falta
