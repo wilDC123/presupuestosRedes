@@ -25,6 +25,7 @@ use yii\web\JqueryAsset;
  * @var backend\models\SolicitudCotizacion[] $solicitudes con items y cotizaciones cargados
  * @var backend\models\ProyectoItem[] $sinAsignar items de la lista sin solicitud
  * @var bool $editable Ver SolicitudCotizacionService::puedeEditarse()
+ * @var array<int, string> $modelosSugeridos [idProyectoItem => modelo sugerido de su especificacion]
  */
 
 if ($editable) {
@@ -193,13 +194,17 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                         </div>
                     </div>
 
+                    <?php $editaReferencias = $editable && !$conCotizaciones; ?>
                     <?php if ($solicitud->items === []): ?>
                         <div class="rd-vacio">Esta solicitud no tiene ítems.</div>
                     <?php else: ?>
+                        <?php // Formulario de las marcas y modelos de referencia; "Quitar" va en su propio formulario (data-method). ?>
+                        <?= $editaReferencias ? Html::beginForm(['referencias', 'id' => $solicitud->id], 'post', ['id' => 'referencias-' . $solicitud->id]) : '' ?>
                         <table class="table">
                             <thead>
                                 <tr>
                                     <th>Ítem</th>
+                                    <th>Marca y modelo de referencia</th>
                                     <th>Unidad</th>
                                     <th class="rd-num">Cantidad</th>
                                     <th></th>
@@ -215,10 +220,23 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                                                 <div class="rd-celda-sub"><?= Html::encode($item->observacion) ?></div>
                                             <?php endif; ?>
                                         </td>
+                                        <td>
+                                            <?php if ($editaReferencias): ?>
+                                                <?php $sugerido = $modelosSugeridos[(int) $fila->idProyectoItem] ?? null; ?>
+                                                <?= Html::textInput('referencias[' . $fila->idProyectoItem . ']', (string) $fila->marcaModeloReferencia, [
+                                                    'class' => 'form-control form-control-sm',
+                                                    'maxlength' => 300,
+                                                    'placeholder' => $sugerido !== null ? 'Sugerido por la especificación: ' . $sugerido : 'Opcional: marca tal, modelo tal',
+                                                    'aria-label' => 'Marca y modelo de referencia',
+                                                ]) ?>
+                                            <?php else: ?>
+                                                <?= Html::encode((string) ($fila->marcaModeloReferencia ?: '—')) ?>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= Html::encode((string) ($item->unidadMedida ?? '')) ?></td>
                                         <td class="rd-num mono"><?= $formato->asDecimal($item->cantidad ?? 0, 2) ?></td>
                                         <td class="rd-num">
-                                            <?php if ($editable && !$conCotizaciones): ?>
+                                            <?php if ($editaReferencias): ?>
                                                 <?= Html::a('Quitar', ['quitar-item', 'id' => $proyecto->id, 'item' => $fila->idProyectoItem], [
                                                     'class' => 'btn btn-outline btn-sm',
                                                     'data' => ['method' => 'post'],
@@ -229,6 +247,13 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                        <?php if ($editaReferencias): ?>
+                            <div class="rd-card-pad pt-0">
+                                <?= Html::submitButton('Guardar marcas y modelos', ['class' => 'btn btn-outline btn-sm']) ?>
+                                <span class="rd-nota">Salen en el documento junto a la descripción del ítem. Lo que el proveedor ofrece se registra en su cotización.</span>
+                            </div>
+                        <?php endif; ?>
+                        <?= $editaReferencias ? Html::endForm() : '' ?>
                     <?php endif; ?>
 
                     <div class="rd-card-pad">

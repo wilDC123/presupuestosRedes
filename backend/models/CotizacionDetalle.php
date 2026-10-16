@@ -57,7 +57,7 @@ class CotizacionDetalle extends ActiveRecord
             'idCotizacion' => 'Cotización',
             'idSubcatalogo' => 'Ítem de subcatálogo',
             'idEspecificacion' => 'Especificación',
-            'marcaModelo' => 'Marca / modelo',
+            'marcaModelo' => 'Marca / modelo ofertado',
             'cantidad' => 'Cantidad',
             'precioUnitario' => 'Precio unitario',
             'precioTotal' => 'Precio total',

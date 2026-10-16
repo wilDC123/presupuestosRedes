@@ -85,6 +85,10 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   PDF. El código del proyecto no se guarda en la especificación; los impresos lo muestran junto
   a ella. Solo se enlazan especificaciones activas; una en uso no se elimina, se desactiva
 - Cotizaciones de proveedores (relación N:N con ítems/especificaciones)
+- Marca y modelo: `SolicitudCotizacionItem.marcaModeloReferencia` es lo que la DTIC PIDE como
+  referencia (texto libre, opcional; sale entre paréntesis junto a la descripción en el PDF de la
+  solicitud; se edita mientras la solicitud no tenga cotizaciones y viaja con el ítem si se mueve
+  de solicitud). `CotizacionDetalle.marcaModelo` es lo que el proveedor OFERTA. No va al presupuesto
 - Presupuestos versionados por proyecto, con estados: en_proceso, en_revision, observado,
   aprobado, cancelado
 - Precio unitario "congelado" en el detalle del presupuesto al momento de crearlo

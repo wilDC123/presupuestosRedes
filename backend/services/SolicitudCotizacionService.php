@@ -27,7 +27,9 @@ use Yii;
  *  - solo entran items de la lista de ESE proyecto,
  *  - las cantidades no se copian: se leen de la lista,
  *  - una solicitud con cotizaciones registradas no se borra, y sus items
- *    no se mueven ni se quitan (ni se le agregan otros).
+ *    no se mueven ni se quitan (ni se le agregan otros),
+ *  - la marca y modelo de referencia de cada item se edita mientras la
+ *    solicitud no tenga cotizaciones (ya se le pidio eso al proveedor).
  */
 class SolicitudCotizacionService
 {
@@ -273,6 +275,81 @@ class SolicitudCotizacionService
     }
 
     /**
+     * Guarda la marca y modelo de referencia de los items de la solicitud:
+     *   referencias[idProyectoItem] => texto libre ('' = sin referencia)
+     * Solo los items de ESTA solicitud; los ids que no son de ella se
+     * ignoran. Devuelve null si se guardo, o el motivo por el que no.
+     *
+     * @param mixed $referencias lo que llega en POST "referencias"
+     */
+    public function guardarReferencias(SolicitudCotizacion $solicitud, $referencias): ?string
+    {
+        if (!$this->puedeEditarse($solicitud->proyecto)) {
+            return 'Las solicitudes se modifican con la lista enviada a cotización y el presupuesto sin cerrar.';
+        }
+
+        if ($this->tieneCotizaciones($solicitud)) {
+            return $solicitud->codigoCorto() . ' ya tiene cotizaciones registradas: la marca y modelo pedidos ya no se cambian.';
+        }
+
+        $referencias = is_array($referencias) ? $referencias : [];
+        $filas = $solicitud->getItems()->with('proyectoItem.subcatalogoItem')->all();
+
+        foreach ($filas as $fila) {
+            $texto = $referencias[$fila->idProyectoItem] ?? null;
+
+            if (!is_string($texto)) {
+                continue;
+            }
+
+            $fila->marcaModeloReferencia = $texto;
+
+            if (!$fila->validate(['marcaModeloReferencia'])) {
+                return ($fila->proyectoItem->subcatalogoItem->descripcion ?? 'Ítem') . ': ' . $fila->getFirstError('marcaModeloReferencia');
+            }
+        }
+
+        $transaccion = Yii::$app->db->beginTransaction();
+
+        try {
+            foreach ($filas as $fila) {
+                $fila->save(false, ['marcaModeloReferencia']);
+            }
+
+            $transaccion->commit();
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
+        return null;
+    }
+
+    /**
+     * "Modelo sugerido" de la especificacion enlazada a cada item del
+     * proyecto que lo tenga: [idProyectoItem => texto]. La pantalla lo
+     * muestra como sugerencia en el campo de referencia vacio; no se copia.
+     *
+     * @return array<int, string>
+     */
+    public function modelosSugeridos(Proyecto $proyecto): array
+    {
+        $sugeridos = [];
+        $items = $proyecto->getItems()
+            ->andWhere(['not', ['idEspecificacion' => null]])
+            ->with('especificacion')
+            ->all();
+
+        foreach ($items as $item) {
+            if (!empty($item->especificacion->modeloSugerido)) {
+                $sugeridos[$item->id] = $item->especificacion->modeloSugerido;
+            }
+        }
+
+        return $sugeridos;
+    }
+
+    /**
      * Especificacion tecnica ENLAZADA a cada item de la solicitud (la que se
      * eligio en la lista del proyecto), para citarla en el documento:
      * [idProyectoItem => 'NET:012/26']. Los items sin especificacion no
@@ -338,12 +415,21 @@ class SolicitudCotizacionService
      */
     private function asignar(SolicitudCotizacion $solicitud, array $idsProyectoItem): void
     {
+        // La fila se borra y se vuelve a crear en la solicitud de destino: la
+        // marca y modelo de referencia que ya tenia viaja con el item.
+        $referencias = SolicitudCotizacionItem::find()
+            ->select(['marcaModeloReferencia', 'idProyectoItem'])
+            ->andWhere(['idProyectoItem' => $idsProyectoItem])
+            ->indexBy('idProyectoItem')
+            ->column();
+
         SolicitudCotizacionItem::deleteAll(['idProyectoItem' => $idsProyectoItem]);
 
         foreach ($idsProyectoItem as $idProyectoItem) {
             $fila = new SolicitudCotizacionItem();
             $fila->idSolicitud = $solicitud->id;
             $fila->idProyectoItem = $idProyectoItem;
+            $fila->marcaModeloReferencia = $referencias[$idProyectoItem] ?? null;
             $fila->save(false);
         }
     }

@@ -139,7 +139,8 @@ $numero = 0;
 
 <div class="texto">
     Se solicita cotizar los siguientes ítems, indicando precio unitario y precio total en bolivianos,
-    marca y modelo ofertados, tiempo de entrega y validez de la oferta.
+    marca y modelo ofertados, tiempo de entrega y validez de la oferta. La marca y el modelo indicados
+    entre paréntesis en la descripción son la referencia solicitada.
     <?php if (!empty($solicitud->nota)): ?>
         <br><strong>Nota:</strong> <?= nl2br(Html::encode($solicitud->nota)) ?>
     <?php endif; ?>
@@ -155,7 +156,7 @@ $numero = 0;
                 <th>Descripción</th>
                 <th width="10%">Unidad</th>
                 <th width="10%">Cantidad</th>
-                <th width="17%">Marca / modelo</th>
+                <th width="17%">Marca / modelo ofertado</th>
                 <th width="12%">Precio unitario</th>
                 <th width="12%">Precio total</th>
             </tr>
@@ -170,6 +171,9 @@ $numero = 0;
                     <td class="numero"><?= ++$numero ?></td>
                     <td>
                         <?= Html::encode($item->subcatalogoItem->descripcion ?? '') ?>
+                        <?php if (!empty($fila->marcaModeloReferencia)): ?>
+                            (<?= Html::encode($fila->marcaModeloReferencia) ?>)
+                        <?php endif; ?>
                         <?php if (!empty($item->observacion)): ?>
                             <br><span class="observacion"><?= Html::encode($item->observacion) ?></span>
                         <?php endif; ?>

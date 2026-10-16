@@ -25,6 +25,7 @@ use yii\widgets\ActiveForm;
  * @var backend\models\SolicitudCotizacion $solicitud
  * @var backend\models\Cotizacion $cotizacion
  * @var backend\models\CotizacionDetalle[] $filas indexadas por idProyectoItem. Ver CotizacionService::filasDesdeSolicitud()
+ * @var array<int, string> $referencias [idProyectoItem => marca y modelo de referencia pedidos en la solicitud]
  * @var string[] $errores
  * @var bool $editable Ver SolicitudCotizacionService::puedeEditarse()
  * @var array<int, string> $proveedores Ver ProveedorService::opcionesActivos()
@@ -108,7 +109,7 @@ $formato = Yii::$app->formatter;
                     <th>Ítem</th>
                     <th>Unidad</th>
                     <th class="rd-num">Cantidad</th>
-                    <th>Marca / modelo</th>
+                    <th>Marca / modelo ofertado</th>
                     <th class="rd-num">Precio unitario</th>
                     <th class="rd-num">Total</th>
                 </tr>
@@ -119,6 +120,9 @@ $formato = Yii::$app->formatter;
                     <tr class="cotizar-fila">
                         <td>
                             <?= Html::encode($item->subcatalogoItem->descripcion ?? 'Ítem no disponible') ?>
+                            <?php if (isset($referencias[$idItem])): ?>
+                                <div class="rd-celda-sub">Referencia pedida: <?= Html::encode($referencias[$idItem]) ?></div>
+                            <?php endif; ?>
                             <?php if (!empty($item->observacion)): ?>
                                 <div class="rd-celda-sub"><?= Html::encode($item->observacion) ?></div>
                             <?php endif; ?>
@@ -135,7 +139,7 @@ $formato = Yii::$app->formatter;
                                 'class' => 'form-control',
                                 'maxlength' => 300,
                                 'disabled' => !$editable,
-                                'aria-label' => 'Marca / modelo',
+                                'aria-label' => 'Marca / modelo ofertado',
                             ]) ?>
                         </td>
                         <td class="rd-num">

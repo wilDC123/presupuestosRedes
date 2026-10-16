@@ -12,6 +12,7 @@ use backend\services\ProveedorService;
 use backend\services\ProyectoService;
 use backend\services\SolicitudCotizacionService;
 use Yii;
+use yii\helpers\ArrayHelper;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
@@ -48,6 +49,7 @@ class SolicitudCotizacionController extends Controller
                     'por-clasificacion' => ['POST'],
                     'quitar-item' => ['POST'],
                     'actualizar' => ['POST'],
+                    'referencias' => ['POST'],
                     'eliminar' => ['POST'],
                     'eliminar-cotizacion' => ['POST'],
                 ],
@@ -67,6 +69,7 @@ class SolicitudCotizacionController extends Controller
             'solicitudes' => $this->service->listar($proyecto),
             'sinAsignar' => $this->service->sinAsignar($proyecto),
             'editable' => $this->service->puedeEditarse($proyecto),
+            'modelosSugeridos' => $this->service->modelosSugeridos($proyecto),
         ]);
     }
 
@@ -145,6 +148,25 @@ class SolicitudCotizacionController extends Controller
             Yii::$app->session->setFlash('success', $solicitud->codigoCorto() . ' actualizada.');
         } else {
             Yii::$app->session->setFlash('error', implode(' ', $solicitud->getFirstErrors()) ?: 'No se pudo actualizar la solicitud.');
+        }
+
+        return $this->redirect(['index', 'id' => $solicitud->idProyecto]);
+    }
+
+    /**
+     * Guarda la marca y modelo de referencia de los items de una solicitud.
+     *
+     * @param int $id id de la solicitud
+     */
+    public function actionReferencias(int $id)
+    {
+        $solicitud = $this->findSolicitud($id);
+        $error = $this->service->guardarReferencias($solicitud, Yii::$app->request->post('referencias', []));
+
+        if ($error === null) {
+            Yii::$app->session->setFlash('success', 'Marcas y modelos de referencia de ' . $solicitud->codigoCorto() . ' guardados.');
+        } else {
+            Yii::$app->session->setFlash('error', $error);
         }
 
         return $this->redirect(['index', 'id' => $solicitud->idProyecto]);
@@ -314,6 +336,9 @@ class SolicitudCotizacionController extends Controller
             'solicitud' => $solicitud,
             'cotizacion' => $cotizacion,
             'filas' => $filas,
+            // Marca y modelo pedidos en la solicitud, para comparar con lo ofertado.
+            // array_filter() quita los items sin referencia (null).
+            'referencias' => array_filter(ArrayHelper::map($solicitud->items, 'idProyectoItem', 'marcaModeloReferencia')),
             'errores' => $errores,
             'editable' => $this->service->puedeEditarse($solicitud->proyecto),
             'proveedores' => (new ProveedorService())->opcionesActivos($cotizacion->idProveedor ? (int) $cotizacion->idProveedor : null),
