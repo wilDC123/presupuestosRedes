@@ -120,6 +120,14 @@ class PresupuestoController extends Controller
         $model = $this->findModel($id);
         $nuevoEstado = (string) Yii::$app->request->post('estado');
 
+        // "En revision" exige la cabecera y todos los precios: solo se envia
+        // desde el paso Presupuesto del proyecto.
+        if ($nuevoEstado === Presupuesto::ESTADO_EN_REVISION) {
+            Yii::$app->session->setFlash('error', 'Para enviar a revisión complete la cabecera en el paso Presupuesto del proyecto.');
+
+            return $this->redirect(['/elaborar-presupuesto/index', 'idProyecto' => $model->idProyecto]);
+        }
+
         if (!$this->service->cambiarEstado($model, $nuevoEstado)) {
             Yii::$app->session->setFlash('error', 'No se puede pasar de "' . $model->estadoLabel() . '" a ese estado.');
 

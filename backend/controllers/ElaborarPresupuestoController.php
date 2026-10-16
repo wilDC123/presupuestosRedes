@@ -41,6 +41,8 @@ class ElaborarPresupuestoController extends Controller
                 'actions' => [
                     'elegir' => ['POST'],
                     'adjudicar' => ['POST'],
+                    'enviar' => ['POST'],
+                    'estado' => ['POST'],
                 ],
             ],
         ];
@@ -124,11 +126,71 @@ class ElaborarPresupuestoController extends Controller
     }
 
     /**
+     * "Enviar a revision" con la cabecera (numero, oficio, area, fecha). Si
+     * falta algo, vuelve a la pantalla con el panel abierto y los mensajes.
+     */
+    public function actionEnviar(int $idProyecto)
+    {
+        $proyecto = $this->findProyecto($idProyecto);
+        $presupuesto = $this->service->delProyecto($proyecto);
+        $errores = [];
+
+        if ($this->service->enviarARevision($presupuesto, (array) Yii::$app->request->post('Presupuesto', []), $errores)) {
+            Yii::$app->session->setFlash('success', 'Presupuesto enviado a revisión.');
+            $this->avisarVencidas($presupuesto);
+
+            return $this->redirect(['index', 'idProyecto' => $proyecto->id]);
+        }
+
+        // Con "+" gana la clave de la IZQUIERDA: los errores van primero.
+        return $this->render('index', ['erroresEnvio' => $errores] + $this->datosPantalla($proyecto, $presupuesto));
+    }
+
+    /**
+     * Los demas cambios de estado, desde la misma pantalla: observar,
+     * aprobar o cancelar (en revision) y volver a "en proceso" (observado).
+     * "En revision" solo se alcanza con actionEnviar(), que exige la
+     * cabecera y todos los precios.
+     */
+    public function actionEstado(int $idProyecto)
+    {
+        $proyecto = $this->findProyecto($idProyecto);
+        $presupuesto = $this->service->delProyecto($proyecto);
+        $nuevoEstado = (string) Yii::$app->request->post('estado');
+
+        if ($nuevoEstado === Presupuesto::ESTADO_EN_REVISION || !(new PresupuestoService())->cambiarEstado($presupuesto, $nuevoEstado)) {
+            Yii::$app->session->setFlash('error', 'No se puede pasar de "' . $presupuesto->estadoLabel() . '" a ese estado.');
+
+            return $this->redirect(['index', 'idProyecto' => $proyecto->id]);
+        }
+
+        Yii::$app->session->setFlash('success', 'Estado actualizado a "' . $presupuesto->estadoLabel() . '".');
+
+        // Aviso que NO bloquea: el presupuesto ya quedo aprobado.
+        if ($nuevoEstado === Presupuesto::ESTADO_APROBADO) {
+            $this->avisarVencidas($presupuesto);
+        }
+
+        return $this->redirect(['index', 'idProyecto' => $proyecto->id]);
+    }
+
+    private function avisarVencidas(Presupuesto $presupuesto): void
+    {
+        $vencidas = (new PresupuestoService())->lineasConCotizacionVencida($presupuesto);
+
+        if ($vencidas !== []) {
+            $nombres = array_map(static fn ($linea) => $linea->subcatalogoItem->descripcion ?? '?', $vencidas);
+            Yii::$app->session->setFlash('warning', 'Atención: ' . count($vencidas) . ' línea(s) usan una cotización vencida: ' . implode(', ', $nombres) . '.');
+        }
+    }
+
+    /**
      * Variables de la vista index.php.
      */
     private function datosPantalla(Proyecto $proyecto, Presupuesto $presupuesto): array
     {
         return [
+            'erroresEnvio' => [],
             'proyecto' => $proyecto,
             'presupuesto' => $presupuesto,
             'pasos' => (new ProyectoService())->pasos($proyecto),

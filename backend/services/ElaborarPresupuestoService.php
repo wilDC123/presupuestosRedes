@@ -360,6 +360,55 @@ class ElaborarPresupuestoService
     }
 
     /**
+     * "Enviar a revision": en proceso -> en revision, solo si
+     *  - todos los items de la lista tienen precio (control()), y
+     *  - la cabecera esta completa (escenario Presupuesto::SCENARIO_ENVIAR).
+     * Las cotizaciones vencidas no bloquean (el controlador avisa).
+     *
+     * $cabecera es lo que llega del formulario (Presupuesto[...]); se copian
+     * SOLO los cuatro datos de cabecera, nunca el estado ni el proyecto.
+     * Devuelve false con los mensajes en $errores; los errores de cada campo
+     * quedan ademas en $presupuesto->errors.
+     *
+     * @param string[] $errores (por referencia)
+     */
+    public function enviarARevision(Presupuesto $presupuesto, array $cabecera, array &$errores = []): bool
+    {
+        $errores = [];
+
+        if (!$presupuesto->esBorrador()) {
+            $errores[] = 'Solo se envía a revisión un presupuesto "En proceso".';
+
+            return false;
+        }
+
+        foreach (['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'fecha'] as $atributo) {
+            if (array_key_exists($atributo, $cabecera) && is_string($cabecera[$atributo])) {
+                $presupuesto->$atributo = $cabecera[$atributo];
+            }
+        }
+
+        $presupuesto->scenario = Presupuesto::SCENARIO_ENVIAR;
+        $sinPrecio = $this->control($presupuesto)['sinPrecio'];
+
+        if ($sinPrecio !== []) {
+            $errores[] = 'Faltan precios: ' . implode(', ', $sinPrecio) . '.';
+        }
+
+        if (!$presupuesto->validate()) {
+            $errores = array_merge($errores, $presupuesto->getErrorSummary(false));
+        }
+
+        if ($errores !== []) {
+            return false;
+        }
+
+        // cambiarEstado() verifica la transicion y guarda la cabecera junto
+        // con el estado nuevo.
+        return $this->presupuestos->cambiarEstado($presupuesto, Presupuesto::ESTADO_EN_REVISION);
+    }
+
+    /**
      * Precios que puede usar cada item, del menor al mayor: los cotizados
      * para esa fila de la lista o, si no tiene ninguno, las cotizaciones
      * sueltas de su item del subcatalogo. Dos consultas en total, no una por

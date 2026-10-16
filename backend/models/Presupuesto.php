@@ -35,6 +35,13 @@ class Presupuesto extends ActiveRecord
     public const ESTADO_APROBADO = 'aprobado';
     public const ESTADO_CANCELADO = 'cancelado';
 
+    /**
+     * Escenario de Yii2 para "Enviar a revision": las mismas reglas de
+     * siempre MAS la cabecera obligatoria (numero, oficio, area y fecha).
+     * Mientras el presupuesto es un borrador esos datos pueden faltar.
+     */
+    public const SCENARIO_ENVIAR = 'enviar';
+
     public static function tableName(): string
     {
         return 'redes.Presupuesto';
@@ -100,6 +107,8 @@ class Presupuesto extends ActiveRecord
     {
         return [
             [['idProyecto'], 'required'],
+            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion'], 'trim'],
+            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'fecha'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
             [['idProyecto'], 'integer'],
             // Mensaje claro en vez del error de la base por el indice unico.
             [['idProyecto'], 'unique', 'message' => 'Este proyecto ya tiene un presupuesto.'],

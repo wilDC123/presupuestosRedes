@@ -21,6 +21,7 @@ use yii\web\JqueryAsset;
  * @var array $tabla Ver ElaborarPresupuestoService::tabla()
  * @var array{sinPrecio: string[], vencidas: int} $control Ver ElaborarPresupuestoService::control()
  * @var array $resumenPartidas Ver PresupuestoService::resumenPorPartida()
+ * @var string[] $erroresEnvio mensajes si "Enviar a revision" fallo (el panel se abre)
  */
 
 $borrador = $presupuesto->esBorrador();
@@ -137,7 +138,7 @@ $columnas = 5 + count($proveedores);
                                             <button type="button" class="btn btn-primary btn-sm elaborar-guardar">Guardar</button>
                                         </div>
                                     <?php else: ?>
-                                        <div class="rd-celda-sub">Justificación: <?= Html::encode((string) $linea->justificacion) ?></div>
+                                        <div class="rd-celda-sub">Justificación: <?= Html::encode((string) ($linea?->justificacion)) ?></div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="small elaborar-estado"></div>
@@ -212,6 +213,12 @@ $columnas = 5 + count($proveedores);
             <?= $this->render('_control', ['control' => $control, 'presupuesto' => $presupuesto]) ?>
         </div>
     </div>
+
+    <?= $this->render('_acciones', [
+        'proyecto' => $proyecto,
+        'presupuesto' => $presupuesto,
+        'erroresEnvio' => $erroresEnvio,
+    ]) ?>
 
     <?php endif; ?>
 
