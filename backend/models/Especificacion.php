@@ -33,6 +33,8 @@ use yii\web\UploadedFile;
  * @property-read Categoria|null $categoria
  * @property-read ProyectoItem[] $proyectoItems
  * @property-read CotizacionDetalle[] $cotizacionDetalles
+ * @property-read EspecificacionVersion[] $versiones De la mas nueva a la mas antigua.
+ * @property-read EspecificacionVersion|null $versionActual La mas nueva: la que usan las emisiones nuevas.
  */
 class Especificacion extends ActiveRecord
 {
@@ -126,6 +128,26 @@ class Especificacion extends ActiveRecord
     public function getCotizacionDetalles(): ActiveQuery
     {
         return $this->hasMany(CotizacionDetalle::class, ['idEspecificacion' => 'id']);
+    }
+
+    /**
+     * Versiones del contenido tecnico, de la mas nueva a la mas antigua.
+     */
+    public function getVersiones(): ActiveQuery
+    {
+        return $this->hasMany(EspecificacionVersion::class, ['idEspecificacion' => 'id'])
+            ->orderBy(['numero' => SORT_DESC]);
+    }
+
+    /**
+     * La version mas nueva. Funciona tambien con with('versionActual'): en
+     * una relacion hasOne, Yii se queda con la PRIMERA fila de cada ficha, y
+     * el orden descendente hace que esa sea la de numero mas alto.
+     */
+    public function getVersionActual(): ActiveQuery
+    {
+        return $this->hasOne(EspecificacionVersion::class, ['idEspecificacion' => 'id'])
+            ->orderBy(['numero' => SORT_DESC]);
     }
 
     /**

@@ -7,6 +7,9 @@ namespace backend\services;
 use backend\components\EspecificacionMetadataExtractor;
 use backend\models\CotizacionDetalle;
 use backend\models\Especificacion;
+use backend\models\EspecificacionCaracteristica;
+use backend\models\EspecificacionEmision;
+use backend\models\EspecificacionVersion;
 use backend\models\ProyectoItem;
 use Throwable;
 use Yii;
@@ -21,7 +24,9 @@ use yii\web\UploadedFile;
  *    por categoria y se enlaza a items de la lista de un proyecto,
  *  - los selectores solo ofrecen especificaciones ACTIVAS (una desactivada
  *    sigue mostrandose donde ya estaba enlazada),
- *  - una especificacion en uso no se elimina: se desactiva.
+ *  - una especificacion en uso (enlazada o emitida) no se elimina: se desactiva,
+ *  - el contenido tecnico vive en VERSIONES; una version ya emitida no se
+ *    modifica, cambiarla crea la siguiente (ver guardarVersion()).
  *
  * Ademas: donde y con que nombre se guarda el documento adjunto, y la
  * extraccion automatica de metadatos desde PDF/DOCX.
@@ -179,9 +184,213 @@ class EspecificacionService
             return false;
         }
 
-        $this->guardarArchivoSubido($especificacion);
+        $transaccion = Yii::$app->db->beginTransaction();
 
-        return $especificacion->save(false);
+        try {
+            $this->guardarArchivoSubido($especificacion);
+            $especificacion->save(false);
+
+            // Mientras el formulario siga editando modeloSugerido y
+            // documentoRuta en la ficha (hasta el paso 3 del plan), se copian
+            // a la version para que las dos no se separen. Si la version ya
+            // se emitio, esto crea la siguiente.
+            $resultado = $this->guardarVersion($especificacion, [
+                'modeloSugerido' => $especificacion->modeloSugerido,
+                'adjuntoRuta' => $especificacion->documentoRuta,
+            ]);
+
+            if ($resultado['errores'] !== []) {
+                $transaccion->rollBack();
+                $especificacion->addError('modeloSugerido', implode(' ', $resultado['errores']));
+
+                return false;
+            }
+
+            $transaccion->commit();
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
+        return true;
+    }
+
+    /**
+     * Guarda el contenido tecnico de la ficha (modelo sugerido, garantia,
+     * adjunto, caracteristicas) en su version actual o en una nueva.
+     *
+     * REGLA DE NEGOCIO: una version que ya se uso en una emision NET no se
+     * modifica nunca (el documento firmado apunta a ella).
+     *  - Ficha sin versiones: se crea la v1.
+     *  - Version actual SIN emisiones: se corrige ahi mismo.
+     *  - Version actual CON emisiones: si el contenido cambio, se crea la
+     *    version siguiente y la anterior queda intacta; si no cambio nada
+     *    (ej. solo se edito el titulo o "activo"), no se crea ninguna.
+     *
+     * $datos puede traer modeloSugerido, garantia, adjuntoRuta y notaCambio.
+     * Una clave que no viene conserva el valor de la version actual, salvo
+     * notaCambio, que en una version nueva empieza vacia (la nota describe
+     * ESE cambio, no el anterior). $filas = null conserva las caracteristicas
+     * de la version actual; las filas sin nombre ni valor se ignoran.
+     *
+     * La ficha tiene que estar guardada (necesita su id).
+     *
+     * @param array{modeloSugerido?: ?string, garantia?: ?string, adjuntoRuta?: ?string, notaCambio?: ?string} $datos
+     * @param array<int, array{nombre?: ?string, valor?: ?string}>|null $filas en el orden en que se imprimen
+     * @return array{version: ?EspecificacionVersion, nueva: bool, errores: string[]}
+     */
+    public function guardarVersion(Especificacion $especificacion, array $datos, ?array $filas = null): array
+    {
+        $actual = $especificacion->getVersionActual()->one();
+        // Limpias igual que las del formulario, para poder compararlas.
+        [$filasActuales] = $this->normalizarFilas($actual !== null ? $this->filasDe($actual) : []);
+
+        [$filasNormalizadas, $errores] = $this->normalizarFilas($filas ?? $filasActuales);
+
+        if ($errores !== []) {
+            return ['version' => null, 'nueva' => false, 'errores' => $errores];
+        }
+
+        $contenido = [];
+        foreach (['modeloSugerido', 'garantia', 'adjuntoRuta'] as $campo) {
+            $contenido[$campo] = array_key_exists($campo, $datos)
+                ? $this->textoONull($datos[$campo])
+                : $actual?->$campo;
+        }
+
+        $bloqueada = $actual !== null && $actual->estaBloqueada();
+
+        if ($bloqueada && $this->mismoContenido($actual, $filasActuales, $contenido, $filasNormalizadas)) {
+            return ['version' => $actual, 'nueva' => false, 'errores' => []];
+        }
+
+        $nueva = $actual === null || $bloqueada;
+
+        if ($nueva) {
+            $version = new EspecificacionVersion([
+                'idEspecificacion' => $especificacion->id,
+                'numero' => $actual === null ? 1 : $actual->numero + 1,
+                'notaCambio' => $this->textoONull($datos['notaCambio'] ?? null),
+            ]);
+        } else {
+            $version = $actual;
+            if (array_key_exists('notaCambio', $datos)) {
+                $version->notaCambio = $this->textoONull($datos['notaCambio']);
+            }
+        }
+
+        $version->setAttributes($contenido, false);
+
+        if (!$version->validate()) {
+            return ['version' => null, 'nueva' => false, 'errores' => $version->getErrorSummary(true)];
+        }
+
+        $transaccion = Yii::$app->db->beginTransaction();
+
+        try {
+            $version->save(false);
+
+            // En una version que se corrige ahi mismo, las filas se reemplazan
+            // completas: es mas simple y seguro que emparejarlas una por una,
+            // y nadie apunta a una fila individual.
+            if (!$nueva) {
+                EspecificacionCaracteristica::deleteAll(['idVersion' => $version->id]);
+            }
+
+            foreach ($filasNormalizadas as $orden => $fila) {
+                (new EspecificacionCaracteristica([
+                    'idVersion' => $version->id,
+                    'orden' => $orden + 1,
+                    'nombre' => $fila['nombre'],
+                    'valor' => $fila['valor'],
+                ]))->save(false);
+            }
+
+            $transaccion->commit();
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
+        unset($version->caracteristicas);
+
+        return ['version' => $version, 'nueva' => $nueva, 'errores' => []];
+    }
+
+    /**
+     * Las caracteristicas de una version como filas simples.
+     *
+     * @return array<int, array{nombre: ?string, valor: string}>
+     */
+    private function filasDe(EspecificacionVersion $version): array
+    {
+        return array_map(static fn (EspecificacionCaracteristica $c) => [
+            'nombre' => $c->nombre,
+            'valor' => $c->valor,
+        ], $version->getCaracteristicas()->all());
+    }
+
+    /**
+     * Limpia las filas del formulario: recorta espacios, descarta las que
+     * vienen completamente vacias (la tabla del formulario siempre deja una
+     * fila en blanco) y exige valor en las que tienen nombre.
+     *
+     * @param array<int, array{nombre?: ?string, valor?: ?string}> $filas
+     * @return array{0: array<int, array{nombre: ?string, valor: string}>, 1: string[]}
+     */
+    private function normalizarFilas(array $filas): array
+    {
+        $limpias = [];
+        $errores = [];
+
+        foreach (array_values($filas) as $i => $fila) {
+            $nombre = $this->textoONull($fila['nombre'] ?? null);
+            $valor = $this->textoONull($fila['valor'] ?? null);
+
+            if ($nombre === null && $valor === null) {
+                continue;
+            }
+
+            if ($valor === null) {
+                $errores[] = 'Fila ' . ($i + 1) . " (\"$nombre\"): falta el valor.";
+                continue;
+            }
+
+            if ($nombre !== null && mb_strlen($nombre) > 200) {
+                $errores[] = 'Fila ' . ($i + 1) . ': el nombre no puede pasar de 200 caracteres.';
+                continue;
+            }
+
+            $limpias[] = ['nombre' => $nombre, 'valor' => $valor];
+        }
+
+        return [$limpias, $errores];
+    }
+
+    /**
+     * true si guardar no cambiaria nada del contenido tecnico. notaCambio no
+     * cuenta: no es parte del documento que ve el proveedor.
+     *
+     * @param array<int, array{nombre: ?string, valor: string}> $filasActuales
+     * @param array<string, ?string> $contenido
+     * @param array<int, array{nombre: ?string, valor: string}> $filasNuevas
+     */
+    private function mismoContenido(EspecificacionVersion $actual, array $filasActuales, array $contenido, array $filasNuevas): bool
+    {
+        foreach ($contenido as $campo => $valor) {
+            if ($this->textoONull($actual->$campo) !== $valor) {
+                return false;
+            }
+        }
+
+        return $filasActuales === $filasNuevas;
+    }
+
+    private function textoONull(mixed $valor): ?string
+    {
+        $texto = trim((string) $valor);
+
+        return $texto === '' ? null : $texto;
     }
 
     /**
@@ -225,6 +434,21 @@ class EspecificacionService
             foreach ($conteos as $id => $total) {
                 $totales[(int) $id] = ($totales[(int) $id] ?? 0) + (int) $total;
             }
+        }
+
+        // Emisiones NET de cualquiera de sus versiones (tambien las anuladas:
+        // son documentos que se emitieron).
+        $emisiones = EspecificacionEmision::find()
+            ->alias('e')
+            ->innerJoin(['v' => EspecificacionVersion::tableName()], 'v.id = e.idVersion')
+            ->select(['total' => 'COUNT(*)', 'v.idEspecificacion'])
+            ->andFilterWhere(['v.idEspecificacion' => $ids])
+            ->groupBy('v.idEspecificacion')
+            ->indexBy('idEspecificacion')
+            ->column();
+
+        foreach ($emisiones as $id => $total) {
+            $totales[(int) $id] = ($totales[(int) $id] ?? 0) + (int) $total;
         }
 
         return $totales;
