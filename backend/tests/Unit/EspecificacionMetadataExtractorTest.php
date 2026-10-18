@@ -67,6 +67,12 @@ class EspecificacionMetadataExtractorTest extends Unit
             'Se sugiere U6 PRO similar o superiores características' => 'U6 PRO',
             'Sugerencia: Mikrotik CRS310-1G-5S-4S+IN o superior.' => 'Mikrotik CRS310-1G-5S-4S+IN',
             'Se sugiere la marca Furukawa 2340019 o similar.' => 'Furukawa 2340019',
+            'Marca de referencia: Rowland o superior.' => 'Rowland',
+            'Marca de referencia: Siemax o de superior característica.' => 'Siemax',
+            'Marca de referencia: Corning o equivalente con características superiores.' => 'Corning',
+            'Marca de referencia: Surlink o corning  100% cobre' => 'Surlink o corning',
+            'Marca de referencia: Furukawa cod. 23400196 o con mejores características.' => 'Furukawa cod. 23400196',
+            'Marca de referencia:  DIMAX  C706  o similar con mejores características.' => 'DIMAX C706',
         ];
 
         foreach ($casos as $texto => $esperado) {
@@ -77,6 +83,16 @@ class EspecificacionMetadataExtractorTest extends Unit
             ]);
             $this->assertSame($esperado, $datos['modeloSugerido'], $texto);
         }
+    }
+
+    public function testMarcaDeReferenciaDeUnComponenteNoEsElModeloSugerido(): void
+    {
+        $datos = $this->extraer(['Gabinete 42U', 'Cantidad: 1'], [
+            ['I. REQUISITOS NECESARIOS'],
+            ['Accesorios', 'Panel de parcheo descargado con 24 jack hembra cat6 marca de referencia Furukawa o de mejor calidad.'],
+        ]);
+
+        $this->assertNull($datos['modeloSugerido']);
     }
 
     public function testFormato2023SinGarantiaNoMezclaLasCondiciones(): void

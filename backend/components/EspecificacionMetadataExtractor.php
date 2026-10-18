@@ -340,14 +340,22 @@ class EspecificacionMetadataExtractor
     {
         // "Se sugiere Cisco C1200-24P-4G, o con superiores..." y
         // "Sugerencia: NEXXT SOLUTIONS (MPN: PCGUCC6LZGR) o similar/superior."
-        // El modelo termina en la coma, en " o similar/superior/con..." o en
-        // un punto final (no en el punto de "1.2").
-        // Tambien "Se sugiere U6 PRO similar o superiores caracteristicas".
-        $patron = '/(?:Se sugiere|Sugerencia)\s*:?\s*(.+?)(?:,|\s+(?:o\s+)?(?:similar|superior)|\s+o\s+con\b|\.(?:\s|$)|$)/mu';
+        // El modelo termina en la coma, en " o similar/superior/con/de/
+        // equivalente...", en "100% cobre" o en un punto final (no en el
+        // punto de "1.2" ni en el de "cod.").
+        // Tambien "Se sugiere U6 PRO similar o superiores caracteristicas" y
+        // "Marca de referencia: Rowland o superior." (formularios 2024-2026).
+        // "Marca de referencia" solo cuenta al inicio de la linea: en medio de
+        // una linea es la de un componente ("Panel de parcheo ... marca de
+        // referencia Furukawa"), no la del item.
+        $patron = '/(?:Se sugiere|Sugerencia|^\s*[Mm]arca de referencia)\s*:?\s*(.+?)'
+            . '(?:,|\s+(?:o\s+)?(?:similar|superior)|\s+o\s+(?:con|de|equivalente)\b|\s+\d+\s*%|(?<!\b[Cc]od)\.(?:\s|$)|$)/mu';
 
         if (preg_match($patron, $texto, $m) === 1 && trim($m[1]) !== '') {
             // "Se sugiere la marca Furukawa 2340019" -> "Furukawa 2340019".
             $modelo = trim((string) preg_replace('/^(?:la\s+)?marca\s+(?:de\s+referencia\s*:?\s*)?/iu', '', trim($m[1])));
+            // "DIMAX  C706" -> "DIMAX C706".
+            $modelo = (string) preg_replace('/\s+/u', ' ', $modelo);
 
             return $modelo !== '' ? $modelo : null;
         }
