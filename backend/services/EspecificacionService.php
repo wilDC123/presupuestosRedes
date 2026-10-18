@@ -35,6 +35,12 @@ use yii\web\UploadedFile;
 class EspecificacionService
 {
     private const UPLOAD_SUBPATH = 'uploads/especificaciones';
+
+    /**
+     * Valor del filtro de categoria para "Sin categoria" (no es el id de
+     * ninguna: los ids empiezan en 1).
+     */
+    public const SIN_CATEGORIA = '0';
     private const EXTENSIONES_EXTRACCION = ['pdf', 'docx'];
 
     /**
@@ -42,7 +48,7 @@ class EspecificacionService
      * de proyecto + lineas de cotizacion). Los conteos se traen en UNA
      * consulta agrupada por tabla, no una consulta por especificacion.
      *
-     * Filtros (todos opcionales): 'categoria' (id), 'buscar' (texto en el
+     * Filtros (todos opcionales): 'categoria' (id, o SIN_CATEGORIA), 'buscar' (texto en el
      * titulo, el modelo sugerido o las caracteristicas de la version
      * actual, ej. "LSZH"), 'activo' ('1' / '0').
      *
@@ -57,7 +63,10 @@ class EspecificacionService
             ->orderBy(['e.titulo' => SORT_ASC, 'e.id' => SORT_ASC]);
 
         $categoria = trim((string) ($filtros['categoria'] ?? ''));
-        if (ctype_digit($categoria)) {
+        if ($categoria === self::SIN_CATEGORIA) {
+            // Las importadas del banco quedan sin categoria hasta asignarla.
+            $query->andWhere(['e.idCategoria' => null]);
+        } elseif (ctype_digit($categoria)) {
             $query->andWhere(['e.idCategoria' => (int) $categoria]);
         }
 

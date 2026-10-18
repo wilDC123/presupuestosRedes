@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace backend\tests\Unit;
 
 use backend\components\EspecificacionMetadataExtractor;
+use backend\tests\Support\DocxDePrueba;
 use Codeception\Test\Unit;
-use ZipArchive;
 
 /**
  * Lectura del formulario DTIC desde un DOCX. El documento se arma en el test
- * con la misma estructura que los del banco de especificaciones (tabla con
- * secciones I, II y III), para no guardar documentos institucionales en el
+ * (Support\DocxDePrueba) con la misma estructura que los del banco de
+ * especificaciones, para no guardar documentos institucionales en el
  * repositorio.
  */
 class EspecificacionMetadataExtractorTest extends Unit
@@ -60,6 +60,25 @@ class EspecificacionMetadataExtractorTest extends Unit
         ], $datos['caracteristicas']);
     }
 
+    public function testModeloSugeridoTerminaDondeEmpiezaOSimilar(): void
+    {
+        $casos = [
+            'Se sugiere Cisco C1200-24P-4G, o con superiores características.' => 'Cisco C1200-24P-4G',
+            'Se sugiere U6 PRO similar o superiores características' => 'U6 PRO',
+            'Sugerencia: Mikrotik CRS310-1G-5S-4S+IN o superior.' => 'Mikrotik CRS310-1G-5S-4S+IN',
+            'Se sugiere la marca Furukawa 2340019 o similar.' => 'Furukawa 2340019',
+        ];
+
+        foreach ($casos as $texto => $esperado) {
+            $datos = $this->extraer(['Equipo', 'Cantidad: 1'], [
+                ['I. REQUISITOS NECESARIOS'],
+                ['Marca: Especificar', $texto],
+                ['Puertos: 24'],
+            ]);
+            $this->assertSame($esperado, $datos['modeloSugerido'], $texto);
+        }
+    }
+
     public function testFormato2023SinGarantiaNoMezclaLasCondiciones(): void
     {
         $datos = $this->extraer(['Conector RJ-45', 'Cantidad: 100 unidades'], [
@@ -88,33 +107,18 @@ class EspecificacionMetadataExtractorTest extends Unit
     }
 
     /**
-     * Arma un DOCX minimo: parrafos antes de la tabla, una tabla de 2
-     * columnas (la segunda vacia, como "Propuesta") y parrafos despues.
-     *
      * @param string[] $antes
      * @param array<int, string[]> $filas cada fila: los parrafos de la primera celda
      * @param string[] $despues
      */
     private function extraer(array $antes, array $filas, array $despues = []): array
     {
-        $p = static fn (string $texto): string => '<w:p><w:r><w:t xml:space="preserve">' . htmlspecialchars($texto, ENT_XML1) . '</w:t></w:r></w:p>';
-
-        $tabla = '<w:tbl>';
-        foreach ($filas as $parrafos) {
-            $tabla .= '<w:tr><w:tc>' . implode('', array_map($p, $parrafos)) . '</w:tc><w:tc><w:p/></w:tc></w:tr>';
-        }
-        $tabla .= '</w:tbl>';
-
-        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
-            . implode('', array_map($p, $antes)) . $tabla . implode('', array_map($p, $despues))
-            . '</w:body></w:document>';
-
-        $this->archivo = tempnam(sys_get_temp_dir(), 'esp') . '.docx';
-        $zip = new ZipArchive();
-        $zip->open($this->archivo, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-        $zip->addFromString('word/document.xml', $xml);
-        $zip->close();
+        $this->_after();
+        // tempnam() crea el archivo sin extension: se usa solo su nombre.
+        $base = tempnam(sys_get_temp_dir(), 'esp');
+        unlink($base);
+        $this->archivo = $base . '.docx';
+        DocxDePrueba::escribir($this->archivo, $antes, $filas, $despues);
 
         return (new EspecificacionMetadataExtractor())->extraerDesdeArchivo($this->archivo, 'docx');
     }

@@ -342,10 +342,14 @@ class EspecificacionMetadataExtractor
         // "Sugerencia: NEXXT SOLUTIONS (MPN: PCGUCC6LZGR) o similar/superior."
         // El modelo termina en la coma, en " o similar/superior/con..." o en
         // un punto final (no en el punto de "1.2").
-        $patron = '/(?:Se sugiere|Sugerencia)\s*:?\s*(.+?)(?:,|\s+o\s+(?:similar|superior|con)\b|\.(?:\s|$)|$)/mu';
+        // Tambien "Se sugiere U6 PRO similar o superiores caracteristicas".
+        $patron = '/(?:Se sugiere|Sugerencia)\s*:?\s*(.+?)(?:,|\s+(?:o\s+)?(?:similar|superior)|\s+o\s+con\b|\.(?:\s|$)|$)/mu';
 
         if (preg_match($patron, $texto, $m) === 1 && trim($m[1]) !== '') {
-            return trim($m[1]);
+            // "Se sugiere la marca Furukawa 2340019" -> "Furukawa 2340019".
+            $modelo = trim((string) preg_replace('/^(?:la\s+)?marca\s+(?:de\s+referencia\s*:?\s*)?/iu', '', trim($m[1])));
+
+            return $modelo !== '' ? $modelo : null;
         }
 
         return null;

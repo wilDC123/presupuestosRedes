@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\services\EspecificacionService;
 use yii\helpers\Html;
 
 /**
@@ -37,7 +38,7 @@ $hayFiltros = $filtros['categoria'] !== '' || $filtros['buscar'] !== '' || $filt
     </div>
 
     <?= Html::beginForm(['index'], 'get', ['class' => 'rd-acciones mb-3']) ?>
-        <?= Html::dropDownList('categoria', $filtros['categoria'], $categorias, [
+        <?= Html::dropDownList('categoria', $filtros['categoria'], $categorias + [EspecificacionService::SIN_CATEGORIA => '— Sin categoría —'], [
             'class' => 'form-control',
             'prompt' => 'Todas las categorías',
             'aria-label' => 'Categoría',

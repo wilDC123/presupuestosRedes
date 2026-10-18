@@ -112,6 +112,19 @@ class EspecificacionFormularioTest extends Unit
         $this->assertSame([$ficha->id], $this->idsEncontrados('LSZH-XQZ'));
     }
 
+    public function testFiltroSinCategoria(): void
+    {
+        $sinCategoria = new Especificacion(['titulo' => 'Importada test', 'activo' => true]);
+        $sinCategoria->save(false);
+        $conCategoria = new Especificacion();
+        $this->service->guardar($conCategoria, $this->post('Clasificada test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]), null);
+
+        $ids = array_map(static fn ($fila) => (int) $fila['especificacion']->id, $this->service->listar(['categoria' => EspecificacionService::SIN_CATEGORIA]));
+
+        $this->assertContains((int) $sinCategoria->id, $ids);
+        $this->assertNotContains((int) $conCategoria->id, $ids);
+    }
+
     /**
      * Lo que envia el formulario.
      *
