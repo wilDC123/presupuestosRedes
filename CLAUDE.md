@@ -76,15 +76,43 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   la lista (`CotizacionDetalle.idProyectoItem`), solo esa fila puede usarla (las sueltas, sin
   `idProyectoItem`, se ofrecen solo si la fila no tiene cotizaciones propias); cotización vencida
   (`fecha + validezDias < hoy`) se permite pero genera aviso al enviar y al aprobar
-- Librería de especificaciones técnicas (formato institucional con código `NET:xxx/26`):
-  `redes.Especificacion` NO pertenece a un ítem ni a un proyecto; se clasifica por categoría
-  (`idCategoria`) y `idSubcatalogo` es solo un "ítem de referencia" opcional. Se ENLAZA a los
-  ítems de la lista de cada proyecto con `redes.ProyectoItem.idEspecificacion` (como máximo una
-  por ítem, desde la pantalla de la lista y con su mismo bloqueo). La especificación es
-  OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud, cotización, presupuesto ni
-  PDF. El código del proyecto no se guarda en la especificación; los impresos lo muestran junto
-  a ella. Solo se enlazan especificaciones activas; una en uso no se elimina, se desactiva
-- Cotizaciones de proveedores (relación N:N con ítems/especificaciones)
+- Librería de especificaciones técnicas: las especificaciones VIVEN EN EL SISTEMA (antes eran
+  Word en el Drive del Ing.). Tres niveles (decidido con el Ing. de DTIC el 2026-10-17; resumen
+  para el tutor en `docs/cambios-especificaciones.md`, plan en `docs/plan-especificaciones.md`):
+  - FICHA `redes.Especificacion`: solo título, categoría (`idCategoria`), ítem de referencia
+    opcional (`idSubcatalogo`) y activo. NO pertenece a un ítem ni a un proyecto.
+  - VERSIÓN `redes.EspecificacionVersion` (v1, v2…) con sus filas
+    `redes.EspecificacionCaracteristica` (nombre, valor), modelo sugerido, garantía y adjunto. Una
+    versión ya usada en una emisión NO se modifica: editarla crea la siguiente
+    (`EspecificacionService::guardarVersion()`); cambiar solo título/categoría/activo no crea versión.
+  - EMISIÓN `redes.EspecificacionEmision`: el formulario con código `NET:880/26` que se firma y se
+    entrega al proveedor. NUNCA cambia: guarda copias congeladas (título, cantidad, unidad,
+    dependencia = facultad del proyecto, garantía, textos, condiciones de entrega) y apunta a una
+    versión que ya no cambia. Estados: vigente, reemplazada, anulada; "vencida" se calcula
+    (fecha + vigencia). Reglas en `EspecificacionEmisionService`.
+  Se ENLAZA a los ítems de la lista con `redes.ProyectoItem.idEspecificacion` (como máximo una por
+  ítem, desde la pantalla de la lista y con su mismo bloqueo) y ENLAZAR = EMITIR: al guardar la
+  lista se asigna el siguiente NET. Cambiar o quitar la ficha, o quitar el ítem, ANULA la emisión
+  vigente (no se borra). Un error se corrige REEMITIENDO (NET nuevo, última versión, cantidad
+  actual de la lista; la anterior queda "reemplazada por"), permitido mientras el presupuesto no
+  esté aprobado ni cancelado. Correlativo NET: lo fija el encargado en
+  `redes.ConfiguracionEspecificacion.siguienteNet` (una sola fila, con los textos fijos del
+  formulario, editables), sube de 1 en 1, no se reinicia por año y nunca se reutiliza. Avisos que
+  no bloquean: cantidad distinta de la emitida, emisión vencida, versión nueva de la ficha. La
+  especificación es OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud,
+  cotización, presupuesto ni PDF. Los impresos citan el NET de la emisión vigente
+  (`ProyectoItem::referenciaEspecificacion()`). Solo se enlazan fichas activas; una en uso o
+  emitida no se elimina, se desactiva
+- Formulario NET en PDF (`especificacion/formulario`) con el formato institucional (tabla
+  Especificación | Propuesta | Cumple | No cumple, secciones I, II y III); marca de agua
+  REEMPLAZADO / ANULADO / VENCIDO. Registro de todas las emisiones en el menú "Formularios NET"
+  (reemplaza el Excel "1000 Especificaciones"), con exportación a CSV
+- Carga inicial desde el banco de .docx de DTIC: `php yii especificacion/importar "<carpeta>"`
+  (sin `--confirmar` solo escribe un CSV; `--desde=AAAA`). Agrupa por título + modelo sugerido y
+  toma la emisión más reciente de cada familia. No importa emisiones antiguas
+- Cotizaciones de proveedores (relación N:N con ítems/especificaciones). Una línea que viene de
+  una solicitud guarda contra qué NET cotizó (`CotizacionDetalle.idEspecificacionEmision`, no
+  cambia si el NET se reemite); una cotización suelta solo elige la ficha (`idEspecificacion`)
 - Marca y modelo: `SolicitudCotizacionItem.marcaModeloReferencia` es lo que la DTIC PIDE como
   referencia (texto libre, opcional; sale entre paréntesis junto a la descripción en el PDF de la
   solicitud; se edita mientras la solicitud no tenga cotizaciones y viaja con el ítem si se mueve
@@ -118,16 +146,28 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 - El PATH de Windows ya está configurado para que `php` (sin ruta completa) use el
   de Laragon (8.2.33, con el driver sqlsrv) por defecto. Si alguna terminal nueva
   muestra una versión distinta, verificar con `php -v` antes de correr comandos.
+- Tests unitarios: `php vendor/bin/codecept run Unit -c backend`. Usan la base LOCAL de
+  desarrollo (`common/config/test-local.php`, no se sube a git); cada test corre en una
+  transacción que se deshace al terminar, así que no dejan datos
 - URL local del backend: http://presupuestos-redes.test:8080
 - Usuario de prueba local: admin / admin123 (SOLO en tabla `dbo.user` de desarrollo,
   temporal hasta integrar autenticación institucional real)
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-16; la última es `m261016_012942_justificacion_y_linea_unica_presupuesto`), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-18; la última es `m261018_000758_limpieza_especificacion_y_garantia_emision`), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
-  `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y la de la librería de
-  especificaciones (`m261015_035448_libreria_especificaciones`).
+  `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
+  (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
+- PENDIENTE (encargado + Ing. de DTIC): fijar el NET inicial en Especificaciones →
+  "Configuración del formulario NET" (el Excel del Ing. va por ~890; confirmar el número). Hasta
+  entonces la lista no deja enlazar especificaciones. Revisar la nota final del formulario
+  ("Señor proveedor ser evaluado…": parece faltarle "para"; está tal cual el formulario oficial)
+- PENDIENTE: las 165 fichas importadas del banco (2026-10-18, `--desde=2025`) están SIN categoría
+  (filtro "— Sin categoría —" de la librería). La ficha id 378 "CÁMARA PTZ" tiene en realidad
+  las características de un NVR de 8 canales (error del .docx `840 NVR NVR1108HS-8P-S3_H` del
+  banco): corregir su título. Conviene revisar el CSV de la importación con el Ing.
+- PENDIENTE (opcional): logo del formulario NET en `backend/web/img/logo-formulario-net.png`
 - OJO con `sqlcmd` a mano: usar `-I` (QUOTED_IDENTIFIER ON). Sin eso, los DELETE/UPDATE sobre
   tablas con columnas calculadas (ej. `CotizacionDetalle.precioTotal`) fallan con el error 1934.
 - OJO con los tipos en migraciones: Yii2 traduce "char" a "nchar" en SQL Server aunque se
@@ -156,6 +196,11 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   "ejecución/modificaciones presupuestarias", terminando en un merge al proyecto principal
 - PENDIENTE (tutor): el flujo "documento vivo" cambia los diagramas de secuencia "Elaborar
   presupuesto" y de actividades; resumen de los cambios en `docs/cambios-presupuesto-vivo.md`
+- PENDIENTE (tutor): especificaciones con versiones y formularios NET cambian el diagrama de
+  clases (Especificacion se divide en ficha, versión, característica y emisión, más la
+  configuración), agregan secuencias "Emitir" y "Reemitir formulario NET", casos de uso y un
+  diagrama de actividades del ciclo de vida de una emisión; resumen en
+  `docs/cambios-especificaciones.md`
 - PENDIENTE: `PresupuestoService::crearNuevaVersion()` (`backend/services/PresupuestoService.php`) ahora
   crea la nueva versión VACÍA a propósito (cada versión es solo el incremento/cambio
   solicitado, no un snapshot completo de líneas ya aprobadas). Como consecuencia, falta
@@ -176,7 +221,11 @@ Se diseñaron los siguientes diagramas, con el modelo de datos ya validado:
   ComputoMetrico) + enumerado EstadoPresupuesto. Composición (rombo relleno) en
   Presupuesto→PresupuestoDetalle y Cotizacion→CotizacionDetalle. Auto-relación
   0..1 en Presupuesto (versionAnterior). Atributo derivado /precioTotal
-  (calculado). Restricción {congelado} en precioUnitario de PresupuestoDetalle
+  (calculado). Restricción {congelado} en precioUnitario de PresupuestoDetalle.
+  ACTUALIZACIÓN 2026-10-18 (pendiente de dibujar, ver `docs/cambios-especificaciones.md`):
+  Especificacion pasa a ser Especificacion (ficha) ◆— EspecificacionVersion ◆—
+  EspecificacionCaracteristica, más EspecificacionEmision (auto-relación reemplazadaPor,
+  copias {congelado}, enumerado EstadoEmision) y ConfiguracionEspecificacion
 - Secuencia: 2 diagramas — "Crear nueva versión de presupuesto" (caso de
   versionado al modificar un presupuesto aprobado) y "Elaborar presupuesto"
   (flujo normal: buscar ítem → especificaciones → cotizaciones → confirmar
