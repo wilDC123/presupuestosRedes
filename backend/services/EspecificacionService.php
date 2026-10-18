@@ -11,6 +11,7 @@ use backend\models\EspecificacionCaracteristica;
 use backend\models\EspecificacionEmision;
 use backend\models\EspecificacionVersion;
 use backend\models\ProyectoItem;
+use RuntimeException;
 use Throwable;
 use Yii;
 use yii\helpers\FileHelper;
@@ -41,8 +42,9 @@ class EspecificacionService
      * de proyecto + lineas de cotizacion). Los conteos se traen en UNA
      * consulta agrupada por tabla, no una consulta por especificacion.
      *
-     * Filtros (todos opcionales): 'categoria' (id), 'buscar' (texto en
-     * titulo, codigo NET o modelo sugerido), 'activo' ('1' / '0').
+     * Filtros (todos opcionales): 'categoria' (id), 'buscar' (texto en el
+     * titulo, el modelo sugerido o las caracteristicas de la version
+     * actual, ej. "LSZH"), 'activo' ('1' / '0').
      *
      * @param array{categoria?: string, buscar?: string, activo?: string} $filtros
      * @return array<int, array{especificacion: Especificacion, usos: int}>
@@ -50,26 +52,39 @@ class EspecificacionService
     public function listar(array $filtros = []): array
     {
         $query = Especificacion::find()
-            ->with(['categoria', 'subcatalogoItem'])
-            ->orderBy(['titulo' => SORT_ASC, 'id' => SORT_ASC]);
+            ->alias('e')
+            ->with(['categoria', 'subcatalogoItem', 'versionActual'])
+            ->orderBy(['e.titulo' => SORT_ASC, 'e.id' => SORT_ASC]);
 
         $categoria = trim((string) ($filtros['categoria'] ?? ''));
         if (ctype_digit($categoria)) {
-            $query->andWhere(['idCategoria' => (int) $categoria]);
+            $query->andWhere(['e.idCategoria' => (int) $categoria]);
         }
 
         $buscar = trim((string) ($filtros['buscar'] ?? ''));
         if ($buscar !== '') {
+            // Solo en la version ACTUAL: buscar "LSZH" no debe traer una ficha
+            // que lo tenia en la v1 y ya no lo tiene.
+            $versionActual = EspecificacionVersion::find()
+                ->alias('v')
+                ->select('v.id')
+                ->where('v.idEspecificacion = e.id')
+                ->andWhere('v.numero = (SELECT MAX(v2.numero) FROM ' . EspecificacionVersion::tableName() . ' v2 WHERE v2.idEspecificacion = e.id)');
+
             $query->andWhere(['or',
-                ['like', 'titulo', $buscar],
-                ['like', 'codigoNet', $buscar],
-                ['like', 'modeloSugerido', $buscar],
+                ['like', 'e.titulo', $buscar],
+                ['exists', (clone $versionActual)->andWhere(['like', 'v.modeloSugerido', $buscar])],
+                ['exists', EspecificacionCaracteristica::find()
+                    ->alias('c')
+                    ->select('c.id')
+                    ->andWhere(['c.idVersion' => $versionActual])
+                    ->andWhere(['or', ['like', 'c.nombre', $buscar], ['like', 'c.valor', $buscar]])],
             ]);
         }
 
         $activo = (string) ($filtros['activo'] ?? '');
         if ($activo === '1' || $activo === '0') {
-            $query->andWhere(['activo' => $activo === '1']);
+            $query->andWhere(['e.activo' => $activo === '1']);
         }
 
         $usos = $this->conteoDeUsos();
@@ -98,7 +113,7 @@ class EspecificacionService
      */
     public function selector(array $incluirIds = []): array
     {
-        $query = Especificacion::find()->with('categoria')->andWhere(['activo' => true]);
+        $query = Especificacion::find()->with(['categoria', 'versionActual'])->andWhere(['activo' => true]);
         $incluirIds = array_values(array_filter(array_map('intval', $incluirIds)));
 
         if ($incluirIds !== []) {
@@ -117,7 +132,7 @@ class EspecificacionService
             $idCategoria = (int) $especificacion->idCategoria;
             $grupos[$idCategoria]['nombre'] ??= $especificacion->categoria->nombre ?? 'Sin categoría';
             $grupos[$idCategoria]['opciones'][$especificacion->id] = $especificacion->nombre()
-                . ($especificacion->codigoNet && $especificacion->titulo ? " ({$especificacion->codigoNet})" : '')
+                . ($especificacion->versionActual !== null ? ' (' . $especificacion->versionActual->etiqueta() . ')' : '')
                 . ($especificacion->activo ? '' : ' — inactiva');
 
             $url = $especificacion->urlDocumento();
@@ -167,43 +182,111 @@ class EspecificacionService
     }
 
     /**
-     * Sirve tanto para crear como para actualizar: carga el formulario,
-     * valida, guarda el archivo adjunto (si hay) y recien ahi guarda la fila.
-     * El archivo se recibe aparte porque los input type="file" no viajan en
-     * $_POST (el controlador lo obtiene con UploadedFile::getInstance()).
+     * Lo que muestra el formulario de una ficha (crear o editar), con los
+     * valores guardados:
+     *  - version: la version actual, o una vacia si la ficha es nueva (el
+     *    formulario usa sus campos: modelo sugerido, garantia, adjunto),
+     *  - filas: sus caracteristicas,
+     *  - emisiones: en cuantos formularios NET se uso la version actual (si
+     *    es mas de 0, guardar cambios creara la version siguiente).
+     *
+     * @return array{version: EspecificacionVersion, filas: array<int, array{nombre: ?string, valor: string}>, emisiones: int}
      */
-    public function guardar(Especificacion $especificacion, array $datosFormulario, ?UploadedFile $archivo): bool
+    public function formulario(Especificacion $especificacion): array
     {
+        $actual = $especificacion->isNewRecord ? null : $especificacion->getVersionActual()->one();
+
+        if ($actual === null) {
+            return ['version' => new EspecificacionVersion(), 'filas' => [], 'emisiones' => 0];
+        }
+
+        $emisiones = (int) $actual->getEmisiones()->count();
+        $version = clone $actual;
+
+        // Si la version ya se emitio, guardar cambios crea la siguiente, y la
+        // nota del cambio describe ESE cambio: el formulario la ofrece vacia.
+        // Si no, se corrige la misma version y su nota se conserva.
+        if ($emisiones > 0) {
+            $version->notaCambio = null;
+        }
+
+        return [
+            'version' => $version,
+            'filas' => $this->filasDe($actual),
+            'emisiones' => $emisiones,
+        ];
+    }
+
+    /**
+     * Guarda el formulario completo: la ficha (titulo, categoria, activo...)
+     * y su contenido tecnico (EspecificacionVersion[...] y Caracteristicas[n]
+     * [nombre|valor]), en una sola transaccion. Sirve para crear y editar.
+     *
+     * El archivo se recibe aparte porque los input type="file" no viajan en
+     * $_POST (el controlador lo obtiene con UploadedFile::getInstance()). Si
+     * viene uno, reemplaza al adjunto escrito en el campo de texto.
+     *
+     * Devuelve, ademas de si se guardo, lo necesario para volver a mostrar el
+     * formulario con lo que escribio el usuario si algo no es valido.
+     *
+     * @return array{guardado: bool, version: EspecificacionVersion, filas: array<int, array{nombre: ?string, valor: ?string}>, nueva: bool, errores: string[]}
+     */
+    public function guardar(Especificacion $especificacion, array $datosFormulario, ?UploadedFile $archivo): array
+    {
+        $datosVersion = (array) ($datosFormulario['EspecificacionVersion'] ?? []);
+        $filas = array_values(array_filter((array) ($datosFormulario['Caracteristicas'] ?? []), 'is_array'));
+
+        // La version "del formulario": solo para volver a mostrar lo escrito.
+        $versionFormulario = new EspecificacionVersion();
+        $versionFormulario->setAttributes(array_intersect_key($datosVersion, array_flip(['modeloSugerido', 'garantia', 'adjuntoRuta', 'notaCambio'])), false);
+
+        $resultado = ['guardado' => false, 'version' => $versionFormulario, 'filas' => $filas, 'nueva' => false, 'errores' => []];
+
         if (!$especificacion->load($datosFormulario)) {
-            return false;
+            return $resultado;
         }
 
         $especificacion->archivoEspecificacion = $archivo;
 
         if (!$especificacion->validate()) {
-            return false;
+            return $resultado;
         }
 
+        $nombreArchivo = $archivo !== null ? uniqid('esp_', true) . '.' . $archivo->extension : null;
+        if ($nombreArchivo !== null) {
+            $versionFormulario->adjuntoRuta = self::UPLOAD_SUBPATH . '/' . $nombreArchivo;
+        }
+
+        $eraNueva = $especificacion->isNewRecord;
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            $this->guardarArchivoSubido($especificacion);
             $especificacion->save(false);
 
-            // Mientras el formulario siga editando modeloSugerido y
-            // documentoRuta en la ficha (hasta el paso 3 del plan), se copian
-            // a la version para que las dos no se separen. Si la version ya
-            // se emitio, esto crea la siguiente.
-            $resultado = $this->guardarVersion($especificacion, [
-                'modeloSugerido' => $especificacion->modeloSugerido,
-                'adjuntoRuta' => $especificacion->documentoRuta,
-            ]);
+            $version = $this->guardarVersion($especificacion, [
+                'modeloSugerido' => $versionFormulario->modeloSugerido,
+                'garantia' => $versionFormulario->garantia,
+                'adjuntoRuta' => $versionFormulario->adjuntoRuta,
+                'notaCambio' => $versionFormulario->notaCambio,
+            ], $filas);
 
-            if ($resultado['errores'] !== []) {
+            if ($version['errores'] !== []) {
                 $transaccion->rollBack();
-                $especificacion->addError('modeloSugerido', implode(' ', $resultado['errores']));
+                // Una ficha nueva que no se llego a guardar sigue siendo nueva
+                // (el formulario vuelve a ser el de "crear").
+                if ($eraNueva) {
+                    $especificacion->setIsNewRecord(true);
+                    $especificacion->id = null;
+                }
+                $resultado['errores'] = $version['errores'];
 
-                return false;
+                return $resultado;
+            }
+
+            // El archivo se escribe recien cuando todo lo demas es valido:
+            // asi un formulario con errores no deja archivos huerfanos.
+            if ($nombreArchivo !== null) {
+                $this->guardarArchivoSubido($archivo, $nombreArchivo);
             }
 
             $transaccion->commit();
@@ -212,7 +295,41 @@ class EspecificacionService
             throw $e;
         }
 
-        return true;
+        return ['guardado' => true, 'version' => $version['version'], 'filas' => $filas, 'nueva' => $version['nueva'], 'errores' => []];
+    }
+
+    /**
+     * Historial de versiones de la ficha (de la mas nueva a la mas antigua),
+     * cada una con en cuantos formularios NET se uso. Los conteos se traen en
+     * UNA consulta agrupada.
+     *
+     * @return array<int, array{version: EspecificacionVersion, emisiones: int}>
+     */
+    public function historial(Especificacion $especificacion): array
+    {
+        $versiones = $especificacion->getVersiones()->all();
+        $ids = array_map(static fn (EspecificacionVersion $v) => $v->id, $versiones);
+
+        $emisiones = $ids === [] ? [] : EspecificacionEmision::find()
+            ->select(['total' => 'COUNT(*)', 'idVersion'])
+            ->andWhere(['idVersion' => $ids])
+            ->groupBy('idVersion')
+            ->indexBy('idVersion')
+            ->column();
+
+        return array_map(static fn (EspecificacionVersion $v) => [
+            'version' => $v,
+            'emisiones' => (int) ($emisiones[$v->id] ?? 0),
+        ], $versiones);
+    }
+
+    /**
+     * Una version concreta de la ficha (para verla en el historial), o null
+     * si ese numero no existe.
+     */
+    public function version(Especificacion $especificacion, int $numero): ?EspecificacionVersion
+    {
+        return EspecificacionVersion::findOne(['idEspecificacion' => $especificacion->id, 'numero' => $numero]);
     }
 
     /**
@@ -489,26 +606,18 @@ class EspecificacionService
     }
 
     /**
-     * Si el usuario adjuntó un archivo nuevo, lo guarda en
-     * backend/web/uploads/especificaciones y actualiza documentoRuta con la
-     * ruta relativa (la que se guarda en la BD). Este es el mismo archivo
-     * que, si se usó, ya sirvió para prellenar el formulario via
-     * extraerMetadatos() -- aca se persiste como el documento definitivo.
-     * Si no adjuntó nada, documentoRuta queda tal como el usuario lo haya
-     * escrito a mano en el campo de texto.
+     * Guarda el archivo subido en backend/web/uploads/especificaciones con el
+     * nombre que ya se puso en la version (adjuntoRuta). Es el mismo archivo
+     * que, si se uso, ya sirvio para prellenar el formulario via
+     * extraerMetadatos() -- aca se persiste como el adjunto de la version.
      */
-    private function guardarArchivoSubido(Especificacion $especificacion): void
+    private function guardarArchivoSubido(UploadedFile $archivo, string $nombreArchivo): void
     {
-        if ($especificacion->archivoEspecificacion === null) {
-            return;
-        }
-
         $uploadDir = Yii::getAlias('@backend/web/' . self::UPLOAD_SUBPATH);
         FileHelper::createDirectory($uploadDir);
 
-        $fileName = uniqid('esp_', true) . '.' . $especificacion->archivoEspecificacion->extension;
-        $especificacion->archivoEspecificacion->saveAs($uploadDir . '/' . $fileName);
-
-        $especificacion->documentoRuta = self::UPLOAD_SUBPATH . '/' . $fileName;
+        if (!$archivo->saveAs($uploadDir . '/' . $nombreArchivo)) {
+            throw new RuntimeException('No se pudo guardar el archivo adjunto.');
+        }
     }
 }

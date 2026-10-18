@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace backend\models;
 
 use DateTime;
-use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\web\UploadedFile;
@@ -58,7 +57,8 @@ class Especificacion extends ActiveRecord
         return [
             // La columna permite NULL (fichas antiguas o importadas), pero
             // toda ficha creada o editada desde el formulario queda clasificada.
-            [['idCategoria'], 'required'],
+            [['titulo'], 'trim'],
+            [['idCategoria', 'titulo'], 'required'],
             [['idSubcatalogo', 'idCategoria'], 'integer'],
             [['activo'], 'default', 'value' => true],
             [['activo'], 'boolean'],
@@ -168,23 +168,12 @@ class Especificacion extends ActiveRecord
     }
 
     /**
-     * Enlace para abrir el documento (null si no tiene). documentoRuta puede
-     * ser un archivo subido (ruta relativa a backend/web) o un enlace externo
-     * escrito a mano (ej. Google Drive), que se usa tal cual.
+     * Enlace para abrir el documento adjunto de la VERSION ACTUAL (null si no
+     * tiene). Ver EspecificacionVersion::urlAdjunto().
      */
     public function urlDocumento(): ?string
     {
-        $ruta = trim((string) $this->documentoRuta);
-
-        if ($ruta === '') {
-            return null;
-        }
-
-        if (preg_match('#^https?://#i', $ruta) === 1) {
-            return $ruta;
-        }
-
-        return Yii::getAlias('@web/' . ltrim($ruta, '/'));
+        return $this->versionActual?->urlAdjunto();
     }
 
     /**

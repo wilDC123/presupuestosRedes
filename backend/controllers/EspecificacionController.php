@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\models\ConfiguracionEspecificacion;
 use backend\models\Especificacion;
 use backend\services\CategoriaService;
 use backend\services\EspecificacionService;
@@ -64,40 +65,39 @@ class EspecificacionController extends Controller
         ]);
     }
 
-    public function actionView(int $id): string
+    /**
+     * Ficha con su version actual. ?version=N muestra una version anterior
+     * del historial (solo lectura).
+     */
+    public function actionView(int $id, ?int $version = null): string
     {
         $model = $this->findModel($id);
+        $historial = $this->service->historial($model);
+        $actual = $historial[0]['version'] ?? null;
+        $mostrada = $version === null ? $actual : $this->service->version($model, $version);
+
+        if ($version !== null && $mostrada === null) {
+            throw new NotFoundHttpException('Esa versión de la especificación no existe.');
+        }
 
         return $this->render('view', [
             'model' => $model,
+            'version' => $mostrada,
+            'esActual' => $mostrada !== null && $actual !== null && $mostrada->id === $actual->id,
+            'historial' => $historial,
+            'garantiaPorDefecto' => ConfiguracionEspecificacion::obtener()->garantiaPorDefecto,
             'usos' => $this->service->usos($model),
         ]);
     }
 
     public function actionCreate()
     {
-        $model = new Especificacion();
-
-        if ($this->guardarDesdeFormulario($model)) {
-            Yii::$app->session->setFlash('success', 'Especificación agregada a la librería.');
-
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        return $this->render('create', $this->datosFormulario($model));
+        return $this->formulario(new Especificacion(), 'create', 'Especificación agregada a la librería.');
     }
 
     public function actionUpdate(int $id)
     {
-        $model = $this->findModel($id);
-
-        if ($this->guardarDesdeFormulario($model)) {
-            Yii::$app->session->setFlash('success', 'Especificación actualizada.');
-
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        return $this->render('update', $this->datosFormulario($model));
+        return $this->formulario($this->findModel($id), 'update', 'Especificación actualizada.');
     }
 
     public function actionDelete(int $id)
@@ -139,25 +139,55 @@ class EspecificacionController extends Controller
         return $model;
     }
 
-    private function guardarDesdeFormulario(Especificacion $model): bool
-    {
-        return $this->service->guardar(
-            $model,
-            Yii::$app->request->post(),
-            UploadedFile::getInstance($model, 'archivoEspecificacion')
-        );
-    }
-
     /**
-     * Lo que necesita el formulario (crear y editar): las opciones de los
-     * desplegables llegan listas desde los servicios.
+     * Crear y editar comparten todo: en GET muestra el formulario con lo
+     * guardado; en POST guarda la ficha y su version y, si algo no es
+     * valido, vuelve a mostrar lo que escribio el usuario.
      */
-    private function datosFormulario(Especificacion $model): array
+    private function formulario(Especificacion $model, string $vista, string $mensajeExito)
     {
-        return [
+        $formulario = $this->service->formulario($model);
+        // Numero de la version actual si ya se emitio (el formulario avisa que
+        // guardar cambios creara la siguiente). Se toma antes del POST: si el
+        // guardado falla, 'version' pasa a ser lo que escribio el usuario.
+        $numeroBloqueado = $formulario['emisiones'] > 0 ? (int) $formulario['version']->numero : null;
+        $errores = [];
+
+        if (Yii::$app->request->isPost) {
+            $resultado = $this->service->guardar(
+                $model,
+                Yii::$app->request->post(),
+                UploadedFile::getInstance($model, 'archivoEspecificacion')
+            );
+
+            if ($resultado['guardado']) {
+                $version = $resultado['version'];
+                $mensaje = $mensajeExito;
+                if ($resultado['nueva'] && $version->numero > 1) {
+                    $mensaje .= ' Se creó la ' . $version->etiqueta() . ': la versión anterior ya se usó en formularios NET emitidos y no se modifica.';
+                }
+                Yii::$app->session->setFlash('success', $mensaje);
+
+                return $this->redirect(['view', 'id' => $model->id]);
+            }
+
+            $formulario['version'] = $resultado['version'];
+            $formulario['filas'] = $resultado['filas'];
+            $errores = $resultado['errores'];
+        }
+
+        $configuracion = ConfiguracionEspecificacion::obtener();
+
+        return $this->render($vista, [
             'model' => $model,
+            'version' => $formulario['version'],
+            'filas' => $formulario['filas'],
+            'emisiones' => $formulario['emisiones'],
+            'numeroBloqueado' => $numeroBloqueado,
+            'errores' => $errores,
+            'garantiaPorDefecto' => $configuracion->garantiaPorDefecto,
             'categorias' => (new CategoriaService())->opciones(),
             'items' => (new SubcatalogoItemService())->opciones(),
-        ];
+        ]);
     }
 }

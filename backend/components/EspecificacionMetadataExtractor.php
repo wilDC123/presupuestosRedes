@@ -45,20 +45,39 @@ class EspecificacionMetadataExtractor
         'diciembre' => 12,
     ];
 
+    private const W_NAMESPACE = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
     /**
-     * @return array{codigoNet: ?string, dependencia: ?string, modeloSugerido: ?string, fechaEmision: ?string, titulo: ?string}
+     * Un nombre de caracteristica ("Calibre del conductor") es corto; si lo
+     * que esta antes de los dos puntos es mas largo, la fila es un solo texto.
+     */
+    private const LARGO_MAXIMO_NOMBRE = 60;
+
+    /**
+     * Ademas de los metadatos de cabecera, en un DOCX lee la tabla del
+     * formulario: las filas de la seccion "I. Requisitos necesarios"
+     * (caracteristicas) y la de "II Garantia". En un PDF esas dos quedan
+     * vacias: el texto de un PDF pierde la estructura de la tabla.
+     *
+     * @return array{codigoNet: ?string, dependencia: ?string, modeloSugerido: ?string, fechaEmision: ?string, titulo: ?string, caracteristicas: array<int, array{nombre: ?string, valor: string}>, garantia: ?string}
      */
     public function extraerDesdeArchivo(string $rutaArchivo, string $extension): array
     {
         $extension = strtolower(ltrim($extension, '.'));
 
-        $lineas = match ($extension) {
-            'pdf' => $this->extraerLineasPdf($rutaArchivo),
-            'docx' => $this->extraerLineasDocx($rutaArchivo),
-            default => throw new InvalidArgumentException("Formato no soportado para extracción: {$extension}"),
-        };
+        if ($extension === 'pdf') {
+            return $this->extraerMetadatosDeLineas($this->extraerLineasPdf($rutaArchivo))
+                + ['caracteristicas' => [], 'garantia' => null];
+        }
 
-        return $this->extraerMetadatosDeLineas($lineas);
+        if ($extension !== 'docx') {
+            throw new InvalidArgumentException("Formato no soportado para extracción: {$extension}");
+        }
+
+        $dom = $this->cargarDocx($rutaArchivo);
+
+        return $this->extraerMetadatosDeLineas($this->extraerLineasDocx($dom))
+            + $this->extraerTablaDocx($dom);
     }
 
     /**
@@ -86,7 +105,23 @@ class EspecificacionMetadataExtractor
      *
      * @return string[] Lineas de texto (una por cada <w:p>, en orden de documento).
      */
-    private function extraerLineasDocx(string $rutaArchivo): array
+    private function extraerLineasDocx(DOMDocument $dom): array
+    {
+        // Cada <w:p> es un parrafo -- incluye tanto los parrafos "normales"
+        // del cuerpo del documento como los que estan dentro de un textbox
+        // (<w:txbxContent><w:p>...), porque getElementsByTagNameNS busca en
+        // TODO el arbol, sin importar el anidamiento.
+        $parrafos = $dom->getElementsByTagNameNS(self::W_NAMESPACE, 'p');
+
+        $lineas = [];
+        foreach ($parrafos as $parrafo) {
+            $lineas[] = $this->textoDeNodo($parrafo, self::W_NAMESPACE);
+        }
+
+        return $lineas;
+    }
+
+    private function cargarDocx(string $rutaArchivo): DOMDocument
     {
         $zip = new ZipArchive();
 
@@ -108,20 +143,126 @@ class EspecificacionMetadataExtractor
             throw new RuntimeException('No se pudo parsear word/document.xml como XML');
         }
 
-        $wNamespace = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+        return $dom;
+    }
 
-        // Cada <w:p> es un parrafo -- incluye tanto los parrafos "normales"
-        // del cuerpo del documento como los que estan dentro de un textbox
-        // (<w:txbxContent><w:p>...), porque getElementsByTagNameNS busca en
-        // TODO el arbol, sin importar el anidamiento.
-        $parrafos = $dom->getElementsByTagNameNS($wNamespace, 'p');
+    /**
+     * Lee la tabla del formulario DTIC. Se mira solo la PRIMERA celda de cada
+     * fila (las otras son "Propuesta / Cumple / No cumple", que llena el
+     * proveedor):
+     *
+     *   I. REQUISITOS NECESARIOS        <- empieza la seccion I
+     *   Especifique marca y modelo...   <- se salta (el formulario la agrega sola)
+     *   URL: ...                        <- se salta (idem)
+     *   Calibre del Conductor: 23 AWG   <- caracteristica
+     *   II GARANTIA TECNICAS            <- termina la seccion I
+     *   Garantias de buen funcionamiento: ...   <- garantia
+     *   III CONDICIONES COMPLEMENTARIAS <- fin (validez y entrega son de cada emision)
+     *
+     * Una celda puede tener varios parrafos. Cada parrafo "Nombre: valor"
+     * empieza una caracteristica; un parrafo sin "Nombre:" se suma al valor de
+     * la anterior (ej. la lista de normas PoE debajo de "Soporte PoE:").
+     *
+     * @return array{caracteristicas: array<int, array{nombre: ?string, valor: string}>, garantia: ?string}
+     */
+    private function extraerTablaDocx(DOMDocument $dom): array
+    {
+        $caracteristicas = [];
+        $garantia = [];
+        $seccion = null;
 
-        $lineas = [];
-        foreach ($parrafos as $parrafo) {
-            $lineas[] = $this->textoDeNodo($parrafo, $wNamespace);
+        foreach ($dom->getElementsByTagNameNS(self::W_NAMESPACE, 'tr') as $fila) {
+            $celda = $fila->getElementsByTagNameNS(self::W_NAMESPACE, 'tc')->item(0);
+            if ($celda === null) {
+                continue;
+            }
+
+            $parrafos = [];
+            foreach ($celda->getElementsByTagNameNS(self::W_NAMESPACE, 'p') as $parrafo) {
+                $texto = $this->limpiarEspacios($this->textoDeNodo($parrafo, self::W_NAMESPACE));
+                if ($texto !== '') {
+                    $parrafos[] = $texto;
+                }
+            }
+
+            if ($parrafos === []) {
+                continue;
+            }
+
+            // El numero de la seccion cambia segun el año y el documento
+            // ("II GARANTÍAS", "IV. GARANTIAS TECNICAS", "GARANTÍAS TÉCNICAS:",
+            // "II CONDICIONES", "V. CONDICIONES", "1. Validez de la oferta"):
+            // se ignora y se mira la palabra clave.
+            $encabezado = (string) preg_replace('/^(?:[IVX]+|\d+)\s*\.?\s*/u', '', mb_strtoupper($parrafos[0]));
+
+            if (str_starts_with($encabezado, 'REQUISITOS')) {
+                $seccion = 'I';
+                continue;
+            }
+            // Solo el titulo de la seccion ("GARANTÍAS", "GARANTÍA TÉCNICAS:"),
+            // no una fila de contenido como "Garantías de buen funcionamiento: ...".
+            if (preg_match('/^GARANT[ÍI]AS?(\s+T[ÉE]CNICAS?)?\s*:?$/u', $encabezado) === 1) {
+                $seccion = 'II';
+                // Si la garantia vino en la misma celda que el titulo.
+                $garantia = array_merge($garantia, array_slice($parrafos, 1));
+                continue;
+            }
+            // Validez, tiempo y lugar de entrega son de cada emision, no de la ficha.
+            if (preg_match('/^(CONDICIONES COMPLEMENTARIAS|ENTREGA DE BIENES|(TIEMPO DE )?VALIDEZ DE LA OFERTA|TIEMPO DE ENTREGA|LUGAR DE ENTREGA)/u', $encabezado) === 1) {
+                break;
+            }
+
+            if ($seccion === 'I') {
+                if (preg_match('/^(ESPECIFI\w*\s+MARCA|MARCA\b|URL\b)/u', $encabezado) === 1) {
+                    continue;
+                }
+                $caracteristicas = array_merge($caracteristicas, $this->caracteristicasDeCelda($parrafos));
+            } elseif ($seccion === 'II') {
+                $garantia = array_merge($garantia, $parrafos);
+            }
         }
 
-        return $lineas;
+        return [
+            'caracteristicas' => $caracteristicas,
+            'garantia' => $garantia === [] ? null : implode(' ', $garantia),
+        ];
+    }
+
+    /**
+     * @param string[] $parrafos
+     * @return array<int, array{nombre: ?string, valor: string}>
+     */
+    private function caracteristicasDeCelda(array $parrafos): array
+    {
+        $filas = [];
+
+        foreach ($parrafos as $parrafo) {
+            $posicion = mb_strpos($parrafo, ':');
+            $nombre = $posicion !== false ? trim(mb_substr($parrafo, 0, $posicion)) : '';
+
+            if ($nombre !== '' && mb_strlen($nombre) <= self::LARGO_MAXIMO_NOMBRE) {
+                $filas[] = ['nombre' => $nombre, 'valor' => trim(mb_substr($parrafo, $posicion + 1))];
+            } elseif ($filas !== []) {
+                $ultima = array_key_last($filas);
+                $filas[$ultima]['valor'] = trim($filas[$ultima]['valor'] . "\n" . $parrafo);
+            } else {
+                $filas[] = ['nombre' => null, 'valor' => $parrafo];
+            }
+        }
+
+        // "Soporte PoE:" sin nada despues ni debajo: queda como texto suelto.
+        foreach ($filas as $i => $fila) {
+            if ($fila['valor'] === '') {
+                $filas[$i] = ['nombre' => null, 'valor' => (string) $fila['nombre']];
+            }
+        }
+
+        return $filas;
+    }
+
+    private function limpiarEspacios(string $texto): string
+    {
+        return trim((string) preg_replace('/[ \t\x{00A0}]+/u', ' ', $texto));
     }
 
     /**
@@ -197,7 +338,13 @@ class EspecificacionMetadataExtractor
      */
     private function extraerModeloSugerido(string $texto): ?string
     {
-        if (preg_match('/(?:Se sugiere|Sugerencia)\s+(.+?)(?:\.|,|$)/u', $texto, $m) === 1) {
+        // "Se sugiere Cisco C1200-24P-4G, o con superiores..." y
+        // "Sugerencia: NEXXT SOLUTIONS (MPN: PCGUCC6LZGR) o similar/superior."
+        // El modelo termina en la coma, en " o similar/superior/con..." o en
+        // un punto final (no en el punto de "1.2").
+        $patron = '/(?:Se sugiere|Sugerencia)\s*:?\s*(.+?)(?:,|\s+o\s+(?:similar|superior|con)\b|\.(?:\s|$)|$)/mu';
+
+        if (preg_match($patron, $texto, $m) === 1 && trim($m[1]) !== '') {
             return trim($m[1]);
         }
 
@@ -270,7 +417,9 @@ class EspecificacionMetadataExtractor
         }
 
         for ($i = $indiceCantidad - 1; $i >= 0; $i--) {
-            $candidato = trim($lineas[$i]);
+            // En algunos documentos el textbox del codigo NET queda pegado al
+            // titulo en el mismo parrafo ("SWITCH 24 PUERTOS POENET:843/26").
+            $candidato = trim((string) preg_replace('/NET:\s*\d+\/\d+/', '', $lineas[$i]));
 
             if ($candidato !== '') {
                 return $candidato;

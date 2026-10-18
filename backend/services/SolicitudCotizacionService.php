@@ -337,12 +337,13 @@ class SolicitudCotizacionService
         $sugeridos = [];
         $items = $proyecto->getItems()
             ->andWhere(['not', ['idEspecificacion' => null]])
-            ->with('especificacion')
+            ->with('especificacion.versionActual')
             ->all();
 
         foreach ($items as $item) {
-            if (!empty($item->especificacion->modeloSugerido)) {
-                $sugeridos[$item->id] = $item->especificacion->modeloSugerido;
+            $modelo = $item->especificacion->versionActual->modeloSugerido ?? null;
+            if (!empty($modelo)) {
+                $sugeridos[$item->id] = $modelo;
             }
         }
 
