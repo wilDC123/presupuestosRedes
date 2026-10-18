@@ -119,11 +119,17 @@ class EspecificacionImportacionService
     }
 
     /**
-     * Si dos o mas fichas a crear tienen el mismo titulo, se les agrega el
-     * modelo sugerido para poder distinguirlas en los selectores.
+     * Si dos o mas fichas a crear tienen el mismo titulo, o una tiene el
+     * titulo de una ficha que ya esta en la libreria, se les agrega el modelo
+     * sugerido para poder distinguirlas en los selectores.
      */
     private function distinguirTitulos(array $filas): array
     {
+        $enLibreria = [];
+        foreach (Especificacion::find()->select('titulo')->column() as $titulo) {
+            $enLibreria[$this->clave((string) $titulo)] = true;
+        }
+
         $porTitulo = [];
         foreach ($filas as $i => $fila) {
             if ($fila['accion'] === self::ACCION_CREAR) {
@@ -131,8 +137,8 @@ class EspecificacionImportacionService
             }
         }
 
-        foreach ($porTitulo as $indices) {
-            if (count($indices) < 2) {
+        foreach ($porTitulo as $titulo => $indices) {
+            if (count($indices) < 2 && !isset($enLibreria[$titulo])) {
                 continue;
             }
             foreach ($indices as $i) {
@@ -239,18 +245,23 @@ class EspecificacionImportacionService
         // Muchos formularios viejos no traen modelo sugerido y los nuevos si
         // ("Cable Cat 6" de 2023 sin modelo, el de 2026 con "Nexxt"). Uno sin
         // modelo se une a la familia de su titulo si esa familia tiene UN
-        // solo modelo; si tiene varios ("Antena wifi" EAP225, U6 PRO...) no se
-        // sabe a cual pertenece y queda aparte.
+        // solo modelo y el es MAS ANTIGUO que ella. Queda aparte si el titulo
+        // tiene varios modelos ("Antena wifi" EAP225, U6 PRO...: no se sabe a
+        // cual pertenece) o si es mas nuevo: un formulario reciente sin modelo
+        // con el titulo de otro suele ser una plantilla copiada (en el banco,
+        // un NVR quedo titulado "CÁMARA PTZ").
         $modelosPorTitulo = [];
         foreach ($filas as $fila) {
             if ($fila['accion'] === self::ACCION_CREAR && !str_ends_with($fila['familia'], '|')) {
-                $modelosPorTitulo[strstr($fila['familia'], '|', true)][$fila['familia']] = true;
+                $masReciente = &$modelosPorTitulo[strstr($fila['familia'], '|', true)][$fila['familia']];
+                $masReciente = max($masReciente ?? [0, 0, ''], $this->orden($fila));
+                unset($masReciente);
             }
         }
         foreach ($filas as $i => $fila) {
             if ($fila['accion'] === self::ACCION_CREAR && str_ends_with($fila['familia'], '|')) {
                 $modelos = $modelosPorTitulo[rtrim($fila['familia'], '|')] ?? [];
-                if (count($modelos) === 1) {
+                if (count($modelos) === 1 && $this->orden($fila) < reset($modelos)) {
                     $filas[$i]['familia'] = array_key_first($modelos);
                 }
             }
@@ -273,7 +284,9 @@ class EspecificacionImportacionService
                 if ($i !== $elegido) {
                     $filas[$i]['accion'] = self::ACCION_VERSION_ANTERIOR;
                     $filas[$i]['elegido'] = $filas[$elegido]['archivo'];
-                } elseif (isset($existentes[$familia])) {
+                } elseif (isset($existentes[$familia]) || isset($existentes[$this->claveDe($filas[$i])])) {
+                    // Tambien con la clave propia del archivo elegido: la
+                    // ficha pudo cargarse cuando su familia se armaba distinto.
                     $filas[$i]['accion'] = self::ACCION_YA_EXISTE;
                 }
             }
@@ -347,6 +360,14 @@ class EspecificacionImportacionService
         }
 
         return $familias;
+    }
+
+    /**
+     * Familia propia de un archivo: titulo + modelo, sin unirlo a otra.
+     */
+    private function claveDe(array $fila): string
+    {
+        return $this->clave((string) $fila['titulo']) . '|' . $this->clave((string) $fila['modeloSugerido']);
     }
 
     /**

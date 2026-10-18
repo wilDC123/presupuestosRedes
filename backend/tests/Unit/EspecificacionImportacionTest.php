@@ -72,6 +72,20 @@ class EspecificacionImportacionTest extends Unit
         );
     }
 
+    public function testUnDocumentoNuevoSinModeloNoReemplazaAOtroConModelo(): void
+    {
+        // Como en el banco: un NVR quedo titulado "CÁMARA PTZ" (plantilla
+        // copiada) y es mas nuevo que la camara PTZ real.
+        $this->documento('839 CAMARA PTZ.docx', 'Cámara PTZ (test)', 'NET:839/26', [['Zoom: 30x']], ['Se sugiere Tomate SC-Y3003W o similar']);
+        $this->documento('840 NVR.docx', 'Cámara PTZ (test)', 'NET:840/26', [['Canales: 8']]);
+
+        $plan = $this->porArchivo($this->servicio->analizar($this->carpeta));
+
+        $this->assertSame(EspecificacionImportacionService::ACCION_CREAR, $plan['839 CAMARA PTZ.docx']['accion']);
+        $this->assertSame(EspecificacionImportacionService::ACCION_CREAR, $plan['840 NVR.docx']['accion']);
+        $this->assertSame('Cámara PTZ (test) — Tomate SC-Y3003W', $plan['839 CAMARA PTZ.docx']['titulo']);
+    }
+
     public function testDesdeUnAnioNoCreaLasFamiliasViejas(): void
     {
         $plan = $this->porArchivo($this->servicio->analizar($this->carpeta, 2025));
