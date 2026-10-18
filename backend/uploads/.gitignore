@@ -1,0 +1,4 @@
+# Archivos subidos por los usuarios: no se versionan (ver backend/components/ArchivoSubido.php).
+# La carpeta si, para que exista al instalar y `php init` le de permiso de escritura.
+*
+!.gitignore
