@@ -214,6 +214,39 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame(str_replace([':', '/'], '_', $emision->codigoNet()) . '.pdf', $pdf['nombreArchivo']);
     }
 
+    public function testRegistroFiltraPorEstadoYBuscaPorNet(): void
+    {
+        $ficha = $this->ficha('Cable registro test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $item = $this->unicoItem();
+        $primera = $item->emisionVigente;
+        $segunda = $this->emisiones->reemitir($item, ['motivo' => 'prueba'], 'encargado')['emision'];
+        $netPrimera = (int) $primera->numeroNet;
+        $netSegunda = (int) $segunda->numeroNet;
+        $deEsteProyecto = fn (array $filtros) => array_values(array_filter(
+            array_map(static fn (EspecificacionEmision $e) => (int) $e->numeroNet, $this->emisiones->registro($filtros, false)->getModels()),
+            static fn (int $n) => in_array($n, [$netPrimera, $netSegunda], true)
+        ));
+
+        $this->assertSame([$netSegunda, $netPrimera], $deEsteProyecto([]));
+        $this->assertSame([$netSegunda], $deEsteProyecto(['estado' => 'vigente']));
+        $this->assertSame([$netPrimera], $deEsteProyecto(['estado' => 'reemplazada']));
+        $this->assertSame([], $deEsteProyecto(['estado' => 'vencida']));
+        $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => (string) $netPrimera]));
+        $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $netPrimera, date('y'))]));
+        $this->assertSame([$netSegunda, $netPrimera], $deEsteProyecto(['buscar' => 'registro test', 'dependencia' => 'Facultad de Tecnología']));
+
+        // Pasada la vigencia, la vigente aparece como vencida.
+        EspecificacionEmision::updateAll(['fechaEmision' => '2020-01-01'], ['id' => $segunda->id]);
+        $this->assertSame([$netSegunda], $deEsteProyecto(['estado' => 'vencida']));
+        $this->assertSame([], $deEsteProyecto(['estado' => 'vigente']));
+
+        $csv = $this->emisiones->exportarCsv(['buscar' => (string) $netPrimera]);
+        $this->assertStringStartsWith("\xEF\xBB\xBF" . 'NET;"Fecha de emisión"', $csv);
+        $this->assertStringContainsString(sprintf('NET:%03d/%s', $netPrimera, date('y')), $csv);
+        $this->assertStringContainsString('Reemplazada', $csv);
+    }
+
     public function testElSiguienteNetNoPuedeBajarDelUltimoEmitido(): void
     {
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);

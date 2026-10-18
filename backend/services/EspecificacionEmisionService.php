@@ -14,6 +14,7 @@ use DateTimeImmutable;
 use DomainException;
 use Throwable;
 use Yii;
+use yii\data\ActiveDataProvider;
 
 /**
  * Capa de Servicio para las EMISIONES NET: el documento con codigo NET que se
@@ -315,6 +316,136 @@ class EspecificacionEmisionService
         }
 
         return $configuracion->save(false);
+    }
+
+    /**
+     * Registro de todas las emisiones NET (reemplaza el Excel "1000
+     * Especificaciones" de DTIC), de la mas nueva a la mas antigua.
+     *
+     * Filtros (todos opcionales):
+     *  - anio: dos digitos (26),
+     *  - estado: vigente | vencida | reemplazada | anulada. "Vencida" no se
+     *    guarda: es una vigente cuya fecha + vigencia ya paso, y "vigente"
+     *    aqui son solo las que todavia no vencieron,
+     *  - dependencia: texto exacto,
+     *  - buscar: "880", "880/26" o "NET:880/26" busca el numero; cualquier
+     *    otro texto busca en el titulo y en el codigo del proyecto.
+     *
+     * @param array{anio?: string, estado?: string, dependencia?: string, buscar?: string} $filtros
+     * @param int|false $porPagina false = todas (para exportar)
+     */
+    public function registro(array $filtros = [], int|false $porPagina = 25): ActiveDataProvider
+    {
+        $query = EspecificacionEmision::find()
+            ->alias('e')
+            ->joinWith('proyecto p', false)
+            ->with(['version', 'proyecto', 'proyectoItem.subcatalogoItem', 'reemplazadaPor'])
+            ->orderBy(['e.numeroNet' => SORT_DESC]);
+
+        $anio = trim((string) ($filtros['anio'] ?? ''));
+        if (ctype_digit($anio)) {
+            $query->andWhere(['e.anio' => (int) $anio]);
+        }
+
+        // Vencida = fecha de emision + vigencia ya paso (calculado en SQL Server).
+        $vencida = 'DATEADD(day, e.vigenciaDias, e.fechaEmision) < CAST(GETDATE() AS date)';
+        switch ((string) ($filtros['estado'] ?? '')) {
+            case 'vigente':
+                $query->andWhere(['e.estado' => EspecificacionEmision::ESTADO_VIGENTE])->andWhere("NOT ($vencida)");
+                break;
+            case 'vencida':
+                $query->andWhere(['e.estado' => EspecificacionEmision::ESTADO_VIGENTE])->andWhere($vencida);
+                break;
+            case EspecificacionEmision::ESTADO_REEMPLAZADA:
+            case EspecificacionEmision::ESTADO_ANULADA:
+                $query->andWhere(['e.estado' => $filtros['estado']]);
+                break;
+        }
+
+        $dependencia = trim((string) ($filtros['dependencia'] ?? ''));
+        if ($dependencia !== '') {
+            $query->andWhere(['e.dependencia' => $dependencia]);
+        }
+
+        $buscar = trim((string) ($filtros['buscar'] ?? ''));
+        if (preg_match('/^(?:NET:\s*)?(\d+)(?:\/(\d{2}))?$/i', $buscar, $m) === 1) {
+            $query->andWhere(['e.numeroNet' => (int) $m[1]]);
+            if (isset($m[2])) {
+                $query->andWhere(['e.anio' => (int) $m[2]]);
+            }
+        } elseif ($buscar !== '') {
+            $query->andWhere(['or', ['like', 'e.titulo', $buscar], ['like', 'p.codigo', $buscar]]);
+        }
+
+        return new ActiveDataProvider([
+            'query' => $query,
+            'pagination' => $porPagina === false ? false : ['pageSize' => $porPagina],
+            // El orden lo fija la consulta (NET descendente).
+            'sort' => false,
+        ]);
+    }
+
+    /**
+     * Opciones de los filtros del registro: los años y las dependencias que
+     * tienen emisiones.
+     *
+     * @return array{anios: array<int, string>, dependencias: array<string, string>}
+     */
+    public function opcionesRegistro(): array
+    {
+        $anios = EspecificacionEmision::find()->select('anio')->distinct()->orderBy(['anio' => SORT_DESC])->column();
+        $dependencias = EspecificacionEmision::find()
+            ->select('dependencia')
+            ->distinct()
+            ->andWhere(['not', ['dependencia' => null]])
+            ->orderBy(['dependencia' => SORT_ASC])
+            ->column();
+
+        return [
+            'anios' => array_combine(array_map('intval', $anios), array_map(static fn ($a) => '20' . sprintf('%02d', $a), $anios)) ?: [],
+            'dependencias' => array_combine($dependencias, $dependencias) ?: [],
+        ];
+    }
+
+    /**
+     * El registro filtrado como CSV para abrir en Excel: separado por ";" y
+     * con BOM UTF-8, que es lo que Excel en español espera para mostrar bien
+     * los acentos.
+     *
+     * @param array{anio?: string, estado?: string, dependencia?: string, buscar?: string} $filtros
+     */
+    public function exportarCsv(array $filtros): string
+    {
+        $formato = Yii::$app->formatter;
+        $salida = fopen('php://temp', 'r+');
+        fwrite($salida, "\xEF\xBB\xBF");
+        fputcsv($salida, ['NET', 'Fecha de emisión', 'Dependencia', 'Especificación', 'Versión', 'Ítem de la lista', 'Cantidad', 'Unidad', 'Modelo sugerido', 'Proyecto', 'Estado', 'Motivo', 'Reemplazada por', 'Elaborado por'], ';');
+
+        foreach ($this->registro($filtros, false)->getModels() as $emision) {
+            /** @var EspecificacionEmision $emision */
+            fputcsv($salida, [
+                $emision->codigoNet(),
+                $formato->asDate($emision->fechaEmision, 'php:d/m/Y'),
+                $emision->dependencia,
+                $emision->titulo,
+                $emision->version->etiqueta(),
+                $emision->proyectoItem->subcatalogoItem->descripcion ?? '',
+                $formato->asDecimal($emision->cantidad, 2),
+                $emision->unidad,
+                $emision->version->modeloSugerido,
+                $emision->proyecto->codigo ?? '',
+                $emision->estadoLabel(),
+                $emision->motivo,
+                $emision->reemplazadaPor?->codigoNet() ?? '',
+                $emision->elaboradoPor,
+            ], ';');
+        }
+
+        rewind($salida);
+        $csv = stream_get_contents($salida);
+        fclose($salida);
+
+        return (string) $csv;
     }
 
     public function obtener(int $id): ?EspecificacionEmision
