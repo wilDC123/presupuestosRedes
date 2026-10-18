@@ -25,7 +25,8 @@ Thumbs.db
 
 # composer itself is not needed
 composer.phar
-composer.lock
+# composer.lock SI se versiona: el servidor instala exactamente las mismas
+# versiones de librerias con las que se desarrollo y probo (composer install).
 
 # Mac DS_Store Files
 .DS_Store
