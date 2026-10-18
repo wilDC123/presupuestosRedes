@@ -76,7 +76,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         <td>
                             <?= Html::encode($detalle->especificacion->titulo ?? '—') ?>
                             <?php if ($detalle->especificacionEmision !== null): ?>
-                                <div class="rd-celda-sub mono"><?= Html::encode($detalle->especificacionEmision->codigoNet()) ?></div>
+                                <div class="rd-celda-sub mono"><?= Html::a(Html::encode($detalle->especificacionEmision->codigoNet()), ['/especificacion/formulario', 'id' => $detalle->idEspecificacionEmision], ['target' => '_blank']) ?></div>
                             <?php endif; ?>
                         </td>
                         <td><?= Html::encode($detalle->marcaModelo ?? '') ?></td>

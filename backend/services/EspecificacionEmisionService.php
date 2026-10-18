@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\components\PresupuestoPdfGenerator;
 use backend\models\ConfiguracionEspecificacion;
 use backend\models\Especificacion;
 use backend\models\EspecificacionEmision;
@@ -36,6 +37,8 @@ use Yii;
  */
 class EspecificacionEmisionService
 {
+    private const ARCHIVO_LOGO = 'logo-formulario-net.png';
+
     /**
      * Por que no se puede emitir la especificacion (null si se puede):
      * falta fijar el NET inicial, o la ficha todavia no tiene contenido.
@@ -312,6 +315,49 @@ class EspecificacionEmisionService
         }
 
         return $configuracion->save(false);
+    }
+
+    public function obtener(int $id): ?EspecificacionEmision
+    {
+        return EspecificacionEmision::find()
+            ->with(['version.caracteristicas', 'proyecto'])
+            ->andWhere(['id' => $id])
+            ->one();
+    }
+
+    /**
+     * Logo del formulario NET, si se coloco el archivo (no es obligatorio):
+     * backend/web/img/logo-formulario-net.png. mPDF lo lee desde el disco.
+     */
+    public function rutaLogo(): ?string
+    {
+        $ruta = Yii::getAlias('@backend/web/img/' . self::ARCHIVO_LOGO);
+
+        return is_file($ruta) ? $ruta : null;
+    }
+
+    /**
+     * Convierte el HTML del formulario (vista especificacion/formulario-pdf)
+     * en el PDF. Una emision que ya no sirve lleva una marca de agua para que
+     * una copia impresa no se confunda con la vigente: REEMPLAZADO, ANULADO o
+     * VENCIDO.
+     *
+     * @return array{contenido: string, nombreArchivo: string}
+     */
+    public function generarPdf(EspecificacionEmision $emision, string $html): array
+    {
+        $marca = match (true) {
+            $emision->estado === EspecificacionEmision::ESTADO_REEMPLAZADA => 'REEMPLAZADO',
+            $emision->estado === EspecificacionEmision::ESTADO_ANULADA => 'ANULADO',
+            $emision->estaVencida() => 'VENCIDO',
+            default => null,
+        };
+
+        return [
+            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $marca),
+            // "NET_880_26.pdf": el codigo es unico.
+            'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigoNet()) . '.pdf',
+        ];
     }
 
     public function ultimoNetEmitido(): ?int

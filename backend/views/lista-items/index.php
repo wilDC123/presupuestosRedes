@@ -84,7 +84,8 @@ $infoEmision = static function (ProyectoItem $item) use ($emisiones, $puedeReemi
     if ($emision !== null) {
         $html .= 'Formulario <strong class="mono">' . Html::encode($emision->codigoNet()) . '</strong> '
             . '<span class="' . $emision->estadoBadgeClass() . '">' . Html::encode($emision->estadoLabel()) . '</span> '
-            . Html::encode($emision->version->etiqueta() . ' · emitido el ' . $formato->asDate($emision->fechaEmision, 'php:d/m/Y'));
+            . Html::encode($emision->version->etiqueta() . ' · emitido el ' . $formato->asDate($emision->fechaEmision, 'php:d/m/Y'))
+            . ' ' . Html::a('Ver formulario', ['/especificacion/formulario', 'id' => $emision->id], ['class' => 'btn btn-outline btn-sm', 'target' => '_blank']);
     }
 
     if ($puedeReemitir) {

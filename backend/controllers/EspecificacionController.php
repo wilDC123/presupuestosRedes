@@ -123,6 +123,34 @@ class EspecificacionController extends Controller
         ]);
     }
 
+    /**
+     * PDF del formulario NET de una emision (para imprimir, firmar y sellar).
+     * Se abre en el navegador ('inline') en vez de descargarse.
+     *
+     * @param int $id id de la EMISION
+     */
+    public function actionFormulario(int $id): Response
+    {
+        $emisiones = new EspecificacionEmisionService();
+        $emision = $emisiones->obtener($id);
+
+        if ($emision === null) {
+            throw new NotFoundHttpException('El formulario NET solicitado no existe.');
+        }
+
+        $html = $this->renderPartial('formulario-pdf', [
+            'emision' => $emision,
+            'logo' => $emisiones->rutaLogo(),
+        ]);
+        $pdf = $emisiones->generarPdf($emision, $html);
+
+        return Yii::$app->response->sendContentAsFile(
+            $pdf['contenido'],
+            $pdf['nombreArchivo'],
+            ['mimeType' => 'application/pdf', 'inline' => true]
+        );
+    }
+
     public function actionDelete(int $id)
     {
         $model = $this->findModel($id);

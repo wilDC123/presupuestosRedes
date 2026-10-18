@@ -184,6 +184,36 @@ class EspecificacionEmisionTest extends Unit
         $this->assertStringContainsString('venció', $avisos);
     }
 
+    public function testFormularioPdfImprimeLasCopiasCongeladas(): void
+    {
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre del conductor', 'valor' => '23 AWG'], ['valor' => 'Cumple ANSI/TIA']], ['modeloSugerido' => 'Furukawa', 'garantia' => 'Dos años']);
+        $this->guardarLista([$this->fila(null, 2, $ficha)], 'encargado');
+        $emision = $this->emisiones->obtener((int) $this->unicoItem()->emisionVigente->id);
+
+        // Cambios DESPUES de emitir: no deben aparecer en el formulario.
+        ConfiguracionEspecificacion::updateAll(['textoNotaFinal' => 'NOTA NUEVA']);
+        (new EspecificacionService())->guardarVersion($ficha, ['garantia' => 'Tres años'], [['nombre' => 'Calibre del conductor', 'valor' => '24 AWG']]);
+
+        $html = (new \yii\web\View())->renderFile(
+            \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
+            ['emision' => $emision, 'logo' => null]
+        );
+
+        $this->assertStringContainsString($emision->codigoNet(), $html);
+        $this->assertStringContainsString('<strong>Calibre del conductor:</strong> 23 AWG', $html);
+        $this->assertStringContainsString('Cumple ANSI/TIA', $html);
+        $this->assertStringContainsString('Se sugiere: Furukawa o similar/superior.', $html);
+        $this->assertStringContainsString('Dos años', $html);
+        $this->assertStringContainsString('Facultad de Tecnología', $html);
+        $this->assertStringNotContainsString('24 AWG', $html);
+        $this->assertStringNotContainsString('Tres años', $html);
+        $this->assertStringNotContainsString('NOTA NUEVA', $html);
+
+        $pdf = $this->emisiones->generarPdf($emision, $html);
+        $this->assertStringStartsWith('%PDF', $pdf['contenido']);
+        $this->assertSame(str_replace([':', '/'], '_', $emision->codigoNet()) . '.pdf', $pdf['nombreArchivo']);
+    }
+
     public function testElSiguienteNetNoPuedeBajarDelUltimoEmitido(): void
     {
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
