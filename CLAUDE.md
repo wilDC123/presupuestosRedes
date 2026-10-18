@@ -168,6 +168,19 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   las características de un NVR de 8 canales (error del .docx `840 NVR NVR1108HS-8P-S3_H` del
   banco): corregir su título. Conviene revisar el CSV de la importación con el Ing.
 - PENDIENTE (opcional): logo del formulario NET en `backend/web/img/logo-formulario-net.png`
+- Preparado para el servidor de DTIC (2026-10-18; guía en `docs/guia-instalacion-dtic.md`):
+  - Toda la aplicación exige sesión (`'as access'` en `backend/config/main.php`); solo
+    `site/login` y `site/error` son públicos. Un controlador nuevo queda protegido solo.
+  - Archivos subidos en `backend/uploads/` (FUERA de `backend/web`), entregados por
+    `cotizacion/documento` y `especificacion/adjunto`; `ArchivoSubido::rutaAbsoluta()` rechaza
+    rutas fuera de esa carpeta (el adjunto se puede escribir a mano).
+  - Zona horaria `America/La_Paz` (`common/config/main.php`, también `formatter.defaultTimeZone`).
+  - Historial de migraciones en `redes.migration` (`console/controllers/MigrateController.php`;
+    copió el de `dbo.migration`, que en la base local se puede borrar). Las migraciones de la
+    plantilla (`dbo.user`) solo crean la tabla en desarrollo (`YII_ENV_DEV`).
+  - mPDF escribe sus temporales en `@runtime/mpdf`, no en `vendor/`.
+  - Probado: las 29 migraciones desde cero y los tests, sobre una base temporal con
+    compatibilidad 110 (SQL Server 2012). La base local es SQL Server 2022 (compatibilidad 160).
 - OJO con `sqlcmd` a mano: usar `-I` (QUOTED_IDENTIFIER ON). Sin eso, los DELETE/UPDATE sobre
   tablas con columnas calculadas (ej. `CotizacionDetalle.precioTotal`) fallan con el error 1934.
 - OJO con los tipos en migraciones: Yii2 traduce "char" a "nchar" en SQL Server aunque se

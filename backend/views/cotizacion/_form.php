@@ -41,7 +41,7 @@ $proveedores = ArrayHelper::map(
     <?php if (!$model->isNewRecord && !empty($model->documentoRuta)): ?>
         <p>
             Archivo actual:
-            <?= Html::a('Ver PDF', Yii::getAlias('@web/' . $model->documentoRuta), ['target' => '_blank']) ?>
+            <?= Html::a('Ver PDF', $model->urlDocumento(), ['target' => '_blank']) ?>
         </p>
     <?php endif; ?>
 

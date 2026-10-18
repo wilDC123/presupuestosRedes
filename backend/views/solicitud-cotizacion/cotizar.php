@@ -94,7 +94,7 @@ $formato = Yii::$app->formatter;
         </div>
         <?= $form->field($cotizacion, 'documentoFile')->fileInput(['accept' => '.pdf'])
             ->hint('PDF de la cotización del proveedor (opcional, máximo 10 MB).'
-                . (!empty($cotizacion->documentoRuta) ? ' Archivo actual: ' . Html::a('ver PDF', Yii::getAlias('@web/' . $cotizacion->documentoRuta), ['target' => '_blank']) . '. Déjelo vacío para conservarlo.' : '')) ?>
+                . (!empty($cotizacion->documentoRuta) ? ' Archivo actual: ' . Html::a('ver PDF', $cotizacion->urlDocumento(), ['target' => '_blank']) . '. Déjelo vacío para conservarlo.' : '')) ?>
     </div>
 
     <div class="card">

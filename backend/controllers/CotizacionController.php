@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\components\ArchivoSubido;
 use backend\models\Cotizacion;
 use backend\services\CotizacionService;
 use backend\services\EspecificacionService;
@@ -13,6 +14,7 @@ use yii\filters\VerbFilter;
 use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
+use yii\web\Response;
 use yii\web\UploadedFile;
 
 /**
@@ -119,6 +121,23 @@ class CotizacionController extends Controller
         Yii::$app->session->setFlash('success', 'Cotización eliminada.');
 
         return $this->redirect(['index']);
+    }
+
+    /**
+     * Entrega el PDF de la cotizacion. El archivo esta fuera de la carpeta
+     * publica (ver ArchivoSubido): solo se descarga con sesion iniciada.
+     * Se abre en el navegador ('inline') en vez de descargarse.
+     */
+    public function actionDocumento(int $id): Response
+    {
+        $model = $this->findModel($id);
+        $ruta = ArchivoSubido::rutaAbsoluta($model->documentoRuta);
+
+        if ($ruta === null) {
+            throw new NotFoundHttpException('La cotización no tiene un documento disponible.');
+        }
+
+        return Yii::$app->response->sendFile($ruta, 'cotizacion_' . $model->id . '.' . pathinfo($ruta, PATHINFO_EXTENSION), ['inline' => true]);
     }
 
     protected function findModel(int $id): Cotizacion

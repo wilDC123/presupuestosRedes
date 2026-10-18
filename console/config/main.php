@@ -19,6 +19,10 @@ return [
         '@npm'   => '@vendor/npm-asset',
     ],
     'controllerMap' => [
+        // Historial de migraciones en redes.migration (no en dbo).
+        'migrate' => [
+            'class' => \console\controllers\MigrateController::class,
+        ],
         'fixture' => [
             'class' => \yii\console\controllers\FixtureController::class,
             'namespace' => 'common\fixtures',

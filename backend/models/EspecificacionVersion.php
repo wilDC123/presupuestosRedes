@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace backend\models;
 
-use Yii;
+use backend\components\ArchivoSubido;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
+use yii\helpers\Url;
 
 /**
  * Modelo para la tabla "redes.EspecificacionVersion": una version (v1, v2...)
@@ -101,8 +102,9 @@ class EspecificacionVersion extends ActiveRecord
     }
 
     /**
-     * Enlace para abrir el adjunto (null si no tiene). Igual que el documento
-     * de la ficha: un archivo subido (ruta relativa a backend/web) o un
+     * Enlace para abrir el adjunto (null si no tiene): un archivo subido, que
+     * entrega EspecificacionController::actionAdjunto() (exige sesion; el
+     * archivo esta fuera de la carpeta publica, ver ArchivoSubido), o un
      * enlace externo escrito a mano (ej. Google Drive), que se usa tal cual.
      */
     public function urlAdjunto(): ?string
@@ -113,10 +115,8 @@ class EspecificacionVersion extends ActiveRecord
             return null;
         }
 
-        if (preg_match('#^https?://#i', $ruta) === 1) {
-            return $ruta;
-        }
-
-        return Yii::getAlias('@web/' . ltrim($ruta, '/'));
+        return ArchivoSubido::esEnlaceExterno($ruta)
+            ? $ruta
+            : Url::to(['/especificacion/adjunto', 'id' => $this->id]);
     }
 }

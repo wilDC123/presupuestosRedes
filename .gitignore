@@ -53,3 +53,5 @@ phpunit.phar
 
 # archivos subidos por usuarios (cotizaciones, especificaciones)
 /backend/web/uploads/
+# Archivos subidos por los usuarios (fuera de la carpeta publica, ver backend/components/ArchivoSubido.php)
+/backend/uploads/

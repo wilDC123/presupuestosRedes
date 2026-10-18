@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace backend\models;
 
+use backend\components\ArchivoSubido;
 use DateTime;
 use DateTimeImmutable;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
+use yii\helpers\Url;
 use yii\web\UploadedFile;
 
 /**
@@ -66,6 +68,22 @@ class Cotizacion extends ActiveRecord
             'validezDias' => 'Validez (días)',
             'documentoFile' => 'Archivo PDF de la cotización',
         ];
+    }
+
+    /**
+     * Enlace para abrir el PDF de la cotizacion (null si no tiene). Lo entrega
+     * CotizacionController::actionDocumento(), que exige sesion: el archivo
+     * esta fuera de la carpeta publica (ver ArchivoSubido).
+     */
+    public function urlDocumento(): ?string
+    {
+        if (empty($this->documentoRuta)) {
+            return null;
+        }
+
+        return ArchivoSubido::esEnlaceExterno($this->documentoRuta)
+            ? $this->documentoRuta
+            : Url::to(['/cotizacion/documento', 'id' => $this->id]);
     }
 
     public function getProveedor(): ActiveQuery

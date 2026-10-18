@@ -7,6 +7,8 @@ namespace backend\components;
 use backend\models\Presupuesto;
 use Mpdf\Mpdf;
 use Mpdf\Output\Destination;
+use Yii;
+use yii\helpers\FileHelper;
 
 /**
  * Convierte el HTML del PDF consolidado del presupuesto (armado en la vista
@@ -28,7 +30,14 @@ class PresupuestoPdfGenerator
      */
     public function generarDesdeHtml(string $html, ?string $marcaDeAgua = null): string
     {
+        // mPDF escribe archivos temporales. Por defecto lo hace dentro de
+        // vendor/, que en el servidor no deberia ser escribible: se usa la
+        // carpeta runtime de la aplicacion (la misma de logs y cache).
+        $carpetaTemporal = Yii::getAlias('@runtime/mpdf');
+        FileHelper::createDirectory($carpetaTemporal);
+
         $mpdf = new Mpdf([
+            'tempDir' => $carpetaTemporal,
             'mode' => 'utf-8',
             'format' => 'A4',
             'margin_top' => 20,

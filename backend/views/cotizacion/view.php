@@ -48,7 +48,7 @@ $this->params['breadcrumbs'][] = $this->title;
                 'format' => 'raw',
                 'value' => empty($model->documentoRuta)
                     ? 'Sin archivo adjunto'
-                    : Html::a('Ver / descargar PDF', Yii::getAlias('@web/' . $model->documentoRuta), ['target' => '_blank']),
+                    : Html::a('Ver / descargar PDF', $model->urlDocumento(), ['target' => '_blank']),
             ],
         ],
     ]) ?>

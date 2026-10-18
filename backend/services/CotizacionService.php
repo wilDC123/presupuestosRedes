@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\components\ArchivoSubido;
 use backend\models\Cotizacion;
 use backend\models\CotizacionDetalle;
 use backend\models\PresupuestoDetalle;
@@ -14,7 +15,6 @@ use Yii;
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
 use yii\helpers\ArrayHelper;
-use yii\helpers\FileHelper;
 use yii\web\UploadedFile;
 
 /**
@@ -36,7 +36,10 @@ use yii\web\UploadedFile;
  */
 class CotizacionService
 {
-    private const UPLOAD_SUBPATH = 'uploads/cotizaciones';
+    /**
+     * Subcarpeta de backend/uploads para los PDF de cotizaciones (ver ArchivoSubido).
+     */
+    private const CARPETA_DOCUMENTOS = 'cotizaciones';
 
     /**
      * Cotizacion nueva para registrar la respuesta de un proveedor a la
@@ -445,9 +448,10 @@ class CotizacionService
     }
 
     /**
-     * Si el usuario adjuntó un PDF nuevo, lo guarda en backend/web/uploads/cotizaciones
-     * y actualiza documentoRuta con la ruta relativa (la que se guarda en la BD).
-     * Si no adjuntó nada, documentoRuta queda tal como estaba.
+     * Si el usuario adjuntó un PDF nuevo, lo guarda en backend/uploads/cotizaciones
+     * (fuera de la carpeta pública, ver ArchivoSubido) y actualiza documentoRuta
+     * con la ruta relativa (la que se guarda en la BD). Si no adjuntó nada,
+     * documentoRuta queda tal como estaba.
      */
     private function guardarArchivoSubido(Cotizacion $cotizacion): void
     {
@@ -455,12 +459,9 @@ class CotizacionService
             return;
         }
 
-        $uploadDir = Yii::getAlias('@backend/web/' . self::UPLOAD_SUBPATH);
-        FileHelper::createDirectory($uploadDir);
+        $ruta = ArchivoSubido::rutaNueva(self::CARPETA_DOCUMENTOS, 'cot_', $cotizacion->documentoFile->extension);
+        ArchivoSubido::guardar($cotizacion->documentoFile, $ruta);
 
-        $fileName = uniqid('cot_', true) . '.' . $cotizacion->documentoFile->extension;
-        $cotizacion->documentoFile->saveAs($uploadDir . '/' . $fileName);
-
-        $cotizacion->documentoRuta = self::UPLOAD_SUBPATH . '/' . $fileName;
+        $cotizacion->documentoRuta = $ruta;
     }
 }

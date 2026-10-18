@@ -58,7 +58,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         return '<span class="text-muted">Sin adjunto</span>';
                     }
 
-                    return Html::a('Ver PDF', Yii::getAlias('@web/' . $model->documentoRuta), ['target' => '_blank']);
+                    return Html::a('Ver PDF', $model->urlDocumento(), ['target' => '_blank']);
                 },
             ],
             ['class' => ActionColumn::class],

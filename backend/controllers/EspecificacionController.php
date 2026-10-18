@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\components\ArchivoSubido;
 use backend\models\ConfiguracionEspecificacion;
 use backend\models\Especificacion;
+use backend\models\EspecificacionVersion;
 use backend\services\CategoriaService;
 use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
@@ -121,6 +123,25 @@ class EspecificacionController extends Controller
             'configuracion' => $configuracion,
             'ultimoNet' => $emisiones->ultimoNetEmitido(),
         ]);
+    }
+
+    /**
+     * Entrega el documento adjunto de una version (datasheet o documento
+     * original). Esta fuera de la carpeta publica (ver ArchivoSubido): solo se
+     * descarga con sesion iniciada.
+     *
+     * @param int $id id de la VERSION
+     */
+    public function actionAdjunto(int $id): Response
+    {
+        $version = EspecificacionVersion::findOne($id);
+        $ruta = ArchivoSubido::rutaAbsoluta($version?->adjuntoRuta);
+
+        if ($ruta === null) {
+            throw new NotFoundHttpException('El documento adjunto no está disponible.');
+        }
+
+        return Yii::$app->response->sendFile($ruta, 'especificacion_' . $version->idEspecificacion . '_' . $version->etiqueta() . '.' . pathinfo($ruta, PATHINFO_EXTENSION), ['inline' => true]);
     }
 
     /**

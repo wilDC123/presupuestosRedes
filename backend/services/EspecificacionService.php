@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\components\ArchivoSubido;
 use backend\components\EspecificacionMetadataExtractor;
 use backend\models\CotizacionDetalle;
 use backend\models\Especificacion;
@@ -11,10 +12,8 @@ use backend\models\EspecificacionCaracteristica;
 use backend\models\EspecificacionEmision;
 use backend\models\EspecificacionVersion;
 use backend\models\ProyectoItem;
-use RuntimeException;
 use Throwable;
 use Yii;
-use yii\helpers\FileHelper;
 use yii\web\UploadedFile;
 
 /**
@@ -34,7 +33,10 @@ use yii\web\UploadedFile;
  */
 class EspecificacionService
 {
-    private const UPLOAD_SUBPATH = 'uploads/especificaciones';
+    /**
+     * Subcarpeta de backend/uploads para los adjuntos (ver ArchivoSubido).
+     */
+    private const CARPETA_ADJUNTOS = 'especificaciones';
 
     /**
      * Valor del filtro de categoria para "Sin categoria" (no es el id de
@@ -261,9 +263,9 @@ class EspecificacionService
             return $resultado;
         }
 
-        $nombreArchivo = $archivo !== null ? uniqid('esp_', true) . '.' . $archivo->extension : null;
-        if ($nombreArchivo !== null) {
-            $versionFormulario->adjuntoRuta = self::UPLOAD_SUBPATH . '/' . $nombreArchivo;
+        $rutaArchivo = $archivo !== null ? ArchivoSubido::rutaNueva(self::CARPETA_ADJUNTOS, 'esp_', $archivo->extension) : null;
+        if ($rutaArchivo !== null) {
+            $versionFormulario->adjuntoRuta = $rutaArchivo;
         }
 
         $eraNueva = $especificacion->isNewRecord;
@@ -294,8 +296,8 @@ class EspecificacionService
 
             // El archivo se escribe recien cuando todo lo demas es valido:
             // asi un formulario con errores no deja archivos huerfanos.
-            if ($nombreArchivo !== null) {
-                $this->guardarArchivoSubido($archivo, $nombreArchivo);
+            if ($rutaArchivo !== null) {
+                ArchivoSubido::guardar($archivo, $rutaArchivo);
             }
 
             $transaccion->commit();
@@ -611,22 +613,6 @@ class EspecificacionService
             Yii::error("Error extrayendo metadatos de especificación: {$e->getMessage()}", __METHOD__);
 
             return ['error' => 'No se pudo leer el archivo. Verifique que no esté dañado y vuelva a intentar.'];
-        }
-    }
-
-    /**
-     * Guarda el archivo subido en backend/web/uploads/especificaciones con el
-     * nombre que ya se puso en la version (adjuntoRuta). Es el mismo archivo
-     * que, si se uso, ya sirvio para prellenar el formulario via
-     * extraerMetadatos() -- aca se persiste como el adjunto de la version.
-     */
-    private function guardarArchivoSubido(UploadedFile $archivo, string $nombreArchivo): void
-    {
-        $uploadDir = Yii::getAlias('@backend/web/' . self::UPLOAD_SUBPATH);
-        FileHelper::createDirectory($uploadDir);
-
-        if (!$archivo->saveAs($uploadDir . '/' . $nombreArchivo)) {
-            throw new RuntimeException('No se pudo guardar el archivo adjunto.');
         }
     }
 }

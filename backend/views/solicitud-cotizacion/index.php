@@ -302,7 +302,7 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                                             <td class="rd-num mono"><?= $formato->asDecimal($cotizacion->total(), 2) ?></td>
                                             <td class="rd-num">
                                                 <?php if (!empty($cotizacion->documentoRuta)): ?>
-                                                    <?= Html::a('PDF', Yii::getAlias('@web/' . $cotizacion->documentoRuta), ['class' => 'btn btn-outline btn-sm', 'target' => '_blank']) ?>
+                                                    <?= Html::a('PDF', $cotizacion->urlDocumento(), ['class' => 'btn btn-outline btn-sm', 'target' => '_blank']) ?>
                                                 <?php endif; ?>
                                                 <?php if ($editable): ?>
                                                     <?= Html::a('Corregir', ['editar-cotizacion', 'id' => $cotizacion->id], ['class' => 'btn btn-outline btn-sm']) ?>
