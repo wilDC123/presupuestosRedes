@@ -31,6 +31,7 @@ $hayFiltros = $filtros['categoria'] !== '' || $filtros['buscar'] !== '' || $filt
             </div>
         </div>
         <div class="rd-acciones">
+            <?= Html::a('Configuración del formulario NET', ['configuracion'], ['class' => 'btn btn-outline']) ?>
             <?= Html::a('+ Nueva especificación', ['create'], ['class' => 'btn btn-primary']) ?>
         </div>
     </div>

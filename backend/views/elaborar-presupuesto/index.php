@@ -124,7 +124,7 @@ $columnas = 5 + count($proveedores);
                                     <div class="rd-celda-sub"><?= Html::encode($item->observacion) ?></div>
                                 <?php endif; ?>
                                 <?php if ($item->especificacion !== null): ?>
-                                    <div class="rd-celda-sub">Especificación técnica: <?= Html::encode($item->especificacion->referencia()) ?></div>
+                                    <div class="rd-celda-sub">Especificación técnica: <?= Html::encode($item->referenciaEspecificacion()) ?></div>
                                 <?php endif; ?>
                                 <?php
                                 // Visible cuando el precio guardado no es el menor (en

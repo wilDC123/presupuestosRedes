@@ -7,6 +7,7 @@ namespace backend\controllers;
 use backend\models\ConfiguracionEspecificacion;
 use backend\models\Especificacion;
 use backend\services\CategoriaService;
+use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
 use backend\services\SubcatalogoItemService;
 use Yii;
@@ -98,6 +99,28 @@ class EspecificacionController extends Controller
     public function actionUpdate(int $id)
     {
         return $this->formulario($this->findModel($id), 'update', 'Especificación actualizada.');
+    }
+
+    /**
+     * Configuracion del formulario NET: el siguiente codigo NET y los textos
+     * fijos. Los cambios valen para las emisiones NUEVAS; las ya emitidas
+     * guardan su propia copia.
+     */
+    public function actionConfiguracion()
+    {
+        $configuracion = ConfiguracionEspecificacion::obtener();
+        $emisiones = new EspecificacionEmisionService();
+
+        if (Yii::$app->request->isPost && $emisiones->guardarConfiguracion($configuracion, Yii::$app->request->post())) {
+            Yii::$app->session->setFlash('success', 'Configuración del formulario NET guardada.');
+
+            return $this->redirect(['configuracion']);
+        }
+
+        return $this->render('configuracion', [
+            'configuracion' => $configuracion,
+            'ultimoNet' => $emisiones->ultimoNetEmitido(),
+        ]);
     }
 
     public function actionDelete(int $id)

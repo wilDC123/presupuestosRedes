@@ -162,10 +162,11 @@ class PresupuestoService
     public function agruparPorCategoria(Presupuesto $presupuesto): array
     {
         $lineas = $presupuesto->getPresupuestoDetalles()
-            // proyectoItem.especificacion: la especificacion enlazada en la
-            // lista, que se muestra junto a la linea (vista y PDF).
+            // proyectoItem.especificacion y emisionVigente: la especificacion
+            // enlazada en la lista y su NET, que se muestran junto a la linea
+            // (vista y PDF).
             // cotizacionDetalle...proveedor: de quien es el precio (vista y PDF).
-            ->with(['subcatalogoItem.categoria', 'proyectoItem.especificacion', 'cotizacionDetalle.cotizacion.proveedor'])
+            ->with(['subcatalogoItem.categoria', 'proyectoItem.especificacion', 'proyectoItem.emisionVigente', 'cotizacionDetalle.cotizacion.proveedor'])
             ->all();
 
         $grupos = [];

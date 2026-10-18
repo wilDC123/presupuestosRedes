@@ -127,7 +127,7 @@ $formato = Yii::$app->formatter;
                                 <div class="rd-celda-sub"><?= Html::encode($item->observacion) ?></div>
                             <?php endif; ?>
                             <?php if ($item->especificacion !== null): ?>
-                                <div class="rd-celda-sub">Especificación técnica: <?= Html::encode($item->especificacion->referencia()) ?></div>
+                                <div class="rd-celda-sub">Especificación técnica: <?= Html::encode($item->referenciaEspecificacion()) ?></div>
                             <?php endif; ?>
                         </td>
                         <td><?= Html::encode((string) $item->unidadMedida) ?></td>

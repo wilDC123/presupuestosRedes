@@ -179,7 +179,7 @@ $ubicacion = $proyecto->ubicacion();
                             <?php endif; ?>
                             <?php if ($linea->proyectoItem->especificacion ?? null): ?>
                                 <br><span class="observacion">
-                                    Según especificación técnica <?= Html::encode($linea->proyectoItem->especificacion->referencia()) ?><?= $proyecto->codigo ? ' — proyecto ' . Html::encode($proyecto->codigo) : '' ?>
+                                    Según especificación técnica <?= Html::encode($linea->proyectoItem->referenciaEspecificacion()) ?><?= $proyecto->codigo ? ' — proyecto ' . Html::encode($proyecto->codigo) : '' ?>
                                 </span>
                             <?php endif; ?>
                         </td>

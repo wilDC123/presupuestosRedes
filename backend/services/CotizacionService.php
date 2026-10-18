@@ -66,7 +66,7 @@ class CotizacionService
 
         $filas = [];
 
-        foreach ($solicitud->getItems()->with(['proyectoItem.subcatalogoItem', 'proyectoItem.especificacion'])->all() as $itemSolicitud) {
+        foreach ($solicitud->getItems()->with(['proyectoItem.subcatalogoItem', 'proyectoItem.especificacion', 'proyectoItem.emisionVigente'])->all() as $itemSolicitud) {
             $item = $itemSolicitud->proyectoItem;
 
             if ($item === null) {
@@ -152,6 +152,10 @@ class CotizacionService
             $detalle->idSubcatalogo = $item->idSubcatalogo;
             $detalle->cantidad = $item->cantidad;
             $detalle->idEspecificacion = $item->idEspecificacion;
+            // El formulario NET contra el que cotizo el proveedor. Si la
+            // linea ya lo tenia, se conserva: un NET reemitido despues no
+            // cambia lo que ya se cotizo.
+            $detalle->idEspecificacionEmision ??= $item->emisionVigente?->id;
 
             if (!$detalle->validate(['precioUnitario', 'marcaModelo', 'cantidad', 'idSubcatalogo'])) {
                 $errores[] = "$nombre: " . implode(' ', $detalle->getFirstErrors());

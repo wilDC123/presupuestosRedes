@@ -19,8 +19,8 @@ use yii\db\ActiveRecord;
  * precio congelado del presupuesto. El contenido tecnico no se copia: apunta a
  * una version que ya no se puede modificar.
  *
- * Las reglas para emitir, reemitir y anular viven en un servicio (paso 4 del
- * plan, docs/plan-especificaciones.md).
+ * Las reglas para emitir, reemitir y anular viven en
+ * EspecificacionEmisionService.
  *
  * @property int $id
  * @property int $numeroNet Correlativo que no se reinicia por año.
@@ -39,6 +39,7 @@ use yii\db\ActiveRecord;
  * @property string|null $textoCabecera
  * @property string|null $textoInstrucciones
  * @property string|null $textoNotaFinal
+ * @property string|null $garantia La que se imprimio: la de la version o, si no tenia, la de la configuracion.
  * @property string $fechaEmision aaaa-mm-dd
  * @property int $vigenciaDias
  * @property string $estado Ver las constantes ESTADO_*.
@@ -73,7 +74,7 @@ class EspecificacionEmision extends ActiveRecord
             [['unidad'], 'string', 'max' => 20],
             [['dependencia'], 'string', 'max' => 200],
             [['elaboradoPor'], 'string', 'max' => 150],
-            [['textoCabecera', 'textoNotaFinal'], 'string', 'max' => 500],
+            [['textoCabecera', 'textoNotaFinal', 'garantia'], 'string', 'max' => 500],
             [['textoInstrucciones'], 'string', 'max' => 1000],
             [['estado'], 'default', 'value' => self::ESTADO_VIGENTE],
             [['estado'], 'in', 'range' => [self::ESTADO_VIGENTE, self::ESTADO_REEMPLAZADA, self::ESTADO_ANULADA]],
@@ -102,6 +103,7 @@ class EspecificacionEmision extends ActiveRecord
             'estado' => 'Estado',
             'idReemplazadaPor' => 'Reemplazada por',
             'motivo' => 'Motivo',
+            'garantia' => 'Garantía',
         ];
     }
 
@@ -132,6 +134,28 @@ class EspecificacionEmision extends ActiveRecord
     public function codigoNet(): string
     {
         return sprintf('NET:%03d/%02d', $this->numeroNet, $this->anio);
+    }
+
+    public function estadoLabel(): string
+    {
+        return match ($this->estado) {
+            self::ESTADO_VIGENTE => $this->estaVencida() ? 'Vencida' : 'Vigente',
+            self::ESTADO_REEMPLAZADA => 'Reemplazada',
+            self::ESTADO_ANULADA => 'Anulada',
+            default => $this->estado,
+        };
+    }
+
+    /**
+     * Clase del badge, con los colores de los estados del sistema.
+     */
+    public function estadoBadgeClass(): string
+    {
+        return 'badge ' . match ($this->estado) {
+            self::ESTADO_VIGENTE => $this->estaVencida() ? 'b-observado' : 'b-activo',
+            self::ESTADO_REEMPLAZADA => 'b-inactivo',
+            default => 'b-cancelado',
+        };
     }
 
     /**

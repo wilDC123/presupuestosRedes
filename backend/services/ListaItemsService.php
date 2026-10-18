@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\models\Especificacion;
 use backend\models\OrdenCambio;
 use backend\models\Plantilla;
 use backend\models\PresupuestoDetalle;
@@ -12,6 +13,7 @@ use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SolicitudCotizacionItem;
 use backend\models\SubcatalogoItem;
+use DomainException;
 use Throwable;
 use Yii;
 
@@ -28,6 +30,9 @@ use Yii;
  *  - cada item puede tener COMO MAXIMO una especificacion de la libreria
  *    (opcional): solo se enlazan especificaciones activas; una que se
  *    desactivo despues se conserva donde ya estaba,
+ *  - enlazar una especificacion EMITE su formulario NET; cambiarla o
+ *    quitarla, o quitar el item, anula la emision vigente (las reglas de
+ *    las emisiones viven en EspecificacionEmisionService),
  *  - estados: edicion -> en_cotizacion -> cerrada (al aprobar el presupuesto).
  */
 class ListaItemsService
@@ -62,7 +67,7 @@ class ListaItemsService
      */
     public function agrupar(Proyecto $proyecto, ?array $items = null): array
     {
-        $items ??= $proyecto->getItems()->with(['subcatalogoItem', 'categoria', 'especificacion'])->all();
+        $items ??= $proyecto->getItems()->with(['subcatalogoItem', 'categoria', 'especificacion.versionActual', 'emisionVigente'])->all();
 
         $grupos = [];
         $orden = [];
@@ -94,6 +99,10 @@ class ListaItemsService
      * Los items guardados que ya no vienen en el formulario se quitan. Los
      * que siguen se ACTUALIZAN (no se borran y recrean) para conservar su id.
      *
+     * Si un item cambia de especificacion, en la misma transaccion se anula
+     * su formulario NET vigente y se emite el nuevo; $usuario queda como
+     * "elaborado por".
+     *
      * Devuelve false si la lista no es editable o si algo no es valido. Los
      * mensajes quedan en $errores y $enviados trae los items tal como
      * llegaron, para volver a mostrarlos.
@@ -102,7 +111,7 @@ class ListaItemsService
      * @param string[] $errores (por referencia)
      * @param ProyectoItem[] $enviados (por referencia)
      */
-    public function guardar(Proyecto $proyecto, $filas, array &$errores = [], array &$enviados = []): bool
+    public function guardar(Proyecto $proyecto, $filas, array &$errores = [], array &$enviados = [], ?string $usuario = null): bool
     {
         $errores = [];
         $enviados = [];
@@ -118,6 +127,10 @@ class ListaItemsService
         $conservados = [];
         $numero = 0;
         $especificacionesActivas = (new EspecificacionService())->idsActivas();
+        $emisiones = new EspecificacionEmisionService();
+        // Items cuya especificacion cambia: [spl_object_id => true]. Se
+        // marcan por objeto porque los nuevos todavia no tienen id.
+        $cambianEspecificacion = [];
 
         foreach ((array) $filas as $fila) {
             if (!is_array($fila)) {
@@ -151,9 +164,21 @@ class ListaItemsService
             $enviados[] = $item;
             $nombre = $item->subcatalogoItem->descripcion ?? "Ítem $numero";
 
+            $anterior = $item->isNewRecord ? null : $item->getOldAttribute('idEspecificacion');
             $errorEspecificacion = $this->asignarEspecificacion($item, $this->texto($fila['idEspecificacion'] ?? ''), $especificacionesActivas);
             if ($errorEspecificacion !== null) {
                 $errores[] = "$nombre: $errorEspecificacion";
+            } elseif ((int) $anterior !== (int) $item->idEspecificacion) {
+                $cambianEspecificacion[spl_object_id($item)] = true;
+
+                // Se revisa ANTES de guardar, para mostrar el error sin haber
+                // tocado nada (ej. falta fijar el NET inicial).
+                if ($item->idEspecificacion !== null) {
+                    $motivo = $emisiones->motivoParaNoEmitir(Especificacion::findOne($item->idEspecificacion));
+                    if ($motivo !== null) {
+                        $errores[] = "$nombre: no se puede emitir su formulario NET: $motivo";
+                    }
+                }
             }
 
             if (!$item->validate(['cantidad', 'observacion'])) {
@@ -199,12 +224,25 @@ class ListaItemsService
             }
 
             foreach ($quitados as $item) {
+                // El formulario NET firmado no se borra: queda anulado y sin
+                // item (la llave foranea lo pone en NULL).
+                $emisiones->anularVigente($item->id, 'Se quitó el ítem de la lista.');
                 $item->delete();
             }
 
             foreach ($enviados as $posicion => $item) {
                 $item->orden = $posicion + 1;
                 $item->save(false);
+
+                if (isset($cambianEspecificacion[spl_object_id($item)])) {
+                    $emisiones->anularVigente($item->id, $item->idEspecificacion === null
+                        ? 'Se quitó la especificación del ítem.'
+                        : 'Se cambió la especificación del ítem.');
+
+                    if ($item->idEspecificacion !== null) {
+                        $emisiones->emitir($item, $usuario);
+                    }
+                }
 
                 if ($presupuestoBorrador) {
                     PresupuestoDetalle::updateAll(
@@ -218,6 +256,13 @@ class ListaItemsService
             $proyecto->updateAttributes(['listaIniciada' => true]);
 
             $transaccion->commit();
+        } catch (DomainException $e) {
+            // Algo que se reviso antes cambio entre tanto (ej. otra persona
+            // vacio la ficha): no se guarda nada.
+            $transaccion->rollBack();
+            $errores[] = $e->getMessage();
+
+            return false;
         } catch (Throwable $e) {
             $transaccion->rollBack();
             throw $e;

@@ -28,6 +28,7 @@ use yii\db\ActiveRecord;
  * @property-read SubcatalogoItem $subcatalogoItem
  * @property-read Categoria $categoria
  * @property-read Especificacion|null $especificacion
+ * @property-read EspecificacionEmision|null $emisionVigente El formulario NET vigente de su especificacion.
  * @property-read PresupuestoDetalle|null $presupuestoDetalle
  */
 class ProyectoItem extends ActiveRecord
@@ -82,6 +83,31 @@ class ProyectoItem extends ActiveRecord
     public function getEspecificacion(): ActiveQuery
     {
         return $this->hasOne(Especificacion::class, ['id' => 'idEspecificacion']);
+    }
+
+    /**
+     * La emision NET VIGENTE de la especificacion del item (como maximo una:
+     * lo garantiza un indice unico filtrado en la base). Las reemplazadas y
+     * anuladas quedan en el historial de emisiones.
+     */
+    public function getEmisionVigente(): ActiveQuery
+    {
+        return $this->hasOne(EspecificacionEmision::class, ['idProyectoItem' => 'id'])
+            ->andOnCondition(['estado' => EspecificacionEmision::ESTADO_VIGENTE]);
+    }
+
+    /**
+     * Como se cita la especificacion en los impresos ("Segun especificacion
+     * tecnica NET:880/26"): el codigo de su emision vigente, o el titulo de
+     * la ficha si todavia no se emitio. null si el item no tiene especificacion.
+     */
+    public function referenciaEspecificacion(): ?string
+    {
+        if ($this->especificacion === null) {
+            return null;
+        }
+
+        return $this->emisionVigente?->codigoNet() ?? $this->especificacion->nombre();
     }
 
     /**

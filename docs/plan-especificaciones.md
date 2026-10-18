@@ -106,3 +106,19 @@ fichas como v1 (categoría a asignar desde la pantalla). Las emisiones antiguas 
 7. Comando de importación y carga de las fichas del banco.
 8. Documentación: `CLAUDE.md` y resumen para el tutor (cambia el diagrama de clases:
    Ficha, Versión, Característica, Emisión; y el de secuencia: Emitir/Reemitir).
+
+## 8. Ajustes hechos durante la implementación
+
+- Paso 4: `CotizacionDetalle.idEspecificacion` NO se quita. Una cotización suelta (sin
+  solicitud) elige una ficha y no tiene NET; la línea guarda la ficha y, si viene de una
+  solicitud, también la emisión (`idEspecificacionEmision`), que se conserva aunque el NET
+  se reemita después.
+- Paso 4: la emisión guarda una copia de la garantía (`EspecificacionEmision.garantia`): la
+  de la versión o, si no tenía, la de la configuración. Sin esa copia, cambiar la garantía por
+  defecto cambiaría documentos ya firmados.
+- Paso 4: "Reemitir" toma siempre la cantidad ACTUAL de la lista (no se escribe a mano). Si la
+  cantidad está mal, se corrige en la lista y se reemite; así el NET y la lista nunca dicen
+  cosas distintas. En el diálogo se pueden cambiar el lugar, la validez y el tiempo de entrega.
+- Paso 4: el lugar de entrega por defecto es la facultad del proyecto.
+- Paso 4: una ficha enlazada ANTES de que existieran las emisiones no se emite sola al volver a
+  guardar la lista (consumiría un NET sin aviso): la lista muestra "Emitir formulario NET".

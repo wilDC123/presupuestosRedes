@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use backend\models\Proyecto;
+use backend\models\ProyectoItem;
 use yii\helpers\Html;
 use yii\web\JqueryAsset;
 
@@ -20,6 +21,11 @@ use yii\web\JqueryAsset;
  * clasificacion es un <tbody> (data-categoria); las dos plantillas ocultas
  * (<template>) son la fila y el grupo "modelo" que el JS copia.
  *
+ * Al guardar, elegir una especificacion EMITE su formulario NET. Cada item
+ * muestra su NET vigente, los avisos y "Reemitir", que abre un panel con su
+ * propio formulario (fuera del de la lista: no se pueden anidar formularios).
+ * Ese panel lo maneja web/js/especificacion-emision.js.
+ *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
@@ -28,11 +34,15 @@ use yii\web\JqueryAsset;
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
  * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>} $especificaciones Ver EspecificacionService::selector()
  * @var backend\models\OrdenCambio[] $ordenes ordenes de cambio del proyecto
+ * @var array<int, array{emision: ?backend\models\EspecificacionEmision, avisos: string[]}> $emisiones Ver EspecificacionEmisionService::estadoPorItem()
+ * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
+ * @var backend\models\ConfiguracionEspecificacion $configuracion
  */
 
 if ($editable) {
     $this->registerJsFile('@web/js/lista-items.js', ['depends' => [JqueryAsset::class]]);
 }
+$this->registerJsFile('@web/js/especificacion-emision.js', ['depends' => [JqueryAsset::class]]);
 
 $this->title = 'Lista de ítems del proyecto';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
@@ -55,6 +65,48 @@ $atributosOpciones = [];
 foreach ($especificaciones['urls'] as $idEspecificacion => $url) {
     $atributosOpciones[$idEspecificacion] = ['data-url' => $url];
 }
+
+/**
+ * Formulario NET del item: codigo, estado, avisos y "Reemitir" (o "Emitir" si
+ * la ficha se enlazo antes de que existieran las emisiones). Vacio si el item
+ * no tiene especificacion o todavia no se guardo.
+ */
+$infoEmision = static function (ProyectoItem $item) use ($emisiones, $puedeReemitir, $formato): string {
+    $estado = $emisiones[$item->id] ?? null;
+
+    if ($estado === null) {
+        return '';
+    }
+
+    $emision = $estado['emision'];
+    $html = '<div class="rd-celda-sub mt-1 lista-item-net">';
+
+    if ($emision !== null) {
+        $html .= 'Formulario <strong class="mono">' . Html::encode($emision->codigoNet()) . '</strong> '
+            . '<span class="' . $emision->estadoBadgeClass() . '">' . Html::encode($emision->estadoLabel()) . '</span> '
+            . Html::encode($emision->version->etiqueta() . ' · emitido el ' . $formato->asDate($emision->fechaEmision, 'php:d/m/Y'));
+    }
+
+    if ($puedeReemitir) {
+        $html .= ' ' . Html::button($emision !== null ? 'Reemitir' : 'Emitir formulario NET', [
+            'class' => 'btn btn-outline btn-sm esp-reemitir',
+            'data' => [
+                'item' => $item->id,
+                'titulo' => ($item->especificacion?->nombre() ?? '') . ' — ' . ($item->subcatalogoItem->descripcion ?? ''),
+                'net' => $emision?->codigoNet() ?? '',
+                'lugar' => $emision?->lugarEntrega ?? '',
+                'validez' => $emision?->validezOfertaDias ?? '',
+                'tiempo' => $emision?->tiempoEntregaDias ?? '',
+            ],
+        ]);
+    }
+
+    foreach ($estado['avisos'] as $aviso) {
+        $html .= '<div class="text-warning-emphasis">⚠ ' . Html::encode($aviso) . '</div>';
+    }
+
+    return $html . '</div>';
+};
 
 /**
  * Selector "Especificación técnica" de una fila: un <optgroup> por
@@ -97,7 +149,7 @@ $selectorEspecificacion = static function (string $n, string $seleccionada, stri
  * Fila editable de un item. $n es su indice en items[n][...]; el JS usa
  * "__n__" como marcador y lo reemplaza por un numero nuevo.
  */
-$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '') use ($selectorEspecificacion): string {
+$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '', string $emision = '') use ($selectorEspecificacion): string {
     return '<tr class="lista-item">'
         . '<td>'
         . Html::hiddenInput("items[$n][id]", $id)
@@ -105,6 +157,7 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
         . '<div class="lista-item-nombre">' . Html::encode($nombre) . '</div>'
         . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
         . $selectorEspecificacion($n, $idEspecificacion, $idCategoria)
+        . $emision
         . '</td>'
         . '<td class="lista-item-unidad">' . Html::encode($unidad) . '</td>'
         . '<td class="rd-num">' . Html::textInput("items[$n][cantidad]", $cantidad, ['class' => 'qty', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'required' => true, 'aria-label' => 'Cantidad']) . '</td>'
@@ -165,6 +218,18 @@ $grupoCierra = static fn (int $cantidad): string =>
                 <div><?= Html::encode($error) ?></div>
             <?php endforeach; ?>
         </div>
+    <?php endif; ?>
+    <?php if ($editable && $configuracion->siguienteNet === null): ?>
+        <div class="alert alert-warning">
+            Todavía no se fijó el código NET inicial: hasta entonces no se pueden enlazar especificaciones técnicas
+            (enlazar una emite su formulario NET).
+            <?= Html::a('Fijarlo en la configuración del formulario NET', ['/especificacion/configuracion']) ?>.
+        </div>
+    <?php elseif ($editable): ?>
+        <p class="rd-nota">
+            Al guardar, elegir una especificación técnica para un ítem emite su formulario NET
+            (el próximo será el NET:<?= sprintf('%03d', $configuracion->siguienteNet) ?>/<?= date('y') ?>). Cambiarla o quitarla anula el anterior.
+        </p>
     <?php endif; ?>
     <div class="alert alert-danger d-none" id="lista-error-cliente">Revise las cantidades marcadas: deben ser números mayores o iguales a 0.</div>
 
@@ -238,7 +303,8 @@ $grupoCierra = static fn (int $cantidad): string =>
                                 is_numeric($item->cantidad) ? (string) (float) $item->cantidad : (string) $item->cantidad,
                                 (string) $item->observacion,
                                 (string) $item->idEspecificacion,
-                                (string) $item->idCategoria
+                                (string) $item->idCategoria,
+                                $infoEmision($item)
                             ) ?>
                         <?php endforeach; ?>
                         <?= $grupoCierra(count($grupo['items'])) ?>
@@ -257,9 +323,10 @@ $grupoCierra = static fn (int $cantidad): string =>
                                             <div class="rd-celda-sub">
                                                 Especificación técnica:
                                                 <?= $url === null
-                                                    ? Html::encode($item->especificacion->referencia())
-                                                    : Html::a(Html::encode($item->especificacion->referencia()), $url, ['target' => '_blank', 'rel' => 'noopener']) ?>
+                                                    ? Html::encode($item->especificacion->nombre())
+                                                    : Html::a(Html::encode($item->especificacion->nombre()), $url, ['target' => '_blank', 'rel' => 'noopener']) ?>
                                             </div>
+                                            <?= $infoEmision($item) ?>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= Html::encode((string) $item->unidadMedida) ?></td>
@@ -283,6 +350,40 @@ $grupoCierra = static fn (int $cantidad): string =>
     </div>
 
     <?= $editable ? Html::endForm() : '' ?>
+
+    <?php if ($puedeReemitir): ?>
+        <div class="card rd-card-pad mt-3 d-none" id="reemitir-panel">
+            <?= Html::beginForm(['reemitir', 'id' => $proyecto->id], 'post', ['id' => 'reemitir-form']) ?>
+                <div class="rd-card-titulo mb-1" id="reemitir-titulo">Reemitir formulario NET</div>
+                <p class="rd-nota">
+                    Se emite un formulario con NET nuevo, la última versión de la ficha y la cantidad actual de la lista.
+                    El anterior queda "reemplazado" y se conserva en el historial. Si la cantidad está mal, corríjala
+                    primero en la lista.
+                </p>
+                <?= Html::hiddenInput('idProyectoItem', '', ['id' => 'reemitir-item']) ?>
+                <div class="form-group mb-2" id="reemitir-motivo-grupo">
+                    <label for="reemitir-motivo">Motivo</label>
+                    <?= Html::textInput('motivo', '', ['id' => 'reemitir-motivo', 'class' => 'form-control', 'maxlength' => 300, 'placeholder' => 'Ej. facultad equivocada, venció, cambió la ficha']) ?>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 form-group mb-2">
+                        <label for="reemitir-lugar">Lugar de entrega</label>
+                        <?= Html::textInput('lugarEntrega', '', ['id' => 'reemitir-lugar', 'class' => 'form-control', 'maxlength' => 300, 'placeholder' => (string) $proyecto->facultad]) ?>
+                    </div>
+                    <div class="col-md-3 form-group mb-2">
+                        <label for="reemitir-validez">Validez de la oferta (días)</label>
+                        <?= Html::textInput('validezOfertaDias', '', ['id' => 'reemitir-validez', 'class' => 'form-control', 'type' => 'number', 'min' => 1, 'placeholder' => (string) $configuracion->validezOfertaDias]) ?>
+                    </div>
+                    <div class="col-md-3 form-group mb-2">
+                        <label for="reemitir-tiempo">Tiempo de entrega (días)</label>
+                        <?= Html::textInput('tiempoEntregaDias', '', ['id' => 'reemitir-tiempo', 'class' => 'form-control', 'type' => 'number', 'min' => 1, 'placeholder' => (string) $configuracion->tiempoEntregaDias]) ?>
+                    </div>
+                </div>
+                <?= Html::submitButton('Emitir', ['class' => 'btn btn-primary']) ?>
+                <button type="button" class="btn btn-outline" id="reemitir-cancelar">Cancelar</button>
+            <?= Html::endForm() ?>
+        </div>
+    <?php endif; ?>
 
     <?php if ($editable): ?>
         <?php // Modelos que el JS copia; el navegador no los muestra ni los envia. ?>

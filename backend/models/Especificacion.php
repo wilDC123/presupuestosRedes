@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace backend\models;
 
-use DateTime;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\web\UploadedFile;
@@ -17,15 +16,14 @@ use yii\web\UploadedFile;
  * por categoria y se ENLAZA a los items de la lista de un proyecto
  * (ProyectoItem::idEspecificacion). Siempre es opcional.
  *
+ * La ficha solo tiene lo que no cambia entre versiones (titulo, categoria,
+ * activo). El contenido tecnico vive en sus VERSIONES, y lo que se entrega al
+ * proveedor (codigo NET, cantidad, dependencia, fecha) en cada EMISION.
+ *
  * @property int $id
  * @property int|null $idSubcatalogo Item de referencia (opcional): solo informativo.
  * @property int|null $idCategoria Clasificacion en la libreria (mismas categorias del subcatalogo).
- * @property string|null $codigoNet
  * @property string|null $titulo
- * @property string|null $dependencia
- * @property string|null $modeloSugerido
- * @property string|null $documentoRuta
- * @property string|null $fechaEmision
  * @property bool $activo
  *
  * @property-read SubcatalogoItem|null $subcatalogoItem
@@ -39,11 +37,11 @@ class Especificacion extends ActiveRecord
 {
     /**
      * Atributo virtual: no existe como columna en la tabla. Es el PDF/DOCX
-     * que el usuario sube para (a) extraer metadatos automaticamente y
-     * (b) guardarlo como documentoRuta definitivo al confirmar el formulario.
-     * Separado de documentoRuta, que sigue siendo editable a mano como texto
-     * (por si el documento ya vive en otro lugar y solo se quiere referenciar
-     * la ruta, sin subir nada).
+     * que el usuario sube para (a) extraer los datos automaticamente y
+     * (b) guardarlo como adjunto de la version al confirmar el formulario.
+     * Separado de EspecificacionVersion::adjuntoRuta, que sigue siendo
+     * editable a mano como texto (por si el documento ya vive en otro lugar y
+     * solo se quiere referenciar la ruta, sin subir nada).
      */
     public ?UploadedFile $archivoEspecificacion = null;
 
@@ -62,11 +60,7 @@ class Especificacion extends ActiveRecord
             [['idSubcatalogo', 'idCategoria'], 'integer'],
             [['activo'], 'default', 'value' => true],
             [['activo'], 'boolean'],
-            [['fechaEmision'], 'date', 'format' => 'php:Y-m-d'],
-            [['codigoNet'], 'string', 'max' => 20],
             [['titulo'], 'string', 'max' => 300],
-            [['dependencia', 'modeloSugerido'], 'string', 'max' => 200],
-            [['documentoRuta'], 'string', 'max' => 500],
             [['archivoEspecificacion'], 'file', 'extensions' => 'pdf, docx', 'maxSize' => 10 * 1024 * 1024],
             [['idSubcatalogo'], 'exist', 'skipOnError' => true, 'targetClass' => SubcatalogoItem::class, 'targetAttribute' => ['idSubcatalogo' => 'id']],
             [['idCategoria'], 'exist', 'skipOnError' => true, 'targetClass' => Categoria::class, 'targetAttribute' => ['idCategoria' => 'id']],
@@ -79,12 +73,7 @@ class Especificacion extends ActiveRecord
             'id' => 'ID',
             'idSubcatalogo' => 'Ítem de referencia (opcional)',
             'idCategoria' => 'Categoría',
-            'codigoNet' => 'Código NET',
             'titulo' => 'Título',
-            'dependencia' => 'Dependencia',
-            'modeloSugerido' => 'Modelo sugerido',
-            'documentoRuta' => 'Ruta del documento',
-            'fechaEmision' => 'Fecha de emisión',
             'activo' => 'Activo',
             'archivoEspecificacion' => 'Documento de especificación (PDF o DOCX)',
         ];
@@ -151,20 +140,12 @@ class Especificacion extends ActiveRecord
     }
 
     /**
-     * Nombre corto para listados: el titulo, o el codigo NET, o "#id".
+     * Nombre corto para listados: el titulo, o "#id". Como se cita en los
+     * impresos (con su codigo NET) lo da ProyectoItem::referenciaEspecificacion().
      */
     public function nombre(): string
     {
-        return $this->titulo ?: ($this->codigoNet ?: '#' . $this->id);
-    }
-
-    /**
-     * Como se cita en los impresos ("Segun especificacion tecnica NET:012/26"):
-     * el codigo NET si lo tiene; si no, el titulo.
-     */
-    public function referencia(): string
-    {
-        return $this->codigoNet ?: $this->nombre();
+        return $this->titulo ?: '#' . $this->id;
     }
 
     /**
@@ -176,74 +157,20 @@ class Especificacion extends ActiveRecord
         return $this->versionActual?->urlAdjunto();
     }
 
-    /**
-     * fechaEmision permite NULL, pero el input tipo "date" envia '' cuando se
-     * deja en blanco. SQL Server no puede convertir '' a date, asi que hay
-     * que normalizar a null antes de guardar (mismo riesgo que idSigma en
-     * SubcatalogoItem).
-     */
     public function beforeSave($insert): bool
     {
         if (!parent::beforeSave($insert)) {
             return false;
         }
 
-        // Los selects opcionales y el input de fecha envian '' cuando se
-        // dejan en blanco; SQL Server no convierte '' a int ni a date.
-        foreach (['fechaEmision', 'idSubcatalogo', 'idCategoria'] as $atributo) {
+        // Los selects opcionales envian '' cuando se dejan en blanco; SQL
+        // Server no convierte '' a int.
+        foreach (['idSubcatalogo', 'idCategoria'] as $atributo) {
             if ($this->$atributo === '') {
                 $this->$atributo = null;
             }
         }
 
         return true;
-    }
-
-    /**
-     * El formulario muestra y recibe fechaEmision en dd/mm/aaaa (convencion
-     * local), pero el validador 'date' de rules() y la columna date de SQL
-     * Server esperan aaaa-mm-dd. Esto tiene que pasar en beforeValidate() --
-     * no en beforeSave() -- porque el validador 'date' corre ANTES que
-     * beforeSave() y rechazaria "11/08/2026" como formato invalido.
-     */
-    public function beforeValidate(): bool
-    {
-        $this->fechaEmision = self::convertirFechaFormularioABd($this->fechaEmision);
-
-        return parent::beforeValidate();
-    }
-
-    /**
-     * Convierte "dd/mm/aaaa" (o "d/m/aaaa") a "aaaa-mm-dd". Si el valor no
-     * coincide con ese patron (ya viene en aaaa-mm-dd, esta vacio, o es
-     * invalido) se devuelve sin cambios para que el validador 'date' decida.
-     */
-    private static function convertirFechaFormularioABd(?string $valor): ?string
-    {
-        if ($valor === null) {
-            return null;
-        }
-
-        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', trim($valor), $partes) === 1) {
-            [, $dia, $mes, $anio] = $partes;
-
-            return sprintf('%04d-%02d-%02d', (int) $anio, (int) $mes, (int) $dia);
-        }
-
-        return $valor;
-    }
-
-    /**
-     * fechaEmision para mostrar en pantalla (dd/mm/aaaa), no para guardar.
-     */
-    public function fechaEmisionFormateada(): string
-    {
-        if (empty($this->fechaEmision)) {
-            return '';
-        }
-
-        $fecha = DateTime::createFromFormat('Y-m-d', $this->fechaEmision);
-
-        return $fecha !== false ? $fecha->format('d/m/Y') : $this->fechaEmision;
     }
 }

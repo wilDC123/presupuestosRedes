@@ -73,7 +73,12 @@ $this->params['breadcrumbs'][] = $this->title;
                 <?php foreach ($model->cotizacionDetalles as $detalle): ?>
                     <tr>
                         <td><?= Html::encode($detalle->subcatalogoItem->descripcion ?? '') ?></td>
-                        <td><?= Html::encode($detalle->especificacion->titulo ?? '—') ?></td>
+                        <td>
+                            <?= Html::encode($detalle->especificacion->titulo ?? '—') ?>
+                            <?php if ($detalle->especificacionEmision !== null): ?>
+                                <div class="rd-celda-sub mono"><?= Html::encode($detalle->especificacionEmision->codigoNet()) ?></div>
+                            <?php endif; ?>
+                        </td>
                         <td><?= Html::encode($detalle->marcaModelo ?? '') ?></td>
                         <td><?= Yii::$app->formatter->asDecimal($detalle->cantidad, 2) ?></td>
                         <td><?= Yii::$app->formatter->asDecimal($detalle->precioUnitario, 2) ?></td>

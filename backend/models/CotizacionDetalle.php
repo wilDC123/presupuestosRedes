@@ -21,6 +21,7 @@ use yii\helpers\ArrayHelper;
  * @property int $idCotizacion
  * @property int $idSubcatalogo
  * @property int|null $idEspecificacion
+ * @property int|null $idEspecificacionEmision Formulario NET contra el que cotizo (solo en lineas que vienen de una solicitud).
  * @property string|null $marcaModelo
  * @property string $cantidad
  * @property string $precioUnitario
@@ -29,6 +30,7 @@ use yii\helpers\ArrayHelper;
  * @property-read Cotizacion $cotizacion
  * @property-read SubcatalogoItem $subcatalogoItem
  * @property-read Especificacion|null $especificacion
+ * @property-read EspecificacionEmision|null $especificacionEmision
  * @property-read ProyectoItem|null $proyectoItem
  */
 class CotizacionDetalle extends ActiveRecord
@@ -77,6 +79,11 @@ class CotizacionDetalle extends ActiveRecord
     public function getEspecificacion(): ActiveQuery
     {
         return $this->hasOne(Especificacion::class, ['id' => 'idEspecificacion']);
+    }
+
+    public function getEspecificacionEmision(): ActiveQuery
+    {
+        return $this->hasOne(EspecificacionEmision::class, ['id' => 'idEspecificacionEmision']);
     }
 
     public function getProyectoItem(): ActiveQuery
