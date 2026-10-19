@@ -113,6 +113,11 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 - Cotizaciones de proveedores (relación N:N con ítems/especificaciones). Una línea que viene de
   una solicitud guarda contra qué NET cotizó (`CotizacionDetalle.idEspecificacionEmision`, no
   cambia si el NET se reemite); una cotización suelta solo elige la ficha (`idEspecificacion`)
+- Textos fijos del PDF de la solicitud de cotización (cabecera, instrucciones, nota final) en
+  `redes.ConfiguracionSolicitudCotizacion` (una sola fila, igual que la del NET), editables en
+  "Configuración del documento" (`solicitud-cotizacion/configuracion`). La solicitud NO guarda
+  copia: un cambio se ve también al reimprimir las anteriores. Título, columnas y bloque del
+  proveedor siguen fijos en `backend/views/solicitud-cotizacion/pdf.php`
 - Marca y modelo: `SolicitudCotizacionItem.marcaModeloReferencia` es lo que la DTIC PIDE como
   referencia (texto libre, opcional; sale entre paréntesis junto a la descripción en el PDF de la
   solicitud; se edita mientras la solicitud no tenga cotizaciones y viaja con el ítem si se mueve
@@ -155,7 +160,7 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-18; la última es `m261018_000758_limpieza_especificacion_y_garantia_emision`), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261019_151425_crear_configuracion_solicitud_cotizacion`), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -215,6 +220,7 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   configuración), agregan secuencias "Emitir" y "Reemitir formulario NET", casos de uso y un
   diagrama de actividades del ciclo de vida de una emisión; resumen en
   `docs/cambios-especificaciones.md`
+- PENDIENTE (tutor): agregar `ConfiguracionSolicitudCotizacion` (2026-10-19) al diagrama de clases
 - PENDIENTE: `PresupuestoService::crearNuevaVersion()` (`backend/services/PresupuestoService.php`) ahora
   crea la nueva versión VACÍA a propósito (cada versión es solo el incremento/cambio
   solicitado, no un snapshot completo de líneas ya aprobadas). Como consecuencia, falta

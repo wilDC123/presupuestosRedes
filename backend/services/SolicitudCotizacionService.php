@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\models\ConfiguracionSolicitudCotizacion;
 use backend\models\Cotizacion;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
@@ -383,6 +384,15 @@ class SolicitudCotizacionService
         }
 
         return $referencias;
+    }
+
+    /**
+     * Guarda los textos fijos del documento de la solicitud (cabecera,
+     * instrucciones y nota final).
+     */
+    public function guardarConfiguracion(ConfiguracionSolicitudCotizacion $configuracion, array $datosFormulario): bool
+    {
+        return $configuracion->load($datosFormulario) && $configuracion->save();
     }
 
     /**

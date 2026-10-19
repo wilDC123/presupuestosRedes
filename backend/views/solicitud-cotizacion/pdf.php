@@ -17,10 +17,12 @@ use yii\helpers\Html;
  * @var yii\web\View $this
  * @var backend\models\SolicitudCotizacion $solicitud
  * @var array<int, string> $especificaciones [idProyectoItem => codigo NET] Ver SolicitudCotizacionService::especificacionesPorItem()
+ * @var backend\models\ConfiguracionSolicitudCotizacion $configuracion textos fijos editables por el encargado
  */
 
 $proyecto = $solicitud->proyecto;
 $ubicacion = $proyecto->ubicacion();
+$cabecera = $configuracion->lineasCabecera();
 $numero = 0;
 ?>
 <!DOCTYPE html>
@@ -102,6 +104,10 @@ $numero = 0;
         padding: 7px 4px;
         width: 50%;
     }
+    .nota-final {
+        margin-top: 12px;
+        font-weight: bold;
+    }
     .firmas {
         margin-top: 50px;
     }
@@ -118,8 +124,9 @@ $numero = 0;
 <body>
 
 <div class="encabezado">
-    <div class="institucion">Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca</div>
-    <div class="unidad">D.T.I.C. - Unidad de Redes y Telecomunicaciones</div>
+    <?php foreach ($cabecera as $i => $linea): ?>
+        <div class="<?= $i === 0 ? 'institucion' : 'unidad' ?>"><?= Html::encode($linea) ?></div>
+    <?php endforeach; ?>
     <div class="titulo">SOLICITUD DE COTIZACIÓN</div>
 </div>
 
@@ -138,9 +145,7 @@ $numero = 0;
 </table>
 
 <div class="texto">
-    Se solicita cotizar los siguientes ítems, indicando precio unitario y precio total en bolivianos,
-    marca y modelo ofertados, tiempo de entrega y validez de la oferta. La marca y el modelo indicados
-    entre paréntesis en la descripción son la referencia solicitada.
+    <?= nl2br(Html::encode($configuracion->textoInstrucciones)) ?>
     <?php if (!empty($solicitud->nota)): ?>
         <br><strong>Nota:</strong> <?= nl2br(Html::encode($solicitud->nota)) ?>
     <?php endif; ?>
@@ -210,6 +215,10 @@ $numero = 0;
         <td><strong>Tiempo de entrega:</strong> ______________________________</td>
     </tr>
 </table>
+
+<?php if (!empty($configuracion->textoNotaFinal)): ?>
+    <div class="texto nota-final"><?= nl2br(Html::encode($configuracion->textoNotaFinal)) ?></div>
+<?php endif; ?>
 
 <div class="firmas">
     <div class="firma-linea"></div>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\models\ConfiguracionSolicitudCotizacion;
 use backend\models\Cotizacion;
 use backend\models\Proyecto;
 use backend\models\SolicitudCotizacion;
@@ -260,6 +261,7 @@ class SolicitudCotizacionController extends Controller
         $html = $this->renderPartial('pdf', [
             'solicitud' => $solicitud,
             'especificaciones' => $this->service->especificacionesPorItem($solicitud),
+            'configuracion' => ConfiguracionSolicitudCotizacion::obtener(),
         ]);
 
         $pdf = $this->service->generarPdf($solicitud, $html);
@@ -269,6 +271,29 @@ class SolicitudCotizacionController extends Controller
             $pdf['nombreArchivo'],
             ['mimeType' => 'application/pdf', 'inline' => true]
         );
+    }
+
+    /**
+     * Textos fijos del documento de la solicitud de cotizacion. Valen para
+     * todas las solicitudes, tambien al reimprimir las anteriores.
+     *
+     * @param int|null $proyecto id del proyecto desde el que se entro, solo
+     *                           para el boton "volver"
+     */
+    public function actionConfiguracion(?int $proyecto = null)
+    {
+        $configuracion = ConfiguracionSolicitudCotizacion::obtener();
+
+        if (Yii::$app->request->isPost && $this->service->guardarConfiguracion($configuracion, Yii::$app->request->post())) {
+            Yii::$app->session->setFlash('success', 'Configuración de la solicitud de cotización guardada.');
+
+            return $this->redirect(['configuracion', 'proyecto' => $proyecto]);
+        }
+
+        return $this->render('configuracion', [
+            'configuracion' => $configuracion,
+            'proyecto' => $proyecto !== null ? (new ProyectoService())->obtener($proyecto) : null,
+        ]);
     }
 
     protected function findProyecto(int $id): Proyecto

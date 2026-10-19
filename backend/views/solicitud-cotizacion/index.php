@@ -59,6 +59,7 @@ $destinos['nueva'] = '+ Nueva solicitud...';
         </div>
         <div class="rd-acciones">
             <?= Html::a('← Lista de ítems', ['/lista-items/index', 'id' => $proyecto->id], ['class' => 'btn btn-outline']) ?>
+            <?= Html::a('Configuración del documento', ['configuracion', 'proyecto' => $proyecto->id], ['class' => 'btn btn-outline']) ?>
             <?php if ($editable && $sinAsignar !== []): ?>
                 <?= Html::a('Crear una por clasificación', ['por-clasificacion', 'id' => $proyecto->id], [
                     'class' => 'btn btn-outline',
