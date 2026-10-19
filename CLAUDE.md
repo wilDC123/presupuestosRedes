@@ -164,9 +164,10 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   entonces la lista no deja enlazar especificaciones. Revisar la nota final del formulario
   ("Señor proveedor ser evaluado…": parece faltarle "para"; está tal cual el formulario oficial)
 - PENDIENTE: las 165 fichas importadas del banco (2026-10-18, `--desde=2025`) están SIN categoría
-  (filtro "— Sin categoría —" de la librería). La ficha id 378 "CÁMARA PTZ" tiene en realidad
-  las características de un NVR de 8 canales (error del .docx `840 NVR NVR1108HS-8P-S3_H` del
-  banco): corregir su título. Conviene revisar el CSV de la importación con el Ing.
+  (filtro "— Sin categoría —" de la librería); al editar una, el formulario exige categoría.
+  RESUELTO (2026-10-18): la ficha id 378 se llamaba "CÁMARA PTZ" por un error del .docx
+  `840 NVR NVR1108HS-8P-S3_H` del banco; ahora es "NVR de 8 Canales PoE" (Dispositivos de
+  comunicacion). Conviene revisar el CSV de la importación con el Ing.
 - PENDIENTE (opcional): logo del formulario NET en `backend/web/img/logo-formulario-net.png`
 - Preparado para el servidor de DTIC (2026-10-18; guía en `docs/guia-instalacion-dtic.md`):
   - Toda la aplicación exige sesión (`'as access'` en `backend/config/main.php`); solo
