@@ -107,7 +107,9 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   no bloquean: cantidad distinta de la emitida, emisión vencida, versión nueva de la ficha. La
   especificación es OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud,
   cotización, presupuesto ni PDF. Los impresos citan el NET de la emisión vigente
-  (`ProyectoItem::referenciaEspecificacion()`). Solo se enlazan fichas activas; una en uso o
+  (`ProyectoItem::referenciaEspecificacion()`), salvo el PDF de la solicitud de cotización, que
+  desde el 2026-10-20 no lo cita (tampoco rubro, nombre del proyecto, edificio ni bloques: solo
+  "Unidad" = facultad). Solo se enlazan fichas activas; una en uso o
   emitida no se elimina, se desactiva
 - Formulario NET en PDF (`especificacion/formulario`) con el formato institucional (tabla
   Especificación | Propuesta | Cumple | No cumple, secciones I, II y III); marca de agua

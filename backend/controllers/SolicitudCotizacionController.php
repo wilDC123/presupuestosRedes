@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\models\ConfiguracionEspecificacion;
 use backend\models\ConfiguracionSolicitudCotizacion;
 use backend\models\Cotizacion;
 use backend\models\Proyecto;
@@ -260,8 +261,10 @@ class SolicitudCotizacionController extends Controller
 
         $html = $this->renderPartial('pdf', [
             'solicitud' => $solicitud,
-            'especificaciones' => $this->service->especificacionesPorItem($solicitud),
             'configuracion' => ConfiguracionSolicitudCotizacion::obtener(),
+            // Los plazos (validez de la oferta, tiempo de entrega) son los
+            // mismos del formulario NET: se configuran en un solo lugar.
+            'configuracionNet' => ConfiguracionEspecificacion::obtener(),
         ]);
 
         $pdf = $this->service->generarPdf($solicitud, $html);

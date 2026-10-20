@@ -352,41 +352,6 @@ class SolicitudCotizacionService
     }
 
     /**
-     * Especificacion tecnica ENLAZADA a cada item de la solicitud (la que se
-     * eligio en la lista del proyecto), para citarla en el documento:
-     * [idProyectoItem => 'NET:012/26'], con el codigo de su formulario NET
-     * vigente (o el titulo de la ficha si todavia no se emitio). Los items sin
-     * especificacion no aparecen: es un caso normal y el documento sale igual.
-     *
-     * @return array<int, string>
-     */
-    public function especificacionesPorItem(SolicitudCotizacion $solicitud): array
-    {
-        $idsItems = array_map(static fn ($fila) => (int) $fila->idProyectoItem, $solicitud->items);
-
-        if ($idsItems === []) {
-            return [];
-        }
-
-        $items = ProyectoItem::find()
-            ->andWhere(['id' => $idsItems])
-            ->andWhere(['not', ['idEspecificacion' => null]])
-            ->with(['especificacion', 'emisionVigente'])
-            ->all();
-
-        $referencias = [];
-
-        foreach ($items as $item) {
-            $referencia = $item->referenciaEspecificacion();
-            if ($referencia !== null) {
-                $referencias[$item->id] = $referencia;
-            }
-        }
-
-        return $referencias;
-    }
-
-    /**
      * Guarda los textos fijos del documento de la solicitud (cabecera,
      * instrucciones y nota final).
      */

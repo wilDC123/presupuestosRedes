@@ -78,7 +78,9 @@ $this->params['breadcrumbs'][] = 'Configuración';
                     <?= $form->field($configuracion, 'tiempoEntregaDias')->textInput(['type' => 'number', 'min' => 1]) ?>
                 </div>
             </div>
-            <p class="rd-nota mb-0">El lugar de entrega por defecto es la facultad del proyecto; se puede cambiar al reemitir.</p>
+            <p class="rd-nota mb-0">El lugar de entrega por defecto es la facultad del proyecto; se puede cambiar al reemitir.
+                La validez de la oferta y el tiempo de entrega también salen en la solicitud de cotización, como
+                "(mínimo N días)" y "(máximo N días)".</p>
         </div>
     </div>
 

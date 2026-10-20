@@ -11,17 +11,21 @@ use yii\helpers\Html;
  *
  * Las columnas de precio van EN BLANCO: las llena el proveedor.
  *
+ * Al proveedor solo le interesa la unidad que compra (la facultad): el
+ * rubro, el nombre del proyecto, el edificio, los bloques y la referencia
+ * a la especificacion tecnica (NET) son datos internos de la DTIC y no
+ * salen en el documento.
+ *
  * CSS deliberadamente simple, igual que los otros PDF: mPDF interpreta un
  * subconjunto de CSS pensado para documentos.
  *
  * @var yii\web\View $this
  * @var backend\models\SolicitudCotizacion $solicitud
- * @var array<int, string> $especificaciones [idProyectoItem => codigo NET] Ver SolicitudCotizacionService::especificacionesPorItem()
  * @var backend\models\ConfiguracionSolicitudCotizacion $configuracion textos fijos editables por el encargado
+ * @var backend\models\ConfiguracionEspecificacion $configuracionNet de aqui salen los plazos minimo/maximo
  */
 
-$proyecto = $solicitud->proyecto;
-$ubicacion = $proyecto->ubicacion();
+$facultad = $solicitud->proyecto->facultad;
 $cabecera = $configuracion->lineasCabecera();
 $numero = 0;
 ?>
@@ -103,6 +107,11 @@ $numero = 0;
     table.proveedor td {
         padding: 7px 4px;
         width: 50%;
+        vertical-align: top;
+    }
+    .indicacion {
+        font-size: 9px;
+        margin-top: 2px;
     }
     .nota-final {
         margin-top: 12px;
@@ -136,11 +145,7 @@ $numero = 0;
         <td><strong>Fecha:</strong> <?= date('d/m/Y') ?></td>
     </tr>
     <tr>
-        <td><strong>Rubro:</strong> <?= Html::encode($solicitud->nombre) ?></td>
-        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre) ?></td>
-    </tr>
-    <tr>
-        <td colspan="2"><strong>Lugar de la instalación:</strong> <?= Html::encode($ubicacion !== '' ? $ubicacion : '—') ?></td>
+        <td colspan="2"><strong>Unidad:</strong> <?= Html::encode($facultad ?: '—') ?></td>
     </tr>
 </table>
 
@@ -168,10 +173,7 @@ $numero = 0;
         </thead>
         <tbody>
             <?php foreach ($solicitud->items as $fila): ?>
-                <?php
-                $item = $fila->proyectoItem;
-                $especificacion = $especificaciones[(int) $fila->idProyectoItem] ?? null;
-                ?>
+                <?php $item = $fila->proyectoItem; ?>
                 <tr>
                     <td class="numero"><?= ++$numero ?></td>
                     <td>
@@ -181,11 +183,6 @@ $numero = 0;
                         <?php endif; ?>
                         <?php if (!empty($item->observacion)): ?>
                             <br><span class="observacion"><?= Html::encode($item->observacion) ?></span>
-                        <?php endif; ?>
-                        <?php if ($especificacion !== null): ?>
-                            <br><span class="observacion">
-                                Según especificación técnica <?= Html::encode($especificacion) ?><?= $solicitud->proyecto->codigo ? ' — proyecto ' . Html::encode($solicitud->proyecto->codigo) : '' ?>
-                            </span>
                         <?php endif; ?>
                     </td>
                     <td><?= Html::encode((string) ($item->unidadMedida ?? '')) ?></td>
@@ -211,8 +208,14 @@ $numero = 0;
         <td><strong>NIT:</strong> ______________________________</td>
     </tr>
     <tr>
-        <td><strong>Validez de la oferta:</strong> __________ días</td>
-        <td><strong>Tiempo de entrega:</strong> ______________________________</td>
+        <td>
+            <strong>Validez de la oferta:</strong> __________ días
+            <div class="indicacion">(mínimo <?= (int) $configuracionNet->validezOfertaDias ?> días)</div>
+        </td>
+        <td>
+            <strong>Tiempo de entrega:</strong> __________ días
+            <div class="indicacion">(máximo <?= (int) $configuracionNet->tiempoEntregaDias ?> días)</div>
+        </td>
     </tr>
 </table>
 

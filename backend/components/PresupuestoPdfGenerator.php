@@ -46,7 +46,8 @@ class PresupuestoPdfGenerator
             'margin_right' => 15,
         ]);
 
-        $mpdf->SetFooter('Página {PAGENO} de {nbpg}');
+        // Sin pie de pagina: los documentos no llevan numeracion
+        // ("Pagina 1 de 1"), a pedido de la DTIC.
 
         if ($marcaDeAgua !== null) {
             $mpdf->SetWatermarkText($marcaDeAgua, 0.08);
