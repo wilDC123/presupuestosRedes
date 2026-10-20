@@ -9,6 +9,7 @@ use backend\services\ListaItemsService;
 use backend\services\ParametrosProyectoService;
 use backend\services\PlantillaService;
 use backend\services\ProyectoService;
+use backend\services\TipoProyectoService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -56,7 +57,6 @@ class ProyectoController extends Controller
     {
         return $this->render('index', [
             'dataProvider' => $this->service->listar(),
-            'tipos' => $this->parametros->opcionesTipo(),
         ]);
     }
 
@@ -72,7 +72,7 @@ class ProyectoController extends Controller
             'model' => $model,
             'pasos' => $this->service->pasos($model),
             'urlPresupuesto' => $this->service->urlPresupuesto($model),
-            'nombreTipo' => $this->parametros->nombreTipo($model->tipo),
+            'nombreTipo' => $model->tipoProyecto?->nombre,
             'monto' => $this->service->montoPresupuesto($model),
             'totalItems' => (new ListaItemsService())->contar($model),
             'listaEditable' => (new ListaItemsService())->puedeEditarse($model),
@@ -177,7 +177,8 @@ class ProyectoController extends Controller
 
         // Las plantillas del tipo de este proyecto van primero.
         $filas = $plantillas->listar(true);
-        usort($filas, static fn ($a, $b) => ($b['plantilla']->tipoProyecto === $model->tipo && $model->tipo !== null) <=> ($a['plantilla']->tipoProyecto === $model->tipo && $model->tipo !== null));
+        $esDelTipo = static fn ($fila) => $model->idTipoProyecto !== null && (int) $fila['plantilla']->idTipoProyecto === (int) $model->idTipoProyecto;
+        usort($filas, static fn ($a, $b) => $esDelTipo($b) <=> $esDelTipo($a));
 
         return $this->render('plantilla', [
             'model' => $model,
@@ -207,7 +208,7 @@ class ProyectoController extends Controller
     {
         return [
             'model' => $model,
-            'tipos' => $this->parametros->opcionesTipo(),
+            'tipos' => (new TipoProyectoService())->opciones($model->getOldAttribute('idTipoProyecto')),
             'facultades' => $this->parametros->opcionesFacultad(),
             'edificios' => $this->parametros->opcionesEdificio($model->codigoFacultad),
             'bloques' => $this->parametros->opcionesBloque($model->codigoFacultad, $model->codigoEdificio),

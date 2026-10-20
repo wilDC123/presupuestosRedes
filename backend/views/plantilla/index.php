@@ -9,7 +9,6 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var array<int, array{plantilla: backend\models\Plantilla, totalItems: int, grupos: array<string, backend\models\PlantillaItem[]>}> $filas Ver PlantillaService::listar()
- * @var array<string, string> $tipos [codigo => nombre] de tipos de proyecto
  */
 
 $this->title = 'Plantillas de ítems';
@@ -46,7 +45,7 @@ $this->params['breadcrumbs'][] = 'Plantillas';
 
                     <div class="kicker mb-2">
                         <?= $fila['totalItems'] ?> ítems · <?= count($fila['grupos']) ?> clasificaciones
-                        <?= isset($tipos[$plantilla->tipoProyecto]) ? ' · ' . Html::encode($tipos[$plantilla->tipoProyecto]) : '' ?>
+                        <?= $plantilla->tipoProyecto !== null ? ' · ' . Html::encode($plantilla->tipoProyecto->nombre) : '' ?>
                     </div>
 
                     <?php if (!empty($plantilla->descripcion)): ?>

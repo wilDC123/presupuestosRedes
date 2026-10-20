@@ -18,10 +18,11 @@ use yii\db\ActiveRecord;
  * @property int $id
  * @property string $nombre
  * @property string|null $descripcion
- * @property string|null $tipoProyecto Codigo del tipo de proyecto sugerido.
+ * @property int|null $idTipoProyecto Tipo de proyecto sugerido (FK a redes.TipoProyecto).
  * @property bool $activo
  * @property string $fechaCreacion
  *
+ * @property-read TipoProyecto|null $tipoProyecto
  * @property-read PlantillaCategoria[] $plantillaCategorias
  * @property-read Categoria[] $categorias
  * @property-read PlantillaItem[] $items
@@ -40,7 +41,9 @@ class Plantilla extends ActiveRecord
             [['nombre'], 'required'],
             [['nombre'], 'string', 'max' => 200],
             [['descripcion'], 'string', 'max' => 500],
-            [['tipoProyecto'], 'string', 'max' => 50],
+            [['idTipoProyecto'], 'default', 'value' => null],
+            [['idTipoProyecto'], 'integer'],
+            TipoProyecto::reglaElegible(),
             [['activo'], 'default', 'value' => true],
             [['activo'], 'boolean'],
         ];
@@ -52,10 +55,15 @@ class Plantilla extends ActiveRecord
             'id' => 'ID',
             'nombre' => 'Nombre de la plantilla',
             'descripcion' => 'Descripción',
-            'tipoProyecto' => 'Tipo de proyecto sugerido',
+            'idTipoProyecto' => 'Tipo de proyecto sugerido',
             'activo' => 'Activa',
             'fechaCreacion' => 'Fecha de creación',
         ];
+    }
+
+    public function getTipoProyecto(): ActiveQuery
+    {
+        return $this->hasOne(TipoProyecto::class, ['id' => 'idTipoProyecto']);
     }
 
     public function getPlantillaCategorias(): ActiveQuery
@@ -87,7 +95,7 @@ class Plantilla extends ActiveRecord
             return false;
         }
 
-        foreach (['descripcion', 'tipoProyecto'] as $atributo) {
+        foreach (['descripcion', 'idTipoProyecto'] as $atributo) {
             if ($this->$atributo === '') {
                 $this->$atributo = null;
             }

@@ -27,11 +27,6 @@ class JsonParametrosProyectoProvider implements ParametrosProyectoProvider
     {
     }
 
-    public function tiposProyecto(): array
-    {
-        return $this->datos()['tiposProyecto'] ?? [];
-    }
-
     public function facultades(): array
     {
         return $this->datos()['facultades'] ?? [];

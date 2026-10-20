@@ -19,6 +19,7 @@ $menu = [
     ['Dashboard', ['/site/index'], ['site']],
     ['Categorías', ['/categoria/index'], ['categoria']],
     ['Unidades de medida', ['/unidad-medida/index'], ['unidad-medida']],
+    ['Tipos de proyecto', ['/tipo-proyecto/index'], ['tipo-proyecto']],
     ['Proveedores', ['/proveedor/index'], ['proveedor']],
     ['Subcatálogo', ['/subcatalogo-item/index'], ['subcatalogo-item']],
     ['Plantillas', ['/plantilla/index'], ['plantilla']],

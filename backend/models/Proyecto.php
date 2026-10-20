@@ -19,7 +19,7 @@ use yii\db\ActiveRecord;
  * @property string|null $codigo Generado por ProyectoService al crear (RD-PI-PT-NN).
  * @property string $nombre
  * @property string|null $descripcion
- * @property string|null $tipo Codigo del tipo de proyecto (ver ParametrosProyectoService).
+ * @property int|null $idTipoProyecto FK a redes.TipoProyecto.
  * @property string|null $codigoFacultad
  * @property string|null $facultad Nombre de la facultad, copiado al guardar.
  * @property string|null $codigoEdificio
@@ -31,6 +31,7 @@ use yii\db\ActiveRecord;
  * @property string $estadoLista Estado de la lista de items: ver las constantes LISTA_*.
  * @property string $fechaCreacion
  *
+ * @property-read TipoProyecto|null $tipoProyecto
  * @property-read ProyectoBloque[] $bloques
  * @property-read ProyectoProyectista[] $proyectistas
  * @property-read Proyecto|null $proyectoAnterior
@@ -78,7 +79,8 @@ class Proyecto extends ActiveRecord
             [['nombre'], 'required'],
             [['nombre'], 'string', 'max' => 300],
             [['descripcion'], 'string', 'max' => 1000],
-            [['tipo'], 'string', 'max' => 50],
+            [['idTipoProyecto'], 'integer'],
+            TipoProyecto::reglaElegible(),
             [['codigoFacultad', 'codigoEdificio'], 'string', 'max' => 30],
             [['idProyectoAnterior'], 'integer'],
             [['idProyectoAnterior'], 'exist', 'skipOnError' => true, 'targetClass' => self::class, 'targetAttribute' => ['idProyectoAnterior' => 'id']],
@@ -95,7 +97,7 @@ class Proyecto extends ActiveRecord
             'codigo' => 'Código de proyecto',
             'nombre' => 'Nombre del proyecto',
             'descripcion' => 'Descripción',
-            'tipo' => 'Tipo de proyecto',
+            'idTipoProyecto' => 'Tipo de proyecto',
             'codigoFacultad' => 'Facultad',
             'facultad' => 'Facultad',
             'codigoEdificio' => 'Edificio',
@@ -106,6 +108,11 @@ class Proyecto extends ActiveRecord
             'numeroFase' => 'Fase',
             'fechaCreacion' => 'Fecha de creación',
         ];
+    }
+
+    public function getTipoProyecto(): ActiveQuery
+    {
+        return $this->hasOne(TipoProyecto::class, ['id' => 'idTipoProyecto']);
     }
 
     public function getBloques(): ActiveQuery

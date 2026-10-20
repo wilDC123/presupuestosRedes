@@ -1,11 +1,5 @@
 {
-    "_nota": "Facultades y edificios de la USFX. Todos los edificios tienen definidos los bloques A a E; ajustar por edificio cuando se conozca la distribucion real. Los codigos se guardan en redes.Proyecto: no cambiarlos una vez que haya proyectos que los usen. Tipos de proyecto y proyectistas siguen siendo DATOS DE EJEMPLO tomados de los mockups.",
-    "tiposProyecto": [
-        { "codigo": "ampliacion_red", "nombre": "Ampliación de red" },
-        { "codigo": "cableado_estructurado", "nombre": "Cableado estructurado" },
-        { "codigo": "videovigilancia", "nombre": "Videovigilancia" },
-        { "codigo": "equipamiento_activo", "nombre": "Equipamiento activo" }
-    ],
+    "_nota": "Facultades y edificios de la USFX. Todos los edificios tienen definidos los bloques A a E; ajustar por edificio cuando se conozca la distribucion real. Los codigos se guardan en redes.Proyecto: no cambiarlos una vez que haya proyectos que los usen. Los proyectistas siguen siendo DATOS DE EJEMPLO tomados de los mockups. Los tipos de proyecto ya no van aqui: se administran en el sistema (menu Tipos de proyecto, tabla redes.TipoProyecto).",
     "facultades": [
         {
             "codigo": "DER",

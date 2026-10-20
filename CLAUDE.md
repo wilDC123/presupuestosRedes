@@ -49,6 +49,12 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   `PresupuestoDetalle.unidadMedida` y `ComputoMetrico.unidad` guardan la ABREVIATURA como texto
   (congelada al crear la fila, como el precio y la partida). Se muestra la abreviatura en
   listados y PDF. Solo se eligen unidades activas; una en uso no se elimina, se desactiva
+- Tipos de proyecto: catálogo `redes.TipoProyecto` (nombre, activo), administrado por el
+  encargado en el menú "Tipos de proyecto" (decidido el 2026-10-19; antes estaban en
+  `backend/config/parametros-proyecto.json`). `Proyecto.idTipoProyecto` y
+  `Plantilla.idTipoProyecto` son FK. Solo se eligen tipos activos, pero quien ya tenía uno
+  desactivado lo conserva (`TipoProyecto::reglaElegible()`); uno en uso no se elimina, se
+  desactiva. Facultades, edificios, bloques y proyectistas SIGUEN en el JSON
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
@@ -160,7 +166,7 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261019_151425_crear_configuracion_solicitud_cotizacion`), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261020_030140_crear_tipo_proyecto`), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -221,6 +227,11 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   diagrama de actividades del ciclo de vida de una emisión; resumen en
   `docs/cambios-especificaciones.md`
 - PENDIENTE (tutor): agregar `ConfiguracionSolicitudCotizacion` (2026-10-19) al diagrama de clases
+- PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a
+  Proyecto y a Plantilla (0..1 tipo por proyecto/plantilla)
+- PENDIENTE (Ing. de DTIC): confirmar los tipos de proyecto reales; los 4 cargados
+  (Ampliación de red, Cableado estructurado, Videovigilancia, Equipamiento activo) venían de
+  los mockups
 - PENDIENTE: `PresupuestoService::crearNuevaVersion()` (`backend/services/PresupuestoService.php`) ahora
   crea la nueva versión VACÍA a propósito (cada versión es solo el incremento/cambio
   solicitado, no un snapshot completo de líneas ya aprobadas). Como consecuencia, falta

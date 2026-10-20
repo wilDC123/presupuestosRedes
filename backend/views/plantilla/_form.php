@@ -22,7 +22,7 @@ use yii\widgets\ActiveForm;
  * @var backend\models\PlantillaItem[] $items items a mostrar (guardados, o los enviados si hubo error)
  * @var int[] $idsCategoria clasificaciones marcadas
  * @var array<int, string> $categorias [id => nombre]
- * @var array<string, string> $tipos [codigo => nombre]
+ * @var array<int, string> $tipos [id => nombre] tipos activos (y el que ya tenia)
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
  */
 
@@ -64,7 +64,7 @@ $fila = static function (string $n, string $idSubcatalogo, string $nombre, strin
     <div class="rd-fila-2">
         <?= $form->field($model, 'nombre')->textInput(['maxlength' => 200, 'placeholder' => 'Ej. Videovigilancia — básico']) ?>
 
-        <?= $form->field($model, 'tipoProyecto')->dropDownList($tipos, ['prompt' => '(cualquier tipo de proyecto)', 'class' => 'form-select'])
+        <?= $form->field($model, 'idTipoProyecto')->dropDownList($tipos, ['prompt' => '(cualquier tipo de proyecto)', 'class' => 'form-select'])
             ->hint('Al cargar plantilla en un proyecto de este tipo, aparece primero.') ?>
     </div>
 

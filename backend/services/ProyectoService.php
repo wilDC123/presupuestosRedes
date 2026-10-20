@@ -22,7 +22,8 @@ use yii\db\IntegrityException;
  *
  * Reglas de negocio que viven aqui:
  *  - el codigo RD-PI-PT-NN se genera al crear y no se repite,
- *  - tipo, facultad, edificio y bloques deben existir en los parametros,
+ *  - facultad, edificio y bloques deben existir en los parametros (el tipo
+ *    lo valida el modelo contra redes.TipoProyecto),
  *  - una fase nueva es un proyecto NUEVO enlazado a uno ya aprobado,
  *  - un proyecto con presupuesto aprobado o cancelado no se modifica.
  */
@@ -42,13 +43,13 @@ class ProyectoService
     }
 
     /**
-     * with('presupuesto') carga el presupuesto de todos los proyectos de la
-     * pagina en una sola consulta extra (el listado muestra su estado).
+     * with() carga el presupuesto y el tipo de todos los proyectos de la
+     * pagina en una consulta extra cada uno (el listado muestra ambos).
      */
     public function listar(): ActiveDataProvider
     {
         return new ActiveDataProvider([
-            'query' => Proyecto::find()->with('presupuesto')->orderBy(['fechaCreacion' => SORT_DESC, 'id' => SORT_DESC]),
+            'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto'])->orderBy(['fechaCreacion' => SORT_DESC, 'id' => SORT_DESC]),
             'pagination' => [
                 'pageSize' => 20,
             ],
@@ -74,7 +75,7 @@ class ProyectoService
         if ($anterior !== null && $this->estaAprobado($anterior)) {
             $proyecto->idProyectoAnterior = $anterior->id;
             $proyecto->numeroFase = $anterior->numeroFase + 1;
-            $proyecto->tipo = $anterior->tipo;
+            $proyecto->idTipoProyecto = $anterior->idTipoProyecto;
             $proyecto->codigoFacultad = $anterior->codigoFacultad;
             $proyecto->codigoEdificio = $anterior->codigoEdificio;
         } else {
@@ -273,7 +274,7 @@ class ProyectoService
         $proyecto->codigosBloque = $this->limpiarLista($proyecto->codigosBloque);
         $proyecto->nombresProyectista = $this->limpiarLista($proyecto->nombresProyectista);
 
-        foreach (['tipo', 'codigoFacultad', 'codigoEdificio', 'idProyectoAnterior'] as $atributo) {
+        foreach (['idTipoProyecto', 'codigoFacultad', 'codigoEdificio', 'idProyectoAnterior'] as $atributo) {
             if ($proyecto->$atributo === '') {
                 $proyecto->$atributo = null;
             }
@@ -327,7 +328,7 @@ class ProyectoService
     }
 
     /**
-     * Verifica contra los parametros que tipo, facultad, edificio y bloques
+     * Verifica contra los parametros que facultad, edificio y bloques
      * existan (y que el edificio sea de esa facultad y los bloques de ese
      * edificio), y copia los NOMBRES de facultad y edificio al proyecto.
      *
@@ -335,10 +336,6 @@ class ProyectoService
      */
     private function aplicarParametros(Proyecto $proyecto): array
     {
-        if ($proyecto->tipo !== null && $this->parametros->nombreTipo($proyecto->tipo) === null) {
-            $proyecto->addError('tipo', 'El tipo de proyecto elegido no existe.');
-        }
-
         $proyecto->facultad = $this->parametros->nombreFacultad($proyecto->codigoFacultad);
         $proyecto->edificio = $this->parametros->nombreEdificio($proyecto->codigoFacultad, $proyecto->codigoEdificio);
 
