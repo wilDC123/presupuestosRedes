@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use backend\models\Proyecto;
-use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 
@@ -11,14 +9,9 @@ use yii\widgets\ActiveForm;
  * @var yii\web\View $this
  * @var backend\models\ComputoMetrico $model
  * @var array<string, string> $unidades [abreviatura => "Metro (m)"], ver UnidadMedidaService::opcionesPorAbreviatura()
+ * @var array<int, string> $proyectos [id => nombre], ver ProyectoService::opciones()
  * @var yii\widgets\ActiveForm $form
  */
-
-$proyectos = ArrayHelper::map(
-    Proyecto::find()->orderBy(['nombre' => SORT_ASC])->all(),
-    'id',
-    'nombre'
-);
 ?>
 <div class="computo-metrico-form">
 

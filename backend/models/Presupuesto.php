@@ -23,6 +23,7 @@ use yii\db\ActiveRecord;
  * @property string $estado
  * @property string|null $fecha
  * @property string $fechaCreacion
+ * @property string|null $manoDeObra Mano de obra a cargo de la DTIC (null = no lleva)
  *
  * @property-read Proyecto $proyecto
  * @property-read PresupuestoDetalle[] $presupuestoDetalles
@@ -41,6 +42,15 @@ class Presupuesto extends ActiveRecord
      * Mientras el presupuesto es un borrador esos datos pueden faltar.
      */
     public const SCENARIO_ENVIAR = 'enviar';
+
+    /**
+     * Mano de obra a cargo del personal de la DTIC: NO es un item del
+     * subcatalogo (no se compra: no tiene partida, no se cotiza y no suma al
+     * total). Se guarda como texto en el presupuesto y el PDF la muestra como
+     * la ultima fila de la tabla, con esta unidad, cantidad 1 y precios 0.00.
+     */
+    public const MANO_DE_OBRA_DTIC = 'A ser implementado por personal de la D.T.I.C.';
+    public const UNIDAD_MANO_DE_OBRA = 'Servicio';
 
     public static function tableName(): string
     {
@@ -107,7 +117,7 @@ class Presupuesto extends ActiveRecord
     {
         return [
             [['idProyecto'], 'required'],
-            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion'], 'trim'],
+            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'manoDeObra'], 'trim'],
             [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'fecha'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
             [['idProyecto'], 'integer'],
             // Mensaje claro en vez del error de la base por el indice unico.
@@ -118,7 +128,7 @@ class Presupuesto extends ActiveRecord
             [['fecha'], 'date', 'format' => 'php:Y-m-d'],
             [['numeroPresupuesto'], 'string', 'max' => 20],
             [['oficioDtic'], 'string', 'max' => 100],
-            [['areaIntervencion'], 'string', 'max' => 300],
+            [['areaIntervencion', 'manoDeObra'], 'string', 'max' => 300],
             [['idProyecto'], 'exist', 'skipOnError' => true, 'targetClass' => Proyecto::class, 'targetAttribute' => ['idProyecto' => 'id']],
         ];
     }
@@ -134,6 +144,7 @@ class Presupuesto extends ActiveRecord
             'estado' => 'Estado',
             'fecha' => 'Fecha',
             'fechaCreacion' => 'Fecha de creación',
+            'manoDeObra' => 'Mano de obra',
         ];
     }
 
@@ -161,6 +172,11 @@ class Presupuesto extends ActiveRecord
 
         if ($this->fecha === '') {
             $this->fecha = null;
+        }
+
+        // '' tambien es "no lleva mano de obra": se guarda null.
+        if ($this->manoDeObra === '') {
+            $this->manoDeObra = null;
         }
 
         return true;

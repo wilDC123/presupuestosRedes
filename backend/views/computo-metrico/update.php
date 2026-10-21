@@ -8,6 +8,7 @@ use yii\helpers\Html;
  * @var yii\web\View $this
  * @var backend\models\ComputoMetrico $model
  * @var array<string, string> $unidades ver UnidadMedidaService::opcionesPorAbreviatura()
+ * @var array<int, string> $proyectos ver ProyectoService::opciones()
  */
 
 $this->title = 'Editar cómputo métrico #' . $model->id;
@@ -22,6 +23,7 @@ $this->params['breadcrumbs'][] = 'Editar';
     <?= $this->render('_form', [
         'model' => $model,
         'unidades' => $unidades,
+        'proyectos' => $proyectos,
     ]) ?>
 
 </div>

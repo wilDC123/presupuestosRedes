@@ -63,8 +63,9 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame($siguiente, (int) $emision->numeroNet);
         $this->assertSame((int) date('y'), (int) $emision->anio);
         $this->assertSame($siguiente + 1, $this->siguienteNet());
-        // Copias congeladas.
-        $this->assertSame('Cable test', $emision->titulo);
+        // Copias congeladas. El titulo es el nombre DTIC del item de la
+        // lista, no el de la ficha.
+        $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
         $this->assertSame(5.0, (float) $emision->cantidad);
         $this->assertSame('Facultad de Tecnología', $emision->dependencia);
         $this->assertSame('Facultad de Tecnología', $emision->lugarEntrega);
@@ -95,6 +96,22 @@ class EspecificacionEmisionTest extends Unit
         $this->assertStringContainsString('no tiene contenido técnico', implode(' ', $errores));
     }
 
+    public function testRecordarComoSugeridaPoneElItemDeReferenciaAlGuardar(): void
+    {
+        $recordada = $this->ficha('Cable test recordar', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $sinMarcar = $this->ficha('Cable test sin marcar', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+
+        $this->guardarLista([
+            $this->fila(null, 1, $recordada) + ['recordarReferencia' => '1'],
+            $this->fila(null, 1, $sinMarcar),
+        ]);
+
+        $recordada->refresh();
+        $sinMarcar->refresh();
+        $this->assertSame((int) $this->itemSubcatalogo->id, (int) $recordada->idSubcatalogo);
+        $this->assertNull($sinMarcar->idSubcatalogo);
+    }
+
     public function testVolverAGuardarSinCambiosNoEmiteOtra(): void
     {
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
@@ -122,7 +139,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame(EspecificacionEmision::ESTADO_ANULADA, $primera->estado);
         $this->assertSame('Se cambió la especificación del ítem.', $primera->motivo);
         $nueva = $this->unicoItem()->emisionVigente;
-        $this->assertSame('Cable B test', $nueva->titulo);
+        $this->assertSame((int) $fichaB->id, (int) $nueva->version->idEspecificacion);
         $this->assertSame((int) $primera->numeroNet + 1, (int) $nueva->numeroNet);
     }
 
@@ -137,7 +154,7 @@ class EspecificacionEmisionTest extends Unit
         $emision->refresh();
         $this->assertSame(EspecificacionEmision::ESTADO_ANULADA, $emision->estado);
         $this->assertNull($emision->idProyectoItem);
-        $this->assertSame('Cable test', $emision->titulo);
+        $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
     }
 
     public function testReemitirReemplazaConNetNuevoYLaCantidadDeLaLista(): void
@@ -234,7 +251,8 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame([], $deEsteProyecto(['estado' => 'vencida']));
         $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => (string) $netPrimera]));
         $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $netPrimera, date('y'))]));
-        $this->assertSame([$netSegunda, $netPrimera], $deEsteProyecto(['buscar' => 'registro test', 'dependencia' => 'Facultad de Tecnología']));
+        // El titulo de la emision es el nombre DTIC del item.
+        $this->assertSame([$netSegunda, $netPrimera], $deEsteProyecto(['buscar' => $this->itemSubcatalogo->descripcion, 'dependencia' => 'Facultad de Tecnología']));
 
         // Pasada la vigencia, la vigente aparece como vencida.
         EspecificacionEmision::updateAll(['fechaEmision' => '2020-01-01'], ['id' => $segunda->id]);

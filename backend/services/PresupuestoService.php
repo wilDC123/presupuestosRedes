@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\models\ConfiguracionPresupuesto;
 use backend\models\CotizacionDetalle;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
@@ -58,8 +59,18 @@ class PresupuestoService
             ->column());
     }
 
+    /**
+     * REGLA DE NEGOCIO: solo se elimina un presupuesto "en proceso"
+     * (borrador). Uno enviado a revision, observado, aprobado o cancelado ya
+     * fue un documento del proceso y se conserva. Devuelve false sin tocar
+     * nada si no se puede.
+     */
     public function eliminar(Presupuesto $presupuesto): bool
     {
+        if (!$presupuesto->esBorrador()) {
+            return false;
+        }
+
         return $presupuesto->delete() !== false;
     }
 
@@ -88,12 +99,32 @@ class PresupuestoService
     }
 
     /**
+     * Estados a los que se puede pasar con un boton de la pantalla del
+     * presupuesto, segun Presupuesto::transicionesPermitidas(). Queda fuera
+     * "en revision": a ese estado se llega con el formulario "Enviar a
+     * revision", que pide la cabecera (ElaborarPresupuestoService::enviarARevision()).
+     *
+     * @return string[]
+     */
+    public function estadosConBoton(Presupuesto $presupuesto): array
+    {
+        return array_values(array_diff(
+            Presupuesto::transicionesPermitidas()[$presupuesto->estado] ?? [],
+            [Presupuesto::ESTADO_EN_REVISION]
+        ));
+    }
+
+    /**
      * Cambia el estado solo si la transicion es valida. Si no lo es, devuelve
      * false sin tocar la base de datos.
      */
     public function cambiarEstado(Presupuesto $presupuesto, string $nuevoEstado): bool
     {
         if (!$this->puedeTransicionarA($presupuesto, $nuevoEstado)) {
+            return false;
+        }
+
+        if ($nuevoEstado === Presupuesto::ESTADO_EN_REVISION && !$this->cumpleRequisitosDeRevision($presupuesto)) {
             return false;
         }
 
@@ -118,6 +149,27 @@ class PresupuestoService
         }
 
         return true;
+    }
+
+    /**
+     * REGLA DE NEGOCIO: a "en revision" solo se llega con la cabecera completa
+     * (escenario Presupuesto::SCENARIO_ENVIAR: numero, oficio, area y fecha)
+     * y con todos los items de la lista con precio.
+     *
+     * ElaborarPresupuestoService::enviarARevision() revisa lo mismo ANTES, para
+     * explicarle al usuario que falta. Esta es la barrera final: vive aqui, en
+     * el unico metodo que cambia el estado, para que ningun otro camino (otro
+     * controlador, un comando de consola) pueda saltarsela.
+     */
+    private function cumpleRequisitosDeRevision(Presupuesto $presupuesto): bool
+    {
+        $escenario = $presupuesto->scenario;
+        $presupuesto->scenario = Presupuesto::SCENARIO_ENVIAR;
+        $cabeceraCompleta = $presupuesto->validate();
+        $presupuesto->scenario = $escenario;
+
+        return $cabeceraCompleta
+            && (new ListaItemsService())->pendientesDePresupuestar($presupuesto->proyecto) === [];
     }
 
     /**
@@ -165,8 +217,10 @@ class PresupuestoService
             // proyectoItem.especificacion y emisionVigente: la especificacion
             // enlazada en la lista y su NET, que se muestran junto a la linea
             // (vista y PDF).
-            // cotizacionDetalle...proveedor: de quien es el precio (vista y PDF).
-            ->with(['subcatalogoItem.categoria', 'proyectoItem.especificacion', 'proyectoItem.emisionVigente', 'cotizacionDetalle.cotizacion.proveedor'])
+            // cotizacionDetalle...proveedor: de quien es el precio (vista).
+            // subcatalogoItem.catalogoSigma: el item SIGMA (PDF de la
+            // relacion con el catalogo SIGMA).
+            ->with(['subcatalogoItem.categoria', 'subcatalogoItem.catalogoSigma', 'proyectoItem.especificacion', 'proyectoItem.emisionVigente', 'cotizacionDetalle.cotizacion.proveedor'])
             ->all();
 
         $grupos = [];
@@ -259,6 +313,14 @@ class PresupuestoService
     }
 
     /**
+     * Nota, firmas y banda de pie del PDF (redes.ConfiguracionPresupuesto).
+     */
+    public function guardarConfiguracion(ConfiguracionPresupuesto $configuracion, array $datosFormulario): bool
+    {
+        return $configuracion->load($datosFormulario) && $configuracion->save();
+    }
+
+    /**
      * Convierte el HTML ya renderizado (la vista "pdf" la arma el
      * controlador, porque renderizar vistas es tarea de la capa de
      * Presentacion) en el PDF consolidado.
@@ -268,14 +330,38 @@ class PresupuestoService
     public function generarPdf(Presupuesto $presupuesto, string $html): array
     {
         $generador = new PresupuestoPdfGenerator();
-        // Solo el aprobado sale limpio: cualquier otro estado lleva marca.
-        $marcas = [Presupuesto::ESTADO_APROBADO => null, Presupuesto::ESTADO_CANCELADO => 'CANCELADO'];
-        $marca = array_key_exists($presupuesto->estado, $marcas) ? $marcas[$presupuesto->estado] : 'BORRADOR';
 
         return [
-            'contenido' => $generador->generarDesdeHtml($html, $marca),
+            'contenido' => $generador->generarDesdeHtml($html, $this->marcaDeAgua($presupuesto)),
             'nombreArchivo' => $generador->nombreArchivo($presupuesto),
         ];
+    }
+
+    /**
+     * Reporte de apoyo "Relacion con el catalogo SIGMA": cada linea del
+     * presupuesto junto al item SIGMA al que apunta. En A4 horizontal (tiene
+     * muchas columnas) y con la misma marca de agua que el presupuesto.
+     *
+     * @return array{contenido: string, nombreArchivo: string}
+     */
+    public function generarPdfSigma(Presupuesto $presupuesto, string $html): array
+    {
+        $generador = new PresupuestoPdfGenerator();
+
+        return [
+            'contenido' => $generador->generarDesdeHtml($html, $this->marcaDeAgua($presupuesto), 'A4-L'),
+            'nombreArchivo' => $generador->nombreArchivo($presupuesto, 'relacion_sigma_'),
+        ];
+    }
+
+    /**
+     * Solo el aprobado sale limpio: cualquier otro estado lleva marca.
+     */
+    private function marcaDeAgua(Presupuesto $presupuesto): ?string
+    {
+        $marcas = [Presupuesto::ESTADO_APROBADO => null, Presupuesto::ESTADO_CANCELADO => 'CANCELADO'];
+
+        return array_key_exists($presupuesto->estado, $marcas) ? $marcas[$presupuesto->estado] : 'BORRADOR';
     }
 
     /**

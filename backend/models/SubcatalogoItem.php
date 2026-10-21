@@ -33,6 +33,11 @@ class SubcatalogoItem extends ActiveRecord
     public function rules(): array
     {
         return [
+            // El nombre DTIC se guarda SIEMPRE en mayusculas (como el catalogo
+            // SIGMA). Va primero para que "required" vea el valor ya recortado.
+            // mb_strtoupper y no strtoupper: este ultimo no convierte letras
+            // con tilde ("metálica" quedaria "METáLICA").
+            [['descripcion'], 'filter', 'filter' => static fn ($valor) => is_string($valor) ? mb_strtoupper(trim($valor), 'UTF-8') : $valor],
             [['idCategoria', 'descripcion'], 'required'],
             [['idCategoria', 'idUnidadMedida'], 'integer'],
             [['activo'], 'default', 'value' => true],

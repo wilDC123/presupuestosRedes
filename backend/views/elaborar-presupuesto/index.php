@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use backend\models\PresupuestoDetalle;
+use backend\services\ElaborarPresupuestoService;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use yii\web\JqueryAsset;
@@ -9,9 +11,11 @@ use yii\web\JqueryAsset;
 /**
  * Paso "Presupuesto" del proyecto: el presupuesto como documento vivo.
  *
- * Una fila por item de la lista y una columna por proveedor. Marcar otro
- * precio lo guarda solo (AJAX, web/js/elaborar-presupuesto.js); si no es el
- * menor, primero pide la justificacion. Mientras el presupuesto no es un
+ * Una fila por item de la lista, una columna por proveedor y la columna
+ * "Precio directo" (sin cotizacion, con fuente opcional y, si el item SIGMA
+ * tiene precio referencial, el boton para usarlo). Marcar otro precio lo
+ * guarda solo (AJAX, web/js/elaborar-presupuesto.js); si no es el menor,
+ * aparece la justificacion (opcional). Mientras el presupuesto no es un
  * borrador ("en proceso") todo es de solo lectura.
  *
  * @var yii\web\View $this
@@ -21,6 +25,7 @@ use yii\web\JqueryAsset;
  * @var array $tabla Ver ElaborarPresupuestoService::tabla()
  * @var array{sinPrecio: string[], vencidas: int} $control Ver ElaborarPresupuestoService::control()
  * @var array $resumenPartidas Ver PresupuestoService::resumenPorPartida()
+ * @var string[] $estadosConBoton Ver PresupuestoService::estadosConBoton()
  * @var string[] $erroresEnvio mensajes si "Enviar a revision" fallo (el panel se abre)
  */
 
@@ -52,6 +57,8 @@ $columnas = 5 + count($proveedores);
         <div class="rd-acciones">
             <?= Html::a('← Proyecto', ['/proyecto/view', 'id' => $proyecto->id], ['class' => 'btn btn-outline']) ?>
             <?= Html::a($presupuesto->estado === 'aprobado' ? 'Generar PDF' : 'PDF borrador', ['/presupuesto/pdf', 'id' => $presupuesto->id], ['class' => 'btn btn-outline', 'target' => '_blank']) ?>
+            <?= Html::a('Relación SIGMA (PDF)', ['/presupuesto/pdf-sigma', 'id' => $presupuesto->id], ['class' => 'btn btn-outline', 'target' => '_blank', 'title' => 'Cada ítem presupuestado con su ítem del catálogo SIGMA']) ?>
+            <?= Html::a('Configuración del PDF', ['/presupuesto/configuracion', 'proyecto' => $proyecto->id], ['class' => 'btn btn-outline']) ?>
         </div>
     </div>
 
@@ -64,19 +71,29 @@ $columnas = 5 + count($proveedores);
         </div>
     <?php else: ?>
 
-    <?php if ($borrador && $proveedores !== []): ?>
+    <?php if ($borrador && ($proveedores !== [] || $tabla['conSigmaSinPrecio'] > 0)): ?>
         <div class="card rd-card-pad mb-3">
             <?= Html::beginForm(['adjudicar', 'idProyecto' => $proyecto->id], 'post', ['class' => 'rd-filtros mb-0', 'id' => 'adjudicar-form']) ?>
                 <span class="rd-dato mb-0"><strong>Elegir automáticamente:</strong></span>
-                <?= Html::submitButton('Menor precio por ítem', ['class' => 'btn btn-outline', 'name' => 'modo', 'value' => 'menor']) ?>
-                <span class="rd-celda-sub">o todo a</span>
-                <?= Html::dropDownList('idProveedor', null, $proveedores, ['class' => 'form-select', 'style' => 'max-width: 220px']) ?>
-                <?= Html::textInput('justificacion', '', [
-                    'class' => 'form-control',
-                    'maxlength' => 300,
-                    'placeholder' => 'Justificación (opcional)',
-                ]) ?>
-                <?= Html::submitButton('Adjudicar todo', ['class' => 'btn btn-outline', 'name' => 'modo', 'value' => 'proveedor']) ?>
+                <?php if ($proveedores !== []): ?>
+                    <?= Html::submitButton('Menor precio por ítem', ['class' => 'btn btn-outline', 'name' => 'modo', 'value' => 'menor']) ?>
+                    <span class="rd-celda-sub">o todo a</span>
+                    <?= Html::dropDownList('idProveedor', null, $proveedores, ['class' => 'form-select', 'style' => 'max-width: 220px']) ?>
+                    <?= Html::textInput('justificacion', '', [
+                        'class' => 'form-control',
+                        'maxlength' => 300,
+                        'placeholder' => 'Justificación (opcional)',
+                    ]) ?>
+                    <?= Html::submitButton('Adjudicar todo', ['class' => 'btn btn-outline', 'name' => 'modo', 'value' => 'proveedor']) ?>
+                <?php endif; ?>
+                <?php if ($tabla['conSigmaSinPrecio'] > 0): ?>
+                    <?= Html::submitButton('Precio SIGMA en los ítems sin precio (' . $tabla['conSigmaSinPrecio'] . ')', [
+                        'class' => 'btn btn-outline',
+                        'name' => 'modo',
+                        'value' => 'sigma',
+                        'title' => 'Pone como precio directo el precio referencial del catálogo SIGMA. No cambia los precios ya elegidos.',
+                    ]) ?>
+                <?php endif; ?>
             <?= Html::endForm() ?>
         </div>
     <?php endif; ?>
@@ -98,7 +115,7 @@ $columnas = 5 + count($proveedores);
                     <?php foreach ($proveedores as $nombreProveedor): ?>
                         <th class="rd-num"><?= Html::encode($nombreProveedor) ?></th>
                     <?php endforeach; ?>
-                    <th>Manual</th>
+                    <th title="Precio sin cotización: escrito a mano o el precio referencial de SIGMA">Precio directo</th>
                     <th class="rd-num">Total</th>
                 </tr>
             </thead>
@@ -110,14 +127,17 @@ $columnas = 5 + count($proveedores);
                         $item = $fila['item'];
                         $linea = $fila['linea'];
                         $nombre = 'opcion-' . $item->id;
-                        $guardada = $linea === null ? '' : ($linea->idCotizacionDetalle === null ? 'manual' : (string) $linea->idCotizacionDetalle);
+                        $directo = ElaborarPresupuestoService::DIRECTO;
+                        $guardada = $linea === null ? '' : ($linea->esPrecioDirecto() ? $directo : (string) $linea->idCotizacionDetalle);
+                        $esDirecto = $guardada === $directo;
                         ?>
                         <tr class="elaborar-fila"
                             data-item="<?= $item->id ?>"
                             data-categoria="<?= $idCategoria ?>"
                             data-menor="<?= $fila['menor'] ?? '' ?>"
                             data-guardada="<?= Html::encode($guardada) ?>"
-                            data-precio-guardado="<?= $guardada === 'manual' ? Html::encode((string) (float) $linea->precioUnitario) : '' ?>">
+                            data-precio-guardado="<?= $esDirecto ? Html::encode((string) (float) $linea->precioUnitario) : '' ?>"
+                            data-fuente-guardada="<?= $esDirecto ? Html::encode((string) $linea->fuentePrecio) : '' ?>">
                             <td>
                                 <div class="rd-celda-titulo"><?= Html::encode($item->subcatalogoItem->descripcion ?? 'Ítem no disponible') ?></div>
                                 <?php if (!empty($item->observacion)): ?>
@@ -174,22 +194,42 @@ $columnas = 5 + count($proveedores);
                                     </td>
                                 <?php endif; ?>
                             <?php endforeach; ?>
-                            <td>
+                            <td class="elaborar-directo">
                                 <label class="d-flex align-items-center gap-1 mb-0">
-                                    <?= Html::radio($nombre, $guardada === 'manual', [
-                                        'value' => 'manual',
+                                    <?= Html::radio($nombre, $esDirecto, [
+                                        'value' => $directo,
                                         'class' => 'elaborar-opcion',
                                         'disabled' => !$borrador,
                                     ]) ?>
-                                    <?= Html::textInput('precio', $guardada === 'manual' ? (string) (float) $linea->precioUnitario : '', [
+                                    <?= Html::textInput('precio', $esDirecto ? (string) (float) $linea->precioUnitario : '', [
                                         'class' => 'qty elaborar-precio',
                                         'type' => 'number',
                                         'step' => '0.01',
                                         'min' => '0',
-                                        'aria-label' => 'Precio unitario manual',
+                                        'aria-label' => 'Precio unitario directo',
                                         'disabled' => !$borrador,
                                     ]) ?>
                                 </label>
+                                <?php if ($borrador): ?>
+                                    <?= Html::textInput('fuente', $esDirecto ? (string) $linea->fuentePrecio : '', [
+                                        'class' => 'form-control form-control-sm mt-1 elaborar-fuente',
+                                        'maxlength' => 200,
+                                        'placeholder' => 'Fuente (opcional)',
+                                        'aria-label' => 'Fuente del precio directo',
+                                        'title' => 'De dónde sale el precio: compra anterior, página del proveedor…',
+                                    ]) ?>
+                                    <?php if ($fila['sigma'] !== null): ?>
+                                        <?php // El precio de HOY del catalogo; se congela al guardarlo. ?>
+                                        <button type="button" class="btn btn-link btn-sm p-0 elaborar-usar-sigma"
+                                                data-precio="<?= Html::encode((string) $fila['sigma']) ?>"
+                                                data-fuente="<?= Html::encode(PresupuestoDetalle::FUENTE_SIGMA) ?>"
+                                                title="Usar el precio referencial del catálogo SIGMA">
+                                            SIGMA: <?= $formato->asDecimal($fila['sigma'], 2) ?>
+                                        </button>
+                                    <?php endif; ?>
+                                <?php elseif ($esDirecto && !empty($linea->fuentePrecio)): ?>
+                                    <div class="rd-celda-sub">Fuente: <?= Html::encode($linea->fuentePrecio) ?></div>
+                                <?php endif; ?>
                             </td>
                             <td class="rd-num mono elaborar-total"><?= $linea === null ? '—' : $formato->asDecimal($linea->precioTotal, 2) ?></td>
                         </tr>
@@ -200,6 +240,19 @@ $columnas = 5 + count($proveedores);
                     </tr>
                 </tbody>
             <?php endforeach; ?>
+            <?php if ($presupuesto->manoDeObra !== null): ?>
+                <?php // Solo informativa (se cambia en el panel de abajo): no suma al total. ?>
+                <tbody>
+                    <tr class="cat-row"><td colspan="<?= $columnas ?>">Mano de obra</td></tr>
+                    <tr>
+                        <td><div class="rd-celda-titulo"><?= Html::encode($presupuesto->manoDeObra) ?></div></td>
+                        <td class="rd-num mono"><?= $formato->asDecimal(1, 2) ?></td>
+                        <td><?= Html::encode($presupuesto::UNIDAD_MANO_DE_OBRA) ?></td>
+                        <td colspan="<?= count($proveedores) + 1 ?>"><span class="rd-celda-sub">Personal de la DTIC: no se cotiza</span></td>
+                        <td class="rd-num mono"><?= $formato->asDecimal(0, 2) ?></td>
+                    </tr>
+                </tbody>
+            <?php endif; ?>
             <tfoot>
                 <tr class="subtotal-row">
                     <td colspan="<?= $columnas - 1 ?>">
@@ -210,6 +263,24 @@ $columnas = 5 + count($proveedores);
             </tfoot>
         </table>
     </div>
+
+    <?php if ($borrador): ?>
+        <div class="card rd-card-pad mt-3" id="elaborar-mano-de-obra">
+            <?= Html::beginForm(['mano-de-obra', 'idProyecto' => $proyecto->id], 'post', ['class' => 'rd-filtros mb-0']) ?>
+                <label class="d-flex align-items-center gap-2 mb-0 text-nowrap">
+                    <?= Html::checkbox('incluir', $presupuesto->manoDeObra !== null, ['value' => 1]) ?>
+                    <strong>Incluir mano de obra</strong>
+                </label>
+                <?= Html::textInput('texto', $presupuesto->manoDeObra ?? $presupuesto::MANO_DE_OBRA_DTIC, [
+                    'class' => 'form-control',
+                    'maxlength' => 300,
+                    'aria-label' => 'Texto de la mano de obra',
+                ]) ?>
+                <?= Html::submitButton('Guardar', ['class' => 'btn btn-outline']) ?>
+            <?= Html::endForm() ?>
+            <div class="rd-nota mt-2">Sale en el PDF como la última fila, antes del total: unidad "<?= Html::encode($presupuesto::UNIDAD_MANO_DE_OBRA) ?>", cantidad 1 y precios en 0.00. No se cotiza ni suma al total.</div>
+        </div>
+    <?php endif; ?>
 
     <div class="rd-cols mt-3">
         <div class="card rd-col-2 rd-card-pad" id="elaborar-partidas">
@@ -224,6 +295,7 @@ $columnas = 5 + count($proveedores);
         'proyecto' => $proyecto,
         'presupuesto' => $presupuesto,
         'erroresEnvio' => $erroresEnvio,
+        'estadosConBoton' => $estadosConBoton,
     ]) ?>
 
     <?php endif; ?>

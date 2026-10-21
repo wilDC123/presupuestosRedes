@@ -96,7 +96,10 @@ class EspecificacionEmisionService
             'idVersion' => $version->id,
             'idProyecto' => $item->idProyecto,
             'idProyectoItem' => $item->id,
-            'titulo' => $especificacion->nombre(),
+            // El bien se nombra como en la lista (nombre DTIC del item), no
+            // con el titulo de la ficha: una misma ficha sirve a items con
+            // nombres distintos. El titulo de la ficha solo si no hay item.
+            'titulo' => $item->subcatalogoItem->descripcion ?? $especificacion->nombre(),
             'cantidad' => $item->cantidad,
             'unidad' => $item->unidadMedida,
             'dependencia' => $proyecto->facultad,

@@ -93,6 +93,38 @@ class EspecificacionController extends Controller
         ]);
     }
 
+    /**
+     * Vista previa de la ficha (version actual) para la ventana "Ver detalle"
+     * de la lista de items: la pide por AJAX web/js/especificacion-vista-previa.js.
+     * renderPartial() devuelve solo el fragmento HTML de la vista, sin el
+     * layout (menu, cabecera), porque se inserta dentro de la ventana.
+     */
+    public function actionVistaPrevia(int $id): string
+    {
+        $model = $this->findModel($id);
+
+        return $this->renderPartial('_vista-previa', [
+            'model' => $model,
+            'version' => $model->versionActual,
+            'garantiaPorDefecto' => ConfiguracionEspecificacion::obtener()->garantiaPorDefecto,
+        ]);
+    }
+
+    /**
+     * Busqueda de la ventana "Ver detalle" (?q=24 poe). Responde JSON, no una
+     * pagina: asJson() pone la cabecera Content-Type: application/json y
+     * convierte el arreglo. Ver EspecificacionService::buscar().
+     */
+    public function actionBuscar(string $q = ''): Response
+    {
+        $resultados = $this->service->buscar($q);
+
+        return $this->asJson([
+            'resultados' => $resultados,
+            'limiteAlcanzado' => count($resultados) >= EspecificacionService::LIMITE_BUSQUEDA,
+        ]);
+    }
+
     public function actionCreate()
     {
         return $this->formulario(new Especificacion(), 'create', 'Especificación agregada a la librería.');
@@ -134,7 +166,7 @@ class EspecificacionController extends Controller
      */
     public function actionAdjunto(int $id): Response
     {
-        $version = EspecificacionVersion::findOne($id);
+        $version = $this->service->obtenerVersion($id);
         $ruta = ArchivoSubido::rutaAbsoluta($version?->adjuntoRuta);
 
         if ($ruta === null) {

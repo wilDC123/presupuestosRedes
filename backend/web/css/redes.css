@@ -502,3 +502,7 @@ body.rd {
 .rd .lista-item-obs { margin-top: 4px; padding: 4px 8px; font-size: 12px; }
 .rd .qty.is-invalid { border-color: #dc2626; background: #fef2f2; }
 .rd-pagehead h1 .badge { vertical-align: middle; margin-left: 8px; letter-spacing: 0; }
+/* Ventana "Ver detalle" de la lista de items: resultados y detalle con su propio desplazamiento. */
+.esp-previa-lista, .esp-previa-detalle { max-height: 60vh; overflow-y: auto; }
+.esp-previa-lista .list-group-item { font-size: 13px; text-align: left; }
+.esp-previa-lista .esp-previa-grupo { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--rd-etiqueta); background: var(--rd-fila-hover); }

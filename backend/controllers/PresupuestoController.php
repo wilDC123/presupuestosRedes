@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\models\ConfiguracionPresupuesto;
 use backend\models\Presupuesto;
-use backend\services\ElaborarPresupuestoService;
 use backend\services\PresupuestoService;
 use Yii;
 use yii\filters\VerbFilter;
@@ -15,7 +15,8 @@ use yii\web\Response;
 
 /**
  * Menu "Presupuestos" (capa de Presentacion): el listado de los
- * presupuestos de todos los proyectos y el PDF.
+ * presupuestos de todos los proyectos, el PDF y su configuracion (nota,
+ * firmas y banda de pie).
  *
  * El presupuesto se ELABORA en el paso "Presupuesto" de cada proyecto
  * (ElaborarPresupuestoController). Las rutas que antes servian para eso
@@ -99,10 +100,10 @@ class PresupuestoController extends Controller
     {
         $presupuesto = $this->findModel($id);
 
-        if (!$presupuesto->esBorrador()) {
+        // La regla (solo "En proceso") vive en PresupuestoService::eliminar().
+        if (!$this->service->eliminar($presupuesto)) {
             Yii::$app->session->setFlash('error', 'Solo se elimina un presupuesto "En proceso".');
         } else {
-            $this->service->eliminar($presupuesto);
             Yii::$app->session->setFlash('success', 'Presupuesto eliminado. Al volver a entrar al paso Presupuesto del proyecto se crea otro, con los menores precios.');
         }
 
@@ -111,10 +112,9 @@ class PresupuestoController extends Controller
 
     /**
      * Genera y descarga el PDF consolidado del presupuesto: encabezado
-     * institucional, datos generales, lineas agrupadas por categoria, resumen
-     * por partida y, en anexo, el cuadro comparativo con las justificaciones.
-     * Disponible en cualquier estado; si no esta aprobado lleva la marca
-     * "BORRADOR".
+     * institucional, datos generales y las lineas en una tabla numerada,
+     * como la solicitud de cotizacion. Disponible en cualquier estado; si
+     * no esta aprobado lleva la marca "BORRADOR".
      */
     public function actionPdf(int $id): Response
     {
@@ -125,9 +125,7 @@ class PresupuestoController extends Controller
             'presupuesto' => $presupuesto,
             'grupos' => $grupos,
             'totalGeneral' => $this->service->totalGeneral($grupos),
-            'resumenPartidas' => $this->service->resumenPorPartida($presupuesto),
-            // Anexo: cuadro comparativo de cotizaciones y justificaciones.
-            'comparativo' => (new ElaborarPresupuestoService())->tabla($presupuesto),
+            'configuracion' => ConfiguracionPresupuesto::obtener(),
         ]);
 
         $pdf = $this->service->generarPdf($presupuesto, $html);
@@ -137,6 +135,53 @@ class PresupuestoController extends Controller
             $pdf['nombreArchivo'],
             ['mimeType' => 'application/pdf']
         );
+    }
+
+    /**
+     * Reporte de apoyo (PDF): cada linea del presupuesto con el item SIGMA al
+     * que apunta, para saber que item del catalogo es cada uno. No es el
+     * documento oficial: no lleva firmas.
+     */
+    public function actionPdfSigma(int $id): Response
+    {
+        $presupuesto = $this->findModel($id);
+        $grupos = $this->service->agruparPorCategoria($presupuesto);
+
+        $html = $this->renderPartial('pdf-sigma', [
+            'presupuesto' => $presupuesto,
+            'grupos' => $grupos,
+        ]);
+
+        $pdf = $this->service->generarPdfSigma($presupuesto, $html);
+
+        return Yii::$app->response->sendContentAsFile(
+            $pdf['contenido'],
+            $pdf['nombreArchivo'],
+            ['mimeType' => 'application/pdf']
+        );
+    }
+
+    /**
+     * Lo que lleva el PDF despues del total: nota, firmas y banda de pie.
+     * Vale para todos los presupuestos, tambien al reimprimir los anteriores.
+     *
+     * @param int|null $proyecto id del proyecto desde el que se entro, solo
+     *                           para el boton "volver"
+     */
+    public function actionConfiguracion(?int $proyecto = null)
+    {
+        $configuracion = ConfiguracionPresupuesto::obtener();
+
+        if (Yii::$app->request->isPost && $this->service->guardarConfiguracion($configuracion, Yii::$app->request->post())) {
+            Yii::$app->session->setFlash('success', 'Configuración del PDF del presupuesto guardada.');
+
+            return $this->redirect(['configuracion', 'proyecto' => $proyecto]);
+        }
+
+        return $this->render('configuracion', [
+            'configuracion' => $configuracion,
+            'proyecto' => $proyecto,
+        ]);
     }
 
     private function alProyecto(int $idProyecto): Response

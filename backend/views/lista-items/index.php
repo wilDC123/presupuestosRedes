@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
+use yii\bootstrap5\BootstrapPluginAsset;
 use yii\helpers\Html;
+use yii\helpers\Url;
 use yii\web\JqueryAsset;
 
 /**
@@ -26,13 +28,18 @@ use yii\web\JqueryAsset;
  * propio formulario (fuera del de la lista: no se pueden anidar formularios).
  * Ese panel lo maneja web/js/especificacion-emision.js.
  *
+ * "Ver detalle" (junto al selector de especificacion) abre una ventana con
+ * buscador en la libreria y el detalle de cada ficha, para compararlas sin
+ * salir de la lista. La maneja web/js/especificacion-vista-previa.js.
+ *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  * @var string[] $errores mensajes si el guardado fallo
  * @var bool $editable Ver ListaItemsService::puedeEditarse()
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
- * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>} $especificaciones Ver EspecificacionService::selector()
+ * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>, subcatalogos: array<int, int>, sugeridasPorItem: array<int, int[]>} $especificaciones Ver EspecificacionService::selector()
+ * @var array<string, array{opciones: array, grupos: array}> $opcionesPorItem Ver EspecificacionService::opcionesPorItem() (vacio si la lista no se edita)
  * @var backend\models\OrdenCambio[] $ordenes ordenes de cambio del proyecto
  * @var array<int, array{emision: ?backend\models\EspecificacionEmision, avisos: string[]}> $emisiones Ver EspecificacionEmisionService::estadoPorItem()
  * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
@@ -41,6 +48,10 @@ use yii\web\JqueryAsset;
 
 if ($editable) {
     $this->registerJsFile('@web/js/lista-items.js', ['depends' => [JqueryAsset::class]]);
+    // La ventana "Ver detalle" usa el modal de Bootstrap, que necesita su JS
+    // (el layout solo carga el CSS). Se registra solo en esta pantalla.
+    BootstrapPluginAsset::register($this);
+    $this->registerJsFile('@web/js/especificacion-vista-previa.js', ['depends' => [JqueryAsset::class, BootstrapPluginAsset::class]]);
 }
 $this->registerJsFile('@web/js/especificacion-emision.js', ['depends' => [JqueryAsset::class]]);
 
@@ -59,11 +70,16 @@ foreach ($grupos as $grupo) {
 }
 $n = 0;
 
-// Cada opcion lleva el enlace a su documento (data-url): el JS lo usa para
-// el enlace "ver documento" sin volver a consultar al servidor.
+// Cada opcion lleva el enlace a su documento (data-url) y si la ficha ya
+// tiene item de referencia (data-con-referencia): el JS los usa para el
+// enlace "ver documento" y para ofrecer "Recordar como sugerida" solo en
+// las que no lo tienen, sin volver a consultar al servidor.
 $atributosOpciones = [];
 foreach ($especificaciones['urls'] as $idEspecificacion => $url) {
-    $atributosOpciones[$idEspecificacion] = ['data-url' => $url];
+    $atributosOpciones[$idEspecificacion]['data-url'] = $url;
+}
+foreach (array_keys($especificaciones['subcatalogos']) as $idEspecificacion) {
+    $atributosOpciones[$idEspecificacion]['data-con-referencia'] = 1;
 }
 
 /**
@@ -110,23 +126,15 @@ $infoEmision = static function (ProyectoItem $item) use ($emisiones, $puedeReemi
 };
 
 /**
- * Selector "Especificación técnica" de una fila: un <optgroup> por
- * categoria, con el de la categoria del item primero. El JS reordena los
- * grupos de las filas que se agregan en el navegador.
+ * Selector "Especificación técnica" de una fila. Las opciones llegan YA
+ * ordenadas (sugeridas, categoria del item, resto) en $opcionesPorItem, con
+ * clave "idCategoria|idSubcatalogo"; la regla vive en
+ * EspecificacionService::opcionesPorItem(). La fila modelo usa la clave ''.
  */
-$selectorEspecificacion = static function (string $n, string $seleccionada, string $idCategoria) use ($especificaciones, $atributosOpciones): string {
-    $opciones = [];
-    $atributosGrupos = [];
-
-    foreach ($especificaciones['grupos'] as $idGrupo => $grupo) {
-        $atributosGrupos[$grupo['nombre']] = ['data-categoria' => $idGrupo];
-
-        if ((string) $idGrupo === $idCategoria) {
-            $opciones = [$grupo['nombre'] => $grupo['opciones']] + $opciones;
-        } else {
-            $opciones[$grupo['nombre']] = $grupo['opciones'];
-        }
-    }
+$selectorEspecificacion = static function (string $n, string $seleccionada, string $idCategoria, string $idSubcatalogo) use ($especificaciones, $opcionesPorItem, $atributosOpciones): string {
+    $opcionesFila = $opcionesPorItem[$idCategoria . '|' . $idSubcatalogo] ?? $opcionesPorItem[''];
+    $opciones = $opcionesFila['opciones'];
+    $atributosGrupos = $opcionesFila['grupos'];
 
     $url = $especificaciones['urls'][(int) $seleccionada] ?? '';
 
@@ -138,12 +146,20 @@ $selectorEspecificacion = static function (string $n, string $seleccionada, stri
             'options' => $atributosOpciones,
             'groups' => $atributosGrupos,
         ])
+        . Html::button('Ver detalle', [
+            'class' => 'btn btn-outline btn-sm text-nowrap lista-item-ver-ficha',
+            'title' => 'Buscar en la librería y ver las características de cada especificación',
+        ])
         . Html::a('Ver documento', $url ?: '#', [
             'class' => 'lista-item-doc text-nowrap' . ($url === '' ? ' d-none' : ''),
             'target' => '_blank',
             'rel' => 'noopener',
         ])
-        . '</div>';
+        . '</div>'
+        // "Recordar como sugerida para este ítem": lo marca la ventana "Ver
+        // detalle" y se aplica al guardar (ListaItemsService::guardar()).
+        . Html::hiddenInput("items[$n][recordarReferencia]", '', ['class' => 'lista-item-recordar'])
+        . '<div class="rd-celda-sub lista-item-recordar-nota d-none">Al guardar, esta especificación quedará como sugerida para este ítem.</div>';
 };
 
 /**
@@ -157,7 +173,7 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
         . Html::hiddenInput("items[$n][idSubcatalogo]", $idSubcatalogo, ['class' => 'lista-item-subcatalogo'])
         . '<div class="lista-item-nombre">' . Html::encode($nombre) . '</div>'
         . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
-        . $selectorEspecificacion($n, $idEspecificacion, $idCategoria)
+        . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
         . $emision
         . '</td>'
         . '<td class="lista-item-unidad">' . Html::encode($unidad) . '</td>'
@@ -391,6 +407,44 @@ $grupoCierra = static fn (int $cantidad): string =>
         <template id="lista-fila-modelo"><?= $fila('__n__', '', '', '', '', '', '') ?></template>
         <template id="lista-grupo-modelo"><?= $grupoAbre('__cat__', '__nombre__') . $grupoCierra(0) ?></template>
         <span class="d-none" id="lista-siguiente" data-siguiente="<?= $n ?>"></span>
+        <?php // Fichas sugeridas para cada item del subcatalogo (EspecificacionService::selector()): las usa el JS en las filas nuevas y en "Ver detalle". Yii escribe el arreglo como JSON. ?>
+        <?= Html::tag('span', '', ['class' => 'd-none', 'id' => 'lista-sugeridas', 'data' => ['mapa' => $especificaciones['sugeridasPorItem']]]) ?>
+
+        <?php // Ventana "Ver detalle" (modal de Bootstrap). El contenido de la ficha lo trae el JS por AJAX. ?>
+        <div class="modal fade" id="esp-previa" tabindex="-1" aria-labelledby="esp-previa-titulo" aria-hidden="true"
+             data-url="<?= Html::encode(Url::to(['/especificacion/vista-previa'])) ?>"
+             data-url-buscar="<?= Html::encode(Url::to(['/especificacion/buscar'])) ?>">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="esp-previa-titulo">Especificación técnica</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="search" class="form-control mb-2" id="esp-previa-buscar" autocomplete="off"
+                               placeholder="Buscar en la librería por título, modelo o característica (ej. 24 poe cisco)"
+                               aria-label="Buscar especificación técnica">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <div class="kicker mb-1" id="esp-previa-resumen"></div>
+                                <div class="list-group esp-previa-lista" id="esp-previa-lista" role="listbox" aria-label="Especificaciones"></div>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="esp-previa-detalle" id="esp-previa-contenido"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="form-check me-auto d-none" id="esp-previa-recordar-grupo">
+                            <input type="checkbox" class="form-check-input" id="esp-previa-recordar">
+                            <label class="form-check-label" for="esp-previa-recordar">Recordar como sugerida para este ítem</label>
+                        </div>
+                        <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary" id="esp-previa-usar">Usar esta especificación</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     <?php elseif ($proyecto->estadoLista === Proyecto::LISTA_EN_COTIZACION): ?>
         <div class="card rd-card-pad mt-3">
             <div class="rd-card-titulo mb-2">Lista enviada a cotización</div>

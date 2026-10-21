@@ -95,6 +95,9 @@ class ListaItemsService
      *   items[n][cantidad]
      *   items[n][observacion]
      *   items[n][idEspecificacion] especificacion de la libreria ('' = ninguna)
+     *   items[n][recordarReferencia] '1' = "Recordar como sugerida para este
+     *     ítem" (ventana "Ver detalle"): la ficha elegida toma este item del
+     *     subcatalogo como item de referencia, si todavia no tiene uno
      *
      * Los items guardados que ya no vienen en el formulario se quitan. Los
      * que siguen se ACTUALIZAN (no se borran y recrean) para conservar su id.
@@ -126,11 +129,14 @@ class ListaItemsService
         $guardados = ProyectoItem::find()->andWhere(['idProyecto' => $proyecto->id])->indexBy('id')->all();
         $conservados = [];
         $numero = 0;
-        $especificacionesActivas = (new EspecificacionService())->idsActivas();
+        $especificaciones = new EspecificacionService();
+        $especificacionesActivas = $especificaciones->idsActivas();
         $emisiones = new EspecificacionEmisionService();
         // Items cuya especificacion cambia: [spl_object_id => true]. Se
         // marcan por objeto porque los nuevos todavia no tienen id.
         $cambianEspecificacion = [];
+        // "Recordar como sugerida": [idEspecificacion => idSubcatalogo].
+        $recordar = [];
 
         foreach ((array) $filas as $fila) {
             if (!is_array($fila)) {
@@ -179,6 +185,11 @@ class ListaItemsService
                         $errores[] = "$nombre: no se puede emitir su formulario NET: $motivo";
                     }
                 }
+            }
+
+            if ($errorEspecificacion === null && $item->idEspecificacion !== null
+                && $this->texto($fila['recordarReferencia'] ?? '') === '1') {
+                $recordar[(int) $item->idEspecificacion] = (int) $item->idSubcatalogo;
             }
 
             if (!$item->validate(['cantidad', 'observacion'])) {
@@ -250,6 +261,10 @@ class ListaItemsService
                         ['idPresupuesto' => $proyecto->presupuesto->id, 'idProyectoItem' => $item->id]
                     );
                 }
+            }
+
+            foreach ($recordar as $idEspecificacion => $idSubcatalogo) {
+                $especificaciones->recordarItemDeReferencia($idEspecificacion, $idSubcatalogo);
             }
 
             // Editar la lista a mano tambien resuelve el paso "Plantilla".

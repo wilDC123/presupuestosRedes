@@ -20,7 +20,7 @@ use yii\helpers\Html;
     <div class="rd-dato text-success">✓ Todos los ítems tienen precio.</div>
 <?php else: ?>
     <div class="rd-dato text-danger">
-        ✗ <?= count($control['sinPrecio']) ?> ítem(s) sin precio. Escriba un precio manual:
+        ✗ <?= count($control['sinPrecio']) ?> ítem(s) sin precio. Elija una cotización o escriba un precio directo:
     </div>
     <ul class="rd-nota mb-2">
         <?php foreach ($control['sinPrecio'] as $nombre): ?>

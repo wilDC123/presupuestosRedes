@@ -18,7 +18,8 @@ use Yii;
  *
  * Cada item de la lista es una linea del presupuesto. No se "agregan"
  * lineas: se ELIGE el precio de cada item entre lo que cotizaron los
- * proveedores (o un precio manual). Las reglas:
+ * proveedores o se escribe un PRECIO DIRECTO (sin cotizacion, con su fuente
+ * opcional; p. ej. el PrecioReferencial de SIGMA). Las reglas:
  *  - al entrar, cada item sin linea recibe el MENOR precio vigente,
  *  - elegir otro precio REEMPLAZA la linea por una nueva, con el precio y la
  *    partida congelados en ese momento (PresupuestoService::congelarPrecio()
@@ -31,6 +32,9 @@ use Yii;
  */
 class ElaborarPresupuestoService
 {
+    /** Valor de la opcion "Precio directo" (sin cotizacion) en elegir(). */
+    public const DIRECTO = 'directo';
+
     private PresupuestoService $presupuestos;
 
     public function __construct()
@@ -80,7 +84,7 @@ class ElaborarPresupuestoService
             foreach ($sinLinea as $item) {
                 $menor = $this->menor($opciones[$item->id]);
 
-                if ($menor !== null && $this->reemplazarLinea($presupuesto, $item, (int) $menor->id, null, null) === null) {
+                if ($menor !== null && $this->reemplazarLinea($presupuesto, $item, (int) $menor->id, null, null, null) === null) {
                     $creadas++;
                 }
             }
@@ -103,15 +107,17 @@ class ElaborarPresupuestoService
      * @return array{
      *   proveedores: array<int, string>,
      *   grupos: array<int, array{nombre: string, subtotal: float, filas: array<int, array{
-     *     item: ProyectoItem, celdas: array<int, CotizacionDetalle>, menor: int|null, linea: PresupuestoDetalle|null
+     *     item: ProyectoItem, celdas: array<int, CotizacionDetalle>, menor: int|null, linea: PresupuestoDetalle|null,
+     *     sigma: float|null
      *   }>}>,
+     *   conSigmaSinPrecio: int,
      *   total: float, conPrecio: int, totalFilas: int
      * }
      */
     public function tabla(Presupuesto $presupuesto): array
     {
         $listaItems = new ListaItemsService();
-        $items = $presupuesto->proyecto->getItems()->with(['subcatalogoItem', 'categoria', 'especificacion', 'emisionVigente'])->all();
+        $items = $presupuesto->proyecto->getItems()->with(['subcatalogoItem.catalogoSigma', 'categoria', 'especificacion', 'emisionVigente'])->all();
         $opciones = $this->opcionesPorItem($items);
         $lineas = $presupuesto->getPresupuestoDetalles()
             ->andWhere(['not', ['idProyectoItem' => null]])
@@ -123,6 +129,7 @@ class ElaborarPresupuestoService
         $grupos = [];
         $total = 0.0;
         $conPrecio = 0;
+        $conSigmaSinPrecio = 0;
 
         foreach ($listaItems->agrupar($presupuesto->proyecto, $items) as $idCategoria => $grupo) {
             $filas = [];
@@ -141,9 +148,13 @@ class ElaborarPresupuestoService
                 $menor = $this->menor($opciones[$item->id]);
                 $linea = $lineas[$item->id] ?? null;
 
+                $sigma = $this->precioSigma($item);
+
                 if ($linea !== null) {
                     $subtotal += (float) $linea->precioTotal;
                     $conPrecio++;
+                } elseif ($sigma !== null) {
+                    $conSigmaSinPrecio++;
                 }
 
                 $filas[] = [
@@ -151,6 +162,8 @@ class ElaborarPresupuestoService
                     'celdas' => $celdas,
                     'menor' => $menor === null ? null : (int) $menor->id,
                     'linea' => $linea,
+                    // Sugerencia para el precio directo.
+                    'sigma' => $sigma,
                 ];
             }
 
@@ -165,19 +178,21 @@ class ElaborarPresupuestoService
             'grupos' => $grupos,
             'total' => $total,
             'conPrecio' => $conPrecio,
+            'conSigmaSinPrecio' => $conSigmaSinPrecio,
             'totalFilas' => count($items),
         ];
     }
 
     /**
      * Elige el precio de un item:
-     *   $opcion  idCotizacionDetalle de una cotizacion de ESTA fila, o 'manual'
-     *   $precio  solo con 'manual'
+     *   $opcion  idCotizacionDetalle de una cotizacion de ESTA fila, o
+     *            self::DIRECTO (precio escrito sin cotizacion)
+     *   $precio, $fuente  solo con self::DIRECTO; la fuente es opcional
      *   $justificacion  opcional; se guarda solo si lo elegido no es el menor precio
      *
      * Devuelve null si se guardo, o el mensaje de por que no.
      */
-    public function elegir(Presupuesto $presupuesto, int $idProyectoItem, string $opcion, string $precio = '', string $justificacion = ''): ?string
+    public function elegir(Presupuesto $presupuesto, int $idProyectoItem, string $opcion, string $precio = '', string $justificacion = '', string $fuente = ''): ?string
     {
         if (!$presupuesto->esBorrador()) {
             return 'El presupuesto está "' . $presupuesto->estadoLabel() . '" y ya no se modifica.';
@@ -197,9 +212,9 @@ class ElaborarPresupuestoService
         $precio = trim($precio);
         $justificacion = trim($justificacion);
 
-        if ($opcion === 'manual') {
+        if ($opcion === self::DIRECTO) {
             if ($precio === '' || !is_numeric($precio) || (float) $precio < 0) {
-                return 'Escriba un precio manual mayor o igual a 0.';
+                return 'Escriba un precio directo mayor o igual a 0.';
             }
 
             $idCotizacionDetalle = null;
@@ -226,7 +241,8 @@ class ElaborarPresupuestoService
                 $idCotizacionDetalle,
                 $idCotizacionDetalle === null ? $precio : null,
                 // La justificacion solo tiene sentido si NO es el menor precio.
-                $esMenor || $menor === null || $justificacion === '' ? null : $justificacion
+                $esMenor || $menor === null || $justificacion === '' ? null : $justificacion,
+                $idCotizacionDetalle === null ? $fuente : null
             );
 
             if ($error === null) {
@@ -309,7 +325,7 @@ class ElaborarPresupuestoService
                     ->andWhere(['idPresupuesto' => $presupuesto->id, 'idProyectoItem' => $item->id])
                     ->scalar();
 
-                $error = $this->reemplazarLinea($presupuesto, $item, $idCotizacionDetalle, null, $justificacionLinea);
+                $error = $this->reemplazarLinea($presupuesto, $item, $idCotizacionDetalle, null, $justificacionLinea, null);
 
                 if ($error !== null) {
                     $transaccion->rollBack();
@@ -329,6 +345,52 @@ class ElaborarPresupuestoService
         }
 
         return null;
+    }
+
+    /**
+     * Atajo: a cada item que todavia NO tiene precio le pone como precio
+     * directo el PrecioReferencial de su item SIGMA (fuente
+     * PresupuestoDetalle::FUENTE_SIGMA). Nunca cambia un precio ya elegido.
+     * Devuelve null si se aplico, o el mensaje de por que no. $aplicados
+     * (por referencia) es para el mensaje de la pantalla.
+     */
+    public function usarPrecioSigma(Presupuesto $presupuesto, int &$aplicados = 0): ?string
+    {
+        $aplicados = 0;
+
+        if (!$presupuesto->esBorrador()) {
+            return 'El presupuesto está "' . $presupuesto->estadoLabel() . '" y ya no se modifica.';
+        }
+
+        $sinPrecio = (new ListaItemsService())->pendientesDePresupuestar($presupuesto->proyecto);
+        $transaccion = Yii::$app->db->beginTransaction();
+
+        try {
+            foreach ($sinPrecio as $item) {
+                $sigma = $this->precioSigma($item);
+
+                if ($sigma === null) {
+                    continue;
+                }
+
+                $error = $this->reemplazarLinea($presupuesto, $item, null, (string) $sigma, null, PresupuestoDetalle::FUENTE_SIGMA);
+
+                if ($error !== null) {
+                    $transaccion->rollBack();
+
+                    return ($item->subcatalogoItem->descripcion ?? 'Ítem') . ': ' . $error;
+                }
+
+                $aplicados++;
+            }
+
+            $transaccion->commit();
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
+        return $aplicados === 0 ? 'Ningún ítem sin precio tiene precio referencial en SIGMA.' : null;
     }
 
     /**
@@ -395,9 +457,32 @@ class ElaborarPresupuestoService
             return false;
         }
 
-        // cambiarEstado() verifica la transicion y guarda la cabecera junto
-        // con el estado nuevo.
+        // cambiarEstado() vuelve a verificar la transicion y estos mismos
+        // requisitos (es la barrera final), y guarda la cabecera junto con el
+        // estado nuevo.
         return $this->presupuestos->cambiarEstado($presupuesto, Presupuesto::ESTADO_EN_REVISION);
+    }
+
+    /**
+     * Pone o quita la fila de mano de obra a cargo de la DTIC (ver
+     * Presupuesto::MANO_DE_OBRA_DTIC). Si se incluye sin texto, se usa el
+     * texto de siempre. Como los precios, solo se cambia en borrador.
+     * Devuelve el mensaje de error, o null si se guardo.
+     */
+    public function guardarManoDeObra(Presupuesto $presupuesto, bool $incluir, string $texto): ?string
+    {
+        if (!$presupuesto->esBorrador()) {
+            return 'Solo se cambia la mano de obra de un presupuesto "En proceso".';
+        }
+
+        $texto = trim($texto);
+        $presupuesto->manoDeObra = $incluir ? ($texto !== '' ? $texto : Presupuesto::MANO_DE_OBRA_DTIC) : null;
+
+        if (!$presupuesto->save(true, ['manoDeObra'])) {
+            return implode(' ', $presupuesto->getErrorSummary(false));
+        }
+
+        return null;
     }
 
     /**
@@ -442,6 +527,18 @@ class ElaborarPresupuestoService
     }
 
     /**
+     * PrecioReferencial del item SIGMA al que apunta el item, o null si no
+     * apunta a ninguno o el catalogo no tiene precio (0 o vacio). Es el
+     * precio de HOY del catalogo: se congela recien al guardarlo en la linea.
+     */
+    private function precioSigma(ProyectoItem $item): ?float
+    {
+        $precio = (float) ($item->subcatalogoItem->catalogoSigma->PrecioReferencial ?? 0);
+
+        return $precio > 0 ? $precio : null;
+    }
+
+    /**
      * El menor precio VIGENTE de las opciones (ordenadas por precio). Si
      * todas estan vencidas, la mas barata igual: es lo mejor que hay.
      *
@@ -468,17 +565,26 @@ class ElaborarPresupuestoService
      * No abre transaccion: la abre quien la llama, para poder reemplazar
      * varias lineas juntas. Devuelve null o el mensaje de error.
      */
-    private function reemplazarLinea(Presupuesto $presupuesto, ProyectoItem $item, ?int $idCotizacionDetalle, ?string $precioManual, ?string $justificacion): ?string
+    private function reemplazarLinea(Presupuesto $presupuesto, ProyectoItem $item, ?int $idCotizacionDetalle, ?string $precioDirecto, ?string $justificacion, ?string $fuente): ?string
     {
         $actual = PresupuestoDetalle::findOne(['idPresupuesto' => $presupuesto->id, 'idProyectoItem' => $item->id]);
+        $fuente = $fuente === null || trim($fuente) === '' ? null : trim($fuente);
 
         if ($actual !== null) {
             $mismaCotizacion = $idCotizacionDetalle !== null && (int) $actual->idCotizacionDetalle === $idCotizacionDetalle;
-            $mismoManual = $idCotizacionDetalle === null && $actual->idCotizacionDetalle === null
-                && (float) $actual->precioUnitario === (float) $precioManual;
+            $mismoDirecto = $idCotizacionDetalle === null && $actual->idCotizacionDetalle === null
+                && (float) $actual->precioUnitario === (float) $precioDirecto;
 
-            if ($mismaCotizacion || $mismoManual) {
-                $actual->updateAttributes(['justificacion' => $justificacion]);
+            // Mismo precio: solo cambian los textos (el precio no se vuelve a congelar).
+            if ($mismaCotizacion || $mismoDirecto) {
+                $actual->justificacion = $justificacion;
+                $actual->fuentePrecio = $mismoDirecto ? $fuente : null;
+
+                if (!$actual->validate(['justificacion', 'fuentePrecio'])) {
+                    return implode(' ', $actual->getErrorSummary(true));
+                }
+
+                $actual->updateAttributes(['justificacion' => $actual->justificacion, 'fuentePrecio' => $actual->fuentePrecio]);
 
                 return null;
             }
@@ -492,8 +598,9 @@ class ElaborarPresupuestoService
         $linea->unidadMedida = $item->unidadMedida;
         $linea->observacion = $item->observacion;
         $linea->idCotizacionDetalle = $idCotizacionDetalle;
-        $linea->precioUnitario = $precioManual;
+        $linea->precioUnitario = $precioDirecto;
         $linea->justificacion = $justificacion;
+        $linea->fuentePrecio = $idCotizacionDetalle === null ? $fuente : null;
         // Para congelarPartida(), sin volver a consultar el item.
         $linea->populateRelation('subcatalogoItem', $item->subcatalogoItem);
 

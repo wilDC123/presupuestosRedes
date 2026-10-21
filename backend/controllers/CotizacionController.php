@@ -8,6 +8,7 @@ use backend\components\ArchivoSubido;
 use backend\models\Cotizacion;
 use backend\services\CotizacionService;
 use backend\services\EspecificacionService;
+use backend\services\ProveedorService;
 use backend\services\SubcatalogoItemService;
 use Yii;
 use yii\filters\VerbFilter;
@@ -71,6 +72,7 @@ class CotizacionController extends Controller
 
         return $this->render('create', [
             'model' => $model,
+            'proveedores' => $this->proveedores($model),
         ]);
     }
 
@@ -98,6 +100,7 @@ class CotizacionController extends Controller
 
         return $this->render('update', [
             'model' => $model,
+            'proveedores' => $this->proveedores($model),
             'modelsDetalle' => $modelsDetalle,
             // Opciones de los desplegables de cada linea: las vistas no
             // consultan la base. Se incluyen las especificaciones que ya
@@ -105,6 +108,17 @@ class CotizacionController extends Controller
             'items' => (new SubcatalogoItemService())->opciones(),
             'especificaciones' => (new EspecificacionService())->selector(ArrayHelper::getColumn($modelsDetalle, 'idEspecificacion')),
         ]);
+    }
+
+    /**
+     * Proveedores del desplegable: solo los ACTIVOS, mas el que ya tiene la
+     * cotizacion aunque se haya desactivado (para no perderlo al editarla).
+     *
+     * @return array<int, string>
+     */
+    private function proveedores(Cotizacion $model): array
+    {
+        return (new ProveedorService())->opcionesActivos($model->idProveedor ? (int) $model->idProveedor : null);
     }
 
     public function actionDelete(int $id)

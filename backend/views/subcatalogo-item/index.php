@@ -169,7 +169,9 @@ $formato = Yii::$app->formatter;
                                     <?= Html::a('Agregar', [
                                         'create',
                                         'idSigma' => $itemSigma->IdSigma,
-                                    ], ['class' => 'btn btn-outline btn-sm']) ?>
+                                        // Para volver a estos mismos resultados despues de guardar.
+                                        'q' => $textoBusqueda,
+                                    ],['class' => 'btn btn-outline btn-sm']) ?>
                                     <?php if ($usadoPor !== []): ?>
                                         <div class="rd-celda-sub">Ya usado por: <?= Html::encode(implode(', ', $usadoPor)) ?></div>
                                     <?php endif; ?>

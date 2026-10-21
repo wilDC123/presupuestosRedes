@@ -37,7 +37,12 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 - Subcatálogo curado de ítems de redes, con referencia lógica a `dbo.CatalogoSigma.IdSigma`
   (NUNCA duplicar el catálogo completo; selección manual/bajo demanda, no clasificación automática)
 - Nombre DTIC vs. nombre SIGMA: `SubcatalogoItem.descripcion` es el nombre DTIC (corto y
-  genérico, el que sale en listados, presupuesto y PDF). El nombre oficial SIGMA no se copia:
+  genérico, el que sale en listados, solicitud de cotización y pantallas), guardado SIEMPRE en
+  MAYÚSCULAS (2026-10-20: regla "filter" del modelo + migración `m261020_063033_nombre_dtic_en_mayusculas`
+  para los existentes). Al elegir un ítem desde SIGMA el campo se prellena con la `Descripcion`
+de SIGMA en mayúsculas (antes con la Clase; pedido del Ing. el 2026-10-20) y el usuario la
+edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el nombre DTIC (2026-10-20:
+  el nombre SIGMA no sale en ningún impreso). El nombre oficial SIGMA no se copia:
   se lee con la relación `getCatalogoSigma()`. Varios ítems DTIC pueden apuntar al mismo
   `idSigma` (SIGMA es genérico); se avisa "ya usado por: ..." pero NO se bloquea
 - Partida presupuestaria (5 dígitos, `dbo.CatalogoSigma.IdGasto`): columna `partida` en
@@ -58,7 +63,8 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
-  del presupuesto y en el PDF; su total coincide siempre con el total por categorías
+  del presupuesto (NO en el PDF desde el 2026-10-20); su total coincide siempre con el total por
+  categorías
 - Presupuesto como DOCUMENTO VIVO: se elabora en UNA pantalla, el paso "Presupuesto" del
   proyecto (`ElaborarPresupuestoController`, `ElaborarPresupuestoService`). No hay "crear
   presupuesto" ni "agregar líneas": cada ítem de la lista ES una línea (`PresupuestoDetalle`, como
@@ -66,11 +72,20 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   en "en proceso" y cada ítem sin línea recibe el MENOR precio vigente. La tabla tiene una columna
   por proveedor; marcar otro precio se guarda por AJAX. Atajos: "menor precio por ítem" y "todo a
   un proveedor"
+- PRECIO DIRECTO (2026-10-21, pedido para no tener que registrar proveedor y cotización de todo):
+  en el paso Presupuesto cada ítem puede llevar un precio escrito sin cotización (columna "Precio
+  directo"; antes se llamaba "Manual") con su fuente opcional (`PresupuestoDetalle.fuentePrecio`,
+  migración `m261021_052012_agregar_fuente_precio_a_presupuesto_detalle`; NULL en las líneas de
+  cotización). El botón "SIGMA: x.xx" de la fila usa el `PrecioReferencial` del ítem SIGMA (fuente
+  `PresupuestoDetalle::FUENTE_SIGMA`), y el atajo "Precio SIGMA en los ítems sin precio"
+  (`ElaborarPresupuestoService::usarPrecioSigma()`) lo pone en todos los que no tienen precio,
+  sin tocar los ya elegidos. Se congela igual que cualquier precio. Las cotizaciones siguen siendo
+  opcionales para quien las tenga
 - Elegir otro precio REEMPLAZA la línea (borra y crea otra con precio y partida congelados en ese
   momento); el precio de una línea guardada nunca se modifica. Elegir un precio que NO es el menor
   admite una `PresupuestoDetalle.justificacion` OPCIONAL (decidido el 2026-10-16: el presupuesto es
-  un precio referencial, no la adjudicación de una compra). El anexo del PDF lista los ítems con un
-  precio distinto del menor cotizado, con su justificación si la tienen
+  un precio referencial, no la adjudicación de una compra). La justificación se ve en la pantalla
+  del paso Presupuesto; el PDF ya no tiene anexo (2026-10-20)
 - Solo se eligen precios con el presupuesto "en proceso" (`Presupuesto::esBorrador()`); en
   revisión, aprobado o cancelado la tabla es de solo lectura. Mientras es borrador, sus líneas siguen
   a la lista: quitar un ítem borra su línea y la cantidad se vuelve a copiar (el precio no)
@@ -92,12 +107,23 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
     versión ya usada en una emisión NO se modifica: editarla crea la siguiente
     (`EspecificacionService::guardarVersion()`); cambiar solo título/categoría/activo no crea versión.
   - EMISIÓN `redes.EspecificacionEmision`: el formulario con código `NET:880/26` que se firma y se
-    entrega al proveedor. NUNCA cambia: guarda copias congeladas (título, cantidad, unidad,
+    entrega al proveedor. NUNCA cambia: guarda copias congeladas (título = nombre DTIC del ítem de la lista desde el
+    2026-10-21, antes el de la ficha; cantidad, unidad,
     dependencia = facultad del proyecto, garantía, textos, condiciones de entrega) y apunta a una
     versión que ya no cambia. Estados: vigente, reemplazada, anulada; "vencida" se calcula
     (fecha + vigencia). Reglas en `EspecificacionEmisionService`.
   Se ENLAZA a los ítems de la lista con `redes.ProyectoItem.idEspecificacion` (como máximo una por
-  ítem, desde la pantalla de la lista y con su mismo bloqueo) y ENLAZAR = EMITIR: al guardar la
+  ítem, desde la pantalla de la lista y con su mismo bloqueo; un mismo ítem del subcatálogo puede
+  tener varias fichas posibles). Ayudas para elegir (2026-10-20): cada opción muestra el modelo
+  sugerido de la versión actual, arriba va el grupo "Sugeridas para este ítem" (fichas cuyo ítem de
+  referencia es el de la fila) y "Ver detalle" abre una ventana con la ficha
+  (`especificacion/vista-previa`, `web/js/especificacion-vista-previa.js`). Sin texto, la ventana
+  ofrece la ficha elegida en la fila y las sugeridas; su buscador (`especificacion/buscar`,
+  `EspecificacionService::buscar()`) busca en toda la librería activa: todas las palabras, en título,
+  modelo y características de la versión actual, sin importar tildes (`COLLATE Modern_Spanish_CI_AI`),
+  título primero, máx. 30. La casilla "Recordar como sugerida para este ítem" (solo en fichas sin
+  ítem de referencia) se aplica al guardar la lista (`items[n][recordarReferencia]`) y nunca pisa
+  un ítem de referencia ya puesto. ENLAZAR = EMITIR: al guardar la
   lista se asigna el siguiente NET. Cambiar o quitar la ficha, o quitar el ítem, ANULA la emisión
   vigente (no se borra). Un error se corrige REEMITIENDO (NET nuevo, última versión, cantidad
   actual de la lista; la anterior queda "reemplazada por"), permitido mientras el presupuesto no
@@ -113,7 +139,8 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   emitida no se elimina, se desactiva
 - Formulario NET en PDF (`especificacion/formulario`) con el formato institucional (tabla
   Especificación | Propuesta | Cumple | No cumple, secciones I, II y III); marca de agua
-  REEMPLAZADO / ANULADO / VENCIDO. Registro de todas las emisiones en el menú "Formularios NET"
+  REEMPLAZADO / ANULADO / VENCIDO. "Formulario elaborado por" y "Firma" van en blanco (a mano) y al fondo
+  de la última página (2026-10-21; el usuario que emitió solo se ve en el registro). Registro de todas las emisiones en el menú "Formularios NET"
   (reemplaza el Excel "1000 Especificaciones"), con exportación a CSV
 - Carga inicial desde el banco de .docx de DTIC: `php yii especificacion/importar "<carpeta>"`
   (sin `--confirmar` solo escribe un CSV; `--desde=AAAA`). Agrupa por título + modelo sugerido y
@@ -134,8 +161,43 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   aprobado, cancelado
 - Precio unitario "congelado" en el detalle del presupuesto al momento de crearlo
   (nunca se recalcula retroactivamente si cambia el precio de una cotización nueva)
+- Cabecera de página de los impresos (2026-10-21, `backend/views/pdf/_cabecera.php`, etiqueta
+  `<htmlpageheader>` de mPDF): recuadro con escudo USFX | títulos + fila N.° / facultad / fecha /
+  "pág. X de Y" | logo DTIC (`backend/web/img/logo-usfx.png`, `logo-dtic.png`, reducidos), repetida
+  en cada página, a 5 mm del borde. La usan el PDF del presupuesto y el de la solicitud de
+  cotización (en esta, las 2 primeras líneas salen de "Configuración del documento")
 - Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
-  aprobado, proveedor por línea y anexo con el cuadro comparativo y las justificaciones
+  aprobado. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
+  usan los mismos anchos, 2026-10-21) y "TOTAL GENERAL Bs." al final; N.° corrido
+  entre categorías y en cada línea el nombre DTIC con su observación (columnas como la solicitud
+  de cotización, más Partida). Desde el 2026-10-21 el nombre DTIC lleva al lado, entre paréntesis, el código NET de la emisión
+  VIGENTE del ítem (solo el código; sin emisión vigente no sale nada). Desde el 2026-10-20 NO lleva nombre SIGMA,
+  proveedor por línea, resumen por partida, anexo (cuadro comparativo y justificaciones), área
+  de intervención ni estado
+- Reporte de apoyo "Relación con el catálogo SIGMA" (`presupuesto/pdf-sigma`, 2026-10-20; vista
+  `presupuesto/pdf-sigma.php`, A4 horizontal, botones en el paso Presupuesto y en el listado):
+  cada línea con su ítem DTIC y el ítem SIGMA al que apunta (clase, descripción, Id SIGMA,
+  especificación), partida y precio de la línea (congelados) frente a la partida (`IdGasto`) y el
+  `PrecioReferencial` que tiene HOY el catálogo, y su estado (vigente o no). Marca con * la partida
+  distinta y resume cuántas líneas tienen o no ítem SIGMA. Sin firmas ni mano de obra; lleva la
+  misma marca de agua que el presupuesto. Es el único impreso que muestra el nombre SIGMA
+- Después del total, el PDF del presupuesto lleva una nota opcional y, AL FONDO de la última página
+  (2026-10-21: marca `PresupuestoPdfGenerator::MARCA_AL_PIE`; si no caben, van al fondo de una
+  página nueva), dos firmas lado a lado
+  (prefijo opcional como "V°B°", nombre con tratamiento, cargo guardado en MAYÚSCULAS) y una banda
+  de pie verde claro con 2 columnas de contactos (título en negrita + renglones). Todo sale de
+  `redes.ConfiguracionPresupuesto` (una sola fila, CHECK id = 1; 2026-10-20), editable en
+  "Configuración del PDF" (`presupuesto/configuracion`); NADA de eso queda escrito en la vista. Un
+  campo vacío no sale; sin firmantes vuelve la firma a mano "Elaborado por". No guarda copia: un
+  cambio se ve también al reimprimir presupuestos anteriores
+- Mano de obra a cargo del personal de la DTIC (2026-10-20): NO es un ítem del subcatálogo (no se
+  compra: sin partida, sin cotización, no suma al total). Es el texto `Presupuesto.manoDeObra`
+  (NULL = no lleva), que se pone o quita con una casilla en el paso Presupuesto, solo en borrador
+  (`ElaborarPresupuestoService::guardarManoDeObra()`; texto por defecto
+  `Presupuesto::MANO_DE_OBRA_DTIC`). El PDF la muestra en la categoría "Mano de obra" (una
+  tabla propia al final si el presupuesto no tiene esa categoría): "MANO DE OBRA", unidad
+  "Servicio", cantidad 1, precios 0.00. La mano de obra CONTRATADA
+  a una empresa sí es un ítem normal (categoría "Mano de obra", con partida y cotización)
 - Cómputos métricos: el sistema SOLO los almacena (con referencia de origen: plano,
   relevamiento), NUNCA los calcula
 
@@ -168,7 +230,7 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261020_030140_crear_tipo_proyecto`), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261020_085843_crear_configuracion_presupuesto`), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -181,6 +243,10 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   RESUELTO (2026-10-18): la ficha id 378 se llamaba "CÁMARA PTZ" por un error del .docx
   `840 NVR NVR1108HS-8P-S3_H` del banco; ahora es "NVR de 8 Canales PoE" (Dispositivos de
   comunicacion). Conviene revisar el CSV de la importación con el Ing.
+  2026-10-20: en la base LOCAL se asignó el ítem de referencia (`idSubcatalogo`) a 78 fichas, solo
+  donde la coincidencia con un ítem activo del subcatálogo era segura (79 en total con la ficha 14).
+  Fue un UPDATE a mano, no una migración (los id de las fichas importadas cambian entre bases); en
+  el servidor de DTIC habrá que repetirlo desde la pantalla o con un script propio
 - PENDIENTE (opcional): logo del formulario NET en `backend/web/img/logo-formulario-net.png`
 - Preparado para el servidor de DTIC (2026-10-18; guía en `docs/guia-instalacion-dtic.md`):
   - Toda la aplicación exige sesión (`'as access'` en `backend/config/main.php`); solo
@@ -228,7 +294,11 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   configuración), agregan secuencias "Emitir" y "Reemitir formulario NET", casos de uso y un
   diagrama de actividades del ciclo de vida de una emisión; resumen en
   `docs/cambios-especificaciones.md`
+- PENDIENTE (tutor): el precio directo (2026-10-21) agrega `PresupuestoDetalle.fuentePrecio` al
+  diagrama de clases y hace opcional la cotización en la secuencia "Elaborar presupuesto"
 - PENDIENTE (tutor): agregar `ConfiguracionSolicitudCotizacion` (2026-10-19) al diagrama de clases
+- PENDIENTE (tutor): agregar `ConfiguracionPresupuesto` y el atributo `Presupuesto.manoDeObra`
+  (2026-10-20) al diagrama de clases
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a
   Proyecto y a Plantilla (0..1 tipo por proyecto/plantilla)
 - PENDIENTE (Ing. de DTIC): confirmar los tipos de proyecto reales; los 4 cargados

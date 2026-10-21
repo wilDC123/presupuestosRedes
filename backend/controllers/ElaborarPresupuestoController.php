@@ -43,6 +43,7 @@ class ElaborarPresupuestoController extends Controller
                     'adjudicar' => ['POST'],
                     'enviar' => ['POST'],
                     'estado' => ['POST'],
+                    'mano-de-obra' => ['POST'],
                 ],
             ],
         ];
@@ -80,7 +81,8 @@ class ElaborarPresupuestoController extends Controller
             $idProyectoItem,
             (string) $peticion->post('opcion', ''),
             (string) $peticion->post('precio', ''),
-            (string) $peticion->post('justificacion', '')
+            (string) $peticion->post('justificacion', ''),
+            (string) $peticion->post('fuente', '')
         );
 
         if ($error !== null) {
@@ -91,14 +93,29 @@ class ElaborarPresupuestoController extends Controller
     }
 
     /**
-     * Atajos "Menor precio por item" y "Todo a un proveedor". Es un
-     * formulario normal (recarga la pantalla): cambia muchas filas a la vez.
+     * Atajos "Menor precio por item", "Todo a un proveedor" y "Precio SIGMA
+     * en los items sin precio". Es un formulario normal (recarga la
+     * pantalla): cambia muchas filas a la vez.
      */
     public function actionAdjudicar(int $idProyecto)
     {
         $proyecto = $this->findProyecto($idProyecto);
         $presupuesto = $this->service->delProyecto($proyecto);
         $peticion = Yii::$app->request;
+
+        if ($peticion->post('modo') === 'sigma') {
+            $aplicados = 0;
+            $error = $this->service->usarPrecioSigma($presupuesto, $aplicados);
+
+            if ($error !== null) {
+                Yii::$app->session->setFlash('error', $error);
+            } else {
+                Yii::$app->session->setFlash('success', $aplicados === 1 ? 'Se puso el precio SIGMA a 1 ítem.' : "Se puso el precio SIGMA a $aplicados ítems.");
+            }
+
+            return $this->redirect(['index', 'idProyecto' => $proyecto->id]);
+        }
+
         $idProveedor = (string) $peticion->post('idProveedor', '');
         $cambiadas = 0;
         $sinCotizar = 0;
@@ -147,10 +164,37 @@ class ElaborarPresupuestoController extends Controller
     }
 
     /**
+     * Guarda la fila de mano de obra a cargo de la DTIC (casilla + texto).
+     * Ruta: elaborar-presupuesto/mano-de-obra (Yii2 convierte el nombre
+     * actionManoDeObra a "mano-de-obra" en la URL).
+     */
+    public function actionManoDeObra(int $idProyecto): Response
+    {
+        $proyecto = $this->findProyecto($idProyecto);
+        $presupuesto = $this->service->delProyecto($proyecto);
+        $peticion = Yii::$app->request;
+
+        $error = $this->service->guardarManoDeObra(
+            $presupuesto,
+            (bool) $peticion->post('incluir'),
+            (string) $peticion->post('texto', '')
+        );
+
+        if ($error !== null) {
+            Yii::$app->session->setFlash('error', $error);
+        } else {
+            Yii::$app->session->setFlash('success', $presupuesto->manoDeObra === null ? 'El presupuesto ya no lleva mano de obra.' : 'Mano de obra guardada.');
+        }
+
+        return $this->redirect(['index', 'idProyecto' => $proyecto->id, '#' => 'elaborar-mano-de-obra']);
+    }
+
+    /**
      * Los demas cambios de estado, desde la misma pantalla: observar,
      * aprobar o cancelar (en revision) y volver a "en proceso" (observado).
-     * "En revision" solo se alcanza con actionEnviar(), que exige la
-     * cabecera y todos los precios.
+     * "En revision" se alcanza con actionEnviar(): copia la cabecera del
+     * formulario y explica que falta. Aqui no hace falta excluirlo:
+     * PresupuestoService::cambiarEstado() exige la cabecera y todos los precios.
      */
     public function actionEstado(int $idProyecto)
     {
@@ -158,7 +202,7 @@ class ElaborarPresupuestoController extends Controller
         $presupuesto = $this->service->delProyecto($proyecto);
         $nuevoEstado = (string) Yii::$app->request->post('estado');
 
-        if ($nuevoEstado === Presupuesto::ESTADO_EN_REVISION || !(new PresupuestoService())->cambiarEstado($presupuesto, $nuevoEstado)) {
+        if (!(new PresupuestoService())->cambiarEstado($presupuesto, $nuevoEstado)) {
             Yii::$app->session->setFlash('error', 'No se puede pasar de "' . $presupuesto->estadoLabel() . '" a ese estado.');
 
             return $this->redirect(['index', 'idProyecto' => $proyecto->id]);
@@ -197,6 +241,7 @@ class ElaborarPresupuestoController extends Controller
             'tabla' => $this->service->tabla($presupuesto),
             'control' => $this->service->control($presupuesto),
             'resumenPartidas' => (new PresupuestoService())->resumenPorPartida($presupuesto),
+            'estadosConBoton' => (new PresupuestoService())->estadosConBoton($presupuesto),
         ];
     }
 
@@ -228,7 +273,7 @@ class ElaborarPresupuestoController extends Controller
         return [
             'fila' => [
                 'total' => $linea === null ? '—' : $formato->asDecimal($linea->precioTotal, 2),
-                'opcion' => $linea === null ? '' : ($linea->idCotizacionDetalle === null ? 'manual' : (string) $linea->idCotizacionDetalle),
+                'opcion' => $linea === null ? '' : ($linea->esPrecioDirecto() ? ElaborarPresupuestoService::DIRECTO : (string) $linea->idCotizacionDetalle),
             ],
             'subtotales' => $subtotales,
             'total' => $formato->asDecimal($tabla['total'], 2),

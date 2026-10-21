@@ -26,6 +26,7 @@ $formato = Yii::$app->formatter;
             <div class="rd-pagehead-sub">El presupuesto de cada proyecto se elabora en su paso "Presupuesto".</div>
         </div>
         <div class="rd-acciones">
+            <?= Html::a('Configuración del PDF', ['configuracion'], ['class' => 'btn btn-outline']) ?>
             <?= Html::a('Ir a proyectos', ['/proyecto/index'], ['class' => 'btn btn-outline']) ?>
         </div>
     </div>
@@ -71,6 +72,7 @@ $formato = Yii::$app->formatter;
                 'value' => static fn ($model) => '<div class="rd-acciones">'
                     . Html::a('Abrir', ['/elaborar-presupuesto/index', 'idProyecto' => $model->idProyecto], ['class' => 'btn btn-outline btn-sm'])
                     . Html::a('PDF', ['pdf', 'id' => $model->id], ['class' => 'btn btn-outline btn-sm', 'target' => '_blank'])
+                    . Html::a('SIGMA', ['pdf-sigma', 'id' => $model->id], ['class' => 'btn btn-outline btn-sm', 'target' => '_blank', 'title' => 'Relación con el catálogo SIGMA (PDF)'])
                     . ($model->esBorrador()
                         ? Html::a('Eliminar', ['delete', 'id' => $model->id], [
                             'class' => 'btn btn-danger btn-sm',

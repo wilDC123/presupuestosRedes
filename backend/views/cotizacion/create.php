@@ -7,6 +7,7 @@ use yii\helpers\Html;
 /**
  * @var yii\web\View $this
  * @var backend\models\Cotizacion $model
+ * @var array<int, string> $proveedores Ver ProveedorService::opcionesActivos()
  */
 
 $this->title = 'Nueva cotización';
@@ -19,6 +20,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
     <?= $this->render('_form', [
         'model' => $model,
+        'proveedores' => $proveedores,
         'modelsDetalle' => null,
     ]) ?>
 

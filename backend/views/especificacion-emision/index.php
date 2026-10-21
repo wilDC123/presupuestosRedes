@@ -39,24 +39,25 @@ $hayFiltros = implode('', $filtros) !== '';
         </div>
     </div>
 
-    <?= Html::beginForm(['index'], 'get', ['class' => 'rd-acciones mb-3']) ?>
+    <?php // rd-filtros + form-select: los filtros comparten una fila (form-control ocupa el 100% del ancho). ?>
+    <?= Html::beginForm(['index'], 'get', ['class' => 'rd-filtros']) ?>
         <?= Html::dropDownList('anio', $filtros['anio'], $opciones['anios'], [
-            'class' => 'form-control',
+            'class' => 'form-select',
             'prompt' => 'Todos los años',
             'aria-label' => 'Año',
         ]) ?>
         <?= Html::dropDownList('estado', $filtros['estado'], $estados, [
-            'class' => 'form-control',
+            'class' => 'form-select',
             'prompt' => 'Todos los estados',
             'aria-label' => 'Estado',
         ]) ?>
         <?= Html::dropDownList('dependencia', $filtros['dependencia'], $opciones['dependencias'], [
-            'class' => 'form-control',
+            'class' => 'form-select',
             'prompt' => 'Todas las dependencias',
             'aria-label' => 'Dependencia',
         ]) ?>
         <?= Html::textInput('buscar', $filtros['buscar'], [
-            'class' => 'form-control rd-buscar',
+            'class' => 'form-control',
             'placeholder' => 'NET (880 o 880/26), título o código de proyecto...',
         ]) ?>
         <?= Html::submitButton('Filtrar', ['class' => 'btn btn-outline']) ?>

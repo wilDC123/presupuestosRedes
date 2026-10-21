@@ -62,6 +62,21 @@ class ProyectoService
     }
 
     /**
+     * Proyectos como [id => nombre], ordenados por nombre, para los
+     * desplegables (ej. el formulario de computo metrico).
+     *
+     * @return array<int, string>
+     */
+    public function opciones(): array
+    {
+        return Proyecto::find()
+            ->select(['nombre', 'id'])
+            ->orderBy(['nombre' => SORT_ASC])
+            ->indexBy('id')
+            ->column();
+    }
+
+    /**
      * Proyecto vacio para el formulario "Nuevo proyecto". Si llega el id de
      * un proyecto aprobado, se prepara como su FASE SIGUIENTE: queda
      * enlazado a el y hereda tipo, facultad y edificio (se pueden cambiar).

@@ -123,8 +123,10 @@ $texto = static fn (?string $valor): string => nl2br(Html::encode((string) $valo
         margin-top: 10px;
         font-weight: bold;
     }
+    /* Va al fondo de la pagina (MARCA_AL_PIE); el margen solo separa del texto
+       cuando queda justo. */
     .firma {
-        margin-top: 30px;
+        margin-top: 10px;
     }
 </style>
 </head>
@@ -204,12 +206,16 @@ $texto = static fn (?string $valor): string => nl2br(Html::encode((string) $valo
     <div class="nota-final"><?= $texto($emision->textoNotaFinal) ?></div>
 <?php endif; ?>
 
-<div class="dato" style="margin-top: 6px;">Formulario válido de <?= (int) $emision->vigenciaDias ?> días desde su emisión.</div>
-<div class="dato">Fecha de emisión: <?= Html::encode($fechaLarga) ?></div>
+<div class="dato" style="margin-top: 6px;">Fecha de emisión: <?= Html::encode($fechaLarga) ?> · Formulario válido de <?= (int) $emision->vigenciaDias ?> días desde su emisión.</div>
+
+<?php // "Elaborado por" y firma: al fondo de la última página (PresupuestoPdfGenerator). ?>
+<?= backend\components\PresupuestoPdfGenerator::MARCA_AL_PIE ?>
 
 <table class="cabecera firma">
     <tr>
-        <td style="width: 60%;">Formulario elaborado por: <?= Html::encode((string) $emision->elaboradoPor) ?></td>
+        <?php // En blanco, para escribir el nombre a mano. $emision->elaboradoPor (el
+        // usuario del sistema que emitio) solo se ve en el registro de formularios NET. ?>
+        <td style="width: 60%;">Formulario elaborado por: ______________________________</td>
         <td>Firma: ______________________________</td>
     </tr>
 </table>

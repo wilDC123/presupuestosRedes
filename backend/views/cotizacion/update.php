@@ -7,6 +7,7 @@ use yii\helpers\Html;
 /**
  * @var yii\web\View $this
  * @var backend\models\Cotizacion $model
+ * @var array<int, string> $proveedores Ver ProveedorService::opcionesActivos()
  * @var backend\models\CotizacionDetalle[] $modelsDetalle
  * @var array<int, string> $items Ver SubcatalogoItemService::opciones()
  * @var array $especificaciones Ver EspecificacionService::selector()
@@ -23,6 +24,7 @@ $this->params['breadcrumbs'][] = 'Editar';
 
     <?= $this->render('_form', [
         'model' => $model,
+        'proveedores' => $proveedores,
         'modelsDetalle' => $modelsDetalle,
         'items' => $items,
         'especificaciones' => $especificaciones,

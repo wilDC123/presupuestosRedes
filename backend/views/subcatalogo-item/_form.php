@@ -23,8 +23,10 @@ use yii\widgets\ActiveForm;
     <?= $form->field($model, 'idCategoria')->dropDownList($categorias, ['prompt' => 'Seleccione una categoría']) ?>
 
     <?= $form->field($model, 'descripcion')
-        ->textInput(['maxlength' => 300])
-        ->hint('Nombre corto y genérico que usa la DTIC (ej. "Switch PoE", "Regleta tapacable"). Las medidas o detalles de una compra concreta van en la observación de la línea del presupuesto, no aquí.') ?>
+        // text-transform solo muestra en mayusculas mientras se escribe; lo que
+        // se guarda en mayusculas lo asegura la regla "filter" del modelo.
+        ->textInput(['maxlength' => 300, 'style' => 'text-transform: uppercase'])
+        ->hint('Nombre corto y genérico que usa la DTIC (ej. "SWITCH POE", "REGLETA TAPACABLE"). Al elegir un ítem de SIGMA se copia su descripción como punto de partida: edítela para mejorar la redacción. Las medidas o detalles de una compra concreta van en la observación de la línea del presupuesto, no aquí.') ?>
 
     <?php if ($sigma !== null): ?>
         <div class="alert alert-secondary">

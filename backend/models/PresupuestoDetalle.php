@@ -36,6 +36,7 @@ use yii\db\ActiveRecord;
  * @property string|null $observacion Texto libre de la linea (medidas, "segun especificacion", etc.).
  * @property int|null $idProyectoItem Item de la lista del proyecto del que nacio la linea.
  * @property string|null $justificacion Por que se eligio un precio que no es el menor cotizado.
+ * @property string|null $fuentePrecio De donde sale un PRECIO DIRECTO (sin cotizacion); opcional.
  *
  * @property-read ProyectoItem|null $proyectoItem
  * @property-read Presupuesto $presupuesto
@@ -44,6 +45,9 @@ use yii\db\ActiveRecord;
  */
 class PresupuestoDetalle extends ActiveRecord
 {
+    /** Fuente que se guarda al usar el PrecioReferencial del catalogo SIGMA. */
+    public const FUENTE_SIGMA = 'Precio referencial SIGMA';
+
     public static function tableName(): string
     {
         return 'redes.PresupuestoDetalle';
@@ -64,7 +68,7 @@ class PresupuestoDetalle extends ActiveRecord
             // con una unidad que despues se desactivo se pueda volver a guardar.
             [['unidadMedida'], 'exist', 'targetClass' => UnidadMedida::class, 'targetAttribute' => 'abreviatura', 'filter' => ['activo' => true], 'when' => static fn ($model) => $model->isAttributeChanged('unidadMedida'), 'message' => 'Elija una unidad de la lista.'],
             // precioUnitario solo es obligatorio cuando NO se eligio una
-            // cotizacion (precio manual); si se eligio una,
+            // cotizacion (precio directo); si se eligio una,
             // PresupuestoService::congelarPrecio() lo llena solo a partir de
             // CotizacionDetalle.
             [
@@ -79,6 +83,9 @@ class PresupuestoDetalle extends ActiveRecord
             // trim convierte null en '': se vuelve a null ("sin justificacion").
             [['justificacion'], 'default', 'value' => null],
             [['justificacion'], 'string', 'max' => 300],
+            [['fuentePrecio'], 'trim'],
+            [['fuentePrecio'], 'default', 'value' => null],
+            [['fuentePrecio'], 'string', 'max' => 200],
             // partida NO tiene regla a proposito: en Yii2 un atributo sin
             // reglas no es "seguro" y load() lo ignora, asi que nadie puede
             // enviarlo desde el formulario. Solo lo escribe
@@ -104,7 +111,16 @@ class PresupuestoDetalle extends ActiveRecord
             'observacion' => 'Observación',
             'idProyectoItem' => 'Ítem de la lista',
             'justificacion' => 'Justificación',
+            'fuentePrecio' => 'Fuente del precio',
         ];
+    }
+
+    /**
+     * Precio directo = escrito sin cotizacion (a mano o desde SIGMA).
+     */
+    public function esPrecioDirecto(): bool
+    {
+        return empty($this->idCotizacionDetalle);
     }
 
     public function getProyectoItem(): ActiveQuery
@@ -134,7 +150,7 @@ class PresupuestoDetalle extends ActiveRecord
         }
 
         // idCotizacionDetalle permite NULL, pero el dropDownList con prompt
-        // "(ninguna...)" envia '' cuando se elige precio manual. SQL Server
+        // "(ninguna...)" envia '' cuando se elige precio directo. SQL Server
         // no puede convertir '' a int, asi que se normaliza a null antes de
         // seguir (mismo riesgo que idSigma en SubcatalogoItem).
         if ($this->idCotizacionDetalle === '') {

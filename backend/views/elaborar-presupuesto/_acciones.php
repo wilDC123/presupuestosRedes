@@ -8,14 +8,17 @@ use yii\helpers\Html;
 /**
  * Pie de la pantalla del presupuesto: lo que se puede hacer segun su estado.
  *  - en proceso: "Enviar a revision", con la cabecera (obligatoria recien aqui),
- *  - en revision: observar, aprobar o cancelar,
- *  - observado: volver a "en proceso" para corregir,
+ *  - los demas cambios de estado: un boton por cada estado de
+ *    $estadosConBoton (sale de Presupuesto::transicionesPermitidas(), la
+ *    unica fuente de verdad del ciclo de vida; esta vista solo decide el
+ *    texto y el aspecto de cada boton),
  *  - aprobado: crear la fase siguiente.
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
  * @var backend\models\Presupuesto $presupuesto
  * @var string[] $erroresEnvio
+ * @var string[] $estadosConBoton Ver PresupuestoService::estadosConBoton()
  */
 
 $botonEstado = static fn (string $estado, string $texto, string $clase, string $confirmar = ''): string =>
@@ -23,6 +26,14 @@ $botonEstado = static fn (string $estado, string $texto, string $clase, string $
     . Html::hiddenInput('estado', $estado)
     . Html::submitButton($texto, ['class' => $clase] + ($confirmar === '' ? [] : ['data' => ['confirm' => $confirmar]]))
     . Html::endForm();
+
+// Como se ve el boton de cada estado de destino, en el orden en que se muestran.
+$botones = [
+    Presupuesto::ESTADO_APROBADO => ['Aprobar', 'btn btn-primary', '¿Aprobar el presupuesto? La lista del proyecto queda cerrada.'],
+    Presupuesto::ESTADO_OBSERVADO => ['Observar', 'btn btn-outline', ''],
+    Presupuesto::ESTADO_CANCELADO => ['Cancelar', 'btn btn-danger', '¿Cancelar el presupuesto? No se puede deshacer.'],
+    Presupuesto::ESTADO_EN_PROCESO => ['Corregir (volver a "En proceso")', 'btn btn-primary', ''],
+];
 ?>
 <div class="card rd-card-pad mt-3" id="elaborar-acciones">
 
@@ -89,13 +100,12 @@ $botonEstado = static fn (string $estado, string $texto, string $clase, string $
         </div>
 
         <div class="rd-acciones mt-2">
-            <?php if ($presupuesto->estado === Presupuesto::ESTADO_EN_REVISION): ?>
-                <?= $botonEstado(Presupuesto::ESTADO_APROBADO, 'Aprobar', 'btn btn-primary', '¿Aprobar el presupuesto? La lista del proyecto queda cerrada.') ?>
-                <?= $botonEstado(Presupuesto::ESTADO_OBSERVADO, 'Observar', 'btn btn-outline') ?>
-                <?= $botonEstado(Presupuesto::ESTADO_CANCELADO, 'Cancelar', 'btn btn-danger', '¿Cancelar el presupuesto? No se puede deshacer.') ?>
-            <?php elseif ($presupuesto->estado === Presupuesto::ESTADO_OBSERVADO): ?>
-                <?= $botonEstado(Presupuesto::ESTADO_EN_PROCESO, 'Corregir (volver a "En proceso")', 'btn btn-primary') ?>
-            <?php elseif ($presupuesto->estado === Presupuesto::ESTADO_APROBADO): ?>
+            <?php foreach ($botones as $estado => [$texto, $clase, $confirmar]): ?>
+                <?php if (in_array($estado, $estadosConBoton, true)): ?>
+                    <?= $botonEstado($estado, $texto, $clase, $confirmar) ?>
+                <?php endif; ?>
+            <?php endforeach; ?>
+            <?php if ($presupuesto->estado === Presupuesto::ESTADO_APROBADO): ?>
                 <?= Html::a('Crear proyecto de fase siguiente →', ['/proyecto/create', 'idAnterior' => $proyecto->id], ['class' => 'btn btn-primary']) ?>
             <?php endif; ?>
         </div>

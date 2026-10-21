@@ -39,33 +39,11 @@ $numero = 0;
         font-size: 11px;
         color: #000;
     }
-    .encabezado {
-        text-align: center;
-        margin-bottom: 14px;
-    }
-    .encabezado .institucion {
-        font-size: 11px;
-        font-weight: bold;
-    }
-    .encabezado .unidad {
-        font-size: 10px;
-        margin-bottom: 6px;
-    }
-    .encabezado .titulo {
-        font-size: 14px;
-        font-weight: bold;
-        text-decoration: underline;
-        margin-top: 6px;
-    }
-    table.datos-generales {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
-    }
-    table.datos-generales td {
-        padding: 3px 4px;
-        vertical-align: top;
-        width: 50%;
+    /* Cabecera repetida en cada pagina: ver views/pdf/_cabecera.php. */
+    @page {
+        header: html_cabecera;
+        margin-header: 5mm;
+        margin-top: 32mm;
     }
     .texto {
         margin-bottom: 10px;
@@ -132,22 +110,15 @@ $numero = 0;
 </head>
 <body>
 
-<div class="encabezado">
-    <?php foreach ($cabecera as $i => $linea): ?>
-        <div class="<?= $i === 0 ? 'institucion' : 'unidad' ?>"><?= Html::encode($linea) ?></div>
-    <?php endforeach; ?>
-    <div class="titulo">SOLICITUD DE COTIZACIÓN</div>
-</div>
-
-<table class="datos-generales">
-    <tr>
-        <td><strong>Solicitud N.°:</strong> <?= Html::encode($solicitud->codigo()) ?></td>
-        <td><strong>Fecha:</strong> <?= date('d/m/Y') ?></td>
-    </tr>
-    <tr>
-        <td colspan="2"><strong>Unidad:</strong> <?= Html::encode($facultad ?: '—') ?></td>
-    </tr>
-</table>
+<?php // Las dos primeras lineas son las de "Configuración del documento". ?>
+<?= $this->render('//pdf/_cabecera', [
+    'titulo' => 'SOLICITUD DE COTIZACIÓN',
+    'numero' => 'N.° ' . $solicitud->codigo(),
+    'facultad' => $facultad,
+    'fecha' => date('d/m/Y'),
+    'institucion' => $cabecera[0] ?? null,
+    'unidad' => $cabecera[1] ?? null,
+]) ?>
 
 <div class="texto">
     <?= nl2br(Html::encode($configuracion->textoInstrucciones)) ?>

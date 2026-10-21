@@ -2,25 +2,18 @@
 
 declare(strict_types=1);
 
-use backend\models\Proveedor;
-use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 
 /**
  * @var yii\web\View $this
  * @var backend\models\Cotizacion $model
+ * @var array<int, string> $proveedores [id => razon social], solo ACTIVOS (mas el de la cotizacion). Ver ProveedorService::opcionesActivos()
  * @var backend\models\CotizacionDetalle[]|null $modelsDetalle Solo se pasa desde update.php
  * @var array<int, string> $items Solo desde update.php. Ver SubcatalogoItemService::opciones()
  * @var array $especificaciones Solo desde update.php. Ver EspecificacionService::selector()
  * @var yii\widgets\ActiveForm $form
  */
-
-$proveedores = ArrayHelper::map(
-    Proveedor::find()->orderBy(['razonSocial' => SORT_ASC])->all(),
-    'id',
-    'razonSocial'
-);
 ?>
 <div class="cotizacion-form">
 

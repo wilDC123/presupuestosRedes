@@ -216,19 +216,21 @@ class SubcatalogoItemService
      * una fila de dbo.CatalogoSigma.
      *
      * "descripcion" es el NOMBRE DTIC (corto y generico, el que sale en
-     * listados, presupuesto y PDF), no el nombre SIGMA. Por eso arranca solo
-     * con la Clase de SIGMA ("JACK" -> "Jack") para que el usuario la
-     * complete a su manera, en vez de copiar la descripcion larga oficial.
-     * La Clase se lee aqui desde la base con el idSigma, no desde la URL.
+     * listados, presupuesto y PDF), no el nombre SIGMA. Aun asi arranca con
+     * la Descripcion de SIGMA en MAYUSCULAS (pedido del Ing. de DTIC,
+     * 2026-10-20): es un punto de partida que el usuario edita en el mismo
+     * campo para acortarla o darle el estilo DTIC. Se lee aqui desde la base
+     * con el idSigma, no desde la URL.
      */
     public function prellenarDesdeSigma(SubcatalogoItem $item, string $idSigma): void
     {
         $item->idSigma = $idSigma;
 
-        $clase = trim((string) ($this->sigmaDe($item)->Clase ?? ''));
+        $descripcion = trim((string) ($this->sigmaDe($item)->Descripcion ?? ''));
 
-        if ($clase !== '') {
-            $item->descripcion = mb_strtoupper(mb_substr($clase, 0, 1)) . mb_strtolower(mb_substr($clase, 1));
+        if ($descripcion !== '') {
+            // 300 = largo maximo de SubcatalogoItem.descripcion (SIGMA tambien admite 300).
+            $item->descripcion = mb_strtoupper(mb_substr($descripcion, 0, 300), 'UTF-8');
         }
     }
 

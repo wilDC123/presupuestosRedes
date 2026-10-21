@@ -8,6 +8,7 @@ use yii\widgets\DetailView;
 /**
  * @var yii\web\View $this
  * @var backend\models\SubcatalogoItem $model
+ * @var string $textoBusqueda ultima busqueda en SIGMA ('' si no se llego desde ella)
  */
 
 $this->title = $model->descripcion;
@@ -27,6 +28,14 @@ $this->params['breadcrumbs'][] = $this->title;
                 'method' => 'post',
             ],
         ]) ?>
+        <?php // ms-4 (Bootstrap 5: margin-left) separa este grupo de las acciones sobre el item. ?>
+        <?php // Con busqueda previa vuelve a sus resultados; sin ella, al buscador vacio. '#' esta bien aqui: es un enlace, no un formulario GET. ?>
+        <?= Html::a(
+            $textoBusqueda !== '' ? '+ Agregar otro desde SIGMA ("' . Html::encode($textoBusqueda) . '")' : '+ Agregar otro desde SIGMA',
+            ['index', 'q' => $textoBusqueda !== '' ? $textoBusqueda : null, '#' => 'buscar-sigma'],
+            ['class' => 'btn btn-outline ms-4']
+        ) ?>
+        <?= Html::a('Nuevo ítem sin SIGMA', ['create'], ['class' => 'btn btn-outline']) ?>
     </p>
 
     <?= DetailView::widget([

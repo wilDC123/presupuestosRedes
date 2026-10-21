@@ -92,22 +92,27 @@ class ListaItemsController extends Controller
 
         $editable = $this->service->puedeEditarse($proyecto);
         $grupos = $this->service->agrupar($proyecto, $enviados);
+        $itemsDeLaLista = array_merge([], ...array_column($grupos, 'items'));
         $emisiones = new EspecificacionEmisionService();
+        $especificaciones = new EspecificacionService();
+        // Opciones del selector "Especificación técnica": solo si la lista se edita.
+        $selector = $editable
+            ? $especificaciones->selector($this->service->especificacionesEnlazadas($proyecto))
+            : EspecificacionService::SELECTOR_VACIO;
 
         return $this->render('index', [
             'proyecto' => $proyecto,
             'grupos' => $grupos,
             // Formulario NET vigente y avisos de cada item con especificacion.
-            'emisiones' => $emisiones->estadoPorItem(array_merge([], ...array_column($grupos, 'items'))),
+            'emisiones' => $emisiones->estadoPorItem($itemsDeLaLista),
             'puedeReemitir' => $emisiones->puedeReemitir($proyecto),
             'configuracion' => ConfiguracionEspecificacion::obtener(),
             'errores' => $errores,
             'editable' => $editable,
             'subcatalogo' => $editable ? (new SubcatalogoItemService())->activos() : [],
-            // Opciones del selector "Especificación técnica" de cada fila.
-            'especificaciones' => $editable
-                ? (new EspecificacionService())->selector($this->service->especificacionesEnlazadas($proyecto))
-                : ['grupos' => [], 'urls' => []],
+            'especificaciones' => $selector,
+            // Las mismas opciones, ya ordenadas para cada fila (sugeridas primero).
+            'opcionesPorItem' => $editable ? $especificaciones->opcionesPorItem($selector, $itemsDeLaLista) : [],
             'ordenes' => $this->ordenes->historial($proyecto),
         ]);
     }
