@@ -12,6 +12,7 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var backend\models\SolicitudCotizacion $solicitud
+ * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
  * @var array{cotizaciones: backend\models\Cotizacion[], filas: array<int, array{item: backend\models\ProyectoItem, precios: array<int, float>, menor: int|null}>} $comparativo Ver CotizacionService::comparativo()
  */
 
@@ -39,6 +40,8 @@ $cotizaciones = $comparativo['cotizaciones'];
             <?php endif; ?>
         </div>
     </div>
+
+    <?= $this->render('/proyecto/_pasos', ['pasos' => $pasos, 'actual' => 'Cotización']) ?>
 
     <p class="rd-nota">
         Precio unitario de cada proveedor; el menor de cada ítem va resaltado. Es una ayuda para comparar: el precio

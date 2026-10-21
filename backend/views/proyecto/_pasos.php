@@ -6,7 +6,9 @@ use yii\helpers\Html;
 
 /**
  * Barra de pasos del proyecto (en que paso va y a donde lleva cada uno).
- * Vista parcial compartida por proyecto/view.php y elaborar-presupuesto/index.php.
+ * Vista parcial compartida por las pantallas de cada paso: proyecto (view,
+ * plantilla), lista-items, solicitud-cotizacion (index, cotizar,
+ * comparativo), elaborar-presupuesto y carta.
  *
  * @var yii\web\View $this
  * @var array<int, array{titulo: string, estado: string, url: array|null}> $pasos Ver ProyectoService::pasos()

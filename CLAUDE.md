@@ -55,7 +55,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   Categoría y partida son datos distintos: una categoría DTIC mezcla varias partidas
 - Unidades de medida: catálogo `redes.UnidadMedida` (nombre, abreviatura, activo).
   `SubcatalogoItem.idUnidadMedida` es FK; `ProyectoItem.unidadMedida`,
-  `PresupuestoDetalle.unidadMedida` y `ComputoMetrico.unidad` guardan la ABREVIATURA como texto
+  y `PresupuestoDetalle.unidadMedida` guardan la ABREVIATURA como texto
   (congelada al crear la fila, como el precio y la partida). Se muestra la abreviatura en
   listados y PDF. Solo se eligen unidades activas; una en uso no se elimina, se desactiva
 - Tipos de proyecto: catálogo `redes.TipoProyecto` (nombre, activo), administrado por el
@@ -236,10 +236,20 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   o "Oficio DTIC: —" si aún no tiene. Fuente "pagelladtic" (TeX Gyre Pagella convertida a TTF, en
   `backend/fonts/pagella-dtic`, ver su MANIFEST) en vez de Book Antiqua/Andalus, que son de Windows
   y no se pueden llevar al servidor
-- Cómputos métricos: el sistema SOLO los almacena (con referencia de origen: plano,
-  relevamiento), NUNCA los calcula
+- Barra de pasos del proyecto (`ProyectoService::pasos()`, vista `proyecto/_pasos.php`): Datos,
+  Plantilla, "Lista de ítems y especificaciones" (`ProyectoService::PASO_LISTA`; un solo paso desde
+  el 2026-10-21, porque las especificaciones se enlazan en la misma pantalla de la lista),
+  Cotización y Presupuesto. Sale en todas las pantallas de un paso (vista del proyecto, plantilla,
+  lista, solicitudes/cotizar/comparativo, paso Presupuesto, carta), no en los formularios de
+  edición; cada controlador le pasa `pasos` a su vista. En la lista, ir a otro paso con cambios sin
+  guardar pide confirmación (`lista-items.js`)
 
 ### NO incluye (explícitamente fuera de alcance):
+- Cómputos métricos (QUITADOS el 2026-10-21 por decisión del desarrollador: el módulo funcionaba
+  pero nunca se usó y estaba fuera del flujo del proyecto). La migración
+  `m261021_215240_eliminar_computo_metrico` borra `redes.ComputoMetrico` (se detiene si la tabla
+  tiene datos; `safeDown()` la vuelve a crear vacía). Estaban en el alcance confirmado y en el
+  diagrama de clases: ver el PENDIENTE (tutor) de abajo
 - Control de ejecución/avance de obra
 - Gestión de usuarios y roles propia (la administra el sistema institucional; este
   proyecto solo informa qué permisos necesita)
@@ -268,7 +278,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261021_203749_crear_carta_presupuesto`, aplicada el 2026-10-21), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261021_215240_eliminar_computo_metrico`, aplicada el 2026-10-21), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -337,6 +347,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - PENDIENTE (tutor): agregar `ConfiguracionSolicitudCotizacion` (2026-10-19) al diagrama de clases
 - PENDIENTE (tutor): agregar `ConfiguracionPresupuesto` y el atributo `Presupuesto.manoDeObra`
   (2026-10-20) al diagrama de clases
+- PENDIENTE (tutor): se QUITARON los cómputos métricos (2026-10-21). Estaban en el alcance
+  confirmado ("SÍ incluye") y son una de las 10 clases del diagrama de clases: informar al tutor y
+  al Ing. de DTIC, y sacar `ComputoMetrico` del diagrama de clases, del de componentes y de los
+  casos de uso donde aparezca
 - PENDIENTE (tutor): agregar `CartaPresupuesto` (0..1 por Presupuesto, composición) y
   `ConfiguracionCarta` (2026-10-21) al diagrama de clases, y el caso de uso "Elaborar carta de
   entrega" (extiende Elaborar presupuesto)
@@ -362,7 +376,8 @@ Se diseñaron los siguientes diagramas, con el modelo de datos ya validado:
   Cambiar estado)
 - Clases: 10 clases (Proyecto, Presupuesto, PresupuestoDetalle, SubcatalogoItem,
   Especificacion, Cotizacion, CotizacionDetalle, Proveedor, Categoria,
-  ComputoMetrico) + enumerado EstadoPresupuesto. Composición (rombo relleno) en
+  ComputoMetrico) + enumerado EstadoPresupuesto. ACTUALIZACIÓN 2026-10-21: ComputoMetrico se quitó
+  del sistema (ver "NO incluye"); falta sacarla del diagrama. Composición (rombo relleno) en
   Presupuesto→PresupuestoDetalle y Cotizacion→CotizacionDetalle. Auto-relación
   0..1 en Presupuesto (versionAnterior). Atributo derivado /precioTotal
   (calculado). Restricción {congelado} en precioUnitario de PresupuestoDetalle.

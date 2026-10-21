@@ -31,6 +31,12 @@ class ProyectoService
 {
     private const INTENTOS_CODIGO = 5;
 
+    /**
+     * Titulo del paso de la lista en la barra de pasos (ver pasos()). La
+     * pantalla de la lista lo usa para resaltarse.
+     */
+    public const PASO_LISTA = 'Lista de ítems y especificaciones';
+
     private ParametrosProyectoService $parametros;
 
     /**
@@ -59,21 +65,6 @@ class ProyectoService
     public function obtener(int $id): ?Proyecto
     {
         return Proyecto::findOne($id);
-    }
-
-    /**
-     * Proyectos como [id => nombre], ordenados por nombre, para los
-     * desplegables (ej. el formulario de computo metrico).
-     *
-     * @return array<int, string>
-     */
-    public function opciones(): array
-    {
-        return Proyecto::find()
-            ->select(['nombre', 'id'])
-            ->orderBy(['nombre' => SORT_ASC])
-            ->indexBy('id')
-            ->column();
     }
 
     /**
@@ -133,7 +124,7 @@ class ProyectoService
 
     /**
      * Devuelve false si el proyecto no se puede borrar porque ya tiene
-     * presupuesto, computos metricos u otra fase que depende de el (las
+     * presupuesto u otra fase que depende de el (las
      * llaves foraneas lo impiden).
      */
     public function eliminar(Proyecto $proyecto): bool
@@ -260,10 +251,9 @@ class ProyectoService
                 // la pantalla de plantilla ya no aplica.
                 'url' => $this->puedeEditarse($proyecto) && $listaEnEdicion ? ['/proyecto/plantilla', 'id' => $proyecto->id] : null,
             ],
-            ['titulo' => 'Lista de ítems', 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
-            // Las especificaciones se enlazan item por item EN la lista (son
-            // opcionales): el paso avanza junto con la lista.
-            ['titulo' => 'Especificaciones', 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
+            // Un solo paso: las especificaciones se enlazan item por item EN la
+            // lista (son opcionales), en la misma pantalla y al mismo tiempo.
+            ['titulo' => self::PASO_LISTA, 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
             [
                 // Solicitudes de cotizacion: se arman con la lista ya enviada a cotizar.
                 'titulo' => 'Cotización',

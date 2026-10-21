@@ -28,7 +28,6 @@ $menu = [
     ['Formularios NET', ['/especificacion-emision/index'], ['especificacion-emision']],
     ['Cotizaciones', ['/cotizacion/index'], ['cotizacion']],
     ['Presupuestos', ['/presupuesto/index'], ['presupuesto']],
-    ['Cómputos métricos', ['/computo-metrico/index'], ['computo-metrico']],
 ];
 
 $usuario = Yii::$app->user->identity?->username;

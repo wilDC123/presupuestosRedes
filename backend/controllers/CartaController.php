@@ -47,6 +47,7 @@ class CartaController extends Controller
 
         return $this->render('index', [
             'proyecto' => $proyecto,
+            'pasos' => (new ProyectoService())->pasos($proyecto),
             'presupuesto' => $presupuesto,
             'carta' => $carta,
             // Lo que falta para imprimir (se recalcula con la carta recien guardada).

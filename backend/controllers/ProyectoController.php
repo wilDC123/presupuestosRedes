@@ -182,6 +182,7 @@ class ProyectoController extends Controller
 
         return $this->render('plantilla', [
             'model' => $model,
+            'pasos' => $this->service->pasos($model),
             'plantillas' => $filas,
             'totalItems' => $lista->contar($model),
         ]);
@@ -192,7 +193,7 @@ class ProyectoController extends Controller
         $model = $this->findModel($id);
 
         if (!$this->service->eliminar($model)) {
-            Yii::$app->session->setFlash('error', 'No se puede eliminar el proyecto porque ya tiene presupuesto, cómputos métricos o una fase siguiente que depende de él.');
+            Yii::$app->session->setFlash('error', 'No se puede eliminar el proyecto porque ya tiene presupuesto o una fase siguiente que depende de él.');
 
             return $this->redirect(['view', 'id' => $model->id]);
         }

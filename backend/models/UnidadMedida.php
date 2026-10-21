@@ -10,8 +10,8 @@ use yii\db\ActiveRecord;
  * Modelo para la tabla "redes.UnidadMedida".
  *
  * La abreviatura es lo que se muestra en listados, presupuesto y PDF, y lo
- * que se copia como texto a ProyectoItem, PresupuestoDetalle y
- * ComputoMetrico. Una unidad en uso no se elimina: se desactiva.
+ * que se copia como texto a ProyectoItem y PresupuestoDetalle. Una unidad en
+ * uso no se elimina: se desactiva.
  *
  * @property int $id
  * @property string $nombre ej. "Metro"

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace backend\services;
 
-use backend\models\ComputoMetrico;
 use backend\models\PresupuestoDetalle;
 use backend\models\ProyectoItem;
 use backend\models\SubcatalogoItem;
@@ -14,8 +13,8 @@ use backend\models\UnidadMedida;
  * Capa de Servicio para UnidadMedida.
  *
  * Ademas del CRUD, arma los desplegables de unidad para los formularios: el
- * subcatalogo guarda el id de la unidad, y las lineas del presupuesto y los
- * computos guardan su abreviatura como texto (copiada, ver la migracion
+ * subcatalogo guarda el id de la unidad, y las listas y las lineas del
+ * presupuesto guardan su abreviatura como texto (copiada, ver la migracion
  * m261015_233726_create_unidad_medida).
  */
 class UnidadMedidaService
@@ -65,29 +64,6 @@ class UnidadMedidaService
         return $opciones;
     }
 
-    /**
-     * Unidades activas como [abreviatura => "Metro (m)"], para los
-     * formularios que guardan la unidad como texto (linea del presupuesto,
-     * computo metrico). Si el valor actual no es una unidad activa (una
-     * desactivada, o un texto antiguo) se agrega tal cual, para no perderlo.
-     *
-     * @return array<string, string>
-     */
-    public function opcionesPorAbreviatura(?string $actual = null): array
-    {
-        $opciones = [];
-
-        foreach ($this->activasOConId(null) as $unidad) {
-            $opciones[$unidad->abreviatura] = $unidad->etiqueta();
-        }
-
-        if ($actual !== null && $actual !== '' && !isset($opciones[$actual])) {
-            $opciones[$actual] = $actual;
-        }
-
-        return $opciones;
-    }
-
     public function obtener(int $id): ?UnidadMedida
     {
         return UnidadMedida::findOne($id);
@@ -107,19 +83,18 @@ class UnidadMedidaService
      * Devuelve null si se elimino, o el motivo por el que no se puede.
      *
      * REGLA DE NEGOCIO: una unidad en uso no se elimina, se desactiva. La FK
-     * del subcatalogo ya lo impediria, pero las listas, presupuestos y
-     * computos guardan la abreviatura como texto (sin FK), asi que se
-     * revisan aqui tambien.
+     * del subcatalogo ya lo impediria, pero las listas y los presupuestos
+     * guardan la abreviatura como texto (sin FK), asi que se revisan aqui
+     * tambien.
      */
     public function eliminar(UnidadMedida $unidad): ?string
     {
         $enUso = SubcatalogoItem::find()->andWhere(['idUnidadMedida' => $unidad->id])->exists()
             || ProyectoItem::find()->andWhere(['unidadMedida' => $unidad->abreviatura])->exists()
-            || PresupuestoDetalle::find()->andWhere(['unidadMedida' => $unidad->abreviatura])->exists()
-            || ComputoMetrico::find()->andWhere(['unidad' => $unidad->abreviatura])->exists();
+            || PresupuestoDetalle::find()->andWhere(['unidadMedida' => $unidad->abreviatura])->exists();
 
         if ($enUso) {
-            return 'No se puede eliminar "' . $unidad->nombre . '" porque está en uso (subcatálogo, listas, presupuestos o cómputos). Desactívela con "Editar".';
+            return 'No se puede eliminar "' . $unidad->nombre . '" porque está en uso (subcatálogo, listas o presupuestos). Desactívela con "Editar".';
         }
 
         $unidad->delete();

@@ -102,6 +102,7 @@ class ListaItemsController extends Controller
 
         return $this->render('index', [
             'proyecto' => $proyecto,
+            'pasos' => (new ProyectoService())->pasos($proyecto),
             'grupos' => $grupos,
             // Formulario NET vigente y avisos de cada item con especificacion.
             'emisiones' => $emisiones->estadoPorItem($itemsDeLaLista),

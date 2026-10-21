@@ -23,6 +23,7 @@ use yii\widgets\ActiveForm;
  *
  * @var yii\web\View $this
  * @var backend\models\SolicitudCotizacion $solicitud
+ * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
  * @var backend\models\Cotizacion $cotizacion
  * @var backend\models\CotizacionDetalle[] $filas indexadas por idProyectoItem. Ver CotizacionService::filasDesdeSolicitud()
  * @var array<int, string> $referencias [idProyectoItem => marca y modelo de referencia pedidos en la solicitud]
@@ -55,6 +56,8 @@ $formato = Yii::$app->formatter;
             <?= Html::a('← Solicitudes', ['index', 'id' => $proyecto->id], ['class' => 'btn btn-outline']) ?>
         </div>
     </div>
+
+    <?= $this->render('/proyecto/_pasos', ['pasos' => $pasos, 'actual' => 'Cotización']) ?>
 
     <?php if (!$editable): ?>
         <div class="notice mb-3">Las cotizaciones de este proyecto ya no se modifican.</div>

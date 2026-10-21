@@ -69,6 +69,7 @@ class SolicitudCotizacionController extends Controller
 
         return $this->render('index', [
             'proyecto' => $proyecto,
+            'pasos' => (new ProyectoService())->pasos($proyecto),
             'solicitudes' => $this->service->listar($proyecto),
             'sinAsignar' => $this->service->sinAsignar($proyecto),
             'editable' => $this->service->puedeEditarse($proyecto),
@@ -246,6 +247,7 @@ class SolicitudCotizacionController extends Controller
 
         return $this->render('comparativo', [
             'solicitud' => $solicitud,
+            'pasos' => (new ProyectoService())->pasos($solicitud->proyecto),
             'comparativo' => $this->cotizaciones->comparativo($solicitud),
         ]);
     }
@@ -371,6 +373,7 @@ class SolicitudCotizacionController extends Controller
 
         return $this->render('cotizar', [
             'solicitud' => $solicitud,
+            'pasos' => (new ProyectoService())->pasos($solicitud->proyecto),
             'cotizacion' => $cotizacion,
             'filas' => $filas,
             // Marca y modelo pedidos en la solicitud, para comparar con lo ofertado.

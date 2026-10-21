@@ -14,6 +14,7 @@ use yii\widgets\ActiveForm;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
+ * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
  * @var backend\models\Presupuesto $presupuesto
  * @var backend\models\CartaPresupuesto $carta guardada, o nueva ya llena sin guardar
  * @var string[] $falta lo que falta para imprimir (vacio = se puede)
@@ -48,6 +49,8 @@ $marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los
             <?= Html::a('Configuración de la carta', ['configuracion', 'proyecto' => $proyecto->id], ['class' => 'btn btn-outline']) ?>
         </div>
     </div>
+
+    <?= $this->render('/proyecto/_pasos', ['pasos' => $pasos, 'actual' => 'Presupuesto']) ?>
 
     <?php if ($falta !== []): ?>
         <div class="alert alert-info">

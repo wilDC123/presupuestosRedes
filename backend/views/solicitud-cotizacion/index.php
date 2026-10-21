@@ -18,6 +18,7 @@ use yii\web\JqueryAsset;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
+ * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
  * Cada solicitud muestra las cotizaciones que respondieron los proveedores
  * ("+ Registrar cotización recibida") y el enlace a su comparativo. Una
  * solicitud con cotizaciones ya no se elimina ni cambia sus items.
@@ -71,6 +72,8 @@ $destinos['nueva'] = '+ Nueva solicitud...';
             <?php endif; ?>
         </div>
     </div>
+
+    <?= $this->render('/proyecto/_pasos', ['pasos' => $pasos, 'actual' => 'Cotización']) ?>
 
     <p class="rd-nota">
         No todos los proveedores venden lo mismo. Reparta los ítems de la lista en solicitudes, una por rubro

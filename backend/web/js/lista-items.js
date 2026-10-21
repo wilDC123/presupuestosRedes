@@ -182,4 +182,11 @@ $(function () {
             evento.preventDefault();
         }
     });
+
+    // Ir a otro paso del proyecto (barra de pasos) descarta lo no guardado.
+    $('.rd-pasos a').on('click', function (evento) {
+        if (hayCambios && !window.confirm('Hay cambios sin guardar en la lista y se perderán. ¿Ir a otro paso de todos modos?')) {
+            evento.preventDefault();
+        }
+    });
 });
