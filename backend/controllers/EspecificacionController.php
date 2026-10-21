@@ -291,7 +291,8 @@ class EspecificacionController extends Controller
             'errores' => $errores,
             'garantiaPorDefecto' => $configuracion->garantiaPorDefecto,
             'categorias' => (new CategoriaService())->opciones(),
-            'items' => (new SubcatalogoItemService())->opciones(),
+            // Solo items activos, mas el que la ficha ya tenia guardado.
+            'items' => (new SubcatalogoItemService())->opciones([$model->getOldAttribute('idSubcatalogo')]),
         ]);
     }
 }

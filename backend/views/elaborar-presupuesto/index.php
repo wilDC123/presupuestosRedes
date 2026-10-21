@@ -66,6 +66,7 @@ $columnas = 5 + count($proveedores);
                 ]) ?>
             <?php endif; ?>
             <?= Html::a('Relación SIGMA (PDF)', ['/presupuesto/pdf-sigma', 'id' => $presupuesto->id], ['class' => 'btn btn-outline', 'target' => '_blank', 'title' => 'Cada ítem presupuestado con su ítem del catálogo SIGMA']) ?>
+            <?= Html::a('Carta de entrega', ['/carta/index', 'idProyecto' => $proyecto->id], ['class' => 'btn btn-outline', 'title' => 'Escribir e imprimir la carta que acompaña al presupuesto']) ?>
             <?= Html::a('Configuración del PDF', ['/presupuesto/configuracion', 'proyecto' => $proyecto->id], ['class' => 'btn btn-outline']) ?>
         </div>
     </div>
@@ -152,7 +153,13 @@ $columnas = 5 + count($proveedores);
                                     <div class="rd-celda-sub"><?= Html::encode($item->observacion) ?></div>
                                 <?php endif; ?>
                                 <?php if ($item->especificacion !== null): ?>
-                                    <div class="rd-celda-sub">Especificación técnica: <?= Html::encode($item->referenciaEspecificacion()) ?></div>
+                                    <?php $modelo = $item->modeloSugerido(); ?>
+                                    <div class="rd-celda-sub">
+                                        Especificación técnica: <?= Html::encode($item->referenciaEspecificacion()) ?>
+                                        <?php if ($modelo !== null): ?>
+                                            · Modelo sugerido: <?= Html::encode($modelo) ?>
+                                        <?php endif; ?>
+                                    </div>
                                 <?php endif; ?>
                                 <?php
                                 // Visible cuando el precio guardado no es el menor (en

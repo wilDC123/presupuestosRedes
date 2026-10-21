@@ -6,6 +6,7 @@ namespace backend\controllers;
 
 use backend\models\ConfiguracionPresupuesto;
 use backend\models\Presupuesto;
+use backend\services\CartaService;
 use backend\services\PresupuestoService;
 use Yii;
 use yii\filters\VerbFilter;
@@ -126,6 +127,8 @@ class PresupuestoController extends Controller
             'grupos' => $grupos,
             'totalGeneral' => $this->service->totalGeneral($grupos),
             'configuracion' => ConfiguracionPresupuesto::obtener(),
+            // "DTIC Of. Nº 598/2026", con el mismo formato que la carta de entrega.
+            'oficio' => (new CartaService())->formatearOficio((string) $presupuesto->oficioDtic, (string) $presupuesto->fecha),
         ]);
 
         $pdf = $this->service->generarPdf($presupuesto, $html);

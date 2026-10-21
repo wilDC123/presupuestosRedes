@@ -68,7 +68,13 @@ $botones = [
                         </div>
                         <div class="col-md-4">
                             <?= Html::activeLabel($presupuesto, 'areaIntervencion', ['class' => 'form-label']) ?>
-                            <?= Html::activeTextInput($presupuesto, 'areaIntervencion', ['class' => 'form-control', 'maxlength' => 300, 'required' => true]) ?>
+                            <?php // Si aun no se escribio, se sugiere la facultad del proyecto (se puede cambiar). ?>
+                            <?= Html::activeTextInput($presupuesto, 'areaIntervencion', [
+                                'class' => 'form-control',
+                                'value' => $presupuesto->areaIntervencion ?: (string) $proyecto->facultad,
+                                'maxlength' => 300,
+                                'required' => true,
+                            ]) ?>
                         </div>
                         <div class="col-md-2">
                             <?= Html::activeLabel($presupuesto, 'fecha', ['class' => 'form-label']) ?>

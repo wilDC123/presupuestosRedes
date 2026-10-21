@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace backend\components;
 
 use backend\models\Presupuesto;
+use Mpdf\Config\ConfigVariables;
+use Mpdf\Config\FontVariables;
 use Mpdf\Mpdf;
 use Mpdf\Output\Destination;
 use Yii;
@@ -31,14 +33,21 @@ class PresupuestoPdfGenerator
     public const MARCA_AL_PIE = '<!-- al-pie-de-pagina -->';
 
     /**
+     * Hoja oficio (8,5 x 13 pulgadas = 216 x 330 mm), la que usa la DTIC para
+     * imprimir todo. En mPDF se llama "Folio"; "-L" = horizontal.
+     */
+    public const HOJA_OFICIO = 'Folio';
+    public const HOJA_OFICIO_HORIZONTAL = 'Folio-L';
+
+    /**
      * $marcaDeAgua: texto en diagonal, muy claro, detras de cada pagina (ej.
      * "BORRADOR"), para que un presupuesto sin aprobar no se confunda con el
      * definitivo. null = sin marca.
      *
-     * $formato: tamaño de hoja de mPDF; 'A4-L' = A4 horizontal (para tablas
-     * con muchas columnas, como la relacion con el catalogo SIGMA).
+     * $formato: tamaño de hoja de mPDF; HOJA_OFICIO_HORIZONTAL para tablas
+     * con muchas columnas, como la relacion con el catalogo SIGMA.
      */
-    public function generarDesdeHtml(string $html, ?string $marcaDeAgua = null, string $formato = 'A4'): string
+    public function generarDesdeHtml(string $html, ?string $marcaDeAgua = null, string $formato = self::HOJA_OFICIO): string
     {
         return $this->generarVarios([['html' => $html, 'marcaDeAgua' => $marcaDeAgua]], $formato);
     }
@@ -51,7 +60,7 @@ class PresupuestoPdfGenerator
      *
      * @param array<int, array{html: string, marcaDeAgua: ?string}> $documentos
      */
-    public function generarVarios(array $documentos, string $formato = 'A4'): string
+    public function generarVarios(array $documentos, string $formato = self::HOJA_OFICIO): string
     {
         // mPDF escribe archivos temporales. Por defecto lo hace dentro de
         // vendor/, que en el servidor no deberia ser escribible: se usa la
@@ -59,8 +68,23 @@ class PresupuestoPdfGenerator
         $carpetaTemporal = Yii::getAlias('@runtime/mpdf');
         FileHelper::createDirectory($carpetaTemporal);
 
+        // Las fuentes que trae mPDF, mas "pagelladtic" (la de la carta de
+        // entrega, en backend/fonts: ver su MANIFEST). mPDF solo carga una
+        // fuente si un documento la usa.
+        $variables = (new ConfigVariables())->getDefaults();
+        $fuentes = (new FontVariables())->getDefaults();
+
         $configuracion = [
             'tempDir' => $carpetaTemporal,
+            'fontDir' => array_merge($variables['fontDir'], [Yii::getAlias('@backend/fonts/pagella-dtic')]),
+            'fontdata' => $fuentes['fontdata'] + [
+                'pagelladtic' => [
+                    'R' => 'PagellaDTIC-Regular.ttf',
+                    'B' => 'PagellaDTIC-Bold.ttf',
+                    'I' => 'PagellaDTIC-Italic.ttf',
+                    'BI' => 'PagellaDTIC-BoldItalic.ttf',
+                ],
+            ],
             'mode' => 'utf-8',
             'format' => $formato,
             'margin_top' => 20,
@@ -78,8 +102,22 @@ class PresupuestoPdfGenerator
         foreach (array_values($documentos) as $i => $documento) {
             // Primero se cierra la hoja anterior (con la marca de agua del
             // documento anterior) y recien despues se cambia la marca.
+            // La hoja nueva vuelve a lo de por defecto: sin la cabecera ni el
+            // margen superior que dejo la regla @page del documento anterior
+            // (ej. la solicitud de cotizacion seguida de los formularios NET),
+            // y con la numeracion reiniciada, para que el "pág. X de Y" de
+            // esa cabecera cuente solo las paginas de su documento. Mientras
+            // page_box['using'] esta encendido, mPDF vuelve a aplicar esa
+            // regla @page en cada hoja nueva e ignora lo que se le pasa aqui;
+            // por eso se apaga primero.
             if ($i > 0) {
-                $mpdf->AddPage();
+                $mpdf->page_box['using'] = false;
+                $mpdf->AddPageByArray([
+                    'ohvalue' => -1,
+                    'ehvalue' => -1,
+                    'mgt' => $configuracion['margin_top'],
+                    'resetpagenum' => 1,
+                ]);
             }
 
             $mpdf->showWatermarkText = $documento['marcaDeAgua'] !== null;

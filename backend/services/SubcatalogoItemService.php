@@ -114,15 +114,27 @@ class SubcatalogoItemService
     }
 
     /**
-     * Todos los items como [id => nombre DTIC], por nombre, para los
+     * Los items ACTIVOS como [id => nombre DTIC], por nombre, para los
      * desplegables (especificacion, lineas de cotizacion). Las vistas la
      * reciben del controlador: asi ninguna vista consulta la base de datos.
      *
+     * $conservar: items que el registro ya tiene guardados; se agregan
+     * aunque se hayan desactivado, para que el desplegable no los pierda
+     * al editar (igual que TipoProyectoService::opciones()).
+     *
+     * @param array<int|string|null> $conservar
      * @return array<int, string>
      */
-    public function opciones(): array
+    public function opciones(array $conservar = []): array
     {
-        return SubcatalogoItem::find()
+        $conservar = array_values(array_filter($conservar, static fn ($id) => $id !== null && $id !== ''));
+        $query = SubcatalogoItem::find()->andWhere(['activo' => true]);
+
+        if ($conservar !== []) {
+            $query->orWhere(['id' => $conservar]);
+        }
+
+        return $query
             ->select(['descripcion', 'id'])
             ->orderBy(['descripcion' => SORT_ASC])
             ->indexBy('id')

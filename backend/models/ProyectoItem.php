@@ -111,6 +111,24 @@ class ProyectoItem extends ActiveRecord
     }
 
     /**
+     * Modelo sugerido de la especificacion del item, para mostrarlo junto a
+     * su NET. Sale de la version EMITIDA (la que recibio el proveedor); si
+     * todavia no se emitio, de la version actual de la ficha. null si el item
+     * no tiene especificacion o la version no sugiere modelo.
+     */
+    public function modeloSugerido(): ?string
+    {
+        if ($this->especificacion === null) {
+            return null;
+        }
+
+        $version = $this->emisionVigente?->version ?? $this->especificacion->versionActual;
+        $modelo = trim((string) ($version?->modeloSugerido ?? ''));
+
+        return $modelo !== '' ? $modelo : null;
+    }
+
+    /**
      * Linea del presupuesto que nacio de este item (null si aun no se presupuesto).
      */
     public function getPresupuestoDetalle(): ActiveQuery

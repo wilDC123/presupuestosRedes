@@ -32,6 +32,8 @@ use yii\helpers\Html;
  * @var array $grupos Ver PresupuestoService::agruparPorCategoria()
  * @var float $totalGeneral
  * @var backend\models\ConfiguracionPresupuesto $configuracion nota, firmas y banda de pie (editables)
+ * @var string $oficio "DTIC Of. Nº 598/2026" (formato de la configuracion de la carta,
+ *             CartaService::formatearOficio()); vacio si el presupuesto aun no tiene oficio
  */
 
 $proyecto = $presupuesto->proyecto;
@@ -205,7 +207,7 @@ if ($presupuesto->manoDeObra !== null) {
 <table class="datos-generales">
     <tr>
         <td><strong>Código de proyecto:</strong> <?= Html::encode($proyecto->codigo ?: '—') ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
-        <td><strong>Oficio DTIC:</strong> <?= Html::encode($presupuesto->oficioDtic ?? '—') ?></td>
+        <td><strong><?= Html::encode($oficio !== '' ? $oficio : 'Oficio DTIC: —') ?></strong></td>
     </tr>
     <tr>
         <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre ?? '—') ?></td>
@@ -243,10 +245,16 @@ if ($presupuesto->manoDeObra !== null) {
                         <td class="numero" width="5%"><?= ++$numero ?></td>
                         <td width="45%">
                             <?= Html::encode($linea->subcatalogoItem->descripcion ?? '') ?>
-                            <?php // Solo el NET de la emision VIGENTE; sin emision (o anulada) no sale nada. ?>
-                            <?php $codigoNet = $linea->proyectoItem?->emisionVigente?->codigoNet(); ?>
-                            <?php if ($codigoNet !== null): ?>
-                                (<?= Html::encode($codigoNet) ?>)
+                            <?php
+                            // Entre parentesis, en la misma linea: el NET de la emision
+                            // VIGENTE (sin emision, o anulada, no sale) y el modelo sugerido.
+                            $referencia = array_filter([
+                                $linea->proyectoItem?->emisionVigente?->codigoNet(),
+                                $linea->proyectoItem?->modeloSugerido(),
+                            ]);
+                            ?>
+                            <?php if ($referencia !== []): ?>
+                                (<?= Html::encode(implode(' – ', $referencia)) ?>)
                             <?php endif; ?>
                             <?php if (!empty($linea->observacion)): ?>
                                 <br><span class="observacion"><?= Html::encode($linea->observacion) ?></span>

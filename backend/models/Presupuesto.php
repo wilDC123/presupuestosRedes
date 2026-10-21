@@ -27,6 +27,7 @@ use yii\db\ActiveRecord;
  *
  * @property-read Proyecto $proyecto
  * @property-read PresupuestoDetalle[] $presupuestoDetalles
+ * @property-read CartaPresupuesto|null $carta
  */
 class Presupuesto extends ActiveRecord
 {
@@ -159,6 +160,14 @@ class Presupuesto extends ActiveRecord
     }
 
     /**
+     * Carta de entrega (null si aun no se escribio). Como maximo una.
+     */
+    public function getCarta(): ActiveQuery
+    {
+        return $this->hasOne(CartaPresupuesto::class, ['idPresupuesto' => 'id']);
+    }
+
+    /**
      * fecha permite NULL, pero el input tipo "date" envia '' cuando se deja
      * en blanco. SQL Server no puede convertir '' a date, asi que hay que
      * normalizar a null antes de guardar (mismo riesgo que idSigma en
@@ -200,8 +209,9 @@ class Presupuesto extends ActiveRecord
      * Convierte "dd/mm/aaaa" (o "d/m/aaaa") a "aaaa-mm-dd". Si el valor no
      * coincide con ese patron (ya viene en aaaa-mm-dd, esta vacio, o es
      * invalido) se devuelve sin cambios para que el validador 'date' decida.
+     * Publica: la usa tambien la carta de entrega (CartaPresupuesto).
      */
-    private static function convertirFechaFormularioABd(?string $valor): ?string
+    public static function convertirFechaFormularioABd(?string $valor): ?string
     {
         if ($valor === null) {
             return null;

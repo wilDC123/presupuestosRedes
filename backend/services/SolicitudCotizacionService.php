@@ -7,6 +7,7 @@ namespace backend\services;
 use backend\components\PresupuestoPdfGenerator;
 use backend\models\ConfiguracionSolicitudCotizacion;
 use backend\models\Cotizacion;
+use backend\models\EspecificacionEmision;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SolicitudCotizacion;
@@ -361,17 +362,46 @@ class SolicitudCotizacionService
     }
 
     /**
-     * Convierte el HTML de la vista "pdf" (la arma el controlador) en el
-     * documento de la solicitud.
+     * Formularios NET VIGENTES de los items de la solicitud, en el orden en
+     * que salen en el documento. Van al final del PDF para que el proveedor
+     * sepa que se le pide. Un item sin especificacion (o con su emision
+     * anulada) no aporta ninguno: la especificacion es opcional.
      *
+     * @return EspecificacionEmision[]
+     */
+    public function emisionesVigentes(SolicitudCotizacion $solicitud): array
+    {
+        $emisiones = [];
+
+        foreach ($solicitud->items as $fila) {
+            $emision = $fila->proyectoItem?->emisionVigente;
+            if ($emision !== null) {
+                $emisiones[] = $emision;
+            }
+        }
+
+        return $emisiones;
+    }
+
+    /**
+     * Convierte el HTML de la vista "pdf" (la arma el controlador) en el
+     * documento de la solicitud, seguido de los formularios NET de sus items,
+     * cada uno desde una hoja nueva y con su marca de agua.
+     *
+     * @param array<int, array{emision: EspecificacionEmision, html: string}> $formularios
+     *        Ver emisionesVigentes(); el HTML de cada uno lo arma el controlador
      * @return array{contenido: string, nombreArchivo: string}
      */
-    public function generarPdf(SolicitudCotizacion $solicitud, string $html): array
+    public function generarPdf(SolicitudCotizacion $solicitud, string $html, array $formularios = []): array
     {
         $referencia = ($solicitud->proyecto->codigo ?: (string) $solicitud->idProyecto) . '_' . $solicitud->codigoCorto();
+        $documentos = array_merge(
+            [['html' => $html, 'marcaDeAgua' => null]],
+            (new EspecificacionEmisionService())->documentosPdf($formularios)
+        );
 
         return [
-            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html),
+            'contenido' => (new PresupuestoPdfGenerator())->generarVarios($documentos),
             'nombreArchivo' => 'solicitud_cotizacion_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf',
         ];
     }

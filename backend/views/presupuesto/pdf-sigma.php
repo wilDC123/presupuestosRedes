@@ -10,7 +10,7 @@ use yii\helpers\Html;
  * línea del presupuesto junto al ítem de dbo.CatalogoSigma al que apunta su
  * ítem del subcatálogo, para saber qué ítem del catálogo es cada uno. Se
  * renderiza con renderPartial() desde PresupuestoController::actionPdfSigma()
- * y sale en A4 horizontal.
+ * y sale en oficio horizontal.
  *
  * Compara lo guardado en la línea (partida y precio, CONGELADOS al crearla)
  * con lo que dice HOY el catálogo (IdGasto y PrecioReferencial): una partida

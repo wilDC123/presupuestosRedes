@@ -117,7 +117,7 @@ class ElaborarPresupuestoService
     public function tabla(Presupuesto $presupuesto): array
     {
         $listaItems = new ListaItemsService();
-        $items = $presupuesto->proyecto->getItems()->with(['subcatalogoItem.catalogoSigma', 'categoria', 'especificacion', 'emisionVigente'])->all();
+        $items = $presupuesto->proyecto->getItems()->with(['subcatalogoItem.catalogoSigma', 'categoria', 'especificacion.versionActual', 'emisionVigente.version'])->all();
         $opciones = $this->opcionesPorItem($items);
         $lineas = $presupuesto->getPresupuestoDetalles()
             ->andWhere(['not', ['idProyectoItem' => null]])

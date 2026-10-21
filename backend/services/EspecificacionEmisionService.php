@@ -519,15 +519,26 @@ class EspecificacionEmisionService
      */
     public function generarPdfDelProyecto(Proyecto $proyecto, array $formularios): array
     {
-        $documentos = array_map(fn (array $f) => [
+        return [
+            'contenido' => (new PresupuestoPdfGenerator())->generarVarios($this->documentosPdf($formularios)),
+            'nombreArchivo' => 'especificaciones_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $proyecto->codigo ?: (string) $proyecto->id) . '.pdf',
+        ];
+    }
+
+    /**
+     * Los formularios como documentos de PresupuestoPdfGenerator::generarVarios(),
+     * cada uno con su marca de agua. Lo usan el PDF de todos los formularios
+     * del proyecto y el de la solicitud de cotizacion (que los lleva al final).
+     *
+     * @param array<int, array{emision: EspecificacionEmision, html: string}> $formularios
+     * @return array<int, array{html: string, marcaDeAgua: ?string}>
+     */
+    public function documentosPdf(array $formularios): array
+    {
+        return array_map(fn (array $f) => [
             'html' => $f['html'],
             'marcaDeAgua' => $this->marcaDeAgua($f['emision']),
         ], $formularios);
-
-        return [
-            'contenido' => (new PresupuestoPdfGenerator())->generarVarios($documentos),
-            'nombreArchivo' => 'especificaciones_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $proyecto->codigo ?: (string) $proyecto->id) . '.pdf',
-        ];
     }
 
     /**

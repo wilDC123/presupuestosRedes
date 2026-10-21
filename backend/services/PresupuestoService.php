@@ -339,7 +339,7 @@ class PresupuestoService
 
     /**
      * Reporte de apoyo "Relacion con el catalogo SIGMA": cada linea del
-     * presupuesto junto al item SIGMA al que apunta. En A4 horizontal (tiene
+     * presupuesto junto al item SIGMA al que apunta. En oficio horizontal (tiene
      * muchas columnas) y con la misma marca de agua que el presupuesto.
      *
      * @return array{contenido: string, nombreArchivo: string}
@@ -349,7 +349,7 @@ class PresupuestoService
         $generador = new PresupuestoPdfGenerator();
 
         return [
-            'contenido' => $generador->generarDesdeHtml($html, $this->marcaDeAgua($presupuesto), 'A4-L'),
+            'contenido' => $generador->generarDesdeHtml($html, $this->marcaDeAgua($presupuesto), PresupuestoPdfGenerator::HOJA_OFICIO_HORIZONTAL),
             'nombreArchivo' => $generador->nombreArchivo($presupuesto, 'relacion_sigma_'),
         ];
     }

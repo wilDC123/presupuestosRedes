@@ -35,7 +35,11 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 ### SÍ incluye:
 - Gestión de proyectos (`redes.Proyecto`)
 - Subcatálogo curado de ítems de redes, con referencia lógica a `dbo.CatalogoSigma.IdSigma`
-  (NUNCA duplicar el catálogo completo; selección manual/bajo demanda, no clasificación automática)
+  (NUNCA duplicar el catálogo completo; selección manual/bajo demanda, no clasificación automática).
+  Un ítem INACTIVO no se elige (2026-10-21): `SubcatalogoItemService::opciones($conservar)` trae solo
+  activos más los que el registro ya tenía; la ficha de especificación lo valida (ítem de referencia)
+  y "Recordar como sugerida" lo ignora. Las líneas de cotización solo filtran el desplegable, sin
+  validar: una solicitud puede traer un ítem de la lista que se desactivó después
 - Nombre DTIC vs. nombre SIGMA: `SubcatalogoItem.descripcion` es el nombre DTIC (corto y
   genérico, el que sale en listados, solicitud de cotización y pantallas), guardado SIEMPRE en
   MAYÚSCULAS (2026-10-20: regla "filter" del modelo + migración `m261020_063033_nombre_dtic_en_mayusculas`
@@ -133,9 +137,14 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   no bloquean: cantidad distinta de la emitida, emisión vencida, versión nueva de la ficha. La
   especificación es OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud,
   cotización, presupuesto ni PDF. Los impresos citan el NET de la emisión vigente
-  (`ProyectoItem::referenciaEspecificacion()`), salvo el PDF de la solicitud de cotización, que
-  desde el 2026-10-20 no lo cita (tampoco rubro, nombre del proyecto, edificio ni bloques: solo
-  "Unidad" = facultad). Solo se enlazan fichas activas; una en uso o
+  (`ProyectoItem::referenciaEspecificacion()`). El PDF de la solicitud de cotización no lleva
+  rubro, nombre del proyecto, edificio ni bloques (solo "Unidad" = facultad), pero desde el
+  2026-10-21 SÍ cita el NET vigente junto al nombre del ítem y lleva AL FINAL del mismo PDF el
+  formulario NET de cada ítem, cada uno en hoja nueva y con su marca de agua
+  (`SolicitudCotizacionService::emisionesVigentes()` y `generarPdf()`; el 2026-10-20 se había
+  quitado; se volvió a pedir para que el proveedor reciba todo junto). En `generarVarios()` cada documento
+  después del primero empieza sin la cabecera `@page` del anterior y con la numeración reiniciada.
+  Solo se enlazan fichas activas; una en uso o
   emitida no se elimina, se desactiva
 - Formulario NET en PDF (`especificacion/formulario`) con el formato institucional (tabla
   Especificación | Propuesta | Cumple | No cumple, secciones I, II y III); marca de agua
@@ -164,6 +173,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   aprobado, cancelado
 - Precio unitario "congelado" en el detalle del presupuesto al momento de crearlo
   (nunca se recalcula retroactivamente si cambia el precio de una cotización nueva)
+- Tamaño de hoja de TODOS los impresos: OFICIO, 8,5 x 13 pulgadas = 216 x 330 mm (2026-10-21; antes
+  A4), la que usa la DTIC. En mPDF se llama "Folio": `PresupuestoPdfGenerator::HOJA_OFICIO` (por
+  defecto) y `HOJA_OFICIO_HORIZONTAL` (reporte de relación con SIGMA)
 - Cabecera de página de los impresos (2026-10-21, `backend/views/pdf/_cabecera.php`, etiqueta
   `<htmlpageheader>` de mPDF): recuadro con escudo USFX | títulos + fila N.° / facultad / fecha /
   "pág. X de Y" | logo DTIC (`backend/web/img/logo-usfx.png`, `logo-dtic.png`, reducidos), repetida
@@ -174,7 +186,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   usan los mismos anchos, 2026-10-21) y "TOTAL GENERAL Bs." al final; N.° corrido
   entre categorías y en cada línea el nombre DTIC con su observación (columnas como la solicitud
   de cotización, más Partida). Desde el 2026-10-21 el nombre DTIC lleva al lado, entre paréntesis, el código NET de la emisión
-  VIGENTE del ítem (solo el código; sin emisión vigente no sale nada). Desde el 2026-10-20 NO lleva nombre SIGMA,
+  VIGENTE del ítem (sin emisión vigente no sale), y en el mismo paréntesis el modelo sugerido:
+  "(NET:897/26 – Dahua DH-PFS3110-8P-96)" (`ProyectoItem::modeloSugerido()`: de la versión EMITIDA, o de la actual de la ficha si
+  aún no se emitió; también en el paso Presupuesto, junto a "Especificación técnica: NET…"). Desde el 2026-10-20 NO lleva nombre SIGMA,
   proveedor por línea, resumen por partida, anexo (cuadro comparativo y justificaciones), área
   de intervención ni estado
 - Reporte de apoyo "Relación con el catálogo SIGMA" (`presupuesto/pdf-sigma`, 2026-10-20; vista
@@ -201,6 +215,27 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   tabla propia al final si el presupuesto no tiene esa categoría): "MANO DE OBRA", unidad
   "Servicio", cantidad 1, precios 0.00. La mano de obra CONTRATADA
   a una empresa sí es un ítem normal (categoría "Mano de obra", con partida y cotización)
+- Carta de entrega del presupuesto (2026-10-21, `CartaController`, `CartaService`; botón "Carta de
+  entrega" en el paso Presupuesto): la nota con membrete que acompaña al presupuesto. UNA por
+  presupuesto (`redes.CartaPresupuesto`, índice único, FK CASCADE). Se escribe y guarda en CUALQUIER
+  estado; para imprimir solo se exige la carta guardada y que el presupuesto tenga `oficioDtic` y
+  `numeroPresupuesto` (NO que esté aprobado). Sin marca de agua. GUARDA su texto (copiado de
+  `redes.ConfiguracionCarta` al crearla: textos por defecto y 3 firmas propias, la 3.ª el V°B° del
+  jefe, editables en "Configuración de la carta"); cambiar la configuración no altera las ya
+  escritas, salvo ciudad y formato del oficio. Marcadores: {proyecto} y {facultad} se reemplazan al
+  crear la carta; {oficio}, {numeroPresupuesto} y {especificaciones} quedan en el texto y se
+  reemplazan AL IMPRIMIR ({especificaciones} = solo el NÚMERO de los NET vigentes del proyecto, sin
+  "NET:" ni año, de menor a mayor, separados por comas: "896, 897, 900", `CartaService::codigosNet()`;
+  sin ninguno, el marcador desaparece). El
+  adjunto por defecto es "…Nro: {numeroPresupuesto}, especificaciones técnicas {especificaciones} y
+  cotización.".
+  Cargo sugerido "DECANO/DECANA DE LA <FACULTAD>" según el tratamiento (`web/js/carta.js`). PDF
+  oficio con el membrete `backend/web/img/fondo-carta.png` de fondo (@page background) y márgenes
+  4,75 / 4,5 / 3 / 3 cm. El PDF del presupuesto muestra el oficio con el MISMO formato que la carta
+  ("DTIC Of. Nº 602/2026", año de la fecha del presupuesto; `CartaService::formatearOficio()`),
+  o "Oficio DTIC: —" si aún no tiene. Fuente "pagelladtic" (TeX Gyre Pagella convertida a TTF, en
+  `backend/fonts/pagella-dtic`, ver su MANIFEST) en vez de Book Antiqua/Andalus, que son de Windows
+  y no se pueden llevar al servidor
 - Cómputos métricos: el sistema SOLO los almacena (con referencia de origen: plano,
   relevamiento), NUNCA los calcula
 
@@ -233,7 +268,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261020_085843_crear_configuracion_presupuesto`), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261021_203749_crear_carta_presupuesto`, aplicada el 2026-10-21), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -302,6 +337,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - PENDIENTE (tutor): agregar `ConfiguracionSolicitudCotizacion` (2026-10-19) al diagrama de clases
 - PENDIENTE (tutor): agregar `ConfiguracionPresupuesto` y el atributo `Presupuesto.manoDeObra`
   (2026-10-20) al diagrama de clases
+- PENDIENTE (tutor): agregar `CartaPresupuesto` (0..1 por Presupuesto, composición) y
+  `ConfiguracionCarta` (2026-10-21) al diagrama de clases, y el caso de uso "Elaborar carta de
+  entrega" (extiende Elaborar presupuesto)
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a
   Proyecto y a Plantilla (0..1 tipo por proyecto/plantilla)
 - PENDIENTE (Ing. de DTIC): confirmar los tipos de proyecto reales; los 4 cargados

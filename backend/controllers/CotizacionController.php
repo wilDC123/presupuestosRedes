@@ -103,9 +103,9 @@ class CotizacionController extends Controller
             'proveedores' => $this->proveedores($model),
             'modelsDetalle' => $modelsDetalle,
             // Opciones de los desplegables de cada linea: las vistas no
-            // consultan la base. Se incluyen las especificaciones que ya
-            // tienen las lineas aunque esten desactivadas.
-            'items' => (new SubcatalogoItemService())->opciones(),
+            // consultan la base. Se incluyen los items y las especificaciones
+            // que ya tienen las lineas aunque esten desactivados.
+            'items' => (new SubcatalogoItemService())->opciones(ArrayHelper::getColumn($modelsDetalle, 'idSubcatalogo')),
             'especificaciones' => (new EspecificacionService())->selector(ArrayHelper::getColumn($modelsDetalle, 'idEspecificacion')),
         ]);
     }

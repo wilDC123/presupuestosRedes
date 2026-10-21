@@ -62,7 +62,14 @@ class Especificacion extends ActiveRecord
             [['activo'], 'boolean'],
             [['titulo'], 'string', 'max' => 300],
             [['archivoEspecificacion'], 'file', 'extensions' => 'pdf, docx', 'maxSize' => 10 * 1024 * 1024],
-            [['idSubcatalogo'], 'exist', 'skipOnError' => true, 'targetClass' => SubcatalogoItem::class, 'targetAttribute' => ['idSubcatalogo' => 'id']],
+            // El item de referencia tiene que estar activo, salvo que la
+            // ficha ya lo tuviera guardado (se sigue editando aunque despues
+            // se haya desactivado). isAttributeChanged(..., false): el "3" del
+            // formulario es igual al 3 guardado.
+            [['idSubcatalogo'], 'exist', 'skipOnError' => true, 'targetClass' => SubcatalogoItem::class, 'targetAttribute' => ['idSubcatalogo' => 'id'],
+                'filter' => ['activo' => true],
+                'when' => static fn (self $model) => $model->isAttributeChanged('idSubcatalogo', false),
+                'message' => 'El ítem de referencia elegido no existe o está inactivo.'],
             [['idCategoria'], 'exist', 'skipOnError' => true, 'targetClass' => Categoria::class, 'targetAttribute' => ['idCategoria' => 'id']],
         ];
     }

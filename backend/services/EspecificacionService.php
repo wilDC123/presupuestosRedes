@@ -12,6 +12,7 @@ use backend\models\EspecificacionCaracteristica;
 use backend\models\EspecificacionEmision;
 use backend\models\EspecificacionVersion;
 use backend\models\ProyectoItem;
+use backend\models\SubcatalogoItem;
 use Throwable;
 use Yii;
 use yii\db\Expression;
@@ -365,11 +366,16 @@ class EspecificacionService
     /**
      * "Recordar como sugerida para este ítem" (ventana "Ver detalle" de la
      * lista): pone $idSubcatalogo como item de referencia de la ficha, SOLO
-     * si todavia no tiene uno (nunca pisa uno ya puesto). No crea version: el
-     * item de referencia es dato de la ficha, no del contenido tecnico.
+     * si todavia no tiene uno (nunca pisa uno ya puesto) y si el item esta
+     * ACTIVO (la misma regla que el formulario de la ficha). No crea version:
+     * el item de referencia es dato de la ficha, no del contenido tecnico.
      */
     public function recordarItemDeReferencia(int $idEspecificacion, int $idSubcatalogo): void
     {
+        if (!SubcatalogoItem::find()->andWhere(['id' => $idSubcatalogo, 'activo' => true])->exists()) {
+            return;
+        }
+
         Especificacion::updateAll(
             ['idSubcatalogo' => $idSubcatalogo],
             ['id' => $idEspecificacion, 'idSubcatalogo' => null]

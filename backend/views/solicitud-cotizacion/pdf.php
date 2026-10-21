@@ -12,9 +12,10 @@ use yii\helpers\Html;
  * Las columnas de precio van EN BLANCO: las llena el proveedor.
  *
  * Al proveedor solo le interesa la unidad que compra (la facultad): el
- * rubro, el nombre del proyecto, el edificio, los bloques y la referencia
- * a la especificacion tecnica (NET) son datos internos de la DTIC y no
- * salen en el documento.
+ * rubro, el nombre del proyecto, el edificio y los bloques son datos
+ * internos de la DTIC y no salen en el documento. La especificacion tecnica
+ * SI: cada item cita el codigo NET de su emision vigente, y los formularios
+ * van al final del mismo PDF (SolicitudCotizacionService::generarPdf()).
  *
  * CSS deliberadamente simple, igual que los otros PDF: mPDF interpreta un
  * subconjunto de CSS pensado para documentos.
@@ -149,6 +150,11 @@ $numero = 0;
                     <td class="numero"><?= ++$numero ?></td>
                     <td>
                         <?= Html::encode($item->subcatalogoItem->descripcion ?? '') ?>
+                        <?php // Solo el NET de la emision VIGENTE; sin emision (o anulada) no sale nada. ?>
+                        <?php $codigoNet = $item->emisionVigente?->codigoNet(); ?>
+                        <?php if ($codigoNet !== null): ?>
+                            (<?= Html::encode($codigoNet) ?>)
+                        <?php endif; ?>
                         <?php if (!empty($fila->marcaModeloReferencia)): ?>
                             (<?= Html::encode($fila->marcaModeloReferencia) ?>)
                         <?php endif; ?>
