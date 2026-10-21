@@ -106,6 +106,8 @@ class ListaItemsController extends Controller
             // Formulario NET vigente y avisos de cada item con especificacion.
             'emisiones' => $emisiones->estadoPorItem($itemsDeLaLista),
             'puedeReemitir' => $emisiones->puedeReemitir($proyecto),
+            // Para el boton "Imprimir especificaciones (N)".
+            'totalFormularios' => count($emisiones->vigentesDelProyecto($proyecto)),
             'configuracion' => ConfiguracionEspecificacion::obtener(),
             'errores' => $errores,
             'editable' => $editable,
@@ -131,6 +133,38 @@ class ListaItemsController extends Controller
         ]);
 
         $pdf = $this->service->generarPdf($proyecto, $html);
+
+        return Yii::$app->response->sendContentAsFile(
+            $pdf['contenido'],
+            $pdf['nombreArchivo'],
+            ['mimeType' => 'application/pdf', 'inline' => true]
+        );
+    }
+
+    /**
+     * Todos los formularios NET vigentes de la lista en UN PDF, cada uno desde
+     * una hoja nueva (en el orden de la lista). Es lo mismo que imprimirlos
+     * uno por uno desde especificacion/formulario, juntos.
+     */
+    public function actionImprimirEspecificaciones(int $id): Response
+    {
+        $proyecto = $this->findProyecto($id);
+        $emisiones = new EspecificacionEmisionService();
+        $vigentes = $emisiones->vigentesDelProyecto($proyecto);
+
+        if ($vigentes === []) {
+            Yii::$app->session->setFlash('error', 'La lista no tiene especificaciones técnicas emitidas (formularios NET vigentes).');
+
+            return $this->redirect(['index', 'id' => $proyecto->id]);
+        }
+
+        $logo = $emisiones->rutaLogo();
+        $formularios = array_map(fn ($emision) => [
+            'emision' => $emision,
+            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision, 'logo' => $logo]),
+        ], $vigentes);
+
+        $pdf = $emisiones->generarPdfDelProyecto($proyecto, $formularios);
 
         return Yii::$app->response->sendContentAsFile(
             $pdf['contenido'],

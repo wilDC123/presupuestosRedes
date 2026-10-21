@@ -176,8 +176,8 @@ $(function () {
         }
     });
 
-    // El PDF sale de la lista GUARDADA.
-    $('#lista-imprimir').on('click', function (evento) {
+    // Los PDF (lista y especificaciones) salen de la lista GUARDADA.
+    $('#lista-imprimir, #lista-imprimir-esp').on('click', function (evento) {
         if (hayCambios && !window.confirm('Hay cambios sin guardar: la impresión mostrará la lista guardada. ¿Imprimir de todos modos?')) {
             evento.preventDefault();
         }

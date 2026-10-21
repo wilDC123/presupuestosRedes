@@ -480,18 +480,68 @@ class EspecificacionEmisionService
      */
     public function generarPdf(EspecificacionEmision $emision, string $html): array
     {
-        $marca = match (true) {
+        return [
+            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $this->marcaDeAgua($emision)),
+            // "NET_880_26.pdf": el codigo es unico.
+            'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigoNet()) . '.pdf',
+        ];
+    }
+
+    /**
+     * Formularios NET VIGENTES de la lista del proyecto, en el orden de la
+     * lista (por clasificacion). Los anulados y reemplazados no entran: no se
+     * entregan. Un vigente ya vencido si entra, con su marca VENCIDO.
+     *
+     * @return EspecificacionEmision[]
+     */
+    public function vigentesDelProyecto(Proyecto $proyecto): array
+    {
+        $emisiones = [];
+
+        foreach ((new ListaItemsService())->agrupar($proyecto) as $grupo) {
+            foreach ($grupo['items'] as $item) {
+                if ($item->emisionVigente !== null) {
+                    $emisiones[] = $item->emisionVigente;
+                }
+            }
+        }
+
+        return $emisiones;
+    }
+
+    /**
+     * Todos los formularios del proyecto en UN PDF, cada uno desde una hoja
+     * nueva y con su marca de agua. $formularios: el HTML de cada emision (la
+     * vista especificacion/formulario-pdf la arma el controlador).
+     *
+     * @param array<int, array{emision: EspecificacionEmision, html: string}> $formularios
+     * @return array{contenido: string, nombreArchivo: string}
+     */
+    public function generarPdfDelProyecto(Proyecto $proyecto, array $formularios): array
+    {
+        $documentos = array_map(fn (array $f) => [
+            'html' => $f['html'],
+            'marcaDeAgua' => $this->marcaDeAgua($f['emision']),
+        ], $formularios);
+
+        return [
+            'contenido' => (new PresupuestoPdfGenerator())->generarVarios($documentos),
+            'nombreArchivo' => 'especificaciones_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $proyecto->codigo ?: (string) $proyecto->id) . '.pdf',
+        ];
+    }
+
+    /**
+     * Marca de agua de una emision que ya no sirve, para que una copia
+     * impresa no se confunda con la vigente. null = vigente.
+     */
+    private function marcaDeAgua(EspecificacionEmision $emision): ?string
+    {
+        return match (true) {
             $emision->estado === EspecificacionEmision::ESTADO_REEMPLAZADA => 'REEMPLAZADO',
             $emision->estado === EspecificacionEmision::ESTADO_ANULADA => 'ANULADO',
             $emision->estaVencida() => 'VENCIDO',
             default => null,
         };
-
-        return [
-            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $marca),
-            // "NET_880_26.pdf": el codigo es unico.
-            'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigoNet()) . '.pdf',
-        ];
     }
 
     public function ultimoNetEmitido(): ?int

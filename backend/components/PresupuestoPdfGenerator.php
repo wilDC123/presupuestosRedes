@@ -40,6 +40,19 @@ class PresupuestoPdfGenerator
      */
     public function generarDesdeHtml(string $html, ?string $marcaDeAgua = null, string $formato = 'A4'): string
     {
+        return $this->generarVarios([['html' => $html, 'marcaDeAgua' => $marcaDeAgua]], $formato);
+    }
+
+    /**
+     * Junta varios documentos en UN PDF, cada uno desde una hoja nueva y con
+     * su propia marca de agua (ej. todos los formularios NET de un proyecto).
+     * Cada HTML se escribe igual que en generarDesdeHtml(), con su
+     * MARCA_AL_PIE al fondo de su propia ultima pagina.
+     *
+     * @param array<int, array{html: string, marcaDeAgua: ?string}> $documentos
+     */
+    public function generarVarios(array $documentos, string $formato = 'A4'): string
+    {
         // mPDF escribe archivos temporales. Por defecto lo hace dentro de
         // vendor/, que en el servidor no deberia ser escribible: se usa la
         // carpeta runtime de la aplicacion (la misma de logs y cache).
@@ -62,15 +75,24 @@ class PresupuestoPdfGenerator
         // @page { header: html_cabecera } -- ver views/pdf/_cabecera.php;
         // su margen superior lo fija esa misma regla @page.
 
-        if ($marcaDeAgua !== null) {
-            $mpdf->SetWatermarkText($marcaDeAgua, 0.08);
-            $mpdf->showWatermarkText = true;
-        }
-        $partes = explode(self::MARCA_AL_PIE, $html, 2);
-        $mpdf->WriteHTML($partes[0]);
+        foreach (array_values($documentos) as $i => $documento) {
+            // Primero se cierra la hoja anterior (con la marca de agua del
+            // documento anterior) y recien despues se cambia la marca.
+            if ($i > 0) {
+                $mpdf->AddPage();
+            }
 
-        if (isset($partes[1])) {
-            $this->escribirAlFondo($mpdf, $partes[1], $this->estilos($html), $configuracion);
+            $mpdf->showWatermarkText = $documento['marcaDeAgua'] !== null;
+            if ($documento['marcaDeAgua'] !== null) {
+                $mpdf->SetWatermarkText($documento['marcaDeAgua'], 0.08);
+            }
+
+            $partes = explode(self::MARCA_AL_PIE, $documento['html'], 2);
+            $mpdf->WriteHTML($partes[0]);
+
+            if (isset($partes[1])) {
+                $this->escribirAlFondo($mpdf, $partes[1], $this->estilos($documento['html']), $configuracion);
+            }
         }
 
         return $mpdf->Output('', Destination::STRING_RETURN);

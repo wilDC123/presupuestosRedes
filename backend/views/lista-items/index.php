@@ -43,6 +43,7 @@ use yii\web\JqueryAsset;
  * @var backend\models\OrdenCambio[] $ordenes ordenes de cambio del proyecto
  * @var array<int, array{emision: ?backend\models\EspecificacionEmision, avisos: string[]}> $emisiones Ver EspecificacionEmisionService::estadoPorItem()
  * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
+ * @var int $totalFormularios formularios NET vigentes de la lista (boton "Imprimir especificaciones")
  * @var backend\models\ConfiguracionEspecificacion $configuracion
  */
 
@@ -206,6 +207,14 @@ $grupoCierra = static fn (int $cantidad): string =>
         </div>
         <div class="rd-acciones">
             <?= Html::a('Imprimir lista', ['imprimir', 'id' => $proyecto->id], ['class' => 'btn btn-outline', 'target' => '_blank', 'id' => 'lista-imprimir']) ?>
+            <?php if ($totalFormularios > 0): ?>
+                <?= Html::a('Imprimir especificaciones (' . $totalFormularios . ')', ['imprimir-especificaciones', 'id' => $proyecto->id], [
+                    'class' => 'btn btn-outline',
+                    'target' => '_blank',
+                    'id' => 'lista-imprimir-esp',
+                    'title' => 'Todos los formularios NET vigentes de la lista en un PDF, cada uno en una hoja nueva',
+                ]) ?>
+            <?php endif; ?>
             <?php if ($proyecto->estadoLista === Proyecto::LISTA_EN_COTIZACION): ?>
                 <?= Html::a('Solicitudes de cotización →', ['/solicitud-cotizacion/index', 'id' => $proyecto->id], ['class' => 'btn btn-primary']) ?>
             <?php endif; ?>

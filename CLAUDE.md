@@ -140,7 +140,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Formulario NET en PDF (`especificacion/formulario`) con el formato institucional (tabla
   Especificación | Propuesta | Cumple | No cumple, secciones I, II y III); marca de agua
   REEMPLAZADO / ANULADO / VENCIDO. "Formulario elaborado por" y "Firma" van en blanco (a mano) y al fondo
-  de la última página (2026-10-21; el usuario que emitió solo se ve en el registro). Registro de todas las emisiones en el menú "Formularios NET"
+  de la última página (2026-10-21; el usuario que emitió solo se ve en el registro). Todos los NET VIGENTES de la lista en un solo PDF, cada uno desde una hoja nueva y en el orden de la
+  lista, sin índice (2026-10-21; botón "Imprimir especificaciones (N)" en la lista y en el paso
+  Presupuesto, `lista-items/imprimir-especificaciones`, `PresupuestoPdfGenerator::generarVarios()`).
+  Registro de todas las emisiones en el menú "Formularios NET"
   (reemplaza el Excel "1000 Especificaciones"), con exportación a CSV
 - Carga inicial desde el banco de .docx de DTIC: `php yii especificacion/importar "<carpeta>"`
   (sin `--confirmar` solo escribe un CSV; `--desde=AAAA`). Agrupa por título + modelo sugerido y

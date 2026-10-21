@@ -7,6 +7,7 @@ namespace backend\controllers;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
 use backend\services\ElaborarPresupuestoService;
+use backend\services\EspecificacionEmisionService;
 use backend\services\PresupuestoService;
 use backend\services\ProyectoService;
 use Yii;
@@ -242,6 +243,8 @@ class ElaborarPresupuestoController extends Controller
             'control' => $this->service->control($presupuesto),
             'resumenPartidas' => (new PresupuestoService())->resumenPorPartida($presupuesto),
             'estadosConBoton' => (new PresupuestoService())->estadosConBoton($presupuesto),
+            // Para el boton "Especificaciones (N)" (PDF con todos los NET vigentes).
+            'totalFormularios' => count((new EspecificacionEmisionService())->vigentesDelProyecto($proyecto)),
         ];
     }
 
