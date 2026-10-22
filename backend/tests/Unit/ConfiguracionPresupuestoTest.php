@@ -14,7 +14,7 @@ use Codeception\Test\Unit;
  */
 class ConfiguracionPresupuestoTest extends Unit
 {
-    public function testSoloSalenLasFirmasYColumnasConDatos(): void
+    public function testUnaFirmaSinNombreQuedaEnBlancoYSoloSalenLasColumnasConDatos(): void
     {
         $configuracion = new ConfiguracionPresupuesto([
             'firma1Nombre' => null,
@@ -27,7 +27,8 @@ class ConfiguracionPresupuestoTest extends Unit
             'pieDerechaLineas' => "Interno: 5002\n\n  Correo: x@usfx.bo  ",
         ]);
 
-        $this->assertSame([['prefijo' => 'V°B°', 'nombre' => 'Ing. Prueba', 'cargo' => 'CARGO']], $configuracion->firmas());
+        $this->assertNull($configuracion->firma(1));
+        $this->assertSame(['prefijo' => 'V°B°', 'nombre' => 'Ing. Prueba', 'cargo' => 'CARGO'], $configuracion->firma(2));
         $this->assertSame([['titulo' => 'Redes', 'lineas' => ['Interno: 5002', 'Correo: x@usfx.bo']]], $configuracion->columnasPie());
     }
 

@@ -26,7 +26,7 @@ use yii\web\JqueryAsset;
  * @var array{sinPrecio: string[], vencidas: int} $control Ver ElaborarPresupuestoService::control()
  * @var array $resumenPartidas Ver PresupuestoService::resumenPorPartida()
  * @var string[] $estadosConBoton Ver PresupuestoService::estadosConBoton()
- * @var int $totalFormularios formularios NET vigentes de la lista (boton "Especificaciones")
+ * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Especificaciones")
  * @var string[] $erroresEnvio mensajes si "Enviar a revision" fallo (el panel se abre)
  */
 
@@ -62,7 +62,7 @@ $columnas = 5 + count($proveedores);
                 <?= Html::a('Especificaciones (' . $totalFormularios . ')', ['/lista-items/imprimir-especificaciones', 'id' => $proyecto->id], [
                     'class' => 'btn btn-outline',
                     'target' => '_blank',
-                    'title' => 'Todos los formularios NET vigentes de la lista en un PDF, cada uno en una hoja nueva',
+                    'title' => 'Todos los formularios de especificación vigentes de la lista en un PDF, cada uno en una hoja nueva',
                 ]) ?>
             <?php endif; ?>
             <?= Html::a('Relación SIGMA (PDF)', ['/presupuesto/pdf-sigma', 'id' => $presupuesto->id], ['class' => 'btn btn-outline', 'target' => '_blank', 'title' => 'Cada ítem presupuestado con su ítem del catálogo SIGMA']) ?>

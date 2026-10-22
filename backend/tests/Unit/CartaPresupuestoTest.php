@@ -94,7 +94,7 @@ class CartaPresupuestoTest extends Unit
     {
         $presupuesto = $this->crearPresupuesto(Presupuesto::ESTADO_EN_PROCESO);
 
-        $this->assertSame('', $this->service->codigosNet($presupuesto));
+        $this->assertSame('', $this->service->codigosEspecificaciones($presupuesto));
         $this->assertSame(
             'especificaciones técnicas y cotización.',
             $this->service->textoParaImprimir('especificaciones técnicas {especificaciones} y cotización.', $presupuesto)

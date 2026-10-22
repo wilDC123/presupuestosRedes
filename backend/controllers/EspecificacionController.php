@@ -136,8 +136,8 @@ class EspecificacionController extends Controller
     }
 
     /**
-     * Configuracion del formulario NET: el siguiente codigo NET y los textos
-     * fijos. Los cambios valen para las emisiones NUEVAS; las ya emitidas
+     * Configuracion del formulario de especificacion: los textos fijos y los
+     * valores por defecto (el correlativo RD-PI-ET, en CodificacionController). Los cambios valen para las emisiones NUEVAS; las ya emitidas
      * guardan su propia copia.
      */
     public function actionConfiguracion()
@@ -146,14 +146,13 @@ class EspecificacionController extends Controller
         $emisiones = new EspecificacionEmisionService();
 
         if (Yii::$app->request->isPost && $emisiones->guardarConfiguracion($configuracion, Yii::$app->request->post())) {
-            Yii::$app->session->setFlash('success', 'Configuración del formulario NET guardada.');
+            Yii::$app->session->setFlash('success', 'Configuración del formulario de especificación guardada.');
 
             return $this->redirect(['configuracion']);
         }
 
         return $this->render('configuracion', [
             'configuracion' => $configuracion,
-            'ultimoNet' => $emisiones->ultimoNetEmitido(),
         ]);
     }
 
@@ -177,7 +176,7 @@ class EspecificacionController extends Controller
     }
 
     /**
-     * PDF del formulario NET de una emision (para imprimir, firmar y sellar).
+     * PDF del formulario de especificación de una emision (para imprimir, firmar y sellar).
      * Se abre en el navegador ('inline') en vez de descargarse.
      *
      * @param int $id id de la EMISION
@@ -188,12 +187,11 @@ class EspecificacionController extends Controller
         $emision = $emisiones->obtener($id);
 
         if ($emision === null) {
-            throw new NotFoundHttpException('El formulario NET solicitado no existe.');
+            throw new NotFoundHttpException('El formulario de especificación solicitado no existe.');
         }
 
         $html = $this->renderPartial('formulario-pdf', [
             'emision' => $emision,
-            'logo' => $emisiones->rutaLogo(),
         ]);
         $pdf = $emisiones->generarPdf($emision, $html);
 
@@ -268,7 +266,7 @@ class EspecificacionController extends Controller
                 $version = $resultado['version'];
                 $mensaje = $mensajeExito;
                 if ($resultado['nueva'] && $version->numero > 1) {
-                    $mensaje .= ' Se creó la ' . $version->etiqueta() . ': la versión anterior ya se usó en formularios NET emitidos y no se modifica.';
+                    $mensaje .= ' Se creó la ' . $version->etiqueta() . ': la versión anterior ya se usó en formularios de especificación emitidos y no se modifica.';
                 }
                 Yii::$app->session->setFlash('success', $mensaje);
 

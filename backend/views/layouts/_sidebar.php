@@ -25,9 +25,10 @@ $menu = [
     ['Plantillas', ['/plantilla/index'], ['plantilla']],
     ['Proyectos', ['/proyecto/index'], ['proyecto', 'lista-items', 'solicitud-cotizacion', 'elaborar-presupuesto']],
     ['Especificaciones', ['/especificacion/index'], ['especificacion']],
-    ['Formularios NET', ['/especificacion-emision/index'], ['especificacion-emision']],
+    ['Formularios de especificación', ['/especificacion-emision/index'], ['especificacion-emision']],
     ['Cotizaciones', ['/cotizacion/index'], ['cotizacion']],
     ['Presupuestos', ['/presupuesto/index'], ['presupuesto']],
+    ['Codificación de documentos', ['/codificacion/index'], ['codificacion']],
 ];
 
 $usuario = Yii::$app->user->identity?->username;

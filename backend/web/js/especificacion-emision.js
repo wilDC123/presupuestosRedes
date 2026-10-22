@@ -1,8 +1,8 @@
 /**
- * Panel "Reemitir formulario NET" de la lista de items
+ * Panel "Reemitir formulario de especificación" de la lista de items
  * (views/lista-items/index.php).
  *
- * Cada boton "Reemitir" (o "Emitir formulario NET") trae en data-* el item y
+ * Cada boton "Reemitir" (o "Emitir formulario de especificación") trae en data-* el item y
  * las condiciones de su emision vigente; aqui se copian al panel, que tiene
  * su propio formulario (fuera del de la lista, porque no se pueden anidar).
  *
@@ -33,7 +33,7 @@ $(function () {
         }
 
         $('#reemitir-item').val($boton.data('item'));
-        $('#reemitir-titulo').text((net ? 'Reemitir ' + net : 'Emitir formulario NET') + ': ' + $boton.data('titulo'));
+        $('#reemitir-titulo').text((net ? 'Reemitir ' + net : 'Emitir formulario de especificación') + ': ' + $boton.data('titulo'));
         $('#reemitir-lugar').val($boton.data('lugar') || '');
         $('#reemitir-validez').val($boton.data('validez') || '');
         $('#reemitir-tiempo').val($boton.data('tiempo') || '');

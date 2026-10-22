@@ -18,7 +18,7 @@ use yii\helpers\Html;
  * @var array<string, string> $estados
  */
 
-$this->title = 'Formularios NET emitidos';
+$this->title = 'Formularios de especificación emitidos';
 $this->params['breadcrumbs'][] = $this->title;
 $formato = Yii::$app->formatter;
 $hayFiltros = implode('', $filtros) !== '';
@@ -29,13 +29,13 @@ $hayFiltros = implode('', $filtros) !== '';
         <div>
             <h1><?= Html::encode($this->title) ?></h1>
             <div class="rd-pagehead-sub">
-                Todos los formularios de especificación técnica con código NET. Se emiten y reemiten desde la lista de
-                ítems de cada proyecto; los reemplazados y anulados se conservan.
+                Todos los formularios de especificación técnica (RD-PI-ET-001, RD-PI-ET-002…). Los emitidos antes del
+                22/10/2026 con código NET muestran debajo su código anterior, que es el que lleva el documento ya entregado. Se emiten y reemiten desde la lista de ítems de cada proyecto; los reemplazados y anulados se conservan.
             </div>
         </div>
         <div class="rd-acciones">
             <?= Html::a('Exportar a Excel (CSV)', array_merge(['exportar'], array_filter($filtros)), ['class' => 'btn btn-outline']) ?>
-            <?= Html::a('Configuración del formulario NET', ['/especificacion/configuracion'], ['class' => 'btn btn-outline']) ?>
+            <?= Html::a('Configuración del formulario', ['/especificacion/configuracion'], ['class' => 'btn btn-outline']) ?>
         </div>
     </div>
 
@@ -58,7 +58,7 @@ $hayFiltros = implode('', $filtros) !== '';
         ]) ?>
         <?= Html::textInput('buscar', $filtros['buscar'], [
             'class' => 'form-control',
-            'placeholder' => 'NET (880 o 880/26), título o código de proyecto...',
+            'placeholder' => 'Código (RD-PI-ET-007, 7 o NET:880/26), título o código de proyecto...',
         ]) ?>
         <?= Html::submitButton('Filtrar', ['class' => 'btn btn-outline']) ?>
         <?php if ($hayFiltros): ?>
@@ -72,13 +72,14 @@ $hayFiltros = implode('', $filtros) !== '';
         'summary' => 'Mostrando {begin}–{end} de {totalCount} formularios',
         'emptyText' => $hayFiltros
             ? 'Ningún formulario coincide con los filtros.'
-            : 'Todavía no se emitió ningún formulario NET. Se emiten al enlazar una especificación a un ítem de la lista de un proyecto.',
+            : 'Todavía no se emitió ningún formulario. Se emiten al enlazar una especificación a un ítem de la lista de un proyecto.',
         'columns' => [
             [
-                'label' => 'NET',
+                'label' => 'Código',
                 'format' => 'raw',
                 'contentOptions' => ['class' => 'mono text-nowrap'],
-                'value' => static fn (EspecificacionEmision $e) => Html::a(Html::encode($e->codigoNet()), ['/especificacion/formulario', 'id' => $e->id], ['target' => '_blank']),
+                'value' => static fn (EspecificacionEmision $e) => Html::a(Html::encode($e->codigo()), ['/especificacion/formulario', 'id' => $e->id], ['target' => '_blank'])
+                    . ($e->codigoAnterior !== null ? '<div class="rd-celda-sub">antes ' . Html::encode($e->codigoAnterior) . '</div>' : ''),
             ],
             [
                 'label' => 'Fecha',
@@ -118,7 +119,7 @@ $hayFiltros = implode('', $filtros) !== '';
                 'format' => 'raw',
                 'value' => static fn (EspecificacionEmision $e) => Html::tag('span', Html::encode($e->estadoLabel()), ['class' => $e->estadoBadgeClass()])
                     . ($e->reemplazadaPor !== null
-                        ? '<div class="rd-celda-sub">por ' . Html::a(Html::encode($e->reemplazadaPor->codigoNet()), ['/especificacion/formulario', 'id' => $e->idReemplazadaPor], ['target' => '_blank']) . '</div>'
+                        ? '<div class="rd-celda-sub">por ' . Html::a(Html::encode($e->reemplazadaPor->codigo()), ['/especificacion/formulario', 'id' => $e->idReemplazadaPor], ['target' => '_blank']) . '</div>'
                         : '')
                     . (!empty($e->motivo) ? '<div class="rd-celda-sub">' . Html::encode($e->motivo) . '</div>' : ''),
             ],

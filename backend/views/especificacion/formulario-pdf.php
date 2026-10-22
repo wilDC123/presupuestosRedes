@@ -5,25 +5,28 @@ declare(strict_types=1);
 use yii\helpers\Html;
 
 /**
- * HTML fuente del FORMULARIO NET (el documento que se firma, se sella y se
- * entrega al proveedor). Se renderiza con renderPartial() y se le pasa a mPDF
- * -- ver EspecificacionController::actionFormulario().
+ * HTML fuente del FORMULARIO DE ESPECIFICACION TECNICA (el documento que se
+ * firma, se sella y se entrega al proveedor). Se renderiza con
+ * renderPartial() y se le pasa a mPDF -- ver
+ * EspecificacionController::actionFormulario().
  *
- * Sigue la estructura de los formularios del banco de especificaciones de
- * DTIC: cabecera, instrucciones, codigo NET, titulo, cantidad y dependencia, y
- * la tabla "Especificaciones tecnicas | Propuesta | Cumple | No cumple" con
- * las secciones I (requisitos), II (garantia) y III (condiciones).
+ * Cabecera del lineamiento de la DTIC RD-GD-LI-001 (views/pdf/_cabecera.php):
+ * codigo RD-PI-ET-001 (o NET:880/26 en los de antes), version = la de la
+ * ficha emitida, fecha de emision y pagina. Debajo, la estructura de los
+ * formularios del banco de especificaciones de DTIC: instrucciones, titulo,
+ * cantidad y dependencia, y la tabla "Especificaciones tecnicas | Propuesta |
+ * Cumple | No cumple" con las secciones I (requisitos), II (garantia) y III
+ * (condiciones).
  *
  * TODO lo que se imprime sale de la EMISION (sus copias congeladas) y de su
- * VERSION (que ya no se modifica): reimprimir un NET viejo da siempre el
- * mismo documento, aunque despues cambie la ficha o la configuracion.
+ * VERSION (que ya no se modifica): reimprimir un formulario viejo da siempre
+ * el mismo contenido, aunque despues cambie la ficha o la configuracion.
  *
  * CSS deliberadamente simple, igual que los otros PDF: mPDF interpreta un
  * subconjunto de CSS pensado para documentos.
  *
  * @var yii\web\View $this
  * @var backend\models\EspecificacionEmision $emision
- * @var string|null $logo ruta del logo en el disco (null = sin logo)
  */
 
 $version = $emision->version;
@@ -43,52 +46,39 @@ $fila = static fn (string $contenido): string =>
 $seccion = static fn (string $titulo): string =>
     '<tr><td class="seccion">' . Html::encode($titulo) . '</td><td class="seccion"></td><td class="seccion"></td><td class="seccion"></td></tr>';
 $texto = static fn (?string $valor): string => nl2br(Html::encode((string) $valor));
+
+// Las dos primeras lineas de la cabecera: la copia congelada del texto de
+// cabecera de la emision ("Universidad..." / "D.T.I.C."); sin texto, las de siempre.
+$lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $emision->textoCabecera)), static fn (string $l) => $l !== ''));
 ?>
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
+    /* Calibri 11 (lineamiento RD-GD-LI-001, 8.8.1): Carlito tiene sus mismas medidas. */
     body {
-        font-family: sans-serif;
-        font-size: 10px;
+        font-family: carlito;
+        font-size: 11pt;
         color: #000;
     }
-    table.cabecera {
+    /* Cabecera repetida en cada pagina: ver views/pdf/_cabecera.php. */
+    @page {
+        header: html_cabecera;
+        margin-header: 5mm;
+        margin-top: 37mm;
+    }
+    table.firma {
         width: 100%;
         border-collapse: collapse;
     }
-    table.cabecera td {
-        vertical-align: middle;
-    }
-    .institucion {
-        text-align: center;
-        font-size: 11px;
-        font-weight: bold;
-    }
-    .titulo-formulario {
-        text-align: center;
-        font-size: 13px;
-        font-weight: bold;
-        margin: 8px 0 6px 0;
-    }
     .instrucciones {
         text-align: justify;
-        font-size: 9.5px;
+        font-size: 10pt;
         margin-bottom: 8px;
     }
-    .net {
-        text-align: right;
-        margin-bottom: 4px;
-    }
-    .net span {
-        border: 1px solid #000;
-        padding: 3px 8px;
-        font-size: 12px;
-        font-weight: bold;
-    }
     .bien {
-        font-size: 12px;
+        font-size: 12pt;
         font-weight: bold;
         margin-bottom: 2px;
     }
@@ -106,9 +96,12 @@ $texto = static fn (?string $valor): string => nl2br(Html::encode((string) $valo
         padding: 4px 5px;
         vertical-align: top;
     }
+    table.especificaciones td {
+        font-size: 10pt;
+    }
     table.especificaciones th {
         background-color: #d9d9d9;
-        font-size: 9.5px;
+        font-size: 9pt;
         text-align: center;
         vertical-align: middle;
     }
@@ -132,25 +125,19 @@ $texto = static fn (?string $valor): string => nl2br(Html::encode((string) $valo
 </head>
 <body>
 
-<table class="cabecera">
-    <tr>
-        <?php if ($logo !== null): ?>
-            <td style="width: 18%;"><img src="<?= Html::encode($logo) ?>" style="height: 55px;"></td>
-        <?php endif; ?>
-        <td class="institucion"><?= $texto($emision->textoCabecera) ?></td>
-        <?php if ($logo !== null): ?>
-            <td style="width: 18%;"></td>
-        <?php endif; ?>
-    </tr>
-</table>
-
-<div class="titulo-formulario">ESPECIFICACIONES TÉCNICAS DE LOS BIENES OFRECIDOS</div>
+<?= $this->render('//pdf/_cabecera', [
+    'titulo' => 'ESPECIFICACIONES TÉCNICAS DE LOS BIENES OFRECIDOS',
+    'codigo' => $emision->codigo(),
+    'version' => sprintf('%02d', (int) $version->numero),
+    'proceso' => backend\models\CorrelativoDocumento::NOMBRE_PROCESO,
+    'fecha' => $fecha->format('d/m/Y'),
+    'institucion' => $lineasCabecera[0] ?? null,
+    'unidad' => $lineasCabecera[1] ?? null,
+]) ?>
 
 <?php if (!empty($emision->textoInstrucciones)): ?>
     <div class="instrucciones"><?= $texto($emision->textoInstrucciones) ?></div>
 <?php endif; ?>
-
-<div class="net"><span><?= Html::encode($emision->codigoNet()) ?></span></div>
 
 <div class="bien"><?= Html::encode($emision->titulo) ?></div>
 <div class="dato"><strong>Cantidad:</strong> <?= Html::encode(trim($cantidad . ' ' . $emision->unidad)) ?></div>
@@ -211,7 +198,7 @@ $texto = static fn (?string $valor): string => nl2br(Html::encode((string) $valo
 <?php // "Elaborado por" y firma: al fondo de la última página (PresupuestoPdfGenerator). ?>
 <?= backend\components\PresupuestoPdfGenerator::MARCA_AL_PIE ?>
 
-<table class="cabecera firma">
+<table class="firma">
     <tr>
         <?php // En blanco, para escribir el nombre a mano. $emision->elaboradoPor (el
         // usuario del sistema que emitio) solo se ve en el registro de formularios NET. ?>

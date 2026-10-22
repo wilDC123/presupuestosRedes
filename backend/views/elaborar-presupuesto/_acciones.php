@@ -54,19 +54,16 @@ $botones = [
                     </div>
                 <?php endif; ?>
 
-                <p class="rd-nota">Para enviarlo, complete los datos de cabecera del presupuesto. Después de enviarlo los precios ya no se cambian.</p>
+                <p class="rd-nota">Para enviarlo, complete los datos de cabecera del presupuesto. Después de enviarlo los precios ya no se cambian.
+                    El código (<strong class="mono"><?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?></strong>) lo asigna el sistema.</p>
 
                 <?= Html::beginForm(['enviar', 'idProyecto' => $proyecto->id], 'post', ['id' => 'enviar-form']) ?>
                     <div class="row g-2">
-                        <div class="col-md-3">
-                            <?= Html::activeLabel($presupuesto, 'numeroPresupuesto', ['class' => 'form-label']) ?>
-                            <?= Html::activeTextInput($presupuesto, 'numeroPresupuesto', ['class' => 'form-control', 'maxlength' => 20, 'required' => true]) ?>
-                        </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <?= Html::activeLabel($presupuesto, 'oficioDtic', ['class' => 'form-label']) ?>
                             <?= Html::activeTextInput($presupuesto, 'oficioDtic', ['class' => 'form-control', 'maxlength' => 100, 'required' => true]) ?>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-5">
                             <?= Html::activeLabel($presupuesto, 'areaIntervencion', ['class' => 'form-label']) ?>
                             <?php // Si aun no se escribio, se sugiere la facultad del proyecto (se puede cambiar). ?>
                             <?= Html::activeTextInput($presupuesto, 'areaIntervencion', [
@@ -76,7 +73,7 @@ $botones = [
                                 'required' => true,
                             ]) ?>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <?= Html::activeLabel($presupuesto, 'fecha', ['class' => 'form-label']) ?>
                             <?= Html::activeTextInput($presupuesto, 'fecha', [
                                 'class' => 'form-control',
@@ -99,7 +96,7 @@ $botones = [
 
     <?php else: ?>
         <div class="rd-dato">
-            <strong>N.° de presupuesto:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?> ·
+            <strong>Código:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?><?= $presupuesto->numeroAnterior !== null ? ' (antes ' . Html::encode($presupuesto->numeroAnterior) . ')' : '' ?> ·
             <strong>Oficio DTIC:</strong> <?= Html::encode($presupuesto->oficioDtic ?: '—') ?> ·
             <strong>Área:</strong> <?= Html::encode($presupuesto->areaIntervencion ?: '—') ?> ·
             <strong>Fecha:</strong> <?= Html::encode($presupuesto->fechaFormateada() ?: '—') ?>

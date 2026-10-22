@@ -17,13 +17,18 @@ use yii\db\ActiveRecord;
  *
  * @property int $id
  * @property int $idProyecto
- * @property string|null $numeroPresupuesto
+ * @property string|null $numeroPresupuesto Codigo RD-PI-PR-NNN, lo asigna el sistema al crear el
+ *           presupuesto (ElaborarPresupuestoService). Los de antes del 2026-10-22 se escribian a mano ("690").
  * @property string|null $oficioDtic
  * @property string|null $areaIntervencion
  * @property string $estado
  * @property string|null $fecha
  * @property string $fechaCreacion
+ * @property string|null $numeroAnterior El numero escrito a mano que tenia antes de pasar a RD-PI-PR
+ *           (migracion m261022_144239; ej. "690"). NULL en los que nacieron con codigo.
  * @property string|null $manoDeObra Mano de obra a cargo de la DTIC (null = no lleva)
+ * @property string|null $fechaAprobacion aaaa-mm-dd; la pone PresupuestoService al aprobar (null en los
+ *           aprobados antes del 2026-10-22, cuando no se guardaba).
  *
  * @property-read Proyecto $proyecto
  * @property-read PresupuestoDetalle[] $presupuestoDetalles
@@ -52,6 +57,14 @@ class Presupuesto extends ActiveRecord
      */
     public const MANO_DE_OBRA_DTIC = 'A ser implementado por personal de la D.T.I.C.';
     public const UNIDAD_MANO_DE_OBRA = 'Servicio';
+
+    /**
+     * Version del documento para la cabecera y el control de elaboracion
+     * del PDF (lineamiento RD-GD-LI-001: "consecutivo, inicia con 01"). Cada
+     * proyecto tiene un solo presupuesto y uno aprobado ya no cambia (una
+     * ampliacion es otro proyecto), asi que siempre es la 01.
+     */
+    public const VERSION_DOCUMENTO = '01';
 
     public static function tableName(): string
     {
@@ -139,13 +152,15 @@ class Presupuesto extends ActiveRecord
         return [
             'id' => 'ID',
             'idProyecto' => 'Proyecto',
-            'numeroPresupuesto' => 'N.° de presupuesto',
+            'numeroPresupuesto' => 'Código de presupuesto',
             'oficioDtic' => 'Oficio DTIC',
             'areaIntervencion' => 'Área de intervención',
             'estado' => 'Estado',
             'fecha' => 'Fecha',
             'fechaCreacion' => 'Fecha de creación',
             'manoDeObra' => 'Mano de obra',
+            'fechaAprobacion' => 'Fecha de aprobación',
+            'numeroAnterior' => 'Número anterior',
         ];
     }
 
@@ -238,6 +253,20 @@ class Presupuesto extends ActiveRecord
         $fecha = DateTime::createFromFormat('Y-m-d', $this->fecha);
 
         return $fecha !== false ? $fecha->format('d/m/Y') : $this->fecha;
+    }
+
+    /**
+     * fechaAprobacion para mostrar (dd/mm/aaaa); vacio si no tiene.
+     */
+    public function fechaAprobacionFormateada(): string
+    {
+        if (empty($this->fechaAprobacion)) {
+            return '';
+        }
+
+        $fecha = DateTime::createFromFormat('Y-m-d', substr((string) $this->fechaAprobacion, 0, 10));
+
+        return $fecha !== false ? $fecha->format('d/m/Y') : (string) $this->fechaAprobacion;
     }
 
     public function estadoLabel(): string

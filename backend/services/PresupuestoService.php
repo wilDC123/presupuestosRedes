@@ -9,6 +9,7 @@ use backend\models\ConfiguracionPresupuesto;
 use backend\models\CotizacionDetalle;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
+use DateTimeImmutable;
 use Throwable;
 use Yii;
 use yii\data\ActiveDataProvider;
@@ -133,6 +134,9 @@ class PresupuestoService
         if ($nuevoEstado !== Presupuesto::ESTADO_APROBADO) {
             return $presupuesto->save(false);
         }
+
+        // Sale en el "control de elaboracion" del PDF (lineamiento RD-GD-LI-001).
+        $presupuesto->fechaAprobacion = (new DateTimeImmutable('today'))->format('Y-m-d');
 
         // Al aprobar, la lista de items del proyecto queda cerrada: las dos
         // cosas juntas (una transaccion).

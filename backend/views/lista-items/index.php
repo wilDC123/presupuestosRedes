@@ -24,8 +24,8 @@ use yii\web\JqueryAsset;
  * clasificacion es un <tbody> (data-categoria); las dos plantillas ocultas
  * (<template>) son la fila y el grupo "modelo" que el JS copia.
  *
- * Al guardar, elegir una especificacion EMITE su formulario NET. Cada item
- * muestra su NET vigente, los avisos y "Reemitir", que abre un panel con su
+ * Al guardar, elegir una especificacion EMITE su formulario de especificación. Cada item
+ * muestra su formulario vigente, los avisos y "Reemitir", que abre un panel con su
  * propio formulario (fuera del de la lista: no se pueden anidar formularios).
  * Ese panel lo maneja web/js/especificacion-emision.js.
  *
@@ -45,8 +45,9 @@ use yii\web\JqueryAsset;
  * @var backend\models\OrdenCambio[] $ordenes ordenes de cambio del proyecto
  * @var array<int, array{emision: ?backend\models\EspecificacionEmision, avisos: string[]}> $emisiones Ver EspecificacionEmisionService::estadoPorItem()
  * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
- * @var int $totalFormularios formularios NET vigentes de la lista (boton "Imprimir especificaciones")
+ * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
  * @var backend\models\ConfiguracionEspecificacion $configuracion
+ * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001)
  */
 
 if ($editable) {
@@ -86,7 +87,7 @@ foreach (array_keys($especificaciones['subcatalogos']) as $idEspecificacion) {
 }
 
 /**
- * Formulario NET del item: codigo, estado, avisos y "Reemitir" (o "Emitir" si
+ * Formulario de especificación del item: codigo, estado, avisos y "Reemitir" (o "Emitir" si
  * la ficha se enlazo antes de que existieran las emisiones). Vacio si el item
  * no tiene especificacion o todavia no se guardo.
  */
@@ -101,19 +102,19 @@ $infoEmision = static function (ProyectoItem $item) use ($emisiones, $puedeReemi
     $html = '<div class="rd-celda-sub mt-1 lista-item-net">';
 
     if ($emision !== null) {
-        $html .= 'Formulario <strong class="mono">' . Html::encode($emision->codigoNet()) . '</strong> '
+        $html .= 'Formulario <strong class="mono">' . Html::encode($emision->codigo()) . '</strong> '
             . '<span class="' . $emision->estadoBadgeClass() . '">' . Html::encode($emision->estadoLabel()) . '</span> '
             . Html::encode($emision->version->etiqueta() . ' · emitido el ' . $formato->asDate($emision->fechaEmision, 'php:d/m/Y'))
             . ' ' . Html::a('Ver formulario', ['/especificacion/formulario', 'id' => $emision->id], ['class' => 'btn btn-outline btn-sm', 'target' => '_blank']);
     }
 
     if ($puedeReemitir) {
-        $html .= ' ' . Html::button($emision !== null ? 'Reemitir' : 'Emitir formulario NET', [
+        $html .= ' ' . Html::button($emision !== null ? 'Reemitir' : 'Emitir formulario de especificación', [
             'class' => 'btn btn-outline btn-sm esp-reemitir',
             'data' => [
                 'item' => $item->id,
                 'titulo' => ($item->especificacion?->nombre() ?? '') . ' — ' . ($item->subcatalogoItem->descripcion ?? ''),
-                'net' => $emision?->codigoNet() ?? '',
+                'net' => $emision?->codigo() ?? '',
                 'lugar' => $emision?->lugarEntrega ?? '',
                 'validez' => $emision?->validezOfertaDias ?? '',
                 'tiempo' => $emision?->tiempoEntregaDias ?? '',
@@ -214,7 +215,7 @@ $grupoCierra = static fn (int $cantidad): string =>
                     'class' => 'btn btn-outline',
                     'target' => '_blank',
                     'id' => 'lista-imprimir-esp',
-                    'title' => 'Todos los formularios NET vigentes de la lista en un PDF, cada uno en una hoja nueva',
+                    'title' => 'Todos los formularios de especificación vigentes de la lista en un PDF, cada uno en una hoja nueva',
                 ]) ?>
             <?php endif; ?>
             <?php if ($proyecto->estadoLista === Proyecto::LISTA_EN_COTIZACION): ?>
@@ -249,16 +250,10 @@ $grupoCierra = static fn (int $cantidad): string =>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
-    <?php if ($editable && $configuracion->siguienteNet === null): ?>
-        <div class="alert alert-warning">
-            Todavía no se fijó el código NET inicial: hasta entonces no se pueden enlazar especificaciones técnicas
-            (enlazar una emite su formulario NET).
-            <?= Html::a('Fijarlo en la configuración del formulario NET', ['/especificacion/configuracion']) ?>.
-        </div>
-    <?php elseif ($editable): ?>
+    <?php if ($editable): ?>
         <p class="rd-nota">
-            Al guardar, elegir una especificación técnica para un ítem emite su formulario NET
-            (el próximo será el NET:<?= sprintf('%03d', $configuracion->siguienteNet) ?>/<?= date('y') ?>). Cambiarla o quitarla anula el anterior.
+            Al guardar, elegir una especificación técnica para un ítem emite su formulario
+            (el próximo será el <?= Html::encode($proximoCodigo) ?>). Cambiarla o quitarla anula el anterior.
         </p>
     <?php endif; ?>
     <div class="alert alert-danger d-none" id="lista-error-cliente">Revise las cantidades marcadas: deben ser números mayores o iguales a 0.</div>
@@ -384,9 +379,9 @@ $grupoCierra = static fn (int $cantidad): string =>
     <?php if ($puedeReemitir): ?>
         <div class="card rd-card-pad mt-3 d-none" id="reemitir-panel">
             <?= Html::beginForm(['reemitir', 'id' => $proyecto->id], 'post', ['id' => 'reemitir-form']) ?>
-                <div class="rd-card-titulo mb-1" id="reemitir-titulo">Reemitir formulario NET</div>
+                <div class="rd-card-titulo mb-1" id="reemitir-titulo">Reemitir formulario de especificación</div>
                 <p class="rd-nota">
-                    Se emite un formulario con NET nuevo, la última versión de la ficha y la cantidad actual de la lista.
+                    Se emite un formulario con código nuevo, la última versión de la ficha y la cantidad actual de la lista.
                     El anterior queda "reemplazado" y se conserva en el historial. Si la cantidad está mal, corríjala
                     primero en la lista.
                 </p>

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\models\CorrelativoDocumento;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
 use backend\models\ProyectoBloque;
 use backend\models\ProyectoProyectista;
-use RuntimeException;
 use Throwable;
 use Yii;
 use yii\data\ActiveDataProvider;
@@ -21,7 +21,7 @@ use yii\db\IntegrityException;
  * cotizacion y presupuesto son casos de uso separados que usan su id).
  *
  * Reglas de negocio que viven aqui:
- *  - el codigo RD-PI-PT-NN se genera al crear y no se repite,
+ *  - el codigo RD-PI-PT-NNN se genera al crear y no se repite,
  *  - facultad, edificio y bloques deben existir en los parametros (el tipo
  *    lo valida el modelo contra redes.TipoProyecto),
  *  - una fase nueva es un proyecto NUEVO enlazado a uno ya aprobado,
@@ -29,8 +29,6 @@ use yii\db\IntegrityException;
  */
 class ProyectoService
 {
-    private const INTENTOS_CODIGO = 5;
-
     /**
      * Titulo del paso de la lista en la barra de pasos (ver pasos()). La
      * pantalla de la lista lo usa para resaltarse.
@@ -409,47 +407,17 @@ class ProyectoService
     }
 
     /**
-     * Inserta el proyecto con el siguiente codigo libre. Si justo otra
-     * persona guardo un proyecto con ese mismo codigo, el indice unico de la
-     * base rechaza el INSERT (IntegrityException) y se reintenta con el
-     * siguiente numero.
+     * Inserta el proyecto con el siguiente codigo del correlativo PT
+     * (RD-PI-PT-005, ver CorrelativoDocumento::codigo()). Se llama dentro de la
+     * transaccion de guardar(): si el INSERT falla, el numero tomado vuelve
+     * atras con todo lo demas. El indice unico de la base impide igual
+     * cualquier codigo repetido.
      */
     private function insertarConCodigo(Proyecto $proyecto): void
     {
-        for ($intento = 1; $intento <= self::INTENTOS_CODIGO; $intento++) {
-            $proyecto->codigo = $this->siguienteCodigo();
-
-            try {
-                $proyecto->save(false);
-
-                return;
-            } catch (IntegrityException $e) {
-                if ($intento === self::INTENTOS_CODIGO) {
-                    throw new RuntimeException('No se pudo generar un código de proyecto único.', 0, $e);
-                }
-            }
-        }
-    }
-
-    /**
-     * Prefijo (params.php) + correlativo global: el mayor numero ya usado
-     * mas uno, con al menos dos digitos (RD-PI-PT-08; despues de 99, -100).
-     */
-    private function siguienteCodigo(): string
-    {
-        $prefijo = (string) Yii::$app->params['prefijoCodigoProyecto'];
-        $patron = '/^' . preg_quote($prefijo, '/') . '(\d+)$/';
-        $mayor = 0;
-
-        $codigos = Proyecto::find()->select('codigo')->andWhere(['not', ['codigo' => null]])->column();
-
-        foreach ($codigos as $codigo) {
-            if (preg_match($patron, (string) $codigo, $partes) === 1) {
-                $mayor = max($mayor, (int) $partes[1]);
-            }
-        }
-
-        return $prefijo . str_pad((string) ($mayor + 1), 2, '0', STR_PAD_LEFT);
+        $numero = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_PROYECTO);
+        $proyecto->codigo = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, $numero);
+        $proyecto->save(false);
     }
 
     /**

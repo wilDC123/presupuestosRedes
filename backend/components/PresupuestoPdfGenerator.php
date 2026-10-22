@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\components;
 
+use backend\models\CorrelativoDocumento;
 use backend\models\Presupuesto;
 use Mpdf\Config\ConfigVariables;
 use Mpdf\Config\FontVariables;
@@ -68,16 +69,23 @@ class PresupuestoPdfGenerator
         $carpetaTemporal = Yii::getAlias('@runtime/mpdf');
         FileHelper::createDirectory($carpetaTemporal);
 
-        // Las fuentes que trae mPDF, mas "pagelladtic" (la de la carta de
-        // entrega, en backend/fonts: ver su MANIFEST). mPDF solo carga una
-        // fuente si un documento la usa.
+        // Las fuentes que trae mPDF, mas "carlito" (la de los impresos: las
+        // medidas de Calibri, que pide el lineamiento RD-GD-LI-001) y
+        // "pagelladtic" (la de la carta de entrega), ambas en backend/fonts:
+        // ver sus MANIFEST. mPDF solo carga una fuente si un documento la usa.
         $variables = (new ConfigVariables())->getDefaults();
         $fuentes = (new FontVariables())->getDefaults();
 
         $configuracion = [
             'tempDir' => $carpetaTemporal,
-            'fontDir' => array_merge($variables['fontDir'], [Yii::getAlias('@backend/fonts/pagella-dtic')]),
+            'fontDir' => array_merge($variables['fontDir'], [Yii::getAlias('@backend/fonts/carlito'), Yii::getAlias('@backend/fonts/pagella-dtic')]),
             'fontdata' => $fuentes['fontdata'] + [
+                'carlito' => [
+                    'R' => 'Carlito-Regular.ttf',
+                    'B' => 'Carlito-Bold.ttf',
+                    'I' => 'Carlito-Italic.ttf',
+                    'BI' => 'Carlito-BoldItalic.ttf',
+                ],
                 'pagelladtic' => [
                     'R' => 'PagellaDTIC-Regular.ttf',
                     'B' => 'PagellaDTIC-Bold.ttf',
@@ -86,6 +94,8 @@ class PresupuestoPdfGenerator
                 ],
             ],
             'mode' => 'utf-8',
+            // La que se usa si una vista no dice otra.
+            'default_font' => 'carlito',
             'format' => $formato,
             'margin_top' => 20,
             'margin_bottom' => 18,
@@ -94,30 +104,18 @@ class PresupuestoPdfGenerator
         ];
         $mpdf = new Mpdf($configuracion);
 
-        // Sin pie de pagina. El presupuesto y la solicitud de cotizacion
-        // llevan su cabecera (con "pág. X de Y") desde la vista, con
-        // @page { header: html_cabecera } -- ver views/pdf/_cabecera.php;
-        // su margen superior lo fija esa misma regla @page.
+        // Sin pie de pagina. Los impresos llevan su cabecera (con "Página X
+        // de Y") desde la vista, con @page { header: html_cabecera } -- ver
+        // views/pdf/_cabecera.php; su margen superior lo fija esa misma
+        // regla @page.
 
         foreach (array_values($documentos) as $i => $documento) {
             // Primero se cierra la hoja anterior (con la marca de agua del
-            // documento anterior) y recien despues se cambia la marca.
-            // La hoja nueva vuelve a lo de por defecto: sin la cabecera ni el
-            // margen superior que dejo la regla @page del documento anterior
-            // (ej. la solicitud de cotizacion seguida de los formularios NET),
-            // y con la numeracion reiniciada, para que el "pág. X de Y" de
-            // esa cabecera cuente solo las paginas de su documento. Mientras
-            // page_box['using'] esta encendido, mPDF vuelve a aplicar esa
-            // regla @page en cada hoja nueva e ignora lo que se le pasa aqui;
-            // por eso se apaga primero.
+            // documento anterior) y recien despues se cambia la marca. La
+            // hoja nueva empieza con la numeracion reiniciada, para que el
+            // "Página X de Y" cuente solo las paginas de su documento.
             if ($i > 0) {
-                $mpdf->page_box['using'] = false;
-                $mpdf->AddPageByArray([
-                    'ohvalue' => -1,
-                    'ehvalue' => -1,
-                    'mgt' => $configuracion['margin_top'],
-                    'resetpagenum' => 1,
-                ]);
+                $this->empezarDocumento($mpdf, $documento['html'], $configuracion);
             }
 
             $mpdf->showWatermarkText = $documento['marcaDeAgua'] !== null;
@@ -134,6 +132,43 @@ class PresupuestoPdfGenerator
         }
 
         return $mpdf->Output('', Destination::STRING_RETURN);
+    }
+
+    /**
+     * Abre la primera hoja de un documento que no es el primero del PDF (ej.
+     * la solicitud de cotizacion seguida de los formularios de
+     * especificacion, cada uno con su codigo en la cabecera).
+     *
+     * mPDF escribe la cabecera AL EMPEZAR cada hoja, con la definicion que
+     * tenga en ese momento. Por eso, si el documento trae cabecera, primero
+     * se le pasan sus estilos (con su regla @page) y su <htmlpageheader>,
+     * que no imprimen nada: asi la hoja nueva ya sale con SU cabecera y SU
+     * margen, y no con los del documento anterior (tienen el mismo nombre).
+     *
+     * Si no trae cabecera, la hoja vuelve a lo de por defecto: sin cabecera
+     * ni margen superior del anterior. Mientras page_box['using'] esta
+     * encendido, mPDF vuelve a aplicar la regla @page anterior en cada hoja
+     * nueva e ignora lo que se le pasa aqui; por eso se apaga primero.
+     */
+    private function empezarDocumento(Mpdf $mpdf, string $html, array $configuracion): void
+    {
+        preg_match_all('#<htmlpageheader\b.*?</htmlpageheader>#is', $html, $cabeceras);
+
+        if ($cabeceras[0] !== []) {
+            preg_match_all('#<style[^>]*>.*?</style>#is', $html, $estilos);
+            $mpdf->WriteHTML(implode('', $estilos[0]) . implode('', $cabeceras[0]));
+            $mpdf->AddPageByArray(['resetpagenum' => 1]);
+
+            return;
+        }
+
+        $mpdf->page_box['using'] = false;
+        $mpdf->AddPageByArray([
+            'ohvalue' => -1,
+            'ehvalue' => -1,
+            'mgt' => $configuracion['margin_top'],
+            'resetpagenum' => 1,
+        ]);
     }
 
     /**
@@ -177,19 +212,20 @@ class PresupuestoPdfGenerator
     }
 
     /**
-     * Nombre del archivo PDF: usa el codigo del proyecto (RD-PI-PT-08), que
-     * es unico. Si el proyecto no tiene codigo, usa el numero de presupuesto
-     * y, como ultimo respaldo, su id, para que el nombre nunca quede vacio.
-     * Se reemplaza cualquier caracter que no sea seguro en un nombre de archivo.
+     * Nombre del archivo PDF: usa el codigo del presupuesto (RD-PI-PR-015),
+     * que es unico, para guardarlo asi en el Drive de la DTIC. Si es de los de
+     * antes (numero escrito a mano), usa el codigo del proyecto y, como ultimo
+     * respaldo, el id, para que el nombre nunca quede vacio. Se reemplaza
+     * cualquier caracter que no sea seguro en un nombre de archivo.
      */
     public function nombreArchivo(Presupuesto $presupuesto, string $prefijo = 'presupuesto_'): string
     {
-        $referencia = $presupuesto->proyecto->codigo ?? null;
+        $referencia = CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_PRESUPUESTO, $presupuesto->numeroPresupuesto) !== null
+            ? (string) $presupuesto->numeroPresupuesto
+            : ($presupuesto->proyecto->codigo ?? null);
 
         if ($referencia === null || $referencia === '') {
-            $referencia = $presupuesto->numeroPresupuesto !== null && $presupuesto->numeroPresupuesto !== ''
-                ? $presupuesto->numeroPresupuesto
-                : (string) $presupuesto->id;
+            $referencia = (string) $presupuesto->id;
         }
 
         return $prefijo . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf';

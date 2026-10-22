@@ -87,7 +87,7 @@ $urlAdjunto = $version?->urlAdjunto();
             <?php if (!$esActual): ?>
                 <div class="rd-card-pad pb-0">
                     <div class="alert alert-secondary mb-0">
-                        Versión anterior, solo de consulta: es la que tienen los formularios NET emitidos con ella. Las
+                        Versión anterior, solo de consulta: es la que tienen los formularios de especificación emitidos con ella. Las
                         emisiones nuevas usan la versión actual.
                     </div>
                 </div>
@@ -150,7 +150,7 @@ $urlAdjunto = $version?->urlAdjunto();
         <div class="card mt-3">
             <div class="rd-card-head">
                 <div class="rd-card-titulo">Historial de versiones</div>
-                <div class="kicker">Una versión usada en un formulario NET ya no cambia: editarla crea la siguiente.</div>
+                <div class="kicker">Una versión usada en un formulario de especificación ya no cambia: editarla crea la siguiente.</div>
             </div>
             <table class="table">
                 <thead>
@@ -158,7 +158,7 @@ $urlAdjunto = $version?->urlAdjunto();
                         <th>Versión</th>
                         <th>Fecha</th>
                         <th>Nota del cambio</th>
-                        <th class="rd-num">Formularios NET</th>
+                        <th class="rd-num">Formularios de especificación</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -244,7 +244,7 @@ $urlAdjunto = $version?->urlAdjunto();
 
         <?php if ($enUso): ?>
             <div class="rd-card-pad rd-nota">
-                Al estar en uso<?= $emitida ? ' (y con formularios NET emitidos)' : '' ?> no se puede eliminar. Si ya no debe
+                Al estar en uso<?= $emitida ? ' (y con formularios de especificación emitidos)' : '' ?> no se puede eliminar. Si ya no debe
                 ofrecerse, desactívela desde "Editar": los enlaces y los formularios emitidos se conservan.
             </div>
         <?php endif; ?>

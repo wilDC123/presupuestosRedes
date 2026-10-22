@@ -30,7 +30,7 @@ use Yii;
  *  - cada item puede tener COMO MAXIMO una especificacion de la libreria
  *    (opcional): solo se enlazan especificaciones activas; una que se
  *    desactivo despues se conserva donde ya estaba,
- *  - enlazar una especificacion EMITE su formulario NET; cambiarla o
+ *  - enlazar una especificacion EMITE su formulario de especificación; cambiarla o
  *    quitarla, o quitar el item, anula la emision vigente (las reglas de
  *    las emisiones viven en EspecificacionEmisionService),
  *  - estados: edicion -> en_cotizacion -> cerrada (al aprobar el presupuesto).
@@ -103,7 +103,7 @@ class ListaItemsService
      * que siguen se ACTUALIZAN (no se borran y recrean) para conservar su id.
      *
      * Si un item cambia de especificacion, en la misma transaccion se anula
-     * su formulario NET vigente y se emite el nuevo; $usuario queda como
+     * su formulario de especificación vigente y se emite el nuevo; $usuario queda como
      * "elaborado por".
      *
      * Devuelve false si la lista no es editable o si algo no es valido. Los
@@ -178,11 +178,11 @@ class ListaItemsService
                 $cambianEspecificacion[spl_object_id($item)] = true;
 
                 // Se revisa ANTES de guardar, para mostrar el error sin haber
-                // tocado nada (ej. falta fijar el NET inicial).
+                // tocado nada (ej. la ficha no tiene contenido).
                 if ($item->idEspecificacion !== null) {
                     $motivo = $emisiones->motivoParaNoEmitir(Especificacion::findOne($item->idEspecificacion));
                     if ($motivo !== null) {
-                        $errores[] = "$nombre: no se puede emitir su formulario NET: $motivo";
+                        $errores[] = "$nombre: no se puede emitir su formulario de especificación: $motivo";
                     }
                 }
             }
@@ -235,7 +235,7 @@ class ListaItemsService
             }
 
             foreach ($quitados as $item) {
-                // El formulario NET firmado no se borra: queda anulado y sin
+                // El formulario de especificación firmado no se borra: queda anulado y sin
                 // item (la llave foranea lo pone en NULL).
                 $emisiones->anularVigente($item->id, 'Se quitó el ítem de la lista.');
                 $item->delete();

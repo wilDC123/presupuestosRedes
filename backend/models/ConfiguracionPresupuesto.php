@@ -10,8 +10,10 @@ use yii\db\ActiveRecord;
 /**
  * Modelo para la tabla "redes.ConfiguracionPresupuesto": UNA sola fila
  * (id = 1, lo garantiza un CHECK en la base) con lo que lleva el PDF del
- * presupuesto despues del total: nota, dos firmas y la banda de pie con los
- * contactos. Editable por el encargado (presupuesto/configuracion).
+ * presupuesto despues del total: nota, las dos firmas del "control de
+ * elaboracion" del lineamiento RD-GD-LI-001 (firma 1 = elaborado por, firma
+ * 2 = aprobado por, con su V°B°) y la banda de pie con los contactos.
+ * Editable por el encargado (presupuesto/configuracion).
  *
  * Como la solicitud de cotizacion, el presupuesto no guarda copia: el PDF se
  * arma al imprimir, asi que un cambio aqui tambien se ve al reimprimir
@@ -60,25 +62,22 @@ class ConfiguracionPresupuesto extends ActiveRecord
     }
 
     /**
-     * Las firmas que tienen nombre, de izquierda a derecha.
+     * La firma 1 (elaborado por) o 2 (aprobado por), o null si no tiene
+     * nombre: en el PDF queda en blanco, para llenarla a mano.
      *
-     * @return array<int, array{prefijo: string, nombre: string, cargo: string}>
+     * @return array{prefijo: string, nombre: string, cargo: string}|null
      */
-    public function firmas(): array
+    public function firma(int $n): ?array
     {
-        $firmas = [];
-
-        foreach ([1, 2] as $n) {
-            if ((string) $this->{"firma{$n}Nombre"} !== '') {
-                $firmas[] = [
-                    'prefijo' => (string) $this->{"firma{$n}Prefijo"},
-                    'nombre' => (string) $this->{"firma{$n}Nombre"},
-                    'cargo' => (string) $this->{"firma{$n}Cargo"},
-                ];
-            }
+        if ((string) $this->{"firma{$n}Nombre"} === '') {
+            return null;
         }
 
-        return $firmas;
+        return [
+            'prefijo' => (string) $this->{"firma{$n}Prefijo"},
+            'nombre' => (string) $this->{"firma{$n}Nombre"},
+            'cargo' => (string) $this->{"firma{$n}Cargo"},
+        ];
     }
 
     /**
@@ -116,8 +115,8 @@ class ConfiguracionPresupuesto extends ActiveRecord
             [['firma1Nombre', 'firma2Nombre', 'pieIzquierdaTitulo', 'pieDerechaTitulo'], 'string', 'max' => 150],
             [['firma1Cargo', 'firma2Cargo'], 'string', 'max' => 200],
             // Un prefijo o un cargo sin nombre no saldria en el PDF.
-            [['firma1Nombre'], 'required', 'when' => static fn (self $m) => (string) $m->firma1Prefijo !== '' || (string) $m->firma1Cargo !== '', 'whenClient' => 'function () { return false; }', 'message' => 'Escriba el nombre de la firma izquierda (sin nombre, la firma no sale).'],
-            [['firma2Nombre'], 'required', 'when' => static fn (self $m) => (string) $m->firma2Prefijo !== '' || (string) $m->firma2Cargo !== '', 'whenClient' => 'function () { return false; }', 'message' => 'Escriba el nombre de la firma derecha (sin nombre, la firma no sale).'],
+            [['firma1Nombre'], 'required', 'when' => static fn (self $m) => (string) $m->firma1Prefijo !== '' || (string) $m->firma1Cargo !== '', 'whenClient' => 'function () { return false; }', 'message' => 'Escriba el nombre de quien elabora (sin nombre, el prefijo y el cargo no salen).'],
+            [['firma2Nombre'], 'required', 'when' => static fn (self $m) => (string) $m->firma2Prefijo !== '' || (string) $m->firma2Cargo !== '', 'whenClient' => 'function () { return false; }', 'message' => 'Escriba el nombre de quien aprueba (sin nombre, el prefijo y el cargo no salen).'],
         ];
     }
 

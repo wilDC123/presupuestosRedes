@@ -23,8 +23,11 @@ use yii\db\ActiveRecord;
  * EspecificacionEmisionService.
  *
  * @property int $id
- * @property int $numeroNet Correlativo que no se reinicia por año.
- * @property int $anio Dos digitos del año de emision (26).
+ * @property string $serie SERIE_ET (las de ahora: RD-PI-ET-001) o SERIE_NET (las de antes del 2026-10-22: NET:880/26).
+ * @property int $numeroNet Correlativo de su serie; no se reinicia por año.
+ * @property string|null $codigoAnterior El NET que tenia antes de pasar a RD-PI-ET (migracion
+ *           m261022_144239): el documento ya entregado lo lleva impreso. NULL en las emitidas como ET.
+ * @property int $anio Dos digitos del año de emision (26). Solo forma parte del codigo en la serie NET.
  * @property int $idVersion
  * @property int $idProyecto
  * @property int|null $idProyectoItem NULL si el item se borro despues de emitir.
@@ -58,6 +61,15 @@ class EspecificacionEmision extends ActiveRecord
     public const ESTADO_REEMPLAZADA = 'reemplazada';
     public const ESTADO_ANULADA = 'anulada';
 
+    /**
+     * Serie del codigo. Desde el 2026-10-22 se emite con el codigo del
+     * lineamiento de la DTIC RD-GD-LI-001 (RD-PI-ET-001, correlativo nuevo
+     * desde 1). Las emitidas antes son documentos ya firmados y entregados:
+     * conservan su codigo NET de siempre.
+     */
+    public const SERIE_ET = 'ET';
+    public const SERIE_NET = 'NET';
+
     public static function tableName(): string
     {
         return 'redes.EspecificacionEmision';
@@ -76,6 +88,9 @@ class EspecificacionEmision extends ActiveRecord
             [['elaboradoPor'], 'string', 'max' => 150],
             [['textoCabecera', 'textoNotaFinal', 'garantia'], 'string', 'max' => 500],
             [['textoInstrucciones'], 'string', 'max' => 1000],
+            [['codigoAnterior'], 'string', 'max' => 20],
+            [['serie'], 'default', 'value' => self::SERIE_ET],
+            [['serie'], 'in', 'range' => [self::SERIE_ET, self::SERIE_NET]],
             [['estado'], 'default', 'value' => self::ESTADO_VIGENTE],
             [['estado'], 'in', 'range' => [self::ESTADO_VIGENTE, self::ESTADO_REEMPLAZADA, self::ESTADO_ANULADA]],
         ];
@@ -85,7 +100,9 @@ class EspecificacionEmision extends ActiveRecord
     {
         return [
             'id' => 'ID',
-            'numeroNet' => 'N.º NET',
+            'serie' => 'Serie',
+            'numeroNet' => 'N.º',
+            'codigoAnterior' => 'Código anterior',
             'anio' => 'Año',
             'idVersion' => 'Versión',
             'idProyecto' => 'Proyecto',
@@ -128,12 +145,17 @@ class EspecificacionEmision extends ActiveRecord
     }
 
     /**
-     * Como se imprime y se cita: "NET:880/26". Tres digitos como minimo,
-     * igual que el banco de DTIC ("NET:013/23").
+     * Como se imprime y se cita: "RD-PI-ET-001" (ver CorrelativoDocumento::codigo()) o,
+     * si es de las de antes, "NET:880/26" (tres digitos como minimo, igual
+     * que el banco de DTIC: "NET:013/23").
      */
-    public function codigoNet(): string
+    public function codigo(): string
     {
-        return sprintf('NET:%03d/%02d', $this->numeroNet, $this->anio);
+        if ($this->serie === self::SERIE_NET) {
+            return sprintf('NET:%03d/%02d', $this->numeroNet, $this->anio);
+        }
+
+        return CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_ESPECIFICACION, (int) $this->numeroNet);
     }
 
     public function estadoLabel(): string

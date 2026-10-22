@@ -6,6 +6,7 @@ namespace backend\tests\Unit;
 
 use backend\models\Categoria;
 use backend\models\ConfiguracionEspecificacion;
+use backend\models\CorrelativoDocumento;
 use backend\models\Especificacion;
 use backend\models\EspecificacionEmision;
 use backend\models\Proyecto;
@@ -18,11 +19,11 @@ use Codeception\Test\Unit;
 use DateTimeImmutable;
 
 /**
- * Emisiones NET: enlazar = emitir, correlativo sin repetir, anular,
- * reemitir, avisos y configuracion.
+ * Emisiones de especificaciones (RD-PI-ET): enlazar = emitir, correlativo
+ * sin repetir, anular, reemitir, avisos y registro.
  *
  * Usa la base local; el modulo Yii2 deshace cada test al terminar (tambien
- * el contador de la configuracion).
+ * el correlativo).
  */
 class EspecificacionEmisionTest extends Unit
 {
@@ -46,13 +47,13 @@ class EspecificacionEmisionTest extends Unit
         $this->proyecto->save(false);
         $this->proyecto->refresh();
 
-        // Correlativo conocido para el test, por encima de cualquier NET de la base local.
-        ConfiguracionEspecificacion::updateAll(['siguienteNet' => (int) EspecificacionEmision::find()->max('numeroNet') + 1000]);
+        // Correlativo conocido para el test, por encima de cualquier emision de la base local.
+        CorrelativoDocumento::updateAll(['siguiente' => (int) EspecificacionEmision::find()->max('numeroNet') + 1000], ['tipo' => CorrelativoDocumento::TIPO_ESPECIFICACION]);
     }
 
-    public function testEnlazarEnLaListaEmiteConElSiguienteNet(): void
+    public function testEnlazarEnLaListaEmiteConElSiguienteCodigoEt(): void
     {
-        $siguiente = $this->siguienteNet();
+        $siguiente = $this->siguienteEt();
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']], ['garantia' => '']);
 
         $this->guardarLista([$this->fila(null, 5, $ficha)], 'encargado');
@@ -60,9 +61,10 @@ class EspecificacionEmisionTest extends Unit
         $item = $this->unicoItem();
         $emision = $item->emisionVigente;
         $this->assertNotNull($emision);
+        $this->assertSame(EspecificacionEmision::SERIE_ET, $emision->serie);
         $this->assertSame($siguiente, (int) $emision->numeroNet);
         $this->assertSame((int) date('y'), (int) $emision->anio);
-        $this->assertSame($siguiente + 1, $this->siguienteNet());
+        $this->assertSame($siguiente + 1, $this->siguienteEt());
         // Copias congeladas. El titulo es el nombre DTIC del item de la
         // lista, no el de la ficha.
         $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
@@ -72,18 +74,24 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame('encargado', $emision->elaboradoPor);
         // Sin garantia propia en la ficha: se congela la de la configuracion.
         $this->assertSame(ConfiguracionEspecificacion::obtener()->garantiaPorDefecto, $emision->garantia);
-        $this->assertSame(sprintf('NET:%03d/%s', $siguiente, date('y')), $item->referenciaEspecificacion());
+        $this->assertSame(sprintf('RD-PI-ET-%03d', $siguiente), $item->referenciaEspecificacion());
     }
 
-    public function testSinNetInicialNoSeEnlazaYNoSeGuardaNada(): void
+    public function testElNumeroEtPuedeCoincidirConElDeUnNetViejo(): void
     {
-        ConfiguracionEspecificacion::updateAll(['siguienteNet' => null]);
+        // La serie ET empezo en 1 despues de los NET: el mismo numero en las
+        // dos series son dos documentos distintos (indice unico por serie).
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $nueva = $this->unicoItem()->emisionVigente;
 
-        $errores = $this->guardarLista([$this->fila(null, 5, $ficha)], 'encargado', false);
+        $vieja = new EspecificacionEmision($nueva->getAttributes(null, ['id', 'serie', 'idProyectoItem', 'estado', 'fechaRegistro']));
+        $vieja->serie = EspecificacionEmision::SERIE_NET;
+        $vieja->estado = EspecificacionEmision::ESTADO_ANULADA;
+        $this->assertTrue($vieja->save(false));
 
-        $this->assertStringContainsString('código NET inicial', implode(' ', $errores));
-        $this->assertSame(0, (int) $this->proyecto->getItems()->count());
+        $this->assertSame(sprintf('NET:%03d/%s', $nueva->numeroNet, date('y')), $vieja->codigo());
+        $this->assertSame(sprintf('RD-PI-ET-%03d', $nueva->numeroNet), $nueva->codigo());
     }
 
     public function testFichaSinContenidoNoSeEnlaza(): void
@@ -117,11 +125,11 @@ class EspecificacionEmisionTest extends Unit
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
         $this->guardarLista([$this->fila(null, 5, $ficha)]);
         $item = $this->unicoItem();
-        $siguiente = $this->siguienteNet();
+        $siguiente = $this->siguienteEt();
 
         $this->guardarLista([$this->fila($item, 8, $ficha)]);
 
-        $this->assertSame($siguiente, $this->siguienteNet());
+        $this->assertSame($siguiente, $this->siguienteEt());
         $this->assertSame(1, (int) EspecificacionEmision::find()->andWhere(['idProyecto' => $this->proyecto->id])->count());
     }
 
@@ -157,7 +165,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
     }
 
-    public function testReemitirReemplazaConNetNuevoYLaCantidadDeLaLista(): void
+    public function testReemitirReemplazaConCodigoNuevoYLaCantidadDeLaLista(): void
     {
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
         $this->guardarLista([$this->fila(null, 5, $ficha)]);
@@ -213,10 +221,10 @@ class EspecificacionEmisionTest extends Unit
 
         $html = (new \yii\web\View())->renderFile(
             \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
-            ['emision' => $emision, 'logo' => null]
+            ['emision' => $emision]
         );
 
-        $this->assertStringContainsString($emision->codigoNet(), $html);
+        $this->assertStringContainsString($emision->codigo(), $html);
         $this->assertStringContainsString('<strong>Calibre del conductor:</strong> 23 AWG', $html);
         $this->assertStringContainsString('Cumple ANSI/TIA', $html);
         $this->assertStringContainsString('Se sugiere: Furukawa o similar/superior.', $html);
@@ -228,10 +236,10 @@ class EspecificacionEmisionTest extends Unit
 
         $pdf = $this->emisiones->generarPdf($emision, $html);
         $this->assertStringStartsWith('%PDF', $pdf['contenido']);
-        $this->assertSame(str_replace([':', '/'], '_', $emision->codigoNet()) . '.pdf', $pdf['nombreArchivo']);
+        $this->assertSame(str_replace([':', '/'], '_', $emision->codigo()) . '.pdf', $pdf['nombreArchivo']);
     }
 
-    public function testRegistroFiltraPorEstadoYBuscaPorNet(): void
+    public function testRegistroFiltraPorEstadoYBuscaPorCodigo(): void
     {
         $ficha = $this->ficha('Cable registro test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
         $this->guardarLista([$this->fila(null, 5, $ficha)]);
@@ -250,7 +258,10 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame([$netPrimera], $deEsteProyecto(['estado' => 'reemplazada']));
         $this->assertSame([], $deEsteProyecto(['estado' => 'vencida']));
         $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => (string) $netPrimera]));
-        $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $netPrimera, date('y'))]));
+        $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d', $netPrimera)]));
+        $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d', $netPrimera)]));
+        // Es de la serie ET: buscarla como NET no la encuentra.
+        $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $netPrimera, date('y'))]));
         // El titulo de la emision es el nombre DTIC del item.
         $this->assertSame([$netSegunda, $netPrimera], $deEsteProyecto(['buscar' => $this->itemSubcatalogo->descripcion, 'dependencia' => 'Facultad de Tecnología']));
 
@@ -260,27 +271,25 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame([], $deEsteProyecto(['estado' => 'vigente']));
 
         $csv = $this->emisiones->exportarCsv(['buscar' => (string) $netPrimera]);
-        $this->assertStringStartsWith("\xEF\xBB\xBF" . 'NET;"Fecha de emisión"', $csv);
-        $this->assertStringContainsString(sprintf('NET:%03d/%s', $netPrimera, date('y')), $csv);
+        $this->assertStringStartsWith("\xEF\xBB\xBF" . 'Código;"Código anterior";"Fecha de emisión"', $csv);
+        $this->assertStringContainsString(sprintf('RD-PI-ET-%03d', $netPrimera), $csv);
         $this->assertStringContainsString('Reemplazada', $csv);
     }
 
-    public function testElSiguienteNetNoPuedeBajarDelUltimoEmitido(): void
+    public function testUnaPasadaDeNetAEtSeBuscaPorSuCodigoAnterior(): void
     {
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
         $this->guardarLista([$this->fila(null, 5, $ficha)]);
-        $ultimo = (int) $this->unicoItem()->emisionVigente->numeroNet;
-        $configuracion = ConfiguracionEspecificacion::obtener();
+        $emision = $this->unicoItem()->emisionVigente;
+        // Como la deja la migracion m261022_144239 (un NET que no exista en la base local).
+        EspecificacionEmision::updateAll(['codigoAnterior' => 'NET:7777/26'], ['id' => $emision->id]);
+        $ids = fn (string $buscar) => array_map(static fn (EspecificacionEmision $e) => (int) $e->id, $this->emisiones->registro(['buscar' => $buscar], false)->getModels());
 
-        $this->assertFalse($this->emisiones->guardarConfiguracion($configuracion, ['ConfiguracionEspecificacion' => ['siguienteNet' => (string) $ultimo]]));
-        $this->assertTrue($configuracion->hasErrors('siguienteNet'));
-
-        $configuracion = ConfiguracionEspecificacion::obtener();
-        $this->assertFalse($this->emisiones->guardarConfiguracion($configuracion, ['ConfiguracionEspecificacion' => ['siguienteNet' => '']]));
-
-        $configuracion = ConfiguracionEspecificacion::obtener();
-        $this->assertTrue($this->emisiones->guardarConfiguracion($configuracion, ['ConfiguracionEspecificacion' => ['siguienteNet' => (string) ($ultimo + 10)]]));
-        $this->assertSame($ultimo + 10, $this->siguienteNet());
+        $this->assertSame([(int) $emision->id], $ids('NET:7777/26'));
+        $this->assertSame([(int) $emision->id], $ids('NET:7777'));
+        $this->assertSame([(int) $emision->id], $ids('7777'));
+        $this->assertSame([], $ids('NET:7777/25'));
+        $this->assertStringContainsString('NET:7777/26', $this->emisiones->exportarCsv(['buscar' => 'NET:7777/26']));
     }
 
     /**
@@ -330,8 +339,8 @@ class EspecificacionEmisionTest extends Unit
         return $items[0];
     }
 
-    private function siguienteNet(): int
+    private function siguienteEt(): int
     {
-        return (int) ConfiguracionEspecificacion::obtener()->siguienteNet;
+        return (int) CorrelativoDocumento::findOne(CorrelativoDocumento::TIPO_ESPECIFICACION)->siguiente;
     }
 }

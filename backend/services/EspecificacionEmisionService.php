@@ -6,6 +6,7 @@ namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
 use backend\models\ConfiguracionEspecificacion;
+use backend\models\CorrelativoDocumento;
 use backend\models\Especificacion;
 use backend\models\EspecificacionEmision;
 use backend\models\Proyecto;
@@ -17,17 +18,18 @@ use Yii;
 use yii\data\ActiveDataProvider;
 
 /**
- * Capa de Servicio para las EMISIONES NET: el documento con codigo NET que se
+ * Capa de Servicio para las EMISIONES: el formulario de especificacion
+ * tecnica con codigo RD-PI-ET-001 (antes del 2026-10-22, NET:880/26) que se
  * firma, se sella y se entrega al proveedor.
  *
  * Reglas de negocio que viven aqui (confirmadas con el Ing. de DTIC):
  *  - enlazar una especificacion a un item de la lista ES emitir: se le asigna
- *    el siguiente NET del correlativo,
- *  - el correlativo lo fija el encargado (siguienteNet de la configuracion),
- *    sube de 1 en 1, no se reinicia por año y un numero nunca se reutiliza,
+ *    el siguiente numero del correlativo ET (CodificacionService),
+ *  - el correlativo lo fija el encargado (Codificación de documentos), sube
+ *    de 1 en 1, no se reinicia por año y un numero nunca se reutiliza,
  *  - una emision no cambia nunca: guarda copias de todo lo que imprime y
  *    apunta a una version que ya no se puede modificar,
- *  - un error se corrige REEMITIENDO: NET nuevo con la ultima version y la
+ *  - un error se corrige REEMITIENDO: codigo nuevo con la ultima version y la
  *    cantidad actual de la lista; la anterior queda "reemplazada por",
  *  - cambiar o quitar la especificacion de un item, o quitar el item, ANULA
  *    su emision vigente (el documento sigue en el historial),
@@ -38,20 +40,14 @@ use yii\data\ActiveDataProvider;
  */
 class EspecificacionEmisionService
 {
-    private const ARCHIVO_LOGO = 'logo-formulario-net.png';
-
     /**
-     * Por que no se puede emitir la especificacion (null si se puede):
-     * falta fijar el NET inicial, o la ficha todavia no tiene contenido.
+     * Por que no se puede emitir la especificacion (null si se puede): la
+     * ficha no existe o todavia no tiene contenido.
      * ListaItemsService lo consulta ANTES de guardar, para mostrar el error
      * sin haber tocado nada.
      */
     public function motivoParaNoEmitir(?Especificacion $especificacion): ?string
     {
-        if (ConfiguracionEspecificacion::obtener()->siguienteNet === null) {
-            return 'todavía no se fijó el código NET inicial. Fíjelo en Especificaciones → Configuración del formulario NET.';
-        }
-
         if ($especificacion === null) {
             return 'la especificación elegida no existe.';
         }
@@ -64,8 +60,8 @@ class EspecificacionEmisionService
     }
 
     /**
-     * Emite el formulario NET de la especificacion enlazada al item, con la
-     * version actual de la ficha y el siguiente NET.
+     * Emite el formulario de la especificacion enlazada al item, con la
+     * version actual de la ficha y el siguiente codigo ET.
      *
      * $condiciones puede traer lugarEntrega, validezOfertaDias y
      * tiempoEntregaDias; lo que no venga sale de la configuracion (y el lugar,
@@ -114,19 +110,20 @@ class EspecificacionEmisionService
             'fechaEmision' => $hoy->format('Y-m-d'),
             'vigenciaDias' => $configuracion->vigenciaDias,
             'estado' => EspecificacionEmision::ESTADO_VIGENTE,
+            'serie' => EspecificacionEmision::SERIE_ET,
             // Provisorio, para validar el resto: el numero real se toma recien
-            // dentro de la transaccion, con la fila de configuracion bloqueada.
+            // dentro de la transaccion, con la fila del correlativo bloqueada.
             'numeroNet' => 0,
         ]);
 
         if (!$emision->validate()) {
-            throw new DomainException('No se pudo emitir el formulario NET: ' . implode(' ', $emision->getErrorSummary(true)));
+            throw new DomainException('No se pudo emitir el formulario de especificación: ' . implode(' ', $emision->getErrorSummary(true)));
         }
 
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            $emision->numeroNet = $this->tomarSiguienteNet();
+            $emision->numeroNet = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION);
             $emision->save(false);
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -150,9 +147,9 @@ class EspecificacionEmisionService
     }
 
     /**
-     * Reemite el formulario NET del item: NET nuevo, ultima version de la
+     * Reemite el formulario del item: codigo nuevo, ultima version de la
      * ficha y cantidad ACTUAL de la lista (si la cantidad estaba mal, se
-     * corrige en la lista y se reemite: asi el NET y la lista nunca dicen
+     * corrige en la lista y se reemite: asi el formulario y la lista nunca dicen
      * cosas distintas). Las condiciones de entrega si se pueden cambiar.
      * La emision anterior queda "reemplazada por" la nueva.
      *
@@ -167,7 +164,7 @@ class EspecificacionEmisionService
     public function reemitir(ProyectoItem $item, array $datos, ?string $usuario): array
     {
         if (!$this->puedeReemitir($item->proyecto)) {
-            return ['emision' => null, 'error' => 'El presupuesto del proyecto ya está aprobado o cancelado: no se emiten más formularios NET.'];
+            return ['emision' => null, 'error' => 'El presupuesto del proyecto ya está aprobado o cancelado: no se emiten más formularios de especificación.'];
         }
 
         if ($item->idEspecificacion === null) {
@@ -259,25 +256,25 @@ class EspecificacionEmisionService
             $avisos = [];
 
             if ($emision === null) {
-                $avisos[] = 'Todavía no tiene formulario NET emitido.';
+                $avisos[] = 'Todavía no tiene formulario de especificación emitido.';
             } else {
                 // La especificacion recien cambiada en el formulario (sin
                 // guardar) no corresponde a esta emision: no se compara.
                 if ((int) $emision->version->idEspecificacion === (int) $item->idEspecificacion) {
                     if ((float) $emision->cantidad !== (float) $item->cantidad || (string) $emision->unidad !== (string) $item->unidadMedida) {
                         $avisos[] = 'La cantidad de la lista (' . $formato->asDecimal($item->cantidad, 2) . ' ' . $item->unidadMedida
-                            . ') ya no coincide con la del ' . $emision->codigoNet() . ' (' . $formato->asDecimal($emision->cantidad, 2) . ' ' . $emision->unidad . '): reemítalo.';
+                            . ') ya no coincide con la del ' . $emision->codigo() . ' (' . $formato->asDecimal($emision->cantidad, 2) . ' ' . $emision->unidad . '): reemítalo.';
                     }
 
                     $actual = $fichas[$item->idEspecificacion]->versionActual ?? null;
                     if ($actual !== null && (int) $actual->id !== (int) $emision->idVersion) {
-                        $avisos[] = 'Hay una versión más nueva de la ficha (' . $actual->etiqueta() . '); el ' . $emision->codigoNet()
+                        $avisos[] = 'Hay una versión más nueva de la ficha (' . $actual->etiqueta() . '); el ' . $emision->codigo()
                             . ' usa la ' . $emision->version->etiqueta() . '. Reemítalo si debe llevar los cambios.';
                     }
                 }
 
                 if ($emision->estaVencida($hoy)) {
-                    $avisos[] = 'El ' . $emision->codigoNet() . ' venció el ' . $emision->fechaVencimiento()->format('d/m/Y') . ': reemítalo antes de pedir cotizaciones.';
+                    $avisos[] = 'El ' . $emision->codigo() . ' venció el ' . $emision->fechaVencimiento()->format('d/m/Y') . ': reemítalo antes de pedir cotizaciones.';
                 }
             }
 
@@ -288,41 +285,16 @@ class EspecificacionEmisionService
     }
 
     /**
-     * Guarda la configuracion del formulario NET.
-     *
-     * REGLA DE NEGOCIO: el siguiente NET tiene que ser MAYOR que el ultimo
-     * emitido; si no, se repetirian codigos (la base tambien lo impediria,
-     * pero recien al emitir). Una vez fijado no se puede volver a dejar vacio.
+     * Guarda la configuracion del formulario (textos y valores por defecto).
+     * El correlativo se fija aparte, en CodificacionService.
      */
     public function guardarConfiguracion(ConfiguracionEspecificacion $configuracion, array $datosFormulario): bool
     {
-        $anterior = $configuracion->siguienteNet;
-
-        if (!$configuracion->load($datosFormulario) || !$configuracion->validate()) {
-            return false;
-        }
-
-        if ($configuracion->siguienteNet === null || $configuracion->siguienteNet === '') {
-            if ($anterior !== null) {
-                $configuracion->addError('siguienteNet', 'Una vez fijado, el código NET no se puede dejar vacío.');
-
-                return false;
-            }
-            $configuracion->siguienteNet = null;
-        } else {
-            $ultimo = $this->ultimoNetEmitido();
-            if ($ultimo !== null && (int) $configuracion->siguienteNet <= $ultimo) {
-                $configuracion->addError('siguienteNet', "Tiene que ser mayor que el último emitido (NET $ultimo).");
-
-                return false;
-            }
-        }
-
-        return $configuracion->save(false);
+        return $configuracion->load($datosFormulario) && $configuracion->save();
     }
 
     /**
-     * Registro de todas las emisiones NET (reemplaza el Excel "1000
+     * Registro de todas las emisiones (reemplaza el Excel "1000
      * Especificaciones" de DTIC), de la mas nueva a la mas antigua.
      *
      * Filtros (todos opcionales):
@@ -331,8 +303,10 @@ class EspecificacionEmisionService
      *    guarda: es una vigente cuya fecha + vigencia ya paso, y "vigente"
      *    aqui son solo las que todavia no vencieron,
      *  - dependencia: texto exacto,
-     *  - buscar: "880", "880/26" o "NET:880/26" busca el numero; cualquier
-     *    otro texto busca en el titulo y en el codigo del proyecto.
+     *  - buscar: "RD-PI-ET-007" o "NET:880/26" busca ese codigo (el NET
+     *    tambien en el codigo anterior de las que se pasaron a ET); un numero
+     *    solo ("7", "880") lo busca en los dos; cualquier otro texto busca en
+     *    el titulo y en el codigo del proyecto.
      *
      * @param array{anio?: string, estado?: string, dependencia?: string, buscar?: string} $filtros
      * @param int|false $porPagina false = todas (para exportar)
@@ -343,7 +317,9 @@ class EspecificacionEmisionService
             ->alias('e')
             ->joinWith('proyecto p', false)
             ->with(['version', 'proyecto', 'proyectoItem.subcatalogoItem', 'reemplazadaPor'])
-            ->orderBy(['e.numeroNet' => SORT_DESC]);
+            // Por orden de emision: el numero no sirve, porque la serie ET
+            // empezo en 1 despues de los NET.
+            ->orderBy(['e.id' => SORT_DESC]);
 
         $anio = trim((string) ($filtros['anio'] ?? ''));
         if (ctype_digit($anio)) {
@@ -371,11 +347,24 @@ class EspecificacionEmisionService
         }
 
         $buscar = trim((string) ($filtros['buscar'] ?? ''));
-        if (preg_match('/^(?:NET:\s*)?(\d+)(?:\/(\d{2}))?$/i', $buscar, $m) === 1) {
-            $query->andWhere(['e.numeroNet' => (int) $m[1]]);
-            if (isset($m[2])) {
-                $query->andWhere(['e.anio' => (int) $m[2]]);
+        $numeroEt = CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($buscar));
+        if ($numeroEt !== null) {
+            $query->andWhere(['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $numeroEt]);
+        } elseif (preg_match('/^(NET:\s*)?(\d+)(?:\/(\d{2}))?$/i', $buscar, $m) === 1) {
+            // Un NET que siga como NET, o una ya pasada a ET con ese codigo anterior.
+            $numero = (int) $m[2];
+            $anio = isset($m[3]) ? (int) $m[3] : null;
+            $net = ['and', ['e.serie' => EspecificacionEmision::SERIE_NET, 'e.numeroNet' => $numero]];
+            if ($anio !== null) {
+                $net[] = ['e.anio' => $anio];
             }
+            $anterior = ['like', 'e.codigoAnterior', sprintf('NET:%03d/', $numero) . ($anio !== null ? sprintf('%02d', $anio) : '%'), false];
+            $condiciones = ['or', $net, $anterior];
+            // Un numero solo tambien puede ser el de una ET.
+            if ($m[1] === '' && $anio === null) {
+                $condiciones[] = ['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $numero];
+            }
+            $query->andWhere($condiciones);
         } elseif ($buscar !== '') {
             $query->andWhere(['or', ['like', 'e.titulo', $buscar], ['like', 'p.codigo', $buscar]]);
         }
@@ -383,7 +372,7 @@ class EspecificacionEmisionService
         return new ActiveDataProvider([
             'query' => $query,
             'pagination' => $porPagina === false ? false : ['pageSize' => $porPagina],
-            // El orden lo fija la consulta (NET descendente).
+            // El orden lo fija la consulta (de la mas nueva a la mas antigua).
             'sort' => false,
         ]);
     }
@@ -422,12 +411,13 @@ class EspecificacionEmisionService
         $formato = Yii::$app->formatter;
         $salida = fopen('php://temp', 'r+');
         fwrite($salida, "\xEF\xBB\xBF");
-        fputcsv($salida, ['NET', 'Fecha de emisión', 'Dependencia', 'Especificación', 'Versión', 'Ítem de la lista', 'Cantidad', 'Unidad', 'Modelo sugerido', 'Proyecto', 'Estado', 'Motivo', 'Reemplazada por', 'Elaborado por'], ';');
+        fputcsv($salida, ['Código', 'Código anterior', 'Fecha de emisión', 'Dependencia', 'Especificación', 'Versión', 'Ítem de la lista', 'Cantidad', 'Unidad', 'Modelo sugerido', 'Proyecto', 'Estado', 'Motivo', 'Reemplazada por', 'Elaborado por'], ';');
 
         foreach ($this->registro($filtros, false)->getModels() as $emision) {
             /** @var EspecificacionEmision $emision */
             fputcsv($salida, [
-                $emision->codigoNet(),
+                $emision->codigo(),
+                $emision->codigoAnterior,
                 $formato->asDate($emision->fechaEmision, 'php:d/m/Y'),
                 $emision->dependencia,
                 $emision->titulo,
@@ -439,7 +429,7 @@ class EspecificacionEmisionService
                 $emision->proyecto->codigo ?? '',
                 $emision->estadoLabel(),
                 $emision->motivo,
-                $emision->reemplazadaPor?->codigoNet() ?? '',
+                $emision->reemplazadaPor?->codigo() ?? '',
                 $emision->elaboradoPor,
             ], ';');
         }
@@ -460,17 +450,6 @@ class EspecificacionEmisionService
     }
 
     /**
-     * Logo del formulario NET, si se coloco el archivo (no es obligatorio):
-     * backend/web/img/logo-formulario-net.png. mPDF lo lee desde el disco.
-     */
-    public function rutaLogo(): ?string
-    {
-        $ruta = Yii::getAlias('@backend/web/img/' . self::ARCHIVO_LOGO);
-
-        return is_file($ruta) ? $ruta : null;
-    }
-
-    /**
      * Convierte el HTML del formulario (vista especificacion/formulario-pdf)
      * en el PDF. Una emision que ya no sirve lleva una marca de agua para que
      * una copia impresa no se confunda con la vigente: REEMPLAZADO, ANULADO o
@@ -482,13 +461,13 @@ class EspecificacionEmisionService
     {
         return [
             'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $this->marcaDeAgua($emision)),
-            // "NET_880_26.pdf": el codigo es unico.
-            'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigoNet()) . '.pdf',
+            // "RD-PI-ET-007.pdf" (o "NET_880_26.pdf"): el codigo es unico.
+            'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigo()) . '.pdf',
         ];
     }
 
     /**
-     * Formularios NET VIGENTES de la lista del proyecto, en el orden de la
+     * Formularios de especificación VIGENTES de la lista del proyecto, en el orden de la
      * lista (por clasificacion). Los anulados y reemplazados no entran: no se
      * entregan. Un vigente ya vencido si entra, con su marca VENCIDO.
      *
@@ -553,36 +532,6 @@ class EspecificacionEmisionService
             $emision->estaVencida() => 'VENCIDO',
             default => null,
         };
-    }
-
-    public function ultimoNetEmitido(): ?int
-    {
-        $maximo = EspecificacionEmision::find()->max('numeroNet');
-
-        return $maximo === null ? null : (int) $maximo;
-    }
-
-    /**
-     * Toma el siguiente NET y deja el contador en el que sigue, con la fila
-     * de configuracion BLOQUEADA hasta que termine la transaccion (UPDLOCK,
-     * HOLDLOCK de SQL Server): si dos personas emiten a la vez, la segunda
-     * espera a la primera y recibe el numero siguiente, nunca el mismo.
-     * Tiene que llamarse dentro de una transaccion.
-     */
-    private function tomarSiguienteNet(): int
-    {
-        $db = Yii::$app->db;
-        $numero = $db->createCommand(
-            'SELECT siguienteNet FROM redes.ConfiguracionEspecificacion WITH (UPDLOCK, HOLDLOCK) WHERE id = 1'
-        )->queryScalar();
-
-        if ($numero === null || $numero === false) {
-            throw new DomainException('Todavía no se fijó el código NET inicial. Fíjelo en Especificaciones → Configuración del formulario NET.');
-        }
-
-        $db->createCommand('UPDATE redes.ConfiguracionEspecificacion SET siguienteNet = siguienteNet + 1 WHERE id = 1')->execute();
-
-        return (int) $numero;
     }
 
     private function textoONull(mixed $valor): ?string

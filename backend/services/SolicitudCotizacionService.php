@@ -362,7 +362,7 @@ class SolicitudCotizacionService
     }
 
     /**
-     * Formularios NET VIGENTES de los items de la solicitud, en el orden en
+     * Formularios de especificación VIGENTES de los items de la solicitud, en el orden en
      * que salen en el documento. Van al final del PDF para que el proveedor
      * sepa que se le pide. Un item sin especificacion (o con su emision
      * anulada) no aporta ninguno: la especificacion es opcional.
@@ -385,7 +385,7 @@ class SolicitudCotizacionService
 
     /**
      * Convierte el HTML de la vista "pdf" (la arma el controlador) en el
-     * documento de la solicitud, seguido de los formularios NET de sus items,
+     * documento de la solicitud, seguido de los formularios de especificación de sus items,
      * cada uno desde una hoja nueva y con su marca de agua.
      *
      * @param array<int, array{emision: EspecificacionEmision, html: string}> $formularios

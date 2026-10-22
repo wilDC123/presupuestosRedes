@@ -21,9 +21,11 @@ use yii\helpers\Html;
  * paréntesis (sin nombre SIGMA).
  * Si el presupuesto lleva mano de obra de la DTIC (Presupuesto::$manoDeObra),
  * va en la categoría "Mano de obra" (al final si no existe), con precios en
- * 0.00. Después del total: nota; al fondo de la última página, dos firmas y banda de pie verde con los
- * contactos, todo desde redes.ConfiguracionPresupuesto (presupuesto/
- * configuracion); nada de eso queda escrito aquí. No lleva proveedor por línea, resumen por partida, anexo
+ * 0.00. Después del total: nota; al fondo de la última página, el "control de elaboración" del
+ * lineamiento RD-GD-LI-001 (versión, elaborado por, aprobado por, firmas y fecha de aprobación) y la
+ * banda de pie verde con los contactos. Nombres, cargos y contactos salen de
+ * redes.ConfiguracionPresupuesto (presupuesto/configuracion); nada de eso queda escrito aquí.
+ * Cabecera y fuente (Carlito = medidas de Calibri) también según el lineamiento. No lleva proveedor por línea, resumen por partida, anexo
  * comparativo, área de intervención ni estado: se ven en la pantalla del
  * paso Presupuesto.
  *
@@ -64,16 +66,17 @@ if ($presupuesto->manoDeObra !== null) {
 <head>
 <meta charset="utf-8">
 <style>
+    /* Calibri 11 (lineamiento RD-GD-LI-001, 8.8.1): Carlito tiene sus mismas medidas. */
     body {
-        font-family: sans-serif;
-        font-size: 11px;
+        font-family: carlito;
+        font-size: 11pt;
         color: #000;
     }
     /* Cabecera repetida en cada pagina: ver views/pdf/_cabecera.php. */
     @page {
         header: html_cabecera;
         margin-header: 5mm;
-        margin-top: 32mm;
+        margin-top: 37mm;
     }
     table.datos-generales {
         width: 100%;
@@ -93,8 +96,8 @@ if ($presupuesto->manoDeObra !== null) {
     table.items th,
     table.items td {
         border: 1px solid #666;
-        padding: 5px 4px;
-        font-size: 10px;
+        padding: 4px 4px;
+        font-size: 10pt;
     }
     table.items th {
         background-color: #e0e0e0;
@@ -105,7 +108,7 @@ if ($presupuesto->manoDeObra !== null) {
     }
     .observacion {
         font-style: italic;
-        font-size: 9px;
+        font-size: 9pt;
         color: #333;
     }
     /* Las categorias van pegadas, como una sola tabla: el titulo no tiene
@@ -128,7 +131,7 @@ if ($presupuesto->manoDeObra !== null) {
     }
     .total-general {
         text-align: right;
-        font-size: 13px;
+        font-size: 12pt;
         font-weight: bold;
         margin-top: 10px;
         border-top: 2px solid #000;
@@ -136,30 +139,35 @@ if ($presupuesto->manoDeObra !== null) {
     }
     .nota {
         margin-top: 10px;
-        font-size: 10px;
+        font-size: 10pt;
     }
-    /* page-break-inside: mPDF no corta estas tablas entre dos paginas. */
-    table.firmas {
+    /* Control de elaboracion (lineamiento RD-GD-LI-001, 8.12). page-break-inside:
+       mPDF no corta estas tablas entre dos paginas. */
+    table.elaboracion {
         width: 100%;
         border-collapse: collapse;
         margin-top: 20px;
         page-break-inside: avoid;
     }
-    table.firmas td {
+    table.elaboracion th,
+    table.elaboracion td {
+        border: 1px solid #000;
+        padding: 3px 5px;
+        font-size: 10pt;
+        vertical-align: middle;
+    }
+    table.elaboracion th {
+        background-color: #e0e0e0;
         text-align: center;
-        vertical-align: top;
-        padding: 4px 0 0 0;
     }
-    /* Espacio para firmar y la raya debajo. */
-    table.firmas td.firma-raya {
-        height: 60px;
-        border-bottom: 1px solid #000;
+    table.elaboracion td.etiqueta {
+        font-weight: bold;
     }
-    .firma-nombre {
-        font-size: 10px;
+    /* Espacio para firmar. */
+    table.elaboracion td.firma {
+        height: 55px;
     }
-    .firma-cargo {
-        font-size: 9px;
+    table.elaboracion td.cargo {
         font-weight: bold;
     }
     table.pie {
@@ -168,29 +176,18 @@ if ($presupuesto->manoDeObra !== null) {
         margin-top: 30px;
         page-break-inside: avoid;
     }
+    /* Pie de pagina en tamaño 9 (lineamiento RD-GD-LI-001, 8.8.1). */
     table.pie td {
         background-color: #e2efda;
         border: 1px solid #a9c99a;
         text-align: center;
         vertical-align: top;
         padding: 6px;
-        font-size: 9px;
+        font-size: 9pt;
     }
     .pie-titulo {
         font-weight: bold;
-        font-size: 10px;
         margin-bottom: 2px;
-    }
-    .firmas-mano {
-        margin-top: 60px;
-    }
-    .firma-linea {
-        margin-top: 40px;
-        border-top: 1px solid #000;
-        width: 260px;
-    }
-    .firma-etiqueta {
-        margin-top: 4px;
     }
 </style>
 </head>
@@ -198,12 +195,13 @@ if ($presupuesto->manoDeObra !== null) {
 
 <?= $this->render('//pdf/_cabecera', [
     'titulo' => 'PRESUPUESTO DE INSTALACIÓN DE REDES',
-    'numero' => 'N.° ' . ($presupuesto->numeroPresupuesto ?: '—'),
-    'facultad' => $proyecto->facultad,
+    'codigo' => $presupuesto->numeroPresupuesto ?: '—',
+    'version' => $presupuesto::VERSION_DOCUMENTO,
+    'proceso' => backend\models\CorrelativoDocumento::NOMBRE_PROCESO,
     'fecha' => $presupuesto->fechaFormateada() ?: '—',
 ]) ?>
 
-<?php // N.°, facultad y fecha ya van en la cabecera. ?>
+<?php // Código, versión y fecha ya van en la cabecera. ?>
 <table class="datos-generales">
     <tr>
         <td><strong>Código de proyecto:</strong> <?= Html::encode($proyecto->codigo ?: '—') ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
@@ -249,7 +247,7 @@ if ($presupuesto->manoDeObra !== null) {
                             // Entre parentesis, en la misma linea: el NET de la emision
                             // VIGENTE (sin emision, o anulada, no sale) y el modelo sugerido.
                             $referencia = array_filter([
-                                $linea->proyectoItem?->emisionVigente?->codigoNet(),
+                                $linea->proyectoItem?->emisionVigente?->codigo(),
                                 $linea->proyectoItem?->modeloSugerido(),
                             ]);
                             ?>
@@ -300,43 +298,41 @@ if ($presupuesto->manoDeObra !== null) {
     <div class="nota"><?= nl2br(Html::encode($configuracion->textoNota)) ?></div>
 <?php endif; ?>
 
-<?php // Firmas y banda de pie: al fondo de la última página (PresupuestoPdfGenerator). ?>
+<?php // Control de elaboración y banda de pie: al fondo de la última página (PresupuestoPdfGenerator). ?>
 <?= backend\components\PresupuestoPdfGenerator::MARCA_AL_PIE ?>
 
 <?php
-$firmas = $configuracion->firmas();
-// Columnas de la tabla de firmas: null = espacio en blanco. La raya de cada
-// firma es el borde inferior de su celda (mPDF no dibuja bordes de un div
-// vacio dentro de una celda); los espacios separan las rayas.
-$columnasFirma = count($firmas) === 1 ? [null, $firmas[0], null] : [$firmas[0] ?? null, null, $firmas[1] ?? null];
-$anchos = count($firmas) === 1 ? [25, 50, 25] : [45, 10, 45];
+// Elaborado por (firma 1) y aprobado por (firma 2, con su V°B°). Una firma
+// sin nombre en la configuracion queda en blanco, para llenarla a mano.
+$elaborado = $configuracion->firma(1);
+$aprobado = $configuracion->firma(2);
 ?>
-<?php if ($firmas !== []): ?>
-    <table class="firmas">
-        <tr>
-            <?php foreach ($columnasFirma as $i => $firma): ?>
-                <td width="<?= $anchos[$i] ?>%" class="<?= $firma !== null ? 'firma-raya' : '' ?>"></td>
-            <?php endforeach; ?>
-        </tr>
-        <tr>
-            <?php foreach ($columnasFirma as $firma): ?>
-                <td>
-                    <?php if ($firma !== null): ?>
-                        <div class="firma-nombre"><?= Html::encode(trim($firma['prefijo'] . ' ' . $firma['nombre'])) ?></div>
-                        <div class="firma-cargo"><?= Html::encode($firma['cargo']) ?></div>
-                    <?php endif; ?>
-                </td>
-            <?php endforeach; ?>
-        </tr>
-    </table>
-<?php else: ?>
-    <?php // Sin firmantes configurados: la firma de siempre, para llenar a mano. ?>
-    <div class="firmas-mano">
-        <div class="firma-linea"></div>
-        <div class="firma-etiqueta">Elaborado por: ________________________________</div>
-        <div class="firma-etiqueta">Fecha: ________________________________</div>
-    </div>
-<?php endif; ?>
+<table class="elaboracion">
+    <tr>
+        <th width="20%">Versión: <?= Html::encode($presupuesto::VERSION_DOCUMENTO) ?></th>
+        <th width="40%">Elaborado por</th>
+        <th width="40%">Aprobado por</th>
+    </tr>
+    <tr>
+        <td class="etiqueta">Firma:</td>
+        <td class="firma"></td>
+        <td class="firma"></td>
+    </tr>
+    <tr>
+        <td class="etiqueta">Nombre:</td>
+        <td><?= Html::encode($elaborado !== null ? trim($elaborado['prefijo'] . ' ' . $elaborado['nombre']) : '') ?></td>
+        <td><?= Html::encode($aprobado !== null ? trim($aprobado['prefijo'] . ' ' . $aprobado['nombre']) : '') ?></td>
+    </tr>
+    <tr>
+        <td class="etiqueta">Cargo:</td>
+        <td class="cargo"><?= Html::encode($elaborado['cargo'] ?? '') ?></td>
+        <td class="cargo"><?= Html::encode($aprobado['cargo'] ?? '') ?></td>
+    </tr>
+    <tr>
+        <?php // Vacia hasta que se apruebe (o en los aprobados antes de que se guardara la fecha). ?>
+        <td colspan="3"><strong>Fecha de aprobación:</strong> <?= Html::encode($presupuesto->fechaAprobacionFormateada()) ?></td>
+    </tr>
+</table>
 
 <?php $columnasPie = $configuracion->columnasPie(); ?>
 <?php if ($columnasPie !== []): ?>

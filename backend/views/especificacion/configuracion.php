@@ -6,17 +6,17 @@ use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 
 /**
- * Configuracion del formulario NET: el correlativo y los textos fijos que
- * llevan todos los formularios. Valen para las emisiones NUEVAS: cada
+ * Configuracion del formulario de especificacion tecnica: los textos fijos
+ * que llevan todos los formularios (el correlativo RD-PI-ET se fija en
+ * Codificación de documentos). Valen para las emisiones NUEVAS: cada
  * emision guarda su propia copia, asi que cambiar algo aqui no altera los
  * documentos ya emitidos.
  *
  * @var yii\web\View $this
  * @var backend\models\ConfiguracionEspecificacion $configuracion
- * @var int|null $ultimoNet ultimo NET emitido (null si todavia no hay ninguno)
  */
 
-$this->title = 'Configuración del formulario NET';
+$this->title = 'Configuración del formulario de especificación';
 $this->params['breadcrumbs'][] = ['label' => 'Librería de especificaciones', 'url' => ['index']];
 $this->params['breadcrumbs'][] = 'Configuración';
 ?>
@@ -33,23 +33,10 @@ $this->params['breadcrumbs'][] = 'Configuración';
 
     <?php $form = ActiveForm::begin(); ?>
 
-    <div class="card mb-3">
-        <div class="rd-card-head">
-            <div class="rd-card-titulo">Código NET</div>
-            <div class="kicker">
-                <?= $ultimoNet === null
-                    ? 'Todavía no se emitió ningún formulario.'
-                    : 'Último emitido: NET:' . sprintf('%03d', $ultimoNet) ?>
-            </div>
-        </div>
-        <div class="rd-card-pad">
-            <?= $form->field($configuracion, 'siguienteNet')->textInput(['type' => 'number', 'min' => 1])
-                ->hint($configuracion->siguienteNet === null
-                    ? 'Escriba el número con el que debe seguir el correlativo de DTIC (por ejemplo, el siguiente al último del Excel "1000 Especificaciones"). Hasta que lo fije no se pueden enlazar especificaciones a los ítems.'
-                    : 'Sube de 1 en 1 cada vez que se emite un formulario y no se reinicia por año (el año va después de la barra: NET:'
-                        . sprintf('%03d', (int) $configuracion->siguienteNet) . '/' . date('y') . '). Solo puede ser mayor que el último emitido.') ?>
-        </div>
-    </div>
+    <p class="rd-nota">
+        El código de cada formulario (RD-PI-ET-001, RD-PI-ET-002…) se fija en
+        <?= Html::a('Codificación de documentos', ['/codificacion/index']) ?>.
+    </p>
 
     <div class="card mb-3">
         <div class="rd-card-head"><div class="rd-card-titulo">Textos del formulario</div></div>

@@ -50,7 +50,9 @@ $formato = Yii::$app->formatter;
             ],
             [
                 'attribute' => 'numeroPresupuesto',
-                'value' => static fn ($model) => $model->numeroPresupuesto ?: '—',
+                'format' => 'raw',
+                'value' => static fn ($model) => Html::encode($model->numeroPresupuesto ?: '—')
+                    . ($model->numeroAnterior !== null ? '<div class="rd-celda-sub">antes ' . Html::encode($model->numeroAnterior) . '</div>' : ''),
             ],
             [
                 'label' => 'Estado',

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\ConfiguracionEspecificacion;
+use backend\models\CorrelativoDocumento;
 use backend\models\OrdenCambio;
 use backend\models\Proyecto;
+use backend\services\CodificacionService;
 use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
 use backend\services\ListaItemsService;
@@ -104,12 +106,13 @@ class ListaItemsController extends Controller
             'proyecto' => $proyecto,
             'pasos' => (new ProyectoService())->pasos($proyecto),
             'grupos' => $grupos,
-            // Formulario NET vigente y avisos de cada item con especificacion.
+            // Formulario de especificación vigente y avisos de cada item con especificacion.
             'emisiones' => $emisiones->estadoPorItem($itemsDeLaLista),
             'puedeReemitir' => $emisiones->puedeReemitir($proyecto),
             // Para el boton "Imprimir especificaciones (N)".
             'totalFormularios' => count($emisiones->vigentesDelProyecto($proyecto)),
             'configuracion' => ConfiguracionEspecificacion::obtener(),
+            'proximoCodigo' => (new CodificacionService())->proximo(CorrelativoDocumento::TIPO_ESPECIFICACION),
             'errores' => $errores,
             'editable' => $editable,
             'subcatalogo' => $editable ? (new SubcatalogoItemService())->activos() : [],
@@ -143,7 +146,7 @@ class ListaItemsController extends Controller
     }
 
     /**
-     * Todos los formularios NET vigentes de la lista en UN PDF, cada uno desde
+     * Todos los formularios de especificación vigentes de la lista en UN PDF, cada uno desde
      * una hoja nueva (en el orden de la lista). Es lo mismo que imprimirlos
      * uno por uno desde especificacion/formulario, juntos.
      */
@@ -154,15 +157,14 @@ class ListaItemsController extends Controller
         $vigentes = $emisiones->vigentesDelProyecto($proyecto);
 
         if ($vigentes === []) {
-            Yii::$app->session->setFlash('error', 'La lista no tiene especificaciones técnicas emitidas (formularios NET vigentes).');
+            Yii::$app->session->setFlash('error', 'La lista no tiene especificaciones técnicas emitidas (formularios de especificación vigentes).');
 
             return $this->redirect(['index', 'id' => $proyecto->id]);
         }
 
-        $logo = $emisiones->rutaLogo();
         $formularios = array_map(fn ($emision) => [
             'emision' => $emision,
-            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision, 'logo' => $logo]),
+            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision]),
         ], $vigentes);
 
         $pdf = $emisiones->generarPdfDelProyecto($proyecto, $formularios);
@@ -193,7 +195,7 @@ class ListaItemsController extends Controller
     }
 
     /**
-     * Emite de nuevo el formulario NET de un item (NET nuevo, ultima version
+     * Emite de nuevo el formulario de especificación de un item (codigo nuevo, ultima version
      * de la ficha, cantidad actual de la lista). Funciona con la lista en
      * edicion o en cotizacion: no cambia la lista.
      *
@@ -219,14 +221,14 @@ class ListaItemsController extends Controller
         if ($resultado['error'] !== null) {
             Yii::$app->session->setFlash('error', $resultado['error']);
         } else {
-            Yii::$app->session->setFlash('success', 'Se emitió el ' . $resultado['emision']->codigoNet() . ' para "' . $resultado['emision']->titulo . '".');
+            Yii::$app->session->setFlash('success', 'Se emitió el ' . $resultado['emision']->codigo() . ' para "' . $resultado['emision']->titulo . '".');
         }
 
         return $this->redirect(['index', 'id' => $proyecto->id]);
     }
 
     /**
-     * Quien queda como "elaborado por" en los formularios NET.
+     * Quien queda como "elaborado por" en los formularios de especificación.
      */
     private function usuario(): ?string
     {

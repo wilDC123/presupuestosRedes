@@ -10,7 +10,6 @@ use backend\models\Cotizacion;
 use backend\models\Proyecto;
 use backend\models\SolicitudCotizacion;
 use backend\services\CotizacionService;
-use backend\services\EspecificacionEmisionService;
 use backend\services\ProveedorService;
 use backend\services\ProyectoService;
 use backend\services\SolicitudCotizacionService;
@@ -266,16 +265,15 @@ class SolicitudCotizacionController extends Controller
             'solicitud' => $solicitud,
             'configuracion' => ConfiguracionSolicitudCotizacion::obtener(),
             // Los plazos (validez de la oferta, tiempo de entrega) son los
-            // mismos del formulario NET: se configuran en un solo lugar.
+            // mismos del formulario de especificación: se configuran en un solo lugar.
             'configuracionNet' => ConfiguracionEspecificacion::obtener(),
         ]);
 
-        // Al final, el formulario NET de cada item que lo tiene: el proveedor
+        // Al final, el formulario de especificación de cada item que lo tiene: el proveedor
         // recibe en un solo archivo lo que se le pide y como se le pide.
-        $logo = (new EspecificacionEmisionService())->rutaLogo();
         $formularios = array_map(fn ($emision) => [
             'emision' => $emision,
-            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision, 'logo' => $logo]),
+            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision]),
         ], $this->service->emisionesVigentes($solicitud));
 
         $pdf = $this->service->generarPdf($solicitud, $html, $formularios);

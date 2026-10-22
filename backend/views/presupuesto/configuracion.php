@@ -7,7 +7,7 @@ use yii\widgets\ActiveForm;
 
 /**
  * Configuracion del PDF del presupuesto: lo que sale despues del total (nota,
- * dos firmas y banda de pie con los contactos). El presupuesto no guarda
+ * las firmas del control de elaboracion y banda de pie con los contactos). El presupuesto no guarda
  * copia, asi que un cambio tambien se ve al reimprimir los anteriores.
  *
  * @var yii\web\View $this
@@ -47,16 +47,19 @@ $volver = $proyecto !== null
     </div>
 
     <div class="card mb-3">
-        <div class="rd-card-head"><div class="rd-card-titulo">Firmas</div></div>
+        <div class="rd-card-head">
+            <div class="rd-card-titulo">Control de elaboración</div>
+            <div class="kicker">Lineamiento RD-GD-LI-001: versión, elaborado por, aprobado por, firmas y fecha de aprobación (la pone el sistema al aprobar).</div>
+        </div>
         <div class="rd-card-pad">
             <div class="row g-3">
-                <?php foreach ([1 => 'Firma izquierda', 2 => 'Firma derecha'] as $n => $titulo): ?>
+                <?php foreach ([1 => 'Elaborado por', 2 => 'Aprobado por (V°B°)'] as $n => $titulo): ?>
                     <div class="col-md-6">
                         <div class="rd-dato"><strong><?= $titulo ?></strong></div>
                         <?= $form->field($configuracion, "firma{$n}Prefijo")->textInput(['maxlength' => 20, 'placeholder' => 'ej. V°B°'])
-                            ->hint('Opcional. Sale antes del nombre.') ?>
+                            ->hint('Opcional. Sale antes del nombre (ej. "V°B°" en quien aprueba).') ?>
                         <?= $form->field($configuracion, "firma{$n}Nombre")->textInput(['maxlength' => 150, 'placeholder' => 'ej. Ing. Nombre Apellido'])
-                            ->hint('Con su tratamiento (Ing., Lic.…). Sin nombre, la firma no sale.') ?>
+                            ->hint('Con su tratamiento (Ing., Lic.…). Sin nombre, queda en blanco para llenarla a mano.') ?>
                         <?= $form->field($configuracion, "firma{$n}Cargo")->textInput(['maxlength' => 200])
                             ->hint('Se guarda en mayúsculas.') ?>
                     </div>

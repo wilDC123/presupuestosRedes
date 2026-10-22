@@ -11,7 +11,7 @@ use yii\web\Controller;
 use yii\web\Response;
 
 /**
- * Registro de los formularios NET emitidos (capa de Presentacion): reemplaza
+ * Registro de los formularios de especificación emitidos (capa de Presentacion): reemplaza
  * el Excel "1000 Especificaciones" de DTIC. Solo consulta; las emisiones se
  * crean y reemiten desde la lista de items de cada proyecto.
  */

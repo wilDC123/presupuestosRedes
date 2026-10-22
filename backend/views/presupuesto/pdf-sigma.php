@@ -48,8 +48,9 @@ $totalLineas = array_sum(array_map(static fn (array $grupo) => count($grupo['lin
 <meta charset="utf-8">
 <style>
     body {
-        font-family: sans-serif;
-        font-size: 10px;
+        /* Carlito: las medidas de Calibri, la letra del lineamiento RD-GD-LI-001. */
+        font-family: carlito;
+        font-size: 9pt;
         color: #000;
     }
     .encabezado {
@@ -57,14 +58,14 @@ $totalLineas = array_sum(array_map(static fn (array $grupo) => count($grupo['lin
         margin-bottom: 10px;
     }
     .encabezado .institucion {
-        font-size: 11px;
+        font-size: 10pt;
         font-weight: bold;
     }
     .encabezado .unidad {
-        font-size: 10px;
+        font-size: 9pt;
     }
     .encabezado .titulo {
-        font-size: 13px;
+        font-size: 12pt;
         font-weight: bold;
         text-decoration: underline;
         margin-top: 6px;
@@ -86,7 +87,7 @@ $totalLineas = array_sum(array_map(static fn (array $grupo) => count($grupo['lin
     table.items td {
         border: 1px solid #666;
         padding: 3px;
-        font-size: 8.5px;
+        font-size: 8pt;
         vertical-align: top;
     }
     table.items th {
@@ -104,7 +105,7 @@ $totalLineas = array_sum(array_map(static fn (array $grupo) => count($grupo['lin
         font-weight: bold;
     }
     .sub {
-        font-size: 7.5px;
+        font-size: 7pt;
         color: #444;
     }
     .id-sigma {
@@ -122,11 +123,11 @@ $totalLineas = array_sum(array_map(static fn (array $grupo) => count($grupo['lin
     }
     .resumen {
         margin-top: 8px;
-        font-size: 9px;
+        font-size: 8.5pt;
     }
     .leyenda {
         margin-top: 4px;
-        font-size: 8px;
+        font-size: 7.5pt;
         color: #333;
     }
 </style>
@@ -141,7 +142,7 @@ $totalLineas = array_sum(array_map(static fn (array $grupo) => count($grupo['lin
 
 <table class="datos-generales">
     <tr>
-        <td><strong>N.° de presupuesto:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?></td>
+        <td><strong>Presupuesto:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?></td>
         <td><strong>Código de proyecto:</strong> <?= Html::encode($proyecto->codigo ?: '—') ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
         <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre ?? '—') ?></td>
         <td><strong>Emitido:</strong> <?= date('d/m/Y') ?></td>

@@ -35,9 +35,10 @@ $numero = 0;
 <head>
 <meta charset="utf-8">
 <style>
+    /* Carlito: las medidas de Calibri, la letra del lineamiento RD-GD-LI-001. */
     body {
-        font-family: sans-serif;
-        font-size: 11px;
+        font-family: carlito;
+        font-size: 11pt;
         color: #000;
     }
     /* Cabecera repetida en cada pagina: ver views/pdf/_cabecera.php. */
@@ -58,8 +59,8 @@ $numero = 0;
     table.items th,
     table.items td {
         border: 1px solid #666;
-        padding: 5px 4px;
-        font-size: 10px;
+        padding: 4px 4px;
+        font-size: 10pt;
     }
     table.items th {
         background-color: #e0e0e0;
@@ -70,7 +71,7 @@ $numero = 0;
     }
     .observacion {
         font-style: italic;
-        font-size: 9px;
+        font-size: 9pt;
         color: #333;
     }
     tr.total td {
@@ -89,7 +90,7 @@ $numero = 0;
         vertical-align: top;
     }
     .indicacion {
-        font-size: 9px;
+        font-size: 9pt;
         margin-top: 2px;
     }
     .nota-final {
@@ -151,7 +152,7 @@ $numero = 0;
                     <td>
                         <?= Html::encode($item->subcatalogoItem->descripcion ?? '') ?>
                         <?php // Solo el NET de la emision VIGENTE; sin emision (o anulada) no sale nada. ?>
-                        <?php $codigoNet = $item->emisionVigente?->codigoNet(); ?>
+                        <?php $codigoNet = $item->emisionVigente?->codigo(); ?>
                         <?php if ($codigoNet !== null): ?>
                             (<?= Html::encode($codigoNet) ?>)
                         <?php endif; ?>

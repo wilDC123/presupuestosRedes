@@ -33,7 +33,16 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 
 ## Alcance del sistema (confirmado en reuniones con el equipo técnico)
 ### SÍ incluye:
-- Gestión de proyectos (`redes.Proyecto`)
+- CODIFICACIÓN según el lineamiento de la DTIC RD-GD-LI-001 (2026-10-22; resumen y decisiones en
+  `docs/cambios-codificacion-lineamiento.md`): `RD-PI-PT-NNN` proyecto, `RD-PI-PR-NNN` presupuesto,
+  `RD-PI-ET-NNN` especificación técnica (3 cifras; después del 999 sigue con 1000). Los números los da
+  el sistema desde `redes.CorrelativoDocumento` (una fila por tipo, `CodificacionService::tomar()` con
+  UPDLOCK); el encargado fija desde cuál siguen en el menú "Codificación de documentos" (solo mayor que
+  el último usado). El formato está en `CorrelativoDocumento::codigo()`. La solicitud de cotización NO
+  lleva código del lineamiento (FR no aplica). Letra Carlito (= medidas de Calibri, OFL,
+  `backend/fonts/carlito`) en todos los impresos menos la carta
+- Gestión de proyectos (`redes.Proyecto`; código RD-PI-PT-NNN del correlativo PT al crearlo, los
+  existentes se renumeraron a 3 cifras)
 - Subcatálogo curado de ítems de redes, con referencia lógica a `dbo.CatalogoSigma.IdSigma`
   (NUNCA duplicar el catálogo completo; selección manual/bajo demanda, no clasificación automática).
   Un ítem INACTIVO no se elige (2026-10-21): `SubcatalogoItemService::opciones($conservar)` trae solo
@@ -93,7 +102,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Solo se eligen precios con el presupuesto "en proceso" (`Presupuesto::esBorrador()`); en
   revisión, aprobado o cancelado la tabla es de solo lectura. Mientras es borrador, sus líneas siguen
   a la lista: quitar un ítem borra su línea y la cantidad se vuelve a copiar (el precio no)
-- La cabecera (número, oficio, área, fecha) se exige recién al "Enviar a revisión" (escenario
+- El número (`numeroPresupuesto`) es el código RD-PI-PR-NNN que el sistema le da al crear el
+  presupuesto (`ElaborarPresupuestoService::delProyecto()`; ya no se escribe; los de antes, como "690",
+  se convirtieron a RD-PI-PR y guardan el número viejo en `Presupuesto.numeroAnterior`). La cabecera (oficio, área, fecha) se exige recién al "Enviar a revisión" (escenario
   `Presupuesto::SCENARIO_ENVIAR`), junto con que todos los ítems tengan precio. Los estados se
   cambian en la misma pantalla. El menú "Presupuestos" es solo un listado de consulta; las rutas
   viejas (`presupuesto/view`, `detalle`, `armar`, `create`, `update`) redirigen al paso Presupuesto
@@ -110,7 +121,11 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     `redes.EspecificacionCaracteristica` (nombre, valor), modelo sugerido, garantía y adjunto. Una
     versión ya usada en una emisión NO se modifica: editarla crea la siguiente
     (`EspecificacionService::guardarVersion()`); cambiar solo título/categoría/activo no crea versión.
-  - EMISIÓN `redes.EspecificacionEmision`: el formulario con código `NET:880/26` que se firma y se
+  - EMISIÓN `redes.EspecificacionEmision`: el formulario con código `RD-PI-ET-001` (columna `serie` =
+    'ET', desde el 2026-10-22, correlativo desde 1; índice único por serie + `numeroNet`;
+    `EspecificacionEmision::codigo()`. Las emitidas antes con `NET:880/26` se convirtieron a ET con la
+    migración `m261022_144239_convertir_codigos_viejos_al_lineamiento` y guardan el NET en
+    `codigoAnterior`, que se ve y se busca en el registro; la serie 'NET' queda solo para su `safeDown()`) que se firma y se
     entrega al proveedor. NUNCA cambia: guarda copias congeladas (título = nombre DTIC del ítem de la lista desde el
     2026-10-21, antes el de la ficha; cantidad, unidad,
     dependencia = facultad del proyecto, garantía, textos, condiciones de entrega) y apunta a una
@@ -128,12 +143,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   título primero, máx. 30. La casilla "Recordar como sugerida para este ítem" (solo en fichas sin
   ítem de referencia) se aplica al guardar la lista (`items[n][recordarReferencia]`) y nunca pisa
   un ítem de referencia ya puesto. ENLAZAR = EMITIR: al guardar la
-  lista se asigna el siguiente NET. Cambiar o quitar la ficha, o quitar el ítem, ANULA la emisión
+  lista se asigna el siguiente código ET. Cambiar o quitar la ficha, o quitar el ítem, ANULA la emisión
   vigente (no se borra). Un error se corrige REEMITIENDO (NET nuevo, última versión, cantidad
   actual de la lista; la anterior queda "reemplazada por"), permitido mientras el presupuesto no
-  esté aprobado ni cancelado. Correlativo NET: lo fija el encargado en
-  `redes.ConfiguracionEspecificacion.siguienteNet` (una sola fila, con los textos fijos del
-  formulario, editables), sube de 1 en 1, no se reinicia por año y nunca se reutiliza. Avisos que
+  esté aprobado ni cancelado. Correlativo: el ET de `redes.CorrelativoDocumento` (antes
+  `ConfiguracionEspecificacion.siguienteNet`, eliminado el 2026-10-22; esa tabla sigue con los textos fijos
+  del formulario), sube de 1 en 1, no se reinicia por año y nunca se reutiliza. Avisos que
   no bloquean: cantidad distinta de la emitida, emisión vencida, versión nueva de la ficha. La
   especificación es OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud,
   cotización, presupuesto ni PDF. Los impresos citan el NET de la emisión vigente
@@ -146,7 +161,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   después del primero empieza sin la cabecera `@page` del anterior y con la numeración reiniciada.
   Solo se enlazan fichas activas; una en uso o
   emitida no se elimina, se desactiva
-- Formulario NET en PDF (`especificacion/formulario`) con el formato institucional (tabla
+- Formulario de especificación en PDF (`especificacion/formulario`; en pantallas ya no se llama
+  "formulario NET") con la cabecera del lineamiento (código, versión = la de la ficha emitida, fecha,
+  página) y el formato institucional (tabla
   Especificación | Propuesta | Cumple | No cumple, secciones I, II y III); marca de agua
   REEMPLAZADO / ANULADO / VENCIDO. "Formulario elaborado por" y "Firma" van en blanco (a mano) y al fondo
   de la última página (2026-10-21; el usuario que emitió solo se ve en el registro). Todos los NET VIGENTES de la lista en un solo PDF, cada uno desde una hoja nueva y en el orden de la
@@ -177,10 +194,13 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   A4), la que usa la DTIC. En mPDF se llama "Folio": `PresupuestoPdfGenerator::HOJA_OFICIO` (por
   defecto) y `HOJA_OFICIO_HORIZONTAL` (reporte de relación con SIGMA)
 - Cabecera de página de los impresos (2026-10-21, `backend/views/pdf/_cabecera.php`, etiqueta
-  `<htmlpageheader>` de mPDF): recuadro con escudo USFX | títulos + fila N.° / facultad / fecha /
-  "pág. X de Y" | logo DTIC (`backend/web/img/logo-usfx.png`, `logo-dtic.png`, reducidos), repetida
-  en cada página, a 5 mm del borde. La usan el PDF del presupuesto y el de la solicitud de
-  cotización (en esta, las 2 primeras líneas salen de "Configuración del documento")
+  `<htmlpageheader>` de mPDF): recuadro con escudo USFX | títulos + fila de datos | logo DTIC
+  (`backend/web/img/logo-usfx.png`, `logo-dtic.png`, reducidos), repetida en cada página, a 5 mm del
+  borde. Con `codigo` (presupuesto y formulario de especificación, 2026-10-22): "Proceso: …", título y
+  fila Código | Versión | Fecha | Página (lineamiento 8.8.2). Sin `codigo` (solicitud de cotización):
+  fila N.° / facultad / fecha / pág., y las 2 primeras líneas salen de "Configuración del documento".
+  Al juntar varios documentos en un PDF cada uno sale con su cabecera
+  (`PresupuestoPdfGenerator::empezarDocumento()`)
 - Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
   aprobado. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
   usan los mismos anchos, 2026-10-21) y "TOTAL GENERAL Bs." al final; N.° corrido
@@ -201,11 +221,14 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Después del total, el PDF del presupuesto lleva una nota opcional y, AL FONDO de la última página
   (2026-10-21: marca `PresupuestoPdfGenerator::MARCA_AL_PIE`; si no caben, van al fondo de una
   página nueva), dos firmas lado a lado
-  (prefijo opcional como "V°B°", nombre con tratamiento, cargo guardado en MAYÚSCULAS) y una banda
+  (prefijo opcional como "V°B°", nombre con tratamiento, cargo guardado en MAYÚSCULAS); desde el
+  2026-10-22 van como el "control de elaboración" del lineamiento: tabla Versión 01 / Elaborado por
+  (firma 1) / Aprobado por (firma 2, V°B°) con Firma, Nombre y Cargo, y "Fecha de aprobación"
+  (`Presupuesto.fechaAprobacion`, la pone `PresupuestoService::cambiarEstado()` al aprobar), y una banda
   de pie verde claro con 2 columnas de contactos (título en negrita + renglones). Todo sale de
   `redes.ConfiguracionPresupuesto` (una sola fila, CHECK id = 1; 2026-10-20), editable en
   "Configuración del PDF" (`presupuesto/configuracion`); NADA de eso queda escrito en la vista. Un
-  campo vacío no sale; sin firmantes vuelve la firma a mano "Elaborado por". No guarda copia: un
+  campo vacío no sale; una firma sin nombre queda en blanco para llenarla a mano. No guarda copia: un
   cambio se ve también al reimprimir presupuestos anteriores
 - Mano de obra a cargo del personal de la DTIC (2026-10-20): NO es un ítem del subcatálogo (no se
   compra: sin partida, sin cotización, no suma al total). Es el texto `Presupuesto.manoDeObra`
@@ -278,13 +301,14 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261021_215240_eliminar_computo_metrico`, aplicada el 2026-10-21), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261022_144239_convertir_codigos_viejos_al_lineamiento`, aplicada el 2026-10-22), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
-- PENDIENTE (encargado + Ing. de DTIC): fijar el NET inicial en Especificaciones →
-  "Configuración del formulario NET" (el Excel del Ing. va por ~890; confirmar el número). Hasta
-  entonces la lista no deja enlazar especificaciones. Revisar la nota final del formulario
+- PENDIENTE (encargado + Ing. de DTIC): confirmar desde qué número siguen PT, PR y ET en
+  "Codificación de documentos" si el registro de Google Drive ya tiene números usados (hoy ET y PR
+  empiezan en 1, decidido el 2026-10-22). Confirmar si el formulario de especificación también lleva
+  control de elaboración (hoy "elaborado por" y "firma" en blanco). Revisar la nota final del formulario
   ("Señor proveedor ser evaluado…": parece faltarle "para"; está tal cual el formulario oficial)
 - PENDIENTE: las 165 fichas importadas del banco (2026-10-18, `--desde=2025`) están SIN categoría
   (filtro "— Sin categoría —" de la librería); al editar una, el formulario exige categoría.
@@ -295,7 +319,6 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   donde la coincidencia con un ítem activo del subcatálogo era segura (79 en total con la ficha 14).
   Fue un UPDATE a mano, no una migración (los id de las fichas importadas cambian entre bases); en
   el servidor de DTIC habrá que repetirlo desde la pantalla o con un script propio
-- PENDIENTE (opcional): logo del formulario NET en `backend/web/img/logo-formulario-net.png`
 - Preparado para el servidor de DTIC (2026-10-18; guía en `docs/guia-instalacion-dtic.md`):
   - Toda la aplicación exige sesión (`'as access'` en `backend/config/main.php`); solo
     `site/login` y `site/error` son públicos. Un controlador nuevo queda protegido solo.
@@ -354,6 +377,11 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - PENDIENTE (tutor): agregar `CartaPresupuesto` (0..1 por Presupuesto, composición) y
   `ConfiguracionCarta` (2026-10-21) al diagrama de clases, y el caso de uso "Elaborar carta de
   entrega" (extiende Elaborar presupuesto)
+- PENDIENTE (tutor): codificación del lineamiento (2026-10-22): clase `CorrelativoDocumento`,
+  `Presupuesto.fechaAprobacion` y `numeroAnterior`, `EspecificacionEmision.serie` (ET / NET) y
+  `codigoAnterior`, se quita
+  `ConfiguracionEspecificacion.siguienteNet`, caso de uso "Configurar codificación de documentos"; resumen
+  en `docs/cambios-codificacion-lineamiento.md`
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a
   Proyecto y a Plantilla (0..1 tipo por proyecto/plantilla)
 - PENDIENTE (Ing. de DTIC): confirmar los tipos de proyecto reales; los 4 cargados

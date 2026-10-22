@@ -107,7 +107,7 @@ class ProyectoItem extends ActiveRecord
             return null;
         }
 
-        return $this->emisionVigente?->codigoNet() ?? $this->especificacion->nombre();
+        return $this->emisionVigente?->codigo() ?? $this->especificacion->nombre();
     }
 
     /**

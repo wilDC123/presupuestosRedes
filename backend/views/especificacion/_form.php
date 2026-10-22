@@ -12,7 +12,7 @@ use yii\widgets\ActiveForm;
  * categoria, activo) y su contenido tecnico, que se guarda en una VERSION
  * (modelo sugerido, garantia, adjunto y la tabla de caracteristicas).
  *
- * Si la version actual ya se uso en formularios NET emitidos, guardar cambios
+ * Si la version actual ya se uso en formularios de especificación emitidos, guardar cambios
  * en el contenido crea la version siguiente (EspecificacionService::guardarVersion()).
  *
  * ActiveForm valida en el navegador (jQuery) las reglas de los modelos; la
@@ -23,7 +23,7 @@ use yii\widgets\ActiveForm;
  * @var backend\models\Especificacion $model
  * @var backend\models\EspecificacionVersion $version valores del contenido tecnico
  * @var array<int, array{nombre: ?string, valor: ?string}> $filas caracteristicas
- * @var int $emisiones formularios NET emitidos con la version actual
+ * @var int $emisiones formularios de especificación emitidos con la version actual
  * @var int|null $numeroBloqueado numero de la version actual si ya se emitio
  * @var string[] $errores errores del contenido tecnico (filas, largos)
  * @var string|null $garantiaPorDefecto Ver ConfiguracionEspecificacion
@@ -70,7 +70,7 @@ $fila = static fn (string $n, string $nombre, string $valor): string =>
         <div class="rd-card-head"><div class="rd-card-titulo">Ficha</div></div>
         <div class="rd-card-pad">
             <?= $form->field($model, 'titulo')->textInput(['maxlength' => 300])
-                ->hint('Como aparece en el formulario NET, ej. "Cable de red Categoría 6, 100% cobre tipo 23 AWG".') ?>
+                ->hint('Como aparece en el formulario de especificación, ej. "Cable de red Categoría 6, 100% cobre tipo 23 AWG".') ?>
 
             <?= $form->field($model, 'idCategoria')->dropDownList($categorias, ['prompt' => 'Seleccione una categoría'])
                 ->hint('Las mismas categorías del subcatálogo. Sirve para encontrar la ficha en la librería y para sugerirla primero a los ítems de esa categoría.') ?>
@@ -93,7 +93,7 @@ $fila = static fn (string $n, string $nombre, string $valor): string =>
 
             <?php if ($numeroBloqueado !== null): ?>
                 <div class="alert alert-secondary">
-                    La v<?= $numeroBloqueado ?> ya se usó en <?= $emisiones ?> formulario(s) NET emitido(s) y no se modifica.
+                    La v<?= $numeroBloqueado ?> ya se usó en <?= $emisiones ?> formulario(s) de especificación emitido(s) y no se modifica.
                     Si cambia el contenido técnico, se guardará como <strong>v<?= $numeroBloqueado + 1 ?></strong>; los
                     formularios ya emitidos siguen diciendo lo mismo. Cambiar solo el título, la categoría o "activo" no
                     crea una versión nueva.
@@ -139,7 +139,7 @@ $fila = static fn (string $n, string $nombre, string $valor): string =>
                 <button type="button" id="esp-pegar-abrir" class="btn btn-outline">Pegar varias filas</button>
             </div>
             <p class="rd-nota">
-                Las filas de "marca y modelo a ofertar" y "URL del fabricante" las agrega siempre el formulario NET: no hace
+                Las filas de "marca y modelo a ofertar" y "URL del fabricante" las agrega siempre el formulario de especificación: no hace
                 falta escribirlas. Una fila sin característica (solo valor) se imprime como texto suelto; sirve para
                 subtítulos como "Administración".
             </p>

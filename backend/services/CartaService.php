@@ -7,6 +7,7 @@ namespace backend\services;
 use backend\components\PresupuestoPdfGenerator;
 use backend\models\CartaPresupuesto;
 use backend\models\ConfiguracionCarta;
+use backend\models\EspecificacionEmision;
 use backend\models\Presupuesto;
 use DateTime;
 
@@ -19,15 +20,16 @@ use DateTime;
  *  - una carta nueva se llena con los textos de ConfiguracionCarta y los
  *    datos del proyecto; despues guarda su propia copia,
  *  - para IMPRIMIR solo se exige que la carta este guardada y que el
- *    presupuesto ya tenga numero de oficio y numero de presupuesto (los
- *    recibe al "Enviar a revision"),
+ *    presupuesto ya tenga numero de oficio (lo recibe al "Enviar a
+ *    revision") y codigo de presupuesto (RD-PI-PR, se asigna al crearlo),
  *  - el PDF no lleva marca de agua: se imprime cuando ya esta todo.
  *
  * Marcadores:
  *  - {proyecto} y {facultad}: se reemplazan al llenar la carta nueva (asi el
  *    encargado puede corregir la frase),
- *  - {oficio}, {numeroPresupuesto} y {especificaciones} (los codigos NET
- *    vigentes del proyecto): quedan en el texto y se reemplazan al imprimir,
+ *  - {oficio}, {numeroPresupuesto} y {especificaciones} (los codigos de
+ *    las especificaciones vigentes del proyecto): quedan en el texto y se
+ *    reemplazan al imprimir,
  *    porque al escribir la carta pueden no existir todavia.
  */
 class CartaService
@@ -130,7 +132,7 @@ class CartaService
             $falta[] = 'El presupuesto todavía no tiene número de oficio DTIC (se pone al enviarlo a revisión).';
         }
         if (trim((string) $presupuesto->numeroPresupuesto) === '') {
-            $falta[] = 'El presupuesto todavía no tiene número de presupuesto (se pone al enviarlo a revisión).';
+            $falta[] = 'El presupuesto todavía no tiene código (se asigna al entrar al paso Presupuesto).';
         }
 
         return $falta;
@@ -138,12 +140,12 @@ class CartaService
 
     /**
      * Reemplaza {oficio} y {numeroPresupuesto} con los del presupuesto, y
-     * {especificaciones} con los numeros de sus formularios NET.
+     * {especificaciones} con los codigos de sus especificaciones vigentes.
      */
     public function textoParaImprimir(string $texto, Presupuesto $presupuesto): string
     {
         $texto = CartaPresupuesto::normalizarMarcadores($texto);
-        $especificaciones = str_contains($texto, '{especificaciones}') ? $this->codigosNet($presupuesto) : '';
+        $especificaciones = str_contains($texto, '{especificaciones}') ? $this->codigosEspecificaciones($presupuesto) : '';
 
         // Sin formularios emitidos el marcador desaparece con su espacio:
         // "especificaciones técnicas y cotización", no "técnicas  y".
@@ -159,17 +161,23 @@ class CartaService
     }
 
     /**
-     * "896, 897, 900": el numero (sin "NET:" ni el año) de los formularios
-     * NET VIGENTES de la lista del proyecto (los que se entregan), de menor a
-     * mayor. Vacio si no hay ninguno.
+     * "RD-PI-ET-001, RD-PI-ET-004": el codigo de las especificaciones
+     * VIGENTES de la lista del proyecto (las que se entregan), de menor a
+     * mayor. Las de antes del 2026-10-22 (serie NET) salen solo con su
+     * numero, sin "NET:" ni el año ("896, 897"), como se citaban entonces, y
+     * van primero. Vacio si no hay ninguna.
      */
-    public function codigosNet(Presupuesto $presupuesto): string
+    public function codigosEspecificaciones(Presupuesto $presupuesto): string
     {
         $emisiones = (new EspecificacionEmisionService())->vigentesDelProyecto($presupuesto->proyecto);
 
-        usort($emisiones, static fn ($a, $b) => [$a->anio, $a->numeroNet] <=> [$b->anio, $b->numeroNet]);
+        $orden = static fn (EspecificacionEmision $e) => [$e->serie === EspecificacionEmision::SERIE_NET ? 0 : 1, $e->anio, $e->numeroNet];
+        usort($emisiones, static fn ($a, $b) => $orden($a) <=> $orden($b));
 
-        return implode(', ', array_map(static fn ($emision) => (string) $emision->numeroNet, $emisiones));
+        return implode(', ', array_map(
+            static fn (EspecificacionEmision $e) => $e->serie === EspecificacionEmision::SERIE_NET ? (string) $e->numeroNet : $e->codigo(),
+            $emisiones
+        ));
     }
 
     /**

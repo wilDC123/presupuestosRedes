@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\models\CorrelativoDocumento;
 use backend\models\CotizacionDetalle;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
@@ -44,19 +45,37 @@ class ElaborarPresupuestoService
 
     /**
      * El presupuesto del proyecto (cada proyecto tiene uno solo). Si todavia
-     * no tiene, lo crea en "en proceso": los datos de cabecera se piden
-     * recien al enviarlo a revision.
+     * no tiene, lo crea en "en proceso" con el siguiente codigo RD-PI-PR (ver
+     * CodificacionService); los demas datos de cabecera se piden recien al
+     * enviarlo a revision. Un presupuesto creado antes de que existiera el
+     * codigo, y que nunca tuvo numero, recibe el suyo aqui.
      */
     public function delProyecto(Proyecto $proyecto): Presupuesto
     {
-        if ($proyecto->presupuesto !== null) {
-            return $proyecto->presupuesto;
+        $presupuesto = $proyecto->presupuesto;
+
+        if ($presupuesto !== null && trim((string) $presupuesto->numeroPresupuesto) !== '') {
+            return $presupuesto;
         }
 
-        $presupuesto = new Presupuesto();
-        $presupuesto->idProyecto = $proyecto->id;
-        $presupuesto->estado = Presupuesto::ESTADO_EN_PROCESO;
-        $presupuesto->save(false);
+        $transaccion = Yii::$app->db->beginTransaction();
+
+        try {
+            if ($presupuesto === null) {
+                $presupuesto = new Presupuesto();
+                $presupuesto->idProyecto = $proyecto->id;
+                $presupuesto->estado = Presupuesto::ESTADO_EN_PROCESO;
+            }
+
+            $numero = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_PRESUPUESTO);
+            $presupuesto->numeroPresupuesto = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PRESUPUESTO, $numero);
+            $presupuesto->save(false);
+            $transaccion->commit();
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
         $proyecto->populateRelation('presupuesto', $presupuesto);
 
         return $presupuesto;
@@ -420,7 +439,8 @@ class ElaborarPresupuestoService
      * Las cotizaciones vencidas no bloquean (el controlador avisa).
      *
      * $cabecera es lo que llega del formulario (Presupuesto[...]); se copian
-     * SOLO los cuatro datos de cabecera, nunca el estado ni el proyecto.
+     * SOLO oficio, area y fecha: nunca el estado, el proyecto ni el codigo
+     * (RD-PI-PR, lo asigna el sistema).
      * Devuelve false con los mensajes en $errores; los errores de cada campo
      * quedan ademas en $presupuesto->errors.
      *
@@ -436,7 +456,7 @@ class ElaborarPresupuestoService
             return false;
         }
 
-        foreach (['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'fecha'] as $atributo) {
+        foreach (['oficioDtic', 'areaIntervencion', 'fecha'] as $atributo) {
             if (array_key_exists($atributo, $cabecera) && is_string($cabecera[$atributo])) {
                 $presupuesto->$atributo = $cabecera[$atributo];
             }
