@@ -11,6 +11,7 @@ use yii\helpers\Html;
  * @var yii\web\View $this
  * @var array{proyectosActivos: int, proyectosFaseSuperior: int, proyectosSinPresupuesto: int, enRevision: int, montoAprobado: float, anio: int, itemsSubcatalogo: int, totalSigma: int} $indicadores
  * @var array<int, array{proyecto: backend\models\Proyecto, presupuesto: backend\models\Presupuesto|null, monto: float|null}> $proyectosRecientes
+ * @var array<int, array{titulo: string, nota: string, filas: array<int, array{proyecto: backend\models\Proyecto, detalle: string, url: array}>}> $pendientes
  */
 
 $this->title = 'Panel general';
@@ -90,12 +91,33 @@ $formato = Yii::$app->formatter;
             <?php endif; ?>
         </div>
 
-        <div class="card rd-col-1 rd-card-pad">
-            <div class="rd-card-titulo mb-2">Cotizaciones por vincular</div>
-            <div class="rd-nota">
-                Aún no disponible: se habilita cuando las proformas se registren por proyecto y
-                cada fila se enlace con su ítem de la lista.
+        <div class="card rd-col-1">
+            <div class="rd-card-head">
+                <div class="rd-card-titulo">Qué tengo pendiente</div>
             </div>
+
+            <?php if ($pendientes === []): ?>
+                <div class="rd-vacio">Nada pendiente en los proyectos abiertos.</div>
+            <?php else: ?>
+                <div class="rd-lista-scroll">
+                    <?php foreach ($pendientes as $grupo): ?>
+                        <div class="rd-pend-grupo">
+                            <div class="rd-pend-titulo">
+                                <?= Html::encode($grupo['titulo']) ?>
+                                <span class="badge b-observado"><?= count($grupo['filas']) ?></span>
+                            </div>
+                            <div class="rd-nota"><?= Html::encode($grupo['nota']) ?></div>
+                            <?php foreach ($grupo['filas'] as $fila): ?>
+                                <div class="rd-pend-fila">
+                                    <span class="mono"><?= Html::encode($fila['proyecto']->codigo ?: '—') ?></span>
+                                    <?= Html::a(Html::encode($fila['proyecto']->nombre), $fila['url']) ?>
+                                    <div class="rd-nota"><?= Html::encode($fila['detalle']) ?></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
 
     </div>

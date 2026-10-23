@@ -71,6 +71,7 @@ class SiteController extends Controller
         return $this->render('index', [
             'indicadores' => $dashboard->indicadores(),
             'proyectosRecientes' => $dashboard->proyectosRecientes(),
+            'pendientes' => $dashboard->pendientes(),
         ]);
     }
 

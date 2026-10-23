@@ -506,3 +506,9 @@ body.rd {
 .esp-previa-lista, .esp-previa-detalle { max-height: 60vh; overflow-y: auto; }
 .esp-previa-lista .list-group-item { font-size: 13px; text-align: left; }
 .esp-previa-lista .esp-previa-grupo { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--rd-etiqueta); background: var(--rd-fila-hover); }
+/* Tarjeta "Que tengo pendiente" del panel general. */
+.rd-pend-grupo { padding: 12px 18px; border-bottom: 1px solid var(--rd-borde); }
+.rd-pend-grupo:last-child { border-bottom: 0; }
+.rd-pend-titulo { font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rd-pend-fila { margin-top: 8px; font-size: 12.5px; }
+.rd-pend-fila .mono { color: var(--rd-texto-suave); margin-right: 6px; }
