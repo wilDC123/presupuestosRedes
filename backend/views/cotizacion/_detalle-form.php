@@ -31,7 +31,7 @@ foreach ($especificaciones['grupos'] as $grupo) {
         <tr>
             <th>Ítem de subcatálogo</th>
             <th>Especificación</th>
-            <th>Marca / modelo</th>
+            <th>Marca / modelo ofertado</th>
             <th>Cantidad</th>
             <th>Precio unitario</th>
             <th>Precio total</th>

@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\models\ConfiguracionPresupuesto;
 use backend\models\CotizacionDetalle;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
-use backend\models\ProyectoItem;
+use DateTimeImmutable;
 use Throwable;
 use Yii;
 use yii\data\ActiveDataProvider;
@@ -21,8 +22,8 @@ use yii\data\ActiveDataProvider;
  *  - que cambios de estado son validos,
  *  - el precio unitario "congelado" al agregar una linea,
  *  - la partida presupuestaria "congelada" al agregar una linea,
- *  - cada linea nace de un item de la LISTA del proyecto, una sola vez,
- *  - que la cotizacion elegida para una linea sea del mismo item,
+ *  - una linea por item de la LISTA del proyecto (la eleccion del precio
+ *    de cada item vive en ElaborarPresupuestoService),
  *  - que lineas usan una cotizacion vencida (se avisa, no se bloquea),
  *  - la agrupacion por categoria con subtotales y total general,
  *  - el resumen por partida presupuestaria (lo que consolida la parte financiera).
@@ -44,25 +45,33 @@ class PresupuestoService
         return Presupuesto::findOne($id);
     }
 
-    public function crear(Presupuesto $presupuesto, array $datosFormulario): bool
+    /**
+     * Total de cada presupuesto, para el listado: [idPresupuesto => total],
+     * en UNA consulta agrupada (no una por presupuesto).
+     *
+     * @return array<int, float>
+     */
+    public function totalesPorPresupuesto(): array
     {
-        return $presupuesto->load($datosFormulario) && $presupuesto->save();
+        return array_map('floatval', PresupuestoDetalle::find()
+            ->select(['total' => 'SUM(precioTotal)', 'idPresupuesto'])
+            ->groupBy('idPresupuesto')
+            ->indexBy('idPresupuesto')
+            ->column());
     }
 
     /**
-     * Rechaza (devuelve false sin tocar nada) si el presupuesto no es editable.
+     * REGLA DE NEGOCIO: solo se elimina un presupuesto "en proceso"
+     * (borrador). Uno enviado a revision, observado, aprobado o cancelado ya
+     * fue un documento del proceso y se conserva. Devuelve false sin tocar
+     * nada si no se puede.
      */
-    public function actualizar(Presupuesto $presupuesto, array $datosFormulario): bool
+    public function eliminar(Presupuesto $presupuesto): bool
     {
-        if (!$this->puedeEditarse($presupuesto)) {
+        if (!$presupuesto->esBorrador()) {
             return false;
         }
 
-        return $presupuesto->load($datosFormulario) && $presupuesto->save();
-    }
-
-    public function eliminar(Presupuesto $presupuesto): bool
-    {
         return $presupuesto->delete() !== false;
     }
 
@@ -91,6 +100,22 @@ class PresupuestoService
     }
 
     /**
+     * Estados a los que se puede pasar con un boton de la pantalla del
+     * presupuesto, segun Presupuesto::transicionesPermitidas(). Queda fuera
+     * "en revision": a ese estado se llega con el formulario "Enviar a
+     * revision", que pide la cabecera (ElaborarPresupuestoService::enviarARevision()).
+     *
+     * @return string[]
+     */
+    public function estadosConBoton(Presupuesto $presupuesto): array
+    {
+        return array_values(array_diff(
+            Presupuesto::transicionesPermitidas()[$presupuesto->estado] ?? [],
+            [Presupuesto::ESTADO_EN_REVISION]
+        ));
+    }
+
+    /**
      * Cambia el estado solo si la transicion es valida. Si no lo es, devuelve
      * false sin tocar la base de datos.
      */
@@ -100,11 +125,18 @@ class PresupuestoService
             return false;
         }
 
+        if ($nuevoEstado === Presupuesto::ESTADO_EN_REVISION && !$this->cumpleRequisitosDeRevision($presupuesto)) {
+            return false;
+        }
+
         $presupuesto->estado = $nuevoEstado;
 
         if ($nuevoEstado !== Presupuesto::ESTADO_APROBADO) {
             return $presupuesto->save(false);
         }
+
+        // Sale en el "control de elaboracion" del PDF (lineamiento RD-GD-LI-001).
+        $presupuesto->fechaAprobacion = (new DateTimeImmutable('today'))->format('Y-m-d');
 
         // Al aprobar, la lista de items del proyecto queda cerrada: las dos
         // cosas juntas (una transaccion).
@@ -124,116 +156,24 @@ class PresupuestoService
     }
 
     /**
-     * Linea para el formulario "Presupuestar item", ya asociada al
-     * presupuesto. Si llega un item de la lista del proyecto que aun no se
-     * presupuesto, la linea viene con su item, cantidad, unidad y
-     * observacion; si no, viene vacia (y no se puede guardar: ver agregarLinea()).
-     */
-    public function nuevaLinea(Presupuesto $presupuesto, ?int $idProyectoItem = null): PresupuestoDetalle
-    {
-        $linea = new PresupuestoDetalle();
-        $linea->idPresupuesto = $presupuesto->id;
-        $linea->idProyectoItem = $idProyectoItem;
-
-        $itemLista = $this->itemDeListaSinPresupuestar($presupuesto, $linea);
-
-        if ($itemLista === null) {
-            $linea->idProyectoItem = null;
-
-            return $linea;
-        }
-
-        $linea->idSubcatalogo = $itemLista->idSubcatalogo;
-        $linea->cantidad = $itemLista->cantidad;
-        $linea->unidadMedida = $itemLista->unidadMedida;
-        $linea->observacion = $itemLista->observacion;
-
-        return $linea;
-    }
-
-    /**
-     * Cotizaciones que puede usar una linea de ese item del subcatalogo,
-     * como [idCotizacionDetalle => "Proveedor — precio (marca) [especificacion]"].
+     * REGLA DE NEGOCIO: a "en revision" solo se llega con la cabecera completa
+     * (escenario Presupuesto::SCENARIO_ENVIAR: numero, oficio, area y fecha)
+     * y con todos los items de la lista con precio.
      *
-     * @return array<int, string>
+     * ElaborarPresupuestoService::enviarARevision() revisa lo mismo ANTES, para
+     * explicarle al usuario que falta. Esta es la barrera final: vive aqui, en
+     * el unico metodo que cambia el estado, para que ningun otro camino (otro
+     * controlador, un comando de consola) pueda saltarsela.
      */
-    public function opcionesCotizacion(int $idSubcatalogo): array
+    private function cumpleRequisitosDeRevision(Presupuesto $presupuesto): bool
     {
-        $detalles = CotizacionDetalle::find()
-            ->andWhere(['idSubcatalogo' => $idSubcatalogo])
-            ->with(['cotizacion.proveedor', 'especificacion'])
-            ->all();
+        $escenario = $presupuesto->scenario;
+        $presupuesto->scenario = Presupuesto::SCENARIO_ENVIAR;
+        $cabeceraCompleta = $presupuesto->validate();
+        $presupuesto->scenario = $escenario;
 
-        $opciones = [];
-
-        foreach ($detalles as $detalle) {
-            $texto = ($detalle->cotizacion->proveedor->razonSocial ?? '?')
-                . ' — ' . Yii::$app->formatter->asDecimal($detalle->precioUnitario, 2);
-
-            if ($detalle->marcaModelo) {
-                $texto .= " ({$detalle->marcaModelo})";
-            }
-
-            if (!empty($detalle->especificacion->titulo)) {
-                $texto .= " [{$detalle->especificacion->titulo}]";
-            }
-
-            if ($detalle->cotizacion !== null && $detalle->cotizacion->estaVencida()) {
-                $texto .= ' — VENCIDA';
-            }
-
-            $opciones[$detalle->id] = $texto;
-        }
-
-        return $opciones;
-    }
-
-    /**
-     * Agrega una linea al presupuesto, congelando su precio unitario y su
-     * partida presupuestaria. Devuelve
-     * false si el presupuesto no es editable, si no llegaron datos, o si la
-     * validacion fallo (los errores quedan en $linea->errors).
-     */
-    public function agregarLinea(Presupuesto $presupuesto, PresupuestoDetalle $linea, array $datosFormulario): bool
-    {
-        if (!$this->puedeEditarse($presupuesto) || !$linea->load($datosFormulario)) {
-            return false;
-        }
-
-        // Se fuerza despues de load() para que el formulario no pueda
-        // "mover" la linea a otro presupuesto.
-        $linea->idPresupuesto = $presupuesto->id;
-
-        // REGLA DE NEGOCIO: el presupuesto nace de la lista de items. Cada
-        // linea corresponde a un item de la lista de ESTE proyecto que
-        // todavia no se presupuesto, y su item del subcatalogo es el de la
-        // lista (no se toma del formulario).
-        $itemLista = $this->itemDeListaSinPresupuestar($presupuesto, $linea);
-
-        if ($itemLista === null) {
-            $linea->addError('idProyectoItem', 'Elija un ítem de la lista del proyecto que todavía no esté presupuestado.');
-
-            return false;
-        }
-
-        $linea->idSubcatalogo = $itemLista->idSubcatalogo;
-
-        if (!$linea->validate()) {
-            return false;
-        }
-
-        if (!$this->cotizacionCorrespondeAlItem($linea)) {
-            // addError() deja el mensaje en el campo, igual que un error de
-            // rules(): la vista lo muestra debajo del desplegable.
-            $linea->addError('idCotizacionDetalle', 'La cotización elegida es de otro ítem del subcatálogo. Elija una cotización del mismo ítem o ingrese el precio manualmente.');
-
-            return false;
-        }
-
-        $this->congelarPrecio($linea);
-        $this->congelarPartida($linea);
-
-        return $linea->save(false);
+        return $cabeceraCompleta
+            && (new ListaItemsService())->pendientesDePresupuestar($presupuesto->proyecto) === [];
     }
 
     /**
@@ -269,24 +209,6 @@ class PresupuestoService
         return array_values(array_filter($lineas, fn (PresupuestoDetalle $linea) => $this->lineaUsaCotizacionVencida($linea)));
     }
 
-    public function obtenerLinea(int $idLinea): ?PresupuestoDetalle
-    {
-        return PresupuestoDetalle::findOne($idLinea);
-    }
-
-    /**
-     * Rechaza (devuelve false sin borrar) si el presupuesto de la linea no
-     * es editable.
-     */
-    public function eliminarLinea(PresupuestoDetalle $linea): bool
-    {
-        if (!$this->puedeEditarse($linea->presupuesto)) {
-            return false;
-        }
-
-        return $linea->delete() !== false;
-    }
-
     /**
      * Agrupa las lineas del presupuesto por el nombre de la categoria de su
      * item de subcatalogo. Devuelve un arreglo:
@@ -296,9 +218,13 @@ class PresupuestoService
     public function agruparPorCategoria(Presupuesto $presupuesto): array
     {
         $lineas = $presupuesto->getPresupuestoDetalles()
-            // proyectoItem.especificacion: la especificacion enlazada en la
-            // lista, que se muestra junto a la linea (vista y PDF).
-            ->with(['subcatalogoItem.categoria', 'proyectoItem.especificacion'])
+            // proyectoItem.especificacion y emisionVigente: la especificacion
+            // enlazada en la lista y su NET, que se muestran junto a la linea
+            // (vista y PDF).
+            // cotizacionDetalle...proveedor: de quien es el precio (vista).
+            // subcatalogoItem.catalogoSigma: el item SIGMA (PDF de la
+            // relacion con el catalogo SIGMA).
+            ->with(['subcatalogoItem.categoria', 'subcatalogoItem.catalogoSigma', 'proyectoItem.especificacion', 'proyectoItem.emisionVigente', 'cotizacionDetalle.cotizacion.proveedor'])
             ->all();
 
         $grupos = [];
@@ -391,6 +317,14 @@ class PresupuestoService
     }
 
     /**
+     * Nota, firmas y banda de pie del PDF (redes.ConfiguracionPresupuesto).
+     */
+    public function guardarConfiguracion(ConfiguracionPresupuesto $configuracion, array $datosFormulario): bool
+    {
+        return $configuracion->load($datosFormulario) && $configuracion->save();
+    }
+
+    /**
      * Convierte el HTML ya renderizado (la vista "pdf" la arma el
      * controlador, porque renderizar vistas es tarea de la capa de
      * Presentacion) en el PDF consolidado.
@@ -402,49 +336,36 @@ class PresupuestoService
         $generador = new PresupuestoPdfGenerator();
 
         return [
-            'contenido' => $generador->generarDesdeHtml($html),
+            'contenido' => $generador->generarDesdeHtml($html, $this->marcaDeAgua($presupuesto)),
             'nombreArchivo' => $generador->nombreArchivo($presupuesto),
         ];
     }
 
     /**
-     * El item de la lista al que apunta la linea, solo si es de la lista del
-     * proyecto de este presupuesto y todavia no tiene linea. null en
-     * cualquier otro caso.
+     * Reporte de apoyo "Relacion con el catalogo SIGMA": cada linea del
+     * presupuesto junto al item SIGMA al que apunta. En oficio horizontal (tiene
+     * muchas columnas) y con la misma marca de agua que el presupuesto.
+     *
+     * @return array{contenido: string, nombreArchivo: string}
      */
-    private function itemDeListaSinPresupuestar(Presupuesto $presupuesto, PresupuestoDetalle $linea): ?ProyectoItem
+    public function generarPdfSigma(Presupuesto $presupuesto, string $html): array
     {
-        if (empty($linea->idProyectoItem)) {
-            return null;
-        }
+        $generador = new PresupuestoPdfGenerator();
 
-        $itemLista = ProyectoItem::findOne(['id' => (int) $linea->idProyectoItem, 'idProyecto' => $presupuesto->idProyecto]);
-
-        if ($itemLista === null || PresupuestoDetalle::find()->andWhere(['idProyectoItem' => $itemLista->id])->exists()) {
-            return null;
-        }
-
-        return $itemLista;
+        return [
+            'contenido' => $generador->generarDesdeHtml($html, $this->marcaDeAgua($presupuesto), PresupuestoPdfGenerator::HOJA_OFICIO_HORIZONTAL),
+            'nombreArchivo' => $generador->nombreArchivo($presupuesto, 'relacion_sigma_'),
+        ];
     }
 
     /**
-     * Una linea solo puede tomar el precio de una cotizacion hecha para SU
-     * MISMO item del subcatalogo. Sin esta verificacion, el formulario
-     * permitiria presupuestar "Cable UTP" con el precio cotizado para un
-     * "Switch". Una linea sin cotizacion (precio manual) siempre es valida.
+     * Solo el aprobado sale limpio: cualquier otro estado lleva marca.
      */
-    private function cotizacionCorrespondeAlItem(PresupuestoDetalle $linea): bool
+    private function marcaDeAgua(Presupuesto $presupuesto): ?string
     {
-        if (empty($linea->idCotizacionDetalle)) {
-            return true;
-        }
+        $marcas = [Presupuesto::ESTADO_APROBADO => null, Presupuesto::ESTADO_CANCELADO => 'CANCELADO'];
 
-        $cotizacionDetalle = CotizacionDetalle::findOne($linea->idCotizacionDetalle);
-
-        // (int) en ambos lados: lo que llega del formulario es texto ("7") y
-        // lo que viene de la base es entero (7).
-        return $cotizacionDetalle !== null
-            && (int) $cotizacionDetalle->idSubcatalogo === (int) $linea->idSubcatalogo;
+        return array_key_exists($presupuesto->estado, $marcas) ? $marcas[$presupuesto->estado] : 'BORRADOR';
     }
 
     /**
@@ -455,7 +376,7 @@ class PresupuestoService
      * cambia, las lineas ya guardadas se quedan con el precio viejo a
      * proposito.
      */
-    private function congelarPrecio(PresupuestoDetalle $linea): void
+    public function congelarPrecio(PresupuestoDetalle $linea): void
     {
         if (empty($linea->idCotizacionDetalle)) {
             return;
@@ -469,8 +390,8 @@ class PresupuestoService
 
         $linea->precioUnitario = $cotizacionDetalle->precioUnitario;
 
-        if (empty($linea->unidadMedida) && !empty($cotizacionDetalle->subcatalogoItem->unidadDefecto)) {
-            $linea->unidadMedida = $cotizacionDetalle->subcatalogoItem->unidadDefecto;
+        if (empty($linea->unidadMedida)) {
+            $linea->unidadMedida = $cotizacionDetalle->subcatalogoItem?->abreviaturaUnidad();
         }
     }
 
@@ -486,7 +407,7 @@ class PresupuestoService
      * Se asigna siempre (aunque el item no tenga partida y quede null) para
      * que nunca se guarde un valor de partida enviado desde el formulario.
      */
-    private function congelarPartida(PresupuestoDetalle $linea): void
+    public function congelarPartida(PresupuestoDetalle $linea): void
     {
         $linea->partida = $linea->subcatalogoItem->partida ?? null;
     }

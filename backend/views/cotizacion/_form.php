@@ -2,25 +2,18 @@
 
 declare(strict_types=1);
 
-use backend\models\Proveedor;
-use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 
 /**
  * @var yii\web\View $this
  * @var backend\models\Cotizacion $model
+ * @var array<int, string> $proveedores [id => razon social], solo ACTIVOS (mas el de la cotizacion). Ver ProveedorService::opcionesActivos()
  * @var backend\models\CotizacionDetalle[]|null $modelsDetalle Solo se pasa desde update.php
  * @var array<int, string> $items Solo desde update.php. Ver SubcatalogoItemService::opciones()
  * @var array $especificaciones Solo desde update.php. Ver EspecificacionService::selector()
  * @var yii\widgets\ActiveForm $form
  */
-
-$proveedores = ArrayHelper::map(
-    Proveedor::find()->orderBy(['razonSocial' => SORT_ASC])->all(),
-    'id',
-    'razonSocial'
-);
 ?>
 <div class="cotizacion-form">
 
@@ -30,18 +23,15 @@ $proveedores = ArrayHelper::map(
 
     <?= $form->field($model, 'numeroReferencia')->textInput(['maxlength' => 100]) ?>
 
-    <?= $form->field($model, 'fecha')->textInput([
-        'value' => $model->fechaFormateada(),
-        'placeholder' => 'dd/mm/aaaa',
-        'maxlength' => 10,
-    ])->hint('Formato: dd/mm/aaaa') ?>
+    <?php // type="date": calendario del navegador; envia aaaa-mm-dd, que el modelo guarda tal cual. ?>
+    <?= $form->field($model, 'fecha')->input('date') ?>
 
     <?= $form->field($model, 'validezDias')->textInput(['type' => 'number']) ?>
 
     <?php if (!$model->isNewRecord && !empty($model->documentoRuta)): ?>
         <p>
             Archivo actual:
-            <?= Html::a('Ver PDF', Yii::getAlias('@web/' . $model->documentoRuta), ['target' => '_blank']) ?>
+            <?= Html::a('Ver PDF', $model->urlDocumento(), ['target' => '_blank']) ?>
         </p>
     <?php endif; ?>
 

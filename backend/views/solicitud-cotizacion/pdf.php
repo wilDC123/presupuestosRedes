@@ -11,16 +11,23 @@ use yii\helpers\Html;
  *
  * Las columnas de precio van EN BLANCO: las llena el proveedor.
  *
+ * Al proveedor solo le interesa la unidad que compra (la facultad): el
+ * rubro, el nombre del proyecto, el edificio y los bloques son datos
+ * internos de la DTIC y no salen en el documento. La especificacion tecnica
+ * SI: cada item cita el codigo NET de su emision vigente, y los formularios
+ * van al final del mismo PDF (SolicitudCotizacionService::generarPdf()).
+ *
  * CSS deliberadamente simple, igual que los otros PDF: mPDF interpreta un
  * subconjunto de CSS pensado para documentos.
  *
  * @var yii\web\View $this
  * @var backend\models\SolicitudCotizacion $solicitud
- * @var array<int, string> $especificaciones [idProyectoItem => codigo NET] Ver SolicitudCotizacionService::especificacionesPorItem()
+ * @var backend\models\ConfiguracionSolicitudCotizacion $configuracion textos fijos editables por el encargado
+ * @var backend\models\ConfiguracionEspecificacion $configuracionNet de aqui salen los plazos minimo/maximo
  */
 
-$proyecto = $solicitud->proyecto;
-$ubicacion = $proyecto->ubicacion();
+$facultad = $solicitud->proyecto->facultad;
+$cabecera = $configuracion->lineasCabecera();
 $numero = 0;
 ?>
 <!DOCTYPE html>
@@ -28,38 +35,17 @@ $numero = 0;
 <head>
 <meta charset="utf-8">
 <style>
+    /* Carlito: las medidas de Calibri, la letra del lineamiento RD-GD-LI-001. */
     body {
-        font-family: sans-serif;
-        font-size: 11px;
+        font-family: carlito;
+        font-size: 11pt;
         color: #000;
     }
-    .encabezado {
-        text-align: center;
-        margin-bottom: 14px;
-    }
-    .encabezado .institucion {
-        font-size: 11px;
-        font-weight: bold;
-    }
-    .encabezado .unidad {
-        font-size: 10px;
-        margin-bottom: 6px;
-    }
-    .encabezado .titulo {
-        font-size: 14px;
-        font-weight: bold;
-        text-decoration: underline;
-        margin-top: 6px;
-    }
-    table.datos-generales {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
-    }
-    table.datos-generales td {
-        padding: 3px 4px;
-        vertical-align: top;
-        width: 50%;
+    /* Cabecera repetida en cada pagina: ver views/pdf/_cabecera.php. */
+    @page {
+        header: html_cabecera;
+        margin-header: 5mm;
+        margin-top: 32mm;
     }
     .texto {
         margin-bottom: 10px;
@@ -73,8 +59,8 @@ $numero = 0;
     table.items th,
     table.items td {
         border: 1px solid #666;
-        padding: 5px 4px;
-        font-size: 10px;
+        padding: 4px 4px;
+        font-size: 10pt;
     }
     table.items th {
         background-color: #e0e0e0;
@@ -85,7 +71,7 @@ $numero = 0;
     }
     .observacion {
         font-style: italic;
-        font-size: 9px;
+        font-size: 9pt;
         color: #333;
     }
     tr.total td {
@@ -101,6 +87,15 @@ $numero = 0;
     table.proveedor td {
         padding: 7px 4px;
         width: 50%;
+        vertical-align: top;
+    }
+    .indicacion {
+        font-size: 9pt;
+        margin-top: 2px;
+    }
+    .nota-final {
+        margin-top: 12px;
+        font-weight: bold;
     }
     .firmas {
         margin-top: 50px;
@@ -117,29 +112,19 @@ $numero = 0;
 </head>
 <body>
 
-<div class="encabezado">
-    <div class="institucion">Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca</div>
-    <div class="unidad">D.T.I.C. - Unidad de Redes y Telecomunicaciones</div>
-    <div class="titulo">SOLICITUD DE COTIZACIÓN</div>
-</div>
-
-<table class="datos-generales">
-    <tr>
-        <td><strong>Solicitud N.°:</strong> <?= Html::encode($solicitud->codigo()) ?></td>
-        <td><strong>Fecha:</strong> <?= date('d/m/Y') ?></td>
-    </tr>
-    <tr>
-        <td><strong>Rubro:</strong> <?= Html::encode($solicitud->nombre) ?></td>
-        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre) ?></td>
-    </tr>
-    <tr>
-        <td colspan="2"><strong>Lugar de la instalación:</strong> <?= Html::encode($ubicacion !== '' ? $ubicacion : '—') ?></td>
-    </tr>
-</table>
+<?php // Las dos primeras lineas son las de "Configuración del documento". ?>
+<?= $this->render('//pdf/_cabecera', [
+    'titulo' => 'SOLICITUD DE COTIZACIÓN',
+    'numero' => 'N.° ' . $solicitud->codigo(),
+    'facultad' => $facultad,
+    // La fecha de envio; sin ella, la del dia en que se imprime.
+    'fecha' => $solicitud->fechaDelDocumento(),
+    'institucion' => $cabecera[0] ?? null,
+    'unidad' => $cabecera[1] ?? null,
+]) ?>
 
 <div class="texto">
-    Se solicita cotizar los siguientes ítems, indicando precio unitario y precio total en bolivianos,
-    marca y modelo ofertados, tiempo de entrega y validez de la oferta.
+    <?= nl2br(Html::encode($configuracion->textoInstrucciones)) ?>
     <?php if (!empty($solicitud->nota)): ?>
         <br><strong>Nota:</strong> <?= nl2br(Html::encode($solicitud->nota)) ?>
     <?php endif; ?>
@@ -155,28 +140,28 @@ $numero = 0;
                 <th>Descripción</th>
                 <th width="10%">Unidad</th>
                 <th width="10%">Cantidad</th>
-                <th width="17%">Marca / modelo</th>
+                <th width="17%">Marca / modelo ofertado</th>
                 <th width="12%">Precio unitario</th>
                 <th width="12%">Precio total</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($solicitud->items as $fila): ?>
-                <?php
-                $item = $fila->proyectoItem;
-                $especificacion = $especificaciones[(int) $fila->idProyectoItem] ?? null;
-                ?>
+                <?php $item = $fila->proyectoItem; ?>
                 <tr>
                     <td class="numero"><?= ++$numero ?></td>
                     <td>
                         <?= Html::encode($item->subcatalogoItem->descripcion ?? '') ?>
+                        <?php // Solo el NET de la emision VIGENTE; sin emision (o anulada) no sale nada. ?>
+                        <?php $codigoNet = $item->emisionVigente?->codigo(); ?>
+                        <?php if ($codigoNet !== null): ?>
+                            (<?= Html::encode($codigoNet) ?>)
+                        <?php endif; ?>
+                        <?php if (!empty($fila->marcaModeloReferencia)): ?>
+                            (<?= Html::encode($fila->marcaModeloReferencia) ?>)
+                        <?php endif; ?>
                         <?php if (!empty($item->observacion)): ?>
                             <br><span class="observacion"><?= Html::encode($item->observacion) ?></span>
-                        <?php endif; ?>
-                        <?php if ($especificacion !== null): ?>
-                            <br><span class="observacion">
-                                Según especificación técnica <?= Html::encode($especificacion) ?><?= $solicitud->proyecto->codigo ? ' — proyecto ' . Html::encode($solicitud->proyecto->codigo) : '' ?>
-                            </span>
                         <?php endif; ?>
                     </td>
                     <td><?= Html::encode((string) ($item->unidadMedida ?? '')) ?></td>
@@ -202,10 +187,20 @@ $numero = 0;
         <td><strong>NIT:</strong> ______________________________</td>
     </tr>
     <tr>
-        <td><strong>Validez de la oferta:</strong> __________ días</td>
-        <td><strong>Tiempo de entrega:</strong> ______________________________</td>
+        <td>
+            <strong>Validez de la oferta:</strong> __________ días
+            <div class="indicacion">(mínimo <?= (int) $configuracionNet->validezOfertaDias ?> días)</div>
+        </td>
+        <td>
+            <strong>Tiempo de entrega:</strong> __________ días
+            <div class="indicacion">(máximo <?= (int) $configuracionNet->tiempoEntregaDias ?> días)</div>
+        </td>
     </tr>
 </table>
+
+<?php if (!empty($configuracion->textoNotaFinal)): ?>
+    <div class="texto nota-final"><?= nl2br(Html::encode($configuracion->textoNotaFinal)) ?></div>
+<?php endif; ?>
 
 <div class="firmas">
     <div class="firma-linea"></div>

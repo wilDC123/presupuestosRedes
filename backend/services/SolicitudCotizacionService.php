@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\models\ConfiguracionSolicitudCotizacion;
+use backend\models\Cotizacion;
+use backend\models\EspecificacionEmision;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SolicitudCotizacion;
@@ -24,7 +27,13 @@ use Yii;
  *    cantidades ya fijos) y mientras el presupuesto no este cerrado,
  *  - cada item de la lista va en UNA sola solicitud,
  *  - solo entran items de la lista de ESE proyecto,
- *  - las cantidades no se copian: se leen de la lista.
+ *  - las cantidades no se copian: se leen de la lista,
+ *  - una solicitud con cotizaciones registradas no se borra, y sus items
+ *    no se mueven ni se quitan (ni se le agregan otros),
+ *  - la marca y modelo de referencia de cada item se edita mientras la
+ *    solicitud no tenga cotizaciones (ya se le pidio eso al proveedor),
+ *  - la fecha de envio (la del PDF; vacia = la del dia en que se imprime)
+ *    tambien: con cotizaciones, el documento ya se envio con esa fecha.
  */
 class SolicitudCotizacionService
 {
@@ -45,7 +54,7 @@ class SolicitudCotizacionService
     {
         return SolicitudCotizacion::find()
             ->andWhere(['idProyecto' => $proyecto->id])
-            ->with(['items.proyectoItem.subcatalogoItem'])
+            ->with(['items.proyectoItem.subcatalogoItem', 'cotizaciones.proveedor', 'cotizaciones.cotizacionDetalles'])
             ->orderBy(['numero' => SORT_ASC])
             ->all();
     }
@@ -96,6 +105,12 @@ class SolicitudCotizacionService
             return null;
         }
 
+        if ($this->contarEnSolicitudesCotizadas($ids) > 0) {
+            $error = 'Algunos de los ítems marcados están en una solicitud que ya tiene cotizaciones registradas: no se pueden mover.';
+
+            return null;
+        }
+
         if ($idSolicitud === null) {
             $solicitud = new SolicitudCotizacion();
             $solicitud->nombre = $nombreNueva;
@@ -110,6 +125,12 @@ class SolicitudCotizacionService
 
             if ($solicitud === null) {
                 $error = 'La solicitud elegida no es de este proyecto.';
+
+                return null;
+            }
+
+            if ($this->tieneCotizaciones($solicitud)) {
+                $error = $solicitud->codigoCorto() . ' ya tiene cotizaciones registradas: no se le agregan ítems. Póngalos en una solicitud nueva.';
 
                 return null;
             }
@@ -176,22 +197,27 @@ class SolicitudCotizacionService
     }
 
     /**
-     * Devuelve el item a "sin asignar". false si no se puede editar.
+     * Devuelve el item a "sin asignar". Devuelve null si se hizo, o el motivo
+     * por el que no.
      */
-    public function quitarItem(Proyecto $proyecto, int $idProyectoItem): bool
+    public function quitarItem(Proyecto $proyecto, int $idProyectoItem): ?string
     {
         if (!$this->puedeEditarse($proyecto) || $this->idsDeLaLista($proyecto, [$idProyectoItem]) === []) {
-            return false;
+            return 'No se pudo quitar el ítem: las solicitudes de este proyecto ya no se modifican.';
+        }
+
+        if ($this->contarEnSolicitudesCotizadas([$idProyectoItem]) > 0) {
+            return 'No se puede quitar: su solicitud ya tiene cotizaciones registradas.';
         }
 
         SolicitudCotizacionItem::deleteAll(['idProyectoItem' => $idProyectoItem]);
 
-        return true;
+        return null;
     }
 
     /**
-     * Cambia el nombre (rubro) y la nota. false si no es editable o el
-     * nombre no es valido (el error queda en $solicitud->errors).
+     * Cambia el nombre (rubro), la nota y la fecha de envio. false si no es
+     * editable o algo no es valido (el error queda en $solicitud->errors).
      */
     public function actualizar(SolicitudCotizacion $solicitud, array $datosFormulario): bool
     {
@@ -201,67 +227,196 @@ class SolicitudCotizacionService
             return false;
         }
 
-        return $solicitud->load($datosFormulario) && $solicitud->save();
+        if (!$solicitud->load($datosFormulario) || !$solicitud->validate()) {
+            return false;
+        }
+
+        // Con cotizaciones el campo llega deshabilitado (no viaja en el POST);
+        // esto frena a quien lo mande igual. isAttributeChanged() compara con
+        // el valor leido de la base, no con el que quedo en memoria.
+        if ($solicitud->isAttributeChanged('fechaEnvio') && $this->tieneCotizaciones($solicitud)) {
+            $solicitud->addError('fechaEnvio', $solicitud->codigoCorto() . ' ya tiene cotizaciones registradas: la fecha de envío ya no se cambia.');
+
+            return false;
+        }
+
+        return $solicitud->save(false);
     }
 
     /**
      * Borra la solicitud; sus items vuelven a "sin asignar" (la llave
      * foranea borra en cascada las filas de redes.SolicitudCotizacionItem).
+     * Devuelve null si se borro, o el motivo por el que no.
+     *
+     * REGLA DE NEGOCIO: una solicitud con cotizaciones registradas no se
+     * borra (son la respuesta de los proveedores a ese documento).
      */
-    public function eliminar(SolicitudCotizacion $solicitud): bool
+    public function eliminar(SolicitudCotizacion $solicitud): ?string
     {
         if (!$this->puedeEditarse($solicitud->proyecto)) {
-            return false;
+            return 'No se pudo eliminar: las solicitudes de este proyecto ya no se modifican.';
         }
 
-        return $solicitud->delete() !== false;
+        $cotizaciones = (int) $solicitud->getCotizaciones()->count();
+
+        if ($cotizaciones > 0) {
+            return "No se puede eliminar {$solicitud->codigoCorto()}: tiene $cotizaciones cotización(es) registrada(s). Elimine primero las cotizaciones.";
+        }
+
+        $solicitud->delete();
+
+        return null;
     }
 
     /**
-     * Especificacion tecnica ENLAZADA a cada item de la solicitud (la que se
-     * eligio en la lista del proyecto), para citarla en el documento:
-     * [idProyectoItem => 'NET:012/26']. Los items sin especificacion no
-     * aparecen: es un caso normal y el documento sale igual.
-     *
-     * @return array<int, string>
+     * OJO: no usar $solicitud->getCotizaciones()->exists(). Esa relacion trae
+     * ORDER BY, Yii la mete dentro de un EXISTS(...) y SQL Server no admite
+     * ORDER BY en una subconsulta (error 42000).
      */
-    public function especificacionesPorItem(SolicitudCotizacion $solicitud): array
+    public function tieneCotizaciones(SolicitudCotizacion $solicitud): bool
     {
-        $idsItems = array_map(static fn ($fila) => (int) $fila->idProyectoItem, $solicitud->items);
+        return Cotizacion::find()->andWhere(['idSolicitudCotizacion' => $solicitud->id])->exists();
+    }
 
-        if ($idsItems === []) {
-            return [];
+    /**
+     * Cuantos de esos items estan en una solicitud que ya tiene cotizaciones.
+     *
+     * @param int[] $idsProyectoItem
+     */
+    private function contarEnSolicitudesCotizadas(array $idsProyectoItem): int
+    {
+        return (int) SolicitudCotizacionItem::find()
+            ->andWhere(['idProyectoItem' => $idsProyectoItem])
+            ->andWhere(['idSolicitud' => Cotizacion::find()->select('idSolicitudCotizacion')->andWhere(['not', ['idSolicitudCotizacion' => null]])])
+            ->count();
+    }
+
+    /**
+     * Guarda la marca y modelo de referencia de los items de la solicitud:
+     *   referencias[idProyectoItem] => texto libre ('' = sin referencia)
+     * Solo los items de ESTA solicitud; los ids que no son de ella se
+     * ignoran. Devuelve null si se guardo, o el motivo por el que no.
+     *
+     * @param mixed $referencias lo que llega en POST "referencias"
+     */
+    public function guardarReferencias(SolicitudCotizacion $solicitud, $referencias): ?string
+    {
+        if (!$this->puedeEditarse($solicitud->proyecto)) {
+            return 'Las solicitudes se modifican con la lista enviada a cotización y el presupuesto sin cerrar.';
         }
 
-        $items = ProyectoItem::find()
-            ->andWhere(['id' => $idsItems])
-            ->andWhere(['not', ['idEspecificacion' => null]])
-            ->with('especificacion')
-            ->all();
+        if ($this->tieneCotizaciones($solicitud)) {
+            return $solicitud->codigoCorto() . ' ya tiene cotizaciones registradas: la marca y modelo pedidos ya no se cambian.';
+        }
 
-        $referencias = [];
+        $referencias = is_array($referencias) ? $referencias : [];
+        $filas = $solicitud->getItems()->with('proyectoItem.subcatalogoItem')->all();
 
-        foreach ($items as $item) {
-            if ($item->especificacion !== null) {
-                $referencias[$item->id] = $item->especificacion->referencia();
+        foreach ($filas as $fila) {
+            $texto = $referencias[$fila->idProyectoItem] ?? null;
+
+            if (!is_string($texto)) {
+                continue;
+            }
+
+            $fila->marcaModeloReferencia = $texto;
+
+            if (!$fila->validate(['marcaModeloReferencia'])) {
+                return ($fila->proyectoItem->subcatalogoItem->descripcion ?? 'Ítem') . ': ' . $fila->getFirstError('marcaModeloReferencia');
             }
         }
 
-        return $referencias;
+        $transaccion = Yii::$app->db->beginTransaction();
+
+        try {
+            foreach ($filas as $fila) {
+                $fila->save(false, ['marcaModeloReferencia']);
+            }
+
+            $transaccion->commit();
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
+        return null;
+    }
+
+    /**
+     * "Modelo sugerido" de la especificacion enlazada a cada item del
+     * proyecto que lo tenga: [idProyectoItem => texto]. La pantalla lo
+     * muestra como sugerencia en el campo de referencia vacio; no se copia.
+     *
+     * @return array<int, string>
+     */
+    public function modelosSugeridos(Proyecto $proyecto): array
+    {
+        $sugeridos = [];
+        $items = $proyecto->getItems()
+            ->andWhere(['not', ['idEspecificacion' => null]])
+            ->with('especificacion.versionActual')
+            ->all();
+
+        foreach ($items as $item) {
+            $modelo = $item->especificacion->versionActual->modeloSugerido ?? null;
+            if (!empty($modelo)) {
+                $sugeridos[$item->id] = $modelo;
+            }
+        }
+
+        return $sugeridos;
+    }
+
+    /**
+     * Guarda los textos fijos del documento de la solicitud (cabecera,
+     * instrucciones y nota final).
+     */
+    public function guardarConfiguracion(ConfiguracionSolicitudCotizacion $configuracion, array $datosFormulario): bool
+    {
+        return $configuracion->load($datosFormulario) && $configuracion->save();
+    }
+
+    /**
+     * Formularios de especificación VIGENTES de los items de la solicitud, en el orden en
+     * que salen en el documento. Van al final del PDF para que el proveedor
+     * sepa que se le pide. Un item sin especificacion (o con su emision
+     * anulada) no aporta ninguno: la especificacion es opcional.
+     *
+     * @return EspecificacionEmision[]
+     */
+    public function emisionesVigentes(SolicitudCotizacion $solicitud): array
+    {
+        $emisiones = [];
+
+        foreach ($solicitud->items as $fila) {
+            $emision = $fila->proyectoItem?->emisionVigente;
+            if ($emision !== null) {
+                $emisiones[] = $emision;
+            }
+        }
+
+        return $emisiones;
     }
 
     /**
      * Convierte el HTML de la vista "pdf" (la arma el controlador) en el
-     * documento de la solicitud.
+     * documento de la solicitud, seguido de los formularios de especificación de sus items,
+     * cada uno desde una hoja nueva y con su marca de agua.
      *
+     * @param array<int, array{emision: EspecificacionEmision, html: string}> $formularios
+     *        Ver emisionesVigentes(); el HTML de cada uno lo arma el controlador
      * @return array{contenido: string, nombreArchivo: string}
      */
-    public function generarPdf(SolicitudCotizacion $solicitud, string $html): array
+    public function generarPdf(SolicitudCotizacion $solicitud, string $html, array $formularios = []): array
     {
         $referencia = ($solicitud->proyecto->codigo ?: (string) $solicitud->idProyecto) . '_' . $solicitud->codigoCorto();
+        $documentos = array_merge(
+            [['html' => $html, 'marcaDeAgua' => null]],
+            (new EspecificacionEmisionService())->documentosPdf($formularios)
+        );
 
         return [
-            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html),
+            'contenido' => (new PresupuestoPdfGenerator())->generarVarios($documentos),
             'nombreArchivo' => 'solicitud_cotizacion_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf',
         ];
     }
@@ -283,12 +438,21 @@ class SolicitudCotizacionService
      */
     private function asignar(SolicitudCotizacion $solicitud, array $idsProyectoItem): void
     {
+        // La fila se borra y se vuelve a crear en la solicitud de destino: la
+        // marca y modelo de referencia que ya tenia viaja con el item.
+        $referencias = SolicitudCotizacionItem::find()
+            ->select(['marcaModeloReferencia', 'idProyectoItem'])
+            ->andWhere(['idProyectoItem' => $idsProyectoItem])
+            ->indexBy('idProyectoItem')
+            ->column();
+
         SolicitudCotizacionItem::deleteAll(['idProyectoItem' => $idsProyectoItem]);
 
         foreach ($idsProyectoItem as $idProyectoItem) {
             $fila = new SolicitudCotizacionItem();
             $fila->idSolicitud = $solicitud->id;
             $fila->idProyectoItem = $idProyectoItem;
+            $fila->marcaModeloReferencia = $referencias[$idProyectoItem] ?? null;
             $fila->save(false);
         }
     }

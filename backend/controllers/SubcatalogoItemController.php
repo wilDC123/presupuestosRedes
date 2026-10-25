@@ -7,6 +7,7 @@ namespace backend\controllers;
 use backend\models\SubcatalogoItem;
 use backend\services\CategoriaService;
 use backend\services\SubcatalogoItemService;
+use backend\services\UnidadMedidaService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -74,10 +75,17 @@ class SubcatalogoItemController extends Controller
         ]);
     }
 
-    public function actionView(int $id): string
+    /**
+     * $q: texto de la ultima busqueda en SIGMA, si se llego aqui desde
+     * "Agregar". Yii llena los parametros de la accion con los de la URL
+     * (?id=103&q=jack), y $q es opcional. Sirve para que "Agregar otro desde
+     * SIGMA" vuelva a los mismos resultados.
+     */
+    public function actionView(int $id, string $q = ''): string
     {
         return $this->render('view', [
             'model' => $this->findModel($id),
+            'textoBusqueda' => trim($q),
         ]);
     }
 
@@ -88,7 +96,11 @@ class SubcatalogoItemController extends Controller
         if ($this->service->crear($model, Yii::$app->request->post())) {
             Yii::$app->session->setFlash('success', 'Ítem "' . $model->descripcion . '" agregado al subcatálogo.');
 
-            return $this->redirect(['view', 'id' => $model->id]);
+            // El formulario se envia a la misma URL (create?idSigma=...&q=...),
+            // asi que el texto de la busqueda sigue disponible en el GET.
+            $textoBusqueda = trim((string) Yii::$app->request->get('q', ''));
+
+            return $this->redirect(['view', 'id' => $model->id, 'q' => $textoBusqueda !== '' ? $textoBusqueda : null]);
         }
 
         // Prellenado desde "Buscar en catalogo institucional": llega por GET
@@ -129,6 +141,7 @@ class SubcatalogoItemController extends Controller
         return [
             'model' => $model,
             'categorias' => (new CategoriaService())->opciones(),
+            'unidades' => (new UnidadMedidaService())->opcionesPorId($model->idUnidadMedida === null || $model->idUnidadMedida === '' ? null : (int) $model->idUnidadMedida),
             'sigma' => $this->service->sigmaDe($model),
             'partidaSigma' => $this->service->partidaDesdeSigma($model),
             'usadoPor' => $this->service->otrosItemsConMismoSigma($model),

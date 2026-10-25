@@ -1,0 +1,21 @@
+Pagella DTIC
+============
+
+Fuente de la carta de entrega del presupuesto (backend/views/carta/pdf.php).
+Reemplaza a Book Antiqua, que es una fuente de Windows con licencia y no se
+puede copiar al servidor (Ubuntu).
+
+Origen: TeX Gyre Pagella 2.004 (GUST e-foundry), https://ctan.org/pkg/tex-gyre
+Licencia: GUST Font License (GUST-FONT-LICENSE.txt), basada en la LPPL 1.3c.
+
+Cambios respecto del original:
+  - Convertida de OpenType/CFF (.otf) a TrueType (.ttf), porque mPDF solo
+    acepta contornos TrueType (curvas cubicas -> cuadraticas con fontTools).
+  - Nombre de la familia cambiado a "Pagella DTIC", como pide la clausula 1
+    de la licencia para las obras derivadas.
+
+Archivos:
+  PagellaDTIC-Regular.ttf     <- texgyrepagella-regular.otf
+  PagellaDTIC-Bold.ttf        <- texgyrepagella-bold.otf
+  PagellaDTIC-Italic.ttf      <- texgyrepagella-italic.otf
+  PagellaDTIC-BoldItalic.ttf  <- texgyrepagella-bolditalic.otf

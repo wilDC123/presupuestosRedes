@@ -17,15 +17,23 @@ use yii\db\ActiveRecord;
  *
  * @property int $id
  * @property int $idProyecto
- * @property string|null $numeroPresupuesto
+ * @property string|null $numeroPresupuesto Codigo RD-PI-PR-NNN, lo asigna el sistema al crear el
+ *           presupuesto (ElaborarPresupuestoService). Los de antes del 2026-10-22 se escribian a mano ("690").
  * @property string|null $oficioDtic
  * @property string|null $areaIntervencion
  * @property string $estado
  * @property string|null $fecha
  * @property string $fechaCreacion
+ * @property string|null $numeroAnterior El numero escrito a mano que tenia antes de pasar a RD-PI-PR
+ *           (migracion m261022_144239; ej. "690"). NULL en los que nacieron con codigo.
+ * @property string|null $manoDeObra Mano de obra a cargo de la DTIC (null = no lleva)
+ * @property string|null $fechaAprobacion aaaa-mm-dd; la pone PresupuestoService al aprobar (null en los
+ *           aprobados antes del 2026-10-22, cuando no se guardaba).
  *
  * @property-read Proyecto $proyecto
  * @property-read PresupuestoDetalle[] $presupuestoDetalles
+ * @property-read CartaPresupuesto|null $carta
+ * @property-read PresupuestoComplemento[] $complementos
  */
 class Presupuesto extends ActiveRecord
 {
@@ -34,6 +42,33 @@ class Presupuesto extends ActiveRecord
     public const ESTADO_OBSERVADO = 'observado';
     public const ESTADO_APROBADO = 'aprobado';
     public const ESTADO_CANCELADO = 'cancelado';
+
+    /**
+     * Escenario de Yii2 para "Enviar a revision": las mismas reglas de
+     * siempre MAS la cabecera obligatoria (numero, oficio, area y fecha).
+     * Mientras el presupuesto es un borrador esos datos pueden faltar.
+     */
+    public const SCENARIO_ENVIAR = 'enviar';
+
+    /**
+     * Mano de obra a cargo del personal de la DTIC: NO es un item del
+     * subcatalogo (no se compra: no tiene partida, no se cotiza y no suma al
+     * total). Se guarda como texto en el presupuesto y el PDF la muestra como
+     * la ultima fila de la tabla, con esta unidad y cantidad y precios en 0.00
+     * (cantidad 0 desde el 2026-10-23, pedido del encargado). Un presupuesto
+     * nuevo ya la lleva puesta; el encargado la quita si no corresponde.
+     */
+    public const MANO_DE_OBRA_DTIC = 'A ser implementado por personal de la D.T.I.C.';
+    public const UNIDAD_MANO_DE_OBRA = 'Servicio';
+    public const CANTIDAD_MANO_DE_OBRA = 0;
+
+    /**
+     * Version del documento para la cabecera y el control de elaboracion
+     * del PDF (lineamiento RD-GD-LI-001: "consecutivo, inicia con 01"). Cada
+     * proyecto tiene un solo presupuesto y uno aprobado ya no cambia (una
+     * ampliacion es otro proyecto), asi que siempre es la 01.
+     */
+    public const VERSION_DOCUMENTO = '01';
 
     public static function tableName(): string
     {
@@ -86,10 +121,22 @@ class Presupuesto extends ActiveRecord
         return !in_array($this->estado, [self::ESTADO_APROBADO, self::ESTADO_CANCELADO], true);
     }
 
+    /**
+     * true mientras el presupuesto es un BORRADOR ("en proceso"): solo
+     * entonces se eligen precios y sus lineas siguen a la lista. En revision
+     * queda de solo lectura; si lo observan, vuelve a "en proceso".
+     */
+    public function esBorrador(): bool
+    {
+        return $this->estado === self::ESTADO_EN_PROCESO;
+    }
+
     public function rules(): array
     {
         return [
             [['idProyecto'], 'required'],
+            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'manoDeObra'], 'trim'],
+            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'fecha'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
             [['idProyecto'], 'integer'],
             // Mensaje claro en vez del error de la base por el indice unico.
             [['idProyecto'], 'unique', 'message' => 'Este proyecto ya tiene un presupuesto.'],
@@ -99,7 +146,7 @@ class Presupuesto extends ActiveRecord
             [['fecha'], 'date', 'format' => 'php:Y-m-d'],
             [['numeroPresupuesto'], 'string', 'max' => 20],
             [['oficioDtic'], 'string', 'max' => 100],
-            [['areaIntervencion'], 'string', 'max' => 300],
+            [['areaIntervencion', 'manoDeObra'], 'string', 'max' => 300],
             [['idProyecto'], 'exist', 'skipOnError' => true, 'targetClass' => Proyecto::class, 'targetAttribute' => ['idProyecto' => 'id']],
         ];
     }
@@ -109,12 +156,15 @@ class Presupuesto extends ActiveRecord
         return [
             'id' => 'ID',
             'idProyecto' => 'Proyecto',
-            'numeroPresupuesto' => 'N.° de presupuesto',
+            'numeroPresupuesto' => 'Código de presupuesto',
             'oficioDtic' => 'Oficio DTIC',
             'areaIntervencion' => 'Área de intervención',
             'estado' => 'Estado',
             'fecha' => 'Fecha',
             'fechaCreacion' => 'Fecha de creación',
+            'manoDeObra' => 'Mano de obra',
+            'fechaAprobacion' => 'Fecha de aprobación',
+            'numeroAnterior' => 'Número anterior',
         ];
     }
 
@@ -126,6 +176,24 @@ class Presupuesto extends ActiveRecord
     public function getPresupuestoDetalles(): ActiveQuery
     {
         return $this->hasMany(PresupuestoDetalle::class, ['idPresupuesto' => 'id']);
+    }
+
+    /**
+     * Materiales que aporta la DTIC y trabajos complementarios (sin precio),
+     * en el orden en que se escribieron. Ver PresupuestoComplemento.
+     */
+    public function getComplementos(): ActiveQuery
+    {
+        return $this->hasMany(PresupuestoComplemento::class, ['idPresupuesto' => 'id'])
+            ->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /**
+     * Carta de entrega (null si aun no se escribio). Como maximo una.
+     */
+    public function getCarta(): ActiveQuery
+    {
+        return $this->hasOne(CartaPresupuesto::class, ['idPresupuesto' => 'id']);
     }
 
     /**
@@ -142,6 +210,11 @@ class Presupuesto extends ActiveRecord
 
         if ($this->fecha === '') {
             $this->fecha = null;
+        }
+
+        // '' tambien es "no lleva mano de obra": se guarda null.
+        if ($this->manoDeObra === '') {
+            $this->manoDeObra = null;
         }
 
         return true;
@@ -165,8 +238,9 @@ class Presupuesto extends ActiveRecord
      * Convierte "dd/mm/aaaa" (o "d/m/aaaa") a "aaaa-mm-dd". Si el valor no
      * coincide con ese patron (ya viene en aaaa-mm-dd, esta vacio, o es
      * invalido) se devuelve sin cambios para que el validador 'date' decida.
+     * Publica: la usa tambien la carta de entrega (CartaPresupuesto).
      */
-    private static function convertirFechaFormularioABd(?string $valor): ?string
+    public static function convertirFechaFormularioABd(?string $valor): ?string
     {
         if ($valor === null) {
             return null;
@@ -193,6 +267,20 @@ class Presupuesto extends ActiveRecord
         $fecha = DateTime::createFromFormat('Y-m-d', $this->fecha);
 
         return $fecha !== false ? $fecha->format('d/m/Y') : $this->fecha;
+    }
+
+    /**
+     * fechaAprobacion para mostrar (dd/mm/aaaa); vacio si no tiene.
+     */
+    public function fechaAprobacionFormateada(): string
+    {
+        if (empty($this->fechaAprobacion)) {
+            return '';
+        }
+
+        $fecha = DateTime::createFromFormat('Y-m-d', substr((string) $this->fechaAprobacion, 0, 10));
+
+        return $fecha !== false ? $fecha->format('d/m/Y') : (string) $this->fechaAprobacion;
     }
 
     public function estadoLabel(): string

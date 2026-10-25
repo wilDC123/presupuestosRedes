@@ -17,6 +17,7 @@ use yii\db\ActiveRecord;
  * @property int $id
  * @property int $idSolicitud
  * @property int $idProyectoItem
+ * @property string|null $marcaModeloReferencia Marca y modelo que la DTIC pide como referencia (texto libre).
  *
  * @property-read SolicitudCotizacion $solicitud
  * @property-read ProyectoItem $proyectoItem
@@ -33,6 +34,17 @@ class SolicitudCotizacionItem extends ActiveRecord
         return [
             [['idSolicitud', 'idProyectoItem'], 'required'],
             [['idSolicitud', 'idProyectoItem'], 'integer'],
+            [['marcaModeloReferencia'], 'trim'],
+            // trim convierte null en '': se vuelve a null ("sin referencia").
+            [['marcaModeloReferencia'], 'default', 'value' => null],
+            [['marcaModeloReferencia'], 'string', 'max' => 300],
+        ];
+    }
+
+    public function attributeLabels(): array
+    {
+        return [
+            'marcaModeloReferencia' => 'Marca y modelo de referencia',
         ];
     }
 

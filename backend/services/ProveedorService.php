@@ -64,6 +64,28 @@ class ProveedorService
     }
 
     /**
+     * Proveedores ACTIVOS como [id => razon social], para los desplegables.
+     * $idIncluir agrega ese proveedor aunque este inactivo (el que ya tiene
+     * la cotizacion que se edita, para no perderlo).
+     *
+     * @return array<int, string>
+     */
+    public function opcionesActivos(?int $idIncluir = null): array
+    {
+        $query = Proveedor::find()
+            ->select(['razonSocial', 'id'])
+            ->andWhere(['activo' => true])
+            ->orderBy(['razonSocial' => SORT_ASC])
+            ->indexBy('id');
+
+        if ($idIncluir !== null) {
+            $query->orWhere(['id' => $idIncluir]);
+        }
+
+        return $query->column();
+    }
+
+    /**
      * Datos del panel "Proveedor seleccionado": sus cotizaciones (de la mas
      * reciente a la mas antigua), cuanto suman y la fecha de la ultima.
      *

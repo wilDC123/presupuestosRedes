@@ -20,7 +20,7 @@ use yii\widgets\ActiveForm;
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model
  * @var yii\widgets\ActiveForm $form
- * @var array<string, string> $tipos [codigo => nombre]
+ * @var array<int, string> $tipos [id => nombre] tipos activos (y el que ya tenia)
  * @var array<string, string> $facultades [codigo => nombre]
  * @var array<string, string> $edificios edificios de la facultad actual
  * @var array<string, string> $bloques bloques del edificio actual
@@ -69,7 +69,7 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
                 <div class="hint">Generado automáticamente al guardar. No se puede cambiar.</div>
             </div>
 
-            <?= $form->field($model, 'tipo')->dropDownList($tipos, ['prompt' => 'Seleccione el tipo', 'class' => 'form-select']) ?>
+            <?= $form->field($model, 'idTipoProyecto')->dropDownList($tipos, ['prompt' => 'Seleccione el tipo', 'class' => 'form-select']) ?>
         </div>
 
         <?= $form->field($model, 'nombre')->textInput([

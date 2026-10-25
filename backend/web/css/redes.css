@@ -331,6 +331,8 @@ body.rd {
 .rd .b-aprobado, .rd .b-activo { background: #d1fae5; color: #065f46; }
 .rd .b-cancelado { background: #fee2e2; color: #991b1b; }
 .rd .b-inactivo { background: #e2e8ef; color: #4a5a70; }
+/* Comparativo de cotizaciones: el menor precio de cada item. */
+.rd .table td.rd-menor { background: #d1fae5; color: #065f46; font-weight: 600; }
 .rd .cat-chip {
     display: inline-flex;
     align-items: center;
@@ -500,3 +502,13 @@ body.rd {
 .rd .lista-item-obs { margin-top: 4px; padding: 4px 8px; font-size: 12px; }
 .rd .qty.is-invalid { border-color: #dc2626; background: #fef2f2; }
 .rd-pagehead h1 .badge { vertical-align: middle; margin-left: 8px; letter-spacing: 0; }
+/* Ventana "Ver detalle" de la lista de items: resultados y detalle con su propio desplazamiento. */
+.esp-previa-lista, .esp-previa-detalle { max-height: 60vh; overflow-y: auto; }
+.esp-previa-lista .list-group-item { font-size: 13px; text-align: left; }
+.esp-previa-lista .esp-previa-grupo { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--rd-etiqueta); background: var(--rd-fila-hover); }
+/* Tarjeta "Que tengo pendiente" del panel general. */
+.rd-pend-grupo { padding: 12px 18px; border-bottom: 1px solid var(--rd-borde); }
+.rd-pend-grupo:last-child { border-bottom: 0; }
+.rd-pend-titulo { font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rd-pend-fila { margin-top: 8px; font-size: 12.5px; }
+.rd-pend-fila .mono { color: var(--rd-texto-suave); margin-right: 6px; }

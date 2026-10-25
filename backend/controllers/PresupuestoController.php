@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\models\ConfiguracionPresupuesto;
 use backend\models\Presupuesto;
-use backend\services\ListaItemsService;
+use backend\services\CartaService;
 use backend\services\PresupuestoService;
-use backend\services\ProyectoService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -15,11 +15,14 @@ use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
 /**
- * Controlador CRUD para redes.Presupuesto (capa de Presentacion).
+ * Menu "Presupuestos" (capa de Presentacion): el listado de los
+ * presupuestos de todos los proyectos, el PDF y su configuracion (nota,
+ * firmas y banda de pie).
  *
- * Todas las reglas de negocio (editable o no, transiciones de estado,
- * precio congelado, totales) viven en PresupuestoService.
- * Aca solo se decide que mensaje mostrar y a donde redirigir.
+ * El presupuesto se ELABORA en el paso "Presupuesto" de cada proyecto
+ * (ElaborarPresupuestoController). Las rutas que antes servian para eso
+ * (ver, lineas, armar, crear, editar, cambiar estado) redirigen ahi, para
+ * que ningun enlace guardado quede roto.
  */
 class PresupuestoController extends Controller
 {
@@ -38,8 +41,6 @@ class PresupuestoController extends Controller
                 'class' => VerbFilter::class,
                 'actions' => [
                     'delete' => ['POST'],
-                    'cambiar-estado' => ['POST'],
-                    'eliminar-linea' => ['POST'],
                 ],
             ],
         ];
@@ -49,146 +50,72 @@ class PresupuestoController extends Controller
     {
         return $this->render('index', [
             'dataProvider' => $this->service->listar(),
-        ]);
-    }
-
-    public function actionView(int $id): string
-    {
-        $model = $this->findModel($id);
-
-        return $this->render('view', [
-            'model' => $model,
-            'resumenPartidas' => $this->service->resumenPorPartida($model),
+            'totales' => $this->service->totalesPorPresupuesto(),
         ]);
     }
 
     /**
-     * ?idProyecto= llega desde "Iniciar presupuesto" en la pantalla del
-     * proyecto: el formulario se abre con ese proyecto ya elegido.
+     * Rutas anteriores (presupuesto/view, detalle, update, cambiar-estado):
+     * llevan al paso Presupuesto del proyecto.
      */
-    public function actionCreate(?int $idProyecto = null)
+    public function actionView(int $id): Response
     {
-        $model = new Presupuesto();
-        $model->idProyecto = $idProyecto;
-
-        if ($this->service->crear($model, Yii::$app->request->post())) {
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        return $this->render('create', [
-            'model' => $model,
-            // Solo proyectos sin presupuesto: cada proyecto tiene uno.
-            'proyectos' => (new ProyectoService())->opcionesParaPresupuesto(),
-        ]);
+        return $this->alProyecto($this->findModel($id)->idProyecto);
     }
 
-    public function actionUpdate(int $id)
+    public function actionDetalle(int $id): Response
     {
-        $model = $this->findModel($id);
-
-        if (!$this->service->puedeEditarse($model)) {
-            Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $model->estadoLabel() . '" no se puede editar. Una ampliación se registra como un proyecto nuevo de fase siguiente.');
-
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        if ($this->service->actualizar($model, Yii::$app->request->post())) {
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        return $this->render('update', [
-            'model' => $model,
-            'proyectos' => (new ProyectoService())->opcionesParaPresupuesto($model->idProyecto),
-        ]);
+        return $this->actionView($id);
     }
 
-    public function actionDelete(int $id)
+    public function actionUpdate(int $id): Response
     {
-        $this->service->eliminar($this->findModel($id));
+        return $this->actionView($id);
+    }
+
+    public function actionCambiarEstado(int $id): Response
+    {
+        return $this->actionView($id);
+    }
+
+    /**
+     * Rutas anteriores con ?idProyecto= (presupuesto/create y armar).
+     */
+    public function actionCreate(?int $idProyecto = null): Response
+    {
+        if ($idProyecto === null) {
+            Yii::$app->session->setFlash('info', 'El presupuesto se elabora desde cada proyecto: abra el proyecto y entre al paso "Presupuesto".');
+
+            return $this->redirect(['/proyecto/index']);
+        }
+
+        return $this->alProyecto($idProyecto);
+    }
+
+    public function actionArmar(int $idProyecto): Response
+    {
+        return $this->alProyecto($idProyecto);
+    }
+
+    public function actionDelete(int $id): Response
+    {
+        $presupuesto = $this->findModel($id);
+
+        // La regla (solo "En proceso") vive en PresupuestoService::eliminar().
+        if (!$this->service->eliminar($presupuesto)) {
+            Yii::$app->session->setFlash('error', 'Solo se elimina un presupuesto "En proceso".');
+        } else {
+            Yii::$app->session->setFlash('success', 'Presupuesto eliminado. Al volver a entrar al paso Presupuesto del proyecto se crea otro, con los menores precios.');
+        }
 
         return $this->redirect(['index']);
     }
 
     /**
-     * Cambia el estado de un presupuesto, pero solo si la transicion pedida
-     * es valida (ver PresupuestoService::cambiarEstado()). Cualquier otra
-     * combinacion se rechaza sin tocar la base de datos.
-     */
-    public function actionCambiarEstado(int $id)
-    {
-        $model = $this->findModel($id);
-        $nuevoEstado = (string) Yii::$app->request->post('estado');
-
-        if (!$this->service->cambiarEstado($model, $nuevoEstado)) {
-            Yii::$app->session->setFlash('error', 'No se puede pasar de "' . $model->estadoLabel() . '" a ese estado.');
-
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        Yii::$app->session->setFlash('success', 'Estado actualizado a "' . $model->estadoLabel() . '".');
-
-        // Advertencia que NO bloquea: el presupuesto ya quedo aprobado.
-        if ($nuevoEstado === Presupuesto::ESTADO_APROBADO) {
-            $vencidas = $this->service->lineasConCotizacionVencida($model);
-
-            if ($vencidas !== []) {
-                $nombres = array_map(static fn ($linea) => $linea->subcatalogoItem->descripcion ?? '?', $vencidas);
-                Yii::$app->session->setFlash('warning', 'Atención: ' . count($vencidas) . ' línea(s) usan una cotización vencida: ' . implode(', ', $nombres) . '.');
-            }
-        }
-
-        return $this->redirect(['view', 'id' => $model->id]);
-    }
-
-    /**
-     * Pantalla principal de trabajo de un presupuesto: lista sus lineas
-     * agrupadas por categoria del item (con subtotal por grupo y total
-     * general), los items de la lista del proyecto que faltan presupuestar,
-     * y procesa el formulario "Presupuestar item".
-     *
-     * ?idProyectoItem= llega desde el boton "Presupuestar" de un item de la
-     * lista: el formulario se abre con ese item ya cargado.
-     */
-    public function actionDetalle(int $id, ?int $idProyectoItem = null)
-    {
-        $presupuesto = $this->findModel($id);
-        $nuevaLinea = $this->service->nuevaLinea($presupuesto, $idProyectoItem);
-
-        if (Yii::$app->request->isPost) {
-            if (!$this->service->puedeEditarse($presupuesto)) {
-                Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $presupuesto->estadoLabel() . '" no se puede modificar. Una ampliación se registra como un proyecto nuevo de fase siguiente.');
-
-                return $this->redirect(['detalle', 'id' => $presupuesto->id]);
-            }
-
-            if ($this->service->agregarLinea($presupuesto, $nuevaLinea, Yii::$app->request->post())) {
-                Yii::$app->session->setFlash('success', 'Línea agregada al presupuesto.');
-
-                if ($this->service->lineaUsaCotizacionVencida($nuevaLinea)) {
-                    Yii::$app->session->setFlash('warning', 'Atención: la cotización elegida para esta línea ya está vencida. La línea se agregó igual, con el precio de esa cotización.');
-                }
-
-                return $this->redirect(['detalle', 'id' => $presupuesto->id]);
-            }
-        }
-
-        return $this->render('detalle', [
-            'presupuesto' => $presupuesto,
-            'nuevaLinea' => $nuevaLinea,
-            'pendientes' => (new ListaItemsService())->pendientesDePresupuestar($presupuesto->proyecto),
-            // Solo cotizaciones del mismo item que se esta presupuestando.
-            'cotizaciones' => empty($nuevaLinea->idSubcatalogo) ? [] : $this->service->opcionesCotizacion((int) $nuevaLinea->idSubcatalogo),
-            'grupos' => $this->service->agruparPorCategoria($presupuesto),
-            'resumenPartidas' => $this->service->resumenPorPartida($presupuesto),
-        ]);
-    }
-
-    /**
      * Genera y descarga el PDF consolidado del presupuesto: encabezado
-     * institucional, datos generales, lineas agrupadas por categoria y un
-     * espacio de firma. Disponible en cualquier estado del presupuesto, no
-     * solo aprobado -- tambien sirve para generar el PDF de un presupuesto
-     * en revision.
+     * institucional, datos generales y las lineas en una tabla numerada,
+     * como la solicitud de cotizacion. Disponible en cualquier estado; si
+     * no esta aprobado lleva la marca "BORRADOR".
      */
     public function actionPdf(int $id): Response
     {
@@ -199,7 +126,9 @@ class PresupuestoController extends Controller
             'presupuesto' => $presupuesto,
             'grupos' => $grupos,
             'totalGeneral' => $this->service->totalGeneral($grupos),
-            'resumenPartidas' => $this->service->resumenPorPartida($presupuesto),
+            'configuracion' => ConfiguracionPresupuesto::obtener(),
+            // "DTIC Of. Nº 598/2026", con el mismo formato que la carta de entrega.
+            'oficio' => (new CartaService())->formatearOficio((string) $presupuesto->oficioDtic, (string) $presupuesto->fecha),
         ]);
 
         $pdf = $this->service->generarPdf($presupuesto, $html);
@@ -211,21 +140,56 @@ class PresupuestoController extends Controller
         );
     }
 
-    public function actionEliminarLinea(int $id)
+    /**
+     * Reporte de apoyo (PDF): cada linea del presupuesto con el item SIGMA al
+     * que apunta, para saber que item del catalogo es cada uno. No es el
+     * documento oficial: no lleva firmas.
+     */
+    public function actionPdfSigma(int $id): Response
     {
-        $linea = $this->service->obtenerLinea($id);
+        $presupuesto = $this->findModel($id);
+        $grupos = $this->service->agruparPorCategoria($presupuesto);
 
-        if ($linea === null) {
-            throw new NotFoundHttpException('La línea solicitada no existe.');
+        $html = $this->renderPartial('pdf-sigma', [
+            'presupuesto' => $presupuesto,
+            'grupos' => $grupos,
+        ]);
+
+        $pdf = $this->service->generarPdfSigma($presupuesto, $html);
+
+        return Yii::$app->response->sendContentAsFile(
+            $pdf['contenido'],
+            $pdf['nombreArchivo'],
+            ['mimeType' => 'application/pdf']
+        );
+    }
+
+    /**
+     * Lo que lleva el PDF despues del total: nota, firmas y banda de pie.
+     * Vale para todos los presupuestos, tambien al reimprimir los anteriores.
+     *
+     * @param int|null $proyecto id del proyecto desde el que se entro, solo
+     *                           para el boton "volver"
+     */
+    public function actionConfiguracion(?int $proyecto = null)
+    {
+        $configuracion = ConfiguracionPresupuesto::obtener();
+
+        if (Yii::$app->request->isPost && $this->service->guardarConfiguracion($configuracion, Yii::$app->request->post())) {
+            Yii::$app->session->setFlash('success', 'Configuración del PDF del presupuesto guardada.');
+
+            return $this->redirect(['configuracion', 'proyecto' => $proyecto]);
         }
 
-        $presupuesto = $linea->presupuesto;
+        return $this->render('configuracion', [
+            'configuracion' => $configuracion,
+            'proyecto' => $proyecto,
+        ]);
+    }
 
-        if (!$this->service->eliminarLinea($linea)) {
-            Yii::$app->session->setFlash('error', 'Un presupuesto en estado "' . $presupuesto->estadoLabel() . '" no se puede modificar directamente.');
-        }
-
-        return $this->redirect(['detalle', 'id' => $presupuesto->id]);
+    private function alProyecto(int $idProyecto): Response
+    {
+        return $this->redirect(['/elaborar-presupuesto/index', 'idProyecto' => $idProyecto]);
     }
 
     protected function findModel(int $id): Presupuesto

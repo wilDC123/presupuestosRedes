@@ -16,6 +16,17 @@ return [
     'controllerNamespace' => 'backend\controllers',
     'bootstrap' => ['log'],
     'modules' => [],
+    // TODA la aplicacion exige sesion iniciada, salvo el login y la pagina de
+    // error. Esta definido aqui (y no en cada controlador) para que un
+    // controlador nuevo quede protegido sin tener que acordarse. El filtro
+    // AccessControl redirige a site/login a quien no inicio sesion.
+    'as access' => [
+        'class' => \yii\filters\AccessControl::class,
+        'except' => ['site/login', 'site/error', 'debug/*'],
+        'rules' => [
+            ['allow' => true, 'roles' => ['@']],
+        ],
+    ],
     // Contenedor de dependencias: aqui se decide que clase concreta se usa
     // cuando alguien pide una interface. Para que facultades, edificios,
     // bloques, tipos y proyectistas vengan de un servicio web en vez del

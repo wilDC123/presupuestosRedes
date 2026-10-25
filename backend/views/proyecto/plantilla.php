@@ -16,6 +16,7 @@ use yii\web\JqueryAsset;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model
+ * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
  * @var array<int, array{plantilla: backend\models\Plantilla, totalItems: int, grupos: array<string, backend\models\PlantillaItem[]>}> $plantillas activas, las del tipo del proyecto primero
  * @var int $totalItems items que la lista del proyecto ya tiene
  */
@@ -42,6 +43,8 @@ $primera = $plantillas[0]['plantilla']->id ?? null;
             <?php endif; ?>
         </div>
     </div>
+
+    <?= $this->render('/proyecto/_pasos', ['pasos' => $pasos, 'actual' => 'Plantilla']) ?>
 
     <p class="rd-nota">
         Elija una plantilla con los ítems que suele usar en este tipo de proyecto. Sus ítems se copian a la
@@ -113,7 +116,7 @@ $primera = $plantillas[0]['plantilla']->id ?? null;
                                                 <div class="rd-celda-sub"><?= Html::encode($item->observacion) ?></div>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= Html::encode($item->subcatalogoItem->unidadDefecto ?? '') ?></td>
+                                        <td><?= Html::encode($item->subcatalogoItem?->abreviaturaUnidad() ?? '') ?></td>
                                         <td class="rd-num mono"><?= $item->cantidadSugerida === null ? '—' : Yii::$app->formatter->asDecimal($item->cantidadSugerida, 2) ?></td>
                                     </tr>
                                 <?php endforeach; ?>

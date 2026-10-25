@@ -6,6 +6,7 @@ namespace backend\services;
 
 use backend\models\CatalogoSigma;
 use backend\models\SubcatalogoItem;
+use backend\models\UnidadMedida;
 use yii\data\ActiveDataProvider;
 
 /**
@@ -29,7 +30,7 @@ class SubcatalogoItemService
      *  - estado: 'activo' o 'inactivo'
      * Un filtro vacio o con un valor que no corresponde se ignora.
      *
-     * with() carga categoria y catalogoSigma de todas las filas en 2
+     * with() carga categoria, catalogoSigma y unidad de todas las filas en 3
      * consultas extra, en vez de una consulta por cada fila del listado.
      *
      * @param array{buscar?: string, idCategoria?: string, partida?: string, estado?: string} $filtros
@@ -37,7 +38,7 @@ class SubcatalogoItemService
     public function listar(array $filtros = []): ActiveDataProvider
     {
         $query = SubcatalogoItem::find()
-            ->with(['categoria', 'catalogoSigma'])
+            ->with(['categoria', 'catalogoSigma', 'unidad'])
             ->orderBy(['descripcion' => SORT_ASC]);
 
         $buscar = trim((string) ($filtros['buscar'] ?? ''));
@@ -107,24 +108,53 @@ class SubcatalogoItemService
     {
         return SubcatalogoItem::find()
             ->andWhere(['activo' => true])
-            // with(): trae las categorias en una sola consulta extra.
-            ->with('categoria')
+            // with(): trae categorias y unidades en una consulta extra cada una.
+            ->with(['categoria', 'unidad'])
             ->orderBy(['descripcion' => SORT_ASC])
             ->all();
     }
 
     /**
-     * Todos los items como [id => nombre DTIC], por nombre, para los
+     * Los items ACTIVOS como [id => nombre DTIC], por nombre, para los
      * desplegables (especificacion, lineas de cotizacion). Las vistas la
      * reciben del controlador: asi ninguna vista consulta la base de datos.
      *
+     * $conservar: items que el registro ya tiene guardados; se agregan
+     * aunque se hayan desactivado, para que el desplegable no los pierda
+     * al editar (igual que TipoProyectoService::opciones()).
+     *
+     * @param array<int|string|null> $conservar
      * @return array<int, string>
      */
-    public function opciones(): array
+    public function opciones(array $conservar = []): array
     {
-        return SubcatalogoItem::find()
+        $conservar = array_values(array_filter($conservar, static fn ($id) => $id !== null && $id !== ''));
+        $query = SubcatalogoItem::find()->andWhere(['activo' => true]);
+
+        if ($conservar !== []) {
+            $query->orWhere(['id' => $conservar]);
+        }
+
+        return $query
             ->select(['descripcion', 'id'])
             ->orderBy(['descripcion' => SORT_ASC])
+            ->indexBy('id')
+            ->column();
+    }
+
+    /**
+     * [id => abreviatura de su unidad] de los items que tienen unidad, para
+     * que la pantalla copie la unidad al elegir un item (materiales que
+     * aporta la DTIC en el paso Presupuesto). Una sola consulta.
+     *
+     * @return array<int, string>
+     */
+    public function abreviaturasDeUnidad(): array
+    {
+        return SubcatalogoItem::find()
+            ->alias('s')
+            ->innerJoin(['u' => UnidadMedida::tableName()], 'u.id = s.idUnidadMedida')
+            ->select(['u.abreviatura', 's.id'])
             ->indexBy('id')
             ->column();
     }
@@ -216,19 +246,21 @@ class SubcatalogoItemService
      * una fila de dbo.CatalogoSigma.
      *
      * "descripcion" es el NOMBRE DTIC (corto y generico, el que sale en
-     * listados, presupuesto y PDF), no el nombre SIGMA. Por eso arranca solo
-     * con la Clase de SIGMA ("JACK" -> "Jack") para que el usuario la
-     * complete a su manera, en vez de copiar la descripcion larga oficial.
-     * La Clase se lee aqui desde la base con el idSigma, no desde la URL.
+     * listados, presupuesto y PDF), no el nombre SIGMA. Aun asi arranca con
+     * la Descripcion de SIGMA en MAYUSCULAS (pedido del Ing. de DTIC,
+     * 2026-10-20): es un punto de partida que el usuario edita en el mismo
+     * campo para acortarla o darle el estilo DTIC. Se lee aqui desde la base
+     * con el idSigma, no desde la URL.
      */
     public function prellenarDesdeSigma(SubcatalogoItem $item, string $idSigma): void
     {
         $item->idSigma = $idSigma;
 
-        $clase = trim((string) ($this->sigmaDe($item)->Clase ?? ''));
+        $descripcion = trim((string) ($this->sigmaDe($item)->Descripcion ?? ''));
 
-        if ($clase !== '') {
-            $item->descripcion = mb_strtoupper(mb_substr($clase, 0, 1)) . mb_strtolower(mb_substr($clase, 1));
+        if ($descripcion !== '') {
+            // 300 = largo maximo de SubcatalogoItem.descripcion (SIGMA tambien admite 300).
+            $item->descripcion = mb_strtoupper(mb_substr($descripcion, 0, 300), 'UTF-8');
         }
     }
 

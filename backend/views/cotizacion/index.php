@@ -34,6 +34,18 @@ $this->params['breadcrumbs'][] = $this->title;
             ],
             'numeroReferencia',
             [
+                // Las de una solicitud se registran y corrigen desde el proyecto.
+                'label' => 'Proyecto / solicitud',
+                'format' => 'raw',
+                'value' => static function ($model) {
+                    if ($model->solicitud === null) {
+                        return '<span class="text-muted">Suelta</span>';
+                    }
+
+                    return Html::a(Html::encode($model->solicitud->codigo()), ['/solicitud-cotizacion/index', 'id' => $model->solicitud->idProyecto]);
+                },
+            ],
+            [
                 'attribute' => 'fecha',
                 'value' => static fn ($model) => $model->fechaFormateada(),
             ],
@@ -46,7 +58,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         return '<span class="text-muted">Sin adjunto</span>';
                     }
 
-                    return Html::a('Ver PDF', Yii::getAlias('@web/' . $model->documentoRuta), ['target' => '_blank']);
+                    return Html::a('Ver PDF', $model->urlDocumento(), ['target' => '_blank']);
                 },
             ],
             ['class' => ActionColumn::class],

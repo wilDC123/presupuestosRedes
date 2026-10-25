@@ -3,7 +3,11 @@
 declare(strict_types=1);
 
 use backend\models\Proyecto;
+use backend\models\ProyectoItem;
+use backend\services\ProyectoService;
+use yii\bootstrap5\BootstrapPluginAsset;
 use yii\helpers\Html;
+use yii\helpers\Url;
 use yii\web\JqueryAsset;
 
 /**
@@ -20,19 +24,40 @@ use yii\web\JqueryAsset;
  * clasificacion es un <tbody> (data-categoria); las dos plantillas ocultas
  * (<template>) son la fila y el grupo "modelo" que el JS copia.
  *
+ * Al guardar, elegir una especificacion EMITE su formulario de especificación. Cada item
+ * muestra su formulario vigente, los avisos y "Reemitir", que abre un panel con su
+ * propio formulario (fuera del de la lista: no se pueden anidar formularios).
+ * Ese panel lo maneja web/js/especificacion-emision.js.
+ *
+ * "Ver detalle" (junto al selector de especificacion) abre una ventana con
+ * buscador en la libreria y el detalle de cada ficha, para compararlas sin
+ * salir de la lista. La maneja web/js/especificacion-vista-previa.js.
+ *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
+ * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  * @var string[] $errores mensajes si el guardado fallo
  * @var bool $editable Ver ListaItemsService::puedeEditarse()
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
- * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>} $especificaciones Ver EspecificacionService::selector()
+ * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>, subcatalogos: array<int, int>, sugeridasPorItem: array<int, int[]>} $especificaciones Ver EspecificacionService::selector()
+ * @var array<string, array{opciones: array, grupos: array}> $opcionesPorItem Ver EspecificacionService::opcionesPorItem() (vacio si la lista no se edita)
  * @var backend\models\OrdenCambio[] $ordenes ordenes de cambio del proyecto
+ * @var array<int, array{emision: ?backend\models\EspecificacionEmision, avisos: string[]}> $emisiones Ver EspecificacionEmisionService::estadoPorItem()
+ * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
+ * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
+ * @var backend\models\ConfiguracionEspecificacion $configuracion
+ * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001)
  */
 
 if ($editable) {
     $this->registerJsFile('@web/js/lista-items.js', ['depends' => [JqueryAsset::class]]);
+    // La ventana "Ver detalle" usa el modal de Bootstrap, que necesita su JS
+    // (el layout solo carga el CSS). Se registra solo en esta pantalla.
+    BootstrapPluginAsset::register($this);
+    $this->registerJsFile('@web/js/especificacion-vista-previa.js', ['depends' => [JqueryAsset::class, BootstrapPluginAsset::class]]);
 }
+$this->registerJsFile('@web/js/especificacion-emision.js', ['depends' => [JqueryAsset::class]]);
 
 $this->title = 'Lista de ítems del proyecto';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
@@ -49,31 +74,71 @@ foreach ($grupos as $grupo) {
 }
 $n = 0;
 
-// Cada opcion lleva el enlace a su documento (data-url): el JS lo usa para
-// el enlace "ver documento" sin volver a consultar al servidor.
+// Cada opcion lleva el enlace a su documento (data-url) y si la ficha ya
+// tiene item de referencia (data-con-referencia): el JS los usa para el
+// enlace "ver documento" y para ofrecer "Recordar como sugerida" solo en
+// las que no lo tienen, sin volver a consultar al servidor.
 $atributosOpciones = [];
 foreach ($especificaciones['urls'] as $idEspecificacion => $url) {
-    $atributosOpciones[$idEspecificacion] = ['data-url' => $url];
+    $atributosOpciones[$idEspecificacion]['data-url'] = $url;
+}
+foreach (array_keys($especificaciones['subcatalogos']) as $idEspecificacion) {
+    $atributosOpciones[$idEspecificacion]['data-con-referencia'] = 1;
 }
 
 /**
- * Selector "Especificación técnica" de una fila: un <optgroup> por
- * categoria, con el de la categoria del item primero. El JS reordena los
- * grupos de las filas que se agregan en el navegador.
+ * Formulario de especificación del item: codigo, estado, avisos y "Reemitir" (o "Emitir" si
+ * la ficha se enlazo antes de que existieran las emisiones). Vacio si el item
+ * no tiene especificacion o todavia no se guardo.
  */
-$selectorEspecificacion = static function (string $n, string $seleccionada, string $idCategoria) use ($especificaciones, $atributosOpciones): string {
-    $opciones = [];
-    $atributosGrupos = [];
+$infoEmision = static function (ProyectoItem $item) use ($emisiones, $puedeReemitir, $formato): string {
+    $estado = $emisiones[$item->id] ?? null;
 
-    foreach ($especificaciones['grupos'] as $idGrupo => $grupo) {
-        $atributosGrupos[$grupo['nombre']] = ['data-categoria' => $idGrupo];
-
-        if ((string) $idGrupo === $idCategoria) {
-            $opciones = [$grupo['nombre'] => $grupo['opciones']] + $opciones;
-        } else {
-            $opciones[$grupo['nombre']] = $grupo['opciones'];
-        }
+    if ($estado === null) {
+        return '';
     }
+
+    $emision = $estado['emision'];
+    $html = '<div class="rd-celda-sub mt-1 lista-item-net">';
+
+    if ($emision !== null) {
+        $html .= 'Formulario <strong class="mono">' . Html::encode($emision->codigoConVersion()) . '</strong> '
+            . '<span class="' . $emision->estadoBadgeClass() . '">' . Html::encode($emision->estadoLabel()) . '</span> '
+            . Html::encode('ficha ' . $emision->version->etiqueta() . ' · emitido el ' . $formato->asDate($emision->fechaEmision, 'php:d/m/Y'))
+            . ' ' . Html::a('Ver formulario', ['/especificacion/formulario', 'id' => $emision->id], ['class' => 'btn btn-outline btn-sm', 'target' => '_blank']);
+    }
+
+    if ($puedeReemitir) {
+        $html .= ' ' . Html::button($emision !== null ? 'Reemitir' : 'Emitir formulario de especificación', [
+            'class' => 'btn btn-outline btn-sm esp-reemitir',
+            'data' => [
+                'item' => $item->id,
+                'titulo' => ($item->especificacion?->nombre() ?? '') . ' — ' . ($item->subcatalogoItem->descripcion ?? ''),
+                'net' => $emision?->codigoConVersion() ?? '',
+                'lugar' => $emision?->lugarEntrega ?? '',
+                'validez' => $emision?->validezOfertaDias ?? '',
+                'tiempo' => $emision?->tiempoEntregaDias ?? '',
+            ],
+        ]);
+    }
+
+    foreach ($estado['avisos'] as $aviso) {
+        $html .= '<div class="text-warning-emphasis">⚠ ' . Html::encode($aviso) . '</div>';
+    }
+
+    return $html . '</div>';
+};
+
+/**
+ * Selector "Especificación técnica" de una fila. Las opciones llegan YA
+ * ordenadas (sugeridas, categoria del item, resto) en $opcionesPorItem, con
+ * clave "idCategoria|idSubcatalogo"; la regla vive en
+ * EspecificacionService::opcionesPorItem(). La fila modelo usa la clave ''.
+ */
+$selectorEspecificacion = static function (string $n, string $seleccionada, string $idCategoria, string $idSubcatalogo) use ($especificaciones, $opcionesPorItem, $atributosOpciones): string {
+    $opcionesFila = $opcionesPorItem[$idCategoria . '|' . $idSubcatalogo] ?? $opcionesPorItem[''];
+    $opciones = $opcionesFila['opciones'];
+    $atributosGrupos = $opcionesFila['grupos'];
 
     $url = $especificaciones['urls'][(int) $seleccionada] ?? '';
 
@@ -85,26 +150,35 @@ $selectorEspecificacion = static function (string $n, string $seleccionada, stri
             'options' => $atributosOpciones,
             'groups' => $atributosGrupos,
         ])
+        . Html::button('Ver detalle', [
+            'class' => 'btn btn-outline btn-sm text-nowrap lista-item-ver-ficha',
+            'title' => 'Buscar en la librería y ver las características de cada especificación',
+        ])
         . Html::a('Ver documento', $url ?: '#', [
             'class' => 'lista-item-doc text-nowrap' . ($url === '' ? ' d-none' : ''),
             'target' => '_blank',
             'rel' => 'noopener',
         ])
-        . '</div>';
+        . '</div>'
+        // "Recordar como sugerida para este ítem": lo marca la ventana "Ver
+        // detalle" y se aplica al guardar (ListaItemsService::guardar()).
+        . Html::hiddenInput("items[$n][recordarReferencia]", '', ['class' => 'lista-item-recordar'])
+        . '<div class="rd-celda-sub lista-item-recordar-nota d-none">Al guardar, esta especificación quedará como sugerida para este ítem.</div>';
 };
 
 /**
  * Fila editable de un item. $n es su indice en items[n][...]; el JS usa
  * "__n__" como marcador y lo reemplaza por un numero nuevo.
  */
-$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '') use ($selectorEspecificacion): string {
+$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '', string $emision = '') use ($selectorEspecificacion): string {
     return '<tr class="lista-item">'
         . '<td>'
         . Html::hiddenInput("items[$n][id]", $id)
         . Html::hiddenInput("items[$n][idSubcatalogo]", $idSubcatalogo, ['class' => 'lista-item-subcatalogo'])
         . '<div class="lista-item-nombre">' . Html::encode($nombre) . '</div>'
         . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
-        . $selectorEspecificacion($n, $idEspecificacion, $idCategoria)
+        . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
+        . $emision
         . '</td>'
         . '<td class="lista-item-unidad">' . Html::encode($unidad) . '</td>'
         . '<td class="rd-num">' . Html::textInput("items[$n][cantidad]", $cantidad, ['class' => 'qty', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'required' => true, 'aria-label' => 'Cantidad']) . '</td>'
@@ -136,6 +210,14 @@ $grupoCierra = static fn (int $cantidad): string =>
         </div>
         <div class="rd-acciones">
             <?= Html::a('Imprimir lista', ['imprimir', 'id' => $proyecto->id], ['class' => 'btn btn-outline', 'target' => '_blank', 'id' => 'lista-imprimir']) ?>
+            <?php if ($totalFormularios > 0): ?>
+                <?= Html::a('Imprimir especificaciones (' . $totalFormularios . ')', ['imprimir-especificaciones', 'id' => $proyecto->id], [
+                    'class' => 'btn btn-outline',
+                    'target' => '_blank',
+                    'id' => 'lista-imprimir-esp',
+                    'title' => 'Todos los formularios de especificación vigentes de la lista en un PDF, cada uno en una hoja nueva',
+                ]) ?>
+            <?php endif; ?>
             <?php if ($proyecto->estadoLista === Proyecto::LISTA_EN_COTIZACION): ?>
                 <?= Html::a('Solicitudes de cotización →', ['/solicitud-cotizacion/index', 'id' => $proyecto->id], ['class' => 'btn btn-primary']) ?>
             <?php endif; ?>
@@ -154,6 +236,8 @@ $grupoCierra = static fn (int $cantidad): string =>
         </div>
     </div>
 
+    <?= $this->render('/proyecto/_pasos', ['pasos' => $pasos, 'actual' => ProyectoService::PASO_LISTA]) ?>
+
     <div class="notice mb-3">
         Sin precios todavía — se completan al registrar cotizaciones.
         <span class="d-none" id="lista-sin-guardar"><strong>Hay cambios sin guardar.</strong></span>
@@ -165,6 +249,12 @@ $grupoCierra = static fn (int $cantidad): string =>
                 <div><?= Html::encode($error) ?></div>
             <?php endforeach; ?>
         </div>
+    <?php endif; ?>
+    <?php if ($editable): ?>
+        <p class="rd-nota">
+            Al guardar, elegir una especificación técnica para un ítem emite su formulario
+            (el próximo será el <?= Html::encode($proximoCodigo) ?>). Cambiarla o quitarla anula el anterior.
+        </p>
     <?php endif; ?>
     <div class="alert alert-danger d-none" id="lista-error-cliente">Revise las cantidades marcadas: deben ser números mayores o iguales a 0.</div>
 
@@ -188,14 +278,14 @@ $grupoCierra = static fn (int $cantidad): string =>
                         <div class="row-item"
                              data-id="<?= $itemSubcatalogo->id ?>"
                              data-nombre="<?= Html::encode($itemSubcatalogo->descripcion) ?>"
-                             data-unidad="<?= Html::encode((string) $itemSubcatalogo->unidadDefecto) ?>"
+                             data-unidad="<?= Html::encode((string) $itemSubcatalogo->abreviaturaUnidad()) ?>"
                              data-categoria="<?= $itemSubcatalogo->idCategoria ?>"
                              data-categoria-nombre="<?= Html::encode($itemSubcatalogo->categoria->nombre ?? 'Sin clasificación') ?>">
                             <div>
                                 <div class="rd-celda-titulo"><?= Html::encode($itemSubcatalogo->descripcion) ?></div>
                                 <div class="rd-celda-sub">
                                     <?= Html::encode($itemSubcatalogo->categoria->nombre ?? '') ?>
-                                    <?= $itemSubcatalogo->unidadDefecto ? ' · Unidad: ' . Html::encode($itemSubcatalogo->unidadDefecto) : '' ?>
+                                    <?= $itemSubcatalogo->unidad ? ' · Unidad: ' . Html::encode($itemSubcatalogo->unidad->abreviatura) : '' ?>
                                 </div>
                             </div>
                             <button type="button" class="addbtn" aria-label="Agregar a la lista">+</button>
@@ -238,7 +328,8 @@ $grupoCierra = static fn (int $cantidad): string =>
                                 is_numeric($item->cantidad) ? (string) (float) $item->cantidad : (string) $item->cantidad,
                                 (string) $item->observacion,
                                 (string) $item->idEspecificacion,
-                                (string) $item->idCategoria
+                                (string) $item->idCategoria,
+                                $infoEmision($item)
                             ) ?>
                         <?php endforeach; ?>
                         <?= $grupoCierra(count($grupo['items'])) ?>
@@ -257,9 +348,10 @@ $grupoCierra = static fn (int $cantidad): string =>
                                             <div class="rd-celda-sub">
                                                 Especificación técnica:
                                                 <?= $url === null
-                                                    ? Html::encode($item->especificacion->referencia())
-                                                    : Html::a(Html::encode($item->especificacion->referencia()), $url, ['target' => '_blank', 'rel' => 'noopener']) ?>
+                                                    ? Html::encode($item->especificacion->nombre())
+                                                    : Html::a(Html::encode($item->especificacion->nombre()), $url, ['target' => '_blank', 'rel' => 'noopener']) ?>
                                             </div>
+                                            <?= $infoEmision($item) ?>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= Html::encode((string) $item->unidadMedida) ?></td>
@@ -284,11 +376,83 @@ $grupoCierra = static fn (int $cantidad): string =>
 
     <?= $editable ? Html::endForm() : '' ?>
 
+    <?php if ($puedeReemitir): ?>
+        <div class="card rd-card-pad mt-3 d-none" id="reemitir-panel">
+            <?= Html::beginForm(['reemitir', 'id' => $proyecto->id], 'post', ['id' => 'reemitir-form']) ?>
+                <div class="rd-card-titulo mb-1" id="reemitir-titulo">Reemitir formulario de especificación</div>
+                <p class="rd-nota">
+                    Se emite la versión siguiente del formulario, con el mismo código, la última versión de la ficha y la
+                    cantidad actual de la lista. La versión anterior queda "reemplazada" y se conserva en el historial. Si la cantidad está mal, corríjala
+                    primero en la lista.
+                </p>
+                <?= Html::hiddenInput('idProyectoItem', '', ['id' => 'reemitir-item']) ?>
+                <div class="form-group mb-2" id="reemitir-motivo-grupo">
+                    <label for="reemitir-motivo">Motivo</label>
+                    <?= Html::textInput('motivo', '', ['id' => 'reemitir-motivo', 'class' => 'form-control', 'maxlength' => 300, 'placeholder' => 'Ej. facultad equivocada, venció, cambió la ficha']) ?>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 form-group mb-2">
+                        <label for="reemitir-lugar">Lugar de entrega</label>
+                        <?= Html::textInput('lugarEntrega', '', ['id' => 'reemitir-lugar', 'class' => 'form-control', 'maxlength' => 300, 'placeholder' => (string) $proyecto->facultad]) ?>
+                    </div>
+                    <div class="col-md-3 form-group mb-2">
+                        <label for="reemitir-validez">Validez de la oferta (días)</label>
+                        <?= Html::textInput('validezOfertaDias', '', ['id' => 'reemitir-validez', 'class' => 'form-control', 'type' => 'number', 'min' => 1, 'placeholder' => (string) $configuracion->validezOfertaDias]) ?>
+                    </div>
+                    <div class="col-md-3 form-group mb-2">
+                        <label for="reemitir-tiempo">Tiempo de entrega (días)</label>
+                        <?= Html::textInput('tiempoEntregaDias', '', ['id' => 'reemitir-tiempo', 'class' => 'form-control', 'type' => 'number', 'min' => 1, 'placeholder' => (string) $configuracion->tiempoEntregaDias]) ?>
+                    </div>
+                </div>
+                <?= Html::submitButton('Emitir', ['class' => 'btn btn-primary']) ?>
+                <button type="button" class="btn btn-outline" id="reemitir-cancelar">Cancelar</button>
+            <?= Html::endForm() ?>
+        </div>
+    <?php endif; ?>
+
     <?php if ($editable): ?>
         <?php // Modelos que el JS copia; el navegador no los muestra ni los envia. ?>
         <template id="lista-fila-modelo"><?= $fila('__n__', '', '', '', '', '', '') ?></template>
         <template id="lista-grupo-modelo"><?= $grupoAbre('__cat__', '__nombre__') . $grupoCierra(0) ?></template>
         <span class="d-none" id="lista-siguiente" data-siguiente="<?= $n ?>"></span>
+        <?php // Fichas sugeridas para cada item del subcatalogo (EspecificacionService::selector()): las usa el JS en las filas nuevas y en "Ver detalle". Yii escribe el arreglo como JSON. ?>
+        <?= Html::tag('span', '', ['class' => 'd-none', 'id' => 'lista-sugeridas', 'data' => ['mapa' => $especificaciones['sugeridasPorItem']]]) ?>
+
+        <?php // Ventana "Ver detalle" (modal de Bootstrap). El contenido de la ficha lo trae el JS por AJAX. ?>
+        <div class="modal fade" id="esp-previa" tabindex="-1" aria-labelledby="esp-previa-titulo" aria-hidden="true"
+             data-url="<?= Html::encode(Url::to(['/especificacion/vista-previa'])) ?>"
+             data-url-buscar="<?= Html::encode(Url::to(['/especificacion/buscar'])) ?>">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="esp-previa-titulo">Especificación técnica</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="search" class="form-control mb-2" id="esp-previa-buscar" autocomplete="off"
+                               placeholder="Buscar en la librería por título, modelo o característica (ej. 24 poe cisco)"
+                               aria-label="Buscar especificación técnica">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <div class="kicker mb-1" id="esp-previa-resumen"></div>
+                                <div class="list-group esp-previa-lista" id="esp-previa-lista" role="listbox" aria-label="Especificaciones"></div>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="esp-previa-detalle" id="esp-previa-contenido"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="form-check me-auto d-none" id="esp-previa-recordar-grupo">
+                            <input type="checkbox" class="form-check-input" id="esp-previa-recordar">
+                            <label class="form-check-label" for="esp-previa-recordar">Recordar como sugerida para este ítem</label>
+                        </div>
+                        <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary" id="esp-previa-usar">Usar esta especificación</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     <?php elseif ($proyecto->estadoLista === Proyecto::LISTA_EN_COTIZACION): ?>
         <div class="card rd-card-pad mt-3">
             <div class="rd-card-titulo mb-2">Lista enviada a cotización</div>

@@ -7,8 +7,7 @@ use yii\helpers\Html;
 
 /**
  * @var yii\web\View $this
- * @var yii\data\ActiveDataProvider $dataProvider proyectos con su presupuesto ya cargado
- * @var array<string, string> $tipos [codigo => nombre]
+ * @var yii\data\ActiveDataProvider $dataProvider proyectos con su presupuesto y tipo ya cargados
  */
 
 $this->title = 'Proyectos';
@@ -43,7 +42,7 @@ $this->params['breadcrumbs'][] = $this->title;
             ],
             [
                 'label' => 'Tipo',
-                'value' => static fn ($model) => $tipos[$model->tipo] ?? '—',
+                'value' => static fn ($model) => $model->tipoProyecto?->nombre ?? '—',
             ],
             [
                 'attribute' => 'numeroFase',

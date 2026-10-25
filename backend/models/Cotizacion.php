@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace backend\models;
 
+use backend\components\ArchivoSubido;
 use DateTime;
 use DateTimeImmutable;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
+use yii\helpers\Url;
 use yii\web\UploadedFile;
 
 /**
  * Modelo para la tabla "redes.Cotizacion".
+ *
+ * idSolicitudCotizacion no tiene regla a proposito: lo pone
+ * CotizacionService al registrar la cotizacion desde su solicitud, y asi no
+ * se puede enviar ni cambiar desde un formulario.
  *
  * @property int $id
  * @property int $idProveedor
@@ -19,9 +25,11 @@ use yii\web\UploadedFile;
  * @property string|null $fecha
  * @property string|null $documentoRuta
  * @property int|null $validezDias
+ * @property int|null $idSolicitudCotizacion Solicitud del proyecto a la que responde (NULL = cotizacion suelta).
  *
  * @property-read Proveedor $proveedor
  * @property-read CotizacionDetalle[] $cotizacionDetalles
+ * @property-read SolicitudCotizacion|null $solicitud
  */
 class Cotizacion extends ActiveRecord
 {
@@ -62,6 +70,22 @@ class Cotizacion extends ActiveRecord
         ];
     }
 
+    /**
+     * Enlace para abrir el PDF de la cotizacion (null si no tiene). Lo entrega
+     * CotizacionController::actionDocumento(), que exige sesion: el archivo
+     * esta fuera de la carpeta publica (ver ArchivoSubido).
+     */
+    public function urlDocumento(): ?string
+    {
+        if (empty($this->documentoRuta)) {
+            return null;
+        }
+
+        return ArchivoSubido::esEnlaceExterno($this->documentoRuta)
+            ? $this->documentoRuta
+            : Url::to(['/cotizacion/documento', 'id' => $this->id]);
+    }
+
     public function getProveedor(): ActiveQuery
     {
         return $this->hasOne(Proveedor::class, ['id' => 'idProveedor']);
@@ -70,6 +94,19 @@ class Cotizacion extends ActiveRecord
     public function getCotizacionDetalles(): ActiveQuery
     {
         return $this->hasMany(CotizacionDetalle::class, ['idCotizacion' => 'id']);
+    }
+
+    public function getSolicitud(): ActiveQuery
+    {
+        return $this->hasOne(SolicitudCotizacion::class, ['id' => 'idSolicitudCotizacion']);
+    }
+
+    /**
+     * Suma de las lineas (precioTotal lo calcula SQL Server).
+     */
+    public function total(): float
+    {
+        return array_sum(array_map(static fn (CotizacionDetalle $detalle) => (float) $detalle->precioTotal, $this->cotizacionDetalles));
     }
 
     /**

@@ -48,7 +48,7 @@ $this->params['breadcrumbs'][] = $this->title;
                 'format' => 'raw',
                 'value' => empty($model->documentoRuta)
                     ? 'Sin archivo adjunto'
-                    : Html::a('Ver / descargar PDF', Yii::getAlias('@web/' . $model->documentoRuta), ['target' => '_blank']),
+                    : Html::a('Ver / descargar PDF', $model->urlDocumento(), ['target' => '_blank']),
             ],
         ],
     ]) ?>
@@ -63,7 +63,7 @@ $this->params['breadcrumbs'][] = $this->title;
                 <tr>
                     <th>Ítem de subcatálogo</th>
                     <th>Especificación</th>
-                    <th>Marca / modelo</th>
+                    <th>Marca / modelo ofertado</th>
                     <th>Cantidad</th>
                     <th>Precio unitario</th>
                     <th>Precio total</th>
@@ -73,7 +73,12 @@ $this->params['breadcrumbs'][] = $this->title;
                 <?php foreach ($model->cotizacionDetalles as $detalle): ?>
                     <tr>
                         <td><?= Html::encode($detalle->subcatalogoItem->descripcion ?? '') ?></td>
-                        <td><?= Html::encode($detalle->especificacion->titulo ?? '—') ?></td>
+                        <td>
+                            <?= Html::encode($detalle->especificacion->titulo ?? '—') ?>
+                            <?php if ($detalle->especificacionEmision !== null): ?>
+                                <div class="rd-celda-sub mono"><?= Html::a(Html::encode($detalle->especificacionEmision->codigoConVersion()), ['/especificacion/formulario', 'id' => $detalle->idEspecificacionEmision], ['target' => '_blank']) ?></div>
+                            <?php endif; ?>
+                        </td>
                         <td><?= Html::encode($detalle->marcaModelo ?? '') ?></td>
                         <td><?= Yii::$app->formatter->asDecimal($detalle->cantidad, 2) ?></td>
                         <td><?= Yii::$app->formatter->asDecimal($detalle->precioUnitario, 2) ?></td>

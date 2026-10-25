@@ -37,7 +37,7 @@ class PlantillaService
     {
         $plantillas = Plantilla::find()
             ->andFilterWhere(['activo' => $soloActivas ? true : null])
-            ->with(['items.subcatalogoItem', 'items.categoria', 'categorias'])
+            ->with(['tipoProyecto', 'items.subcatalogoItem', 'items.categoria', 'categorias'])
             ->orderBy(['nombre' => SORT_ASC])
             ->all();
 

@@ -6,7 +6,7 @@ use yii\helpers\Html;
 
 /**
  * Tabla "Resumen por partida presupuestaria" de un presupuesto. Vista parcial
- * compartida por presupuesto/view.php y presupuesto/detalle.php.
+ * compartida por elaborar-presupuesto/index.php (y su respuesta AJAX).
  *
  * @var yii\web\View $this
  * @var array<int, array{partida: string, lineas: int, subtotal: float}> $resumenPartidas Ver PresupuestoService::resumenPorPartida()

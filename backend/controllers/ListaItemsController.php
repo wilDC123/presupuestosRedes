@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\models\ConfiguracionEspecificacion;
+use backend\models\CorrelativoDocumento;
 use backend\models\OrdenCambio;
 use backend\models\Proyecto;
+use backend\services\CodificacionService;
+use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
 use backend\services\ListaItemsService;
 use backend\services\OrdenCambioService;
@@ -44,6 +48,7 @@ class ListaItemsController extends Controller
                 'class' => VerbFilter::class,
                 'actions' => [
                     'solicitar-cambio' => ['POST'],
+                    'reemitir' => ['POST'],
                 ],
             ],
         ];
@@ -65,7 +70,7 @@ class ListaItemsController extends Controller
         if ($peticion->isPost) {
             $items = [];
 
-            if ($this->service->guardar($proyecto, $peticion->post('items', []), $errores, $items)) {
+            if ($this->service->guardar($proyecto, $peticion->post('items', []), $errores, $items, $this->usuario())) {
                 if ($peticion->post('accion') !== 'enviar') {
                     Yii::$app->session->setFlash('success', 'Lista guardada.');
                 } elseif ($this->service->enviarACotizacion($proyecto)) {
@@ -88,17 +93,32 @@ class ListaItemsController extends Controller
         }
 
         $editable = $this->service->puedeEditarse($proyecto);
+        $grupos = $this->service->agrupar($proyecto, $enviados);
+        $itemsDeLaLista = array_merge([], ...array_column($grupos, 'items'));
+        $emisiones = new EspecificacionEmisionService();
+        $especificaciones = new EspecificacionService();
+        // Opciones del selector "Especificación técnica": solo si la lista se edita.
+        $selector = $editable
+            ? $especificaciones->selector($this->service->especificacionesEnlazadas($proyecto))
+            : EspecificacionService::SELECTOR_VACIO;
 
         return $this->render('index', [
             'proyecto' => $proyecto,
-            'grupos' => $this->service->agrupar($proyecto, $enviados),
+            'pasos' => (new ProyectoService())->pasos($proyecto),
+            'grupos' => $grupos,
+            // Formulario de especificación vigente y avisos de cada item con especificacion.
+            'emisiones' => $emisiones->estadoPorItem($itemsDeLaLista),
+            'puedeReemitir' => $emisiones->puedeReemitir($proyecto),
+            // Para el boton "Imprimir especificaciones (N)".
+            'totalFormularios' => count($emisiones->vigentesDelProyecto($proyecto)),
+            'configuracion' => ConfiguracionEspecificacion::obtener(),
+            'proximoCodigo' => (new CodificacionService())->proximo(CorrelativoDocumento::TIPO_ESPECIFICACION),
             'errores' => $errores,
             'editable' => $editable,
             'subcatalogo' => $editable ? (new SubcatalogoItemService())->activos() : [],
-            // Opciones del selector "Especificación técnica" de cada fila.
-            'especificaciones' => $editable
-                ? (new EspecificacionService())->selector($this->service->especificacionesEnlazadas($proyecto))
-                : ['grupos' => [], 'urls' => []],
+            'especificaciones' => $selector,
+            // Las mismas opciones, ya ordenadas para cada fila (sugeridas primero).
+            'opcionesPorItem' => $editable ? $especificaciones->opcionesPorItem($selector, $itemsDeLaLista) : [],
             'ordenes' => $this->ordenes->historial($proyecto),
         ]);
     }
@@ -126,6 +146,37 @@ class ListaItemsController extends Controller
     }
 
     /**
+     * Todos los formularios de especificación vigentes de la lista en UN PDF, cada uno desde
+     * una hoja nueva (en el orden de la lista). Es lo mismo que imprimirlos
+     * uno por uno desde especificacion/formulario, juntos.
+     */
+    public function actionImprimirEspecificaciones(int $id): Response
+    {
+        $proyecto = $this->findProyecto($id);
+        $emisiones = new EspecificacionEmisionService();
+        $vigentes = $emisiones->vigentesDelProyecto($proyecto);
+
+        if ($vigentes === []) {
+            Yii::$app->session->setFlash('error', 'La lista no tiene especificaciones técnicas emitidas (formularios de especificación vigentes).');
+
+            return $this->redirect(['index', 'id' => $proyecto->id]);
+        }
+
+        $formularios = array_map(fn ($emision) => [
+            'emision' => $emision,
+            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision]),
+        ], $vigentes);
+
+        $pdf = $emisiones->generarPdfDelProyecto($proyecto, $formularios);
+
+        return Yii::$app->response->sendContentAsFile(
+            $pdf['contenido'],
+            $pdf['nombreArchivo'],
+            ['mimeType' => 'application/pdf', 'inline' => true]
+        );
+    }
+
+    /**
      * Registra una orden de cambio y devuelve la lista a "en edicion".
      */
     public function actionSolicitarCambio(int $id)
@@ -141,6 +192,49 @@ class ListaItemsController extends Controller
         }
 
         return $this->redirect(['index', 'id' => $proyecto->id]);
+    }
+
+    /**
+     * Emite de nuevo el formulario de especificación de un item (mismo codigo con la version
+     * siguiente, ultima version de la ficha, cantidad actual de la lista). Funciona con la lista en
+     * edicion o en cotizacion: no cambia la lista.
+     *
+     * @param int $id id del proyecto
+     */
+    public function actionReemitir(int $id): Response
+    {
+        $proyecto = $this->findProyecto($id);
+        $peticion = Yii::$app->request;
+        $item = $this->service->obtenerItem((int) $peticion->post('idProyectoItem'));
+
+        if ($item === null || (int) $item->idProyecto !== $proyecto->id) {
+            throw new NotFoundHttpException('El ítem no pertenece a la lista de este proyecto.');
+        }
+
+        $resultado = (new EspecificacionEmisionService())->reemitir($item, [
+            'motivo' => $peticion->post('motivo'),
+            'lugarEntrega' => $peticion->post('lugarEntrega'),
+            'validezOfertaDias' => $peticion->post('validezOfertaDias'),
+            'tiempoEntregaDias' => $peticion->post('tiempoEntregaDias'),
+        ], $this->usuario());
+
+        if ($resultado['error'] !== null) {
+            Yii::$app->session->setFlash('error', $resultado['error']);
+        } else {
+            Yii::$app->session->setFlash('success', 'Se emitió el ' . $resultado['emision']->codigoConVersion() . ' para "' . $resultado['emision']->titulo . '".');
+        }
+
+        return $this->redirect(['index', 'id' => $proyecto->id]);
+    }
+
+    /**
+     * Quien queda como "elaborado por" en los formularios de especificación.
+     */
+    private function usuario(): ?string
+    {
+        $identidad = Yii::$app->user->identity;
+
+        return $identidad !== null ? (string) $identidad->username : null;
     }
 
     protected function findProyecto(int $id): Proyecto

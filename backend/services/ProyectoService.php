@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\models\CorrelativoDocumento;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
 use backend\models\ProyectoBloque;
 use backend\models\ProyectoProyectista;
-use RuntimeException;
 use Throwable;
 use Yii;
 use yii\data\ActiveDataProvider;
@@ -21,14 +21,19 @@ use yii\db\IntegrityException;
  * cotizacion y presupuesto son casos de uso separados que usan su id).
  *
  * Reglas de negocio que viven aqui:
- *  - el codigo RD-PI-PT-NN se genera al crear y no se repite,
- *  - tipo, facultad, edificio y bloques deben existir en los parametros,
+ *  - el codigo RD-PI-PT-NNN se genera al crear y no se repite,
+ *  - facultad, edificio y bloques deben existir en los parametros (el tipo
+ *    lo valida el modelo contra redes.TipoProyecto),
  *  - una fase nueva es un proyecto NUEVO enlazado a uno ya aprobado,
  *  - un proyecto con presupuesto aprobado o cancelado no se modifica.
  */
 class ProyectoService
 {
-    private const INTENTOS_CODIGO = 5;
+    /**
+     * Titulo del paso de la lista en la barra de pasos (ver pasos()). La
+     * pantalla de la lista lo usa para resaltarse.
+     */
+    public const PASO_LISTA = 'Lista de ítems y especificaciones';
 
     private ParametrosProyectoService $parametros;
 
@@ -42,13 +47,13 @@ class ProyectoService
     }
 
     /**
-     * with('presupuesto') carga el presupuesto de todos los proyectos de la
-     * pagina en una sola consulta extra (el listado muestra su estado).
+     * with() carga el presupuesto y el tipo de todos los proyectos de la
+     * pagina en una consulta extra cada uno (el listado muestra ambos).
      */
     public function listar(): ActiveDataProvider
     {
         return new ActiveDataProvider([
-            'query' => Proyecto::find()->with('presupuesto')->orderBy(['fechaCreacion' => SORT_DESC, 'id' => SORT_DESC]),
+            'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto'])->orderBy(['fechaCreacion' => SORT_DESC, 'id' => SORT_DESC]),
             'pagination' => [
                 'pageSize' => 20,
             ],
@@ -74,7 +79,7 @@ class ProyectoService
         if ($anterior !== null && $this->estaAprobado($anterior)) {
             $proyecto->idProyectoAnterior = $anterior->id;
             $proyecto->numeroFase = $anterior->numeroFase + 1;
-            $proyecto->tipo = $anterior->tipo;
+            $proyecto->idTipoProyecto = $anterior->idTipoProyecto;
             $proyecto->codigoFacultad = $anterior->codigoFacultad;
             $proyecto->codigoEdificio = $anterior->codigoEdificio;
         } else {
@@ -117,7 +122,7 @@ class ProyectoService
 
     /**
      * Devuelve false si el proyecto no se puede borrar porque ya tiene
-     * presupuesto, computos metricos u otra fase que depende de el (las
+     * presupuesto u otra fase que depende de el (las
      * llaves foraneas lo impiden).
      */
     public function eliminar(Proyecto $proyecto): bool
@@ -194,29 +199,12 @@ class ProyectoService
     }
 
     /**
-     * Proyectos que todavia no tienen presupuesto, como [id => etiqueta],
-     * para el formulario de presupuesto (cada proyecto tiene uno solo).
-     *
-     * @param int|null $incluirId proyecto que debe aparecer aunque ya tenga presupuesto (al editar el suyo)
-     * @return array<int, string>
+     * El paso "Presupuesto" del proyecto: la pantalla unica donde se elabora
+     * (ElaborarPresupuestoController).
      */
-    public function opcionesParaPresupuesto(?int $incluirId = null): array
+    public function urlPresupuesto(Proyecto $proyecto): array
     {
-        $conPresupuesto = Presupuesto::find()->select('idProyecto')->column();
-
-        $query = Proyecto::find()->orderBy(['codigo' => SORT_ASC, 'nombre' => SORT_ASC]);
-
-        if ($conPresupuesto !== []) {
-            $query->andWhere(['or', ['not in', 'id', $conPresupuesto], ['id' => $incluirId]]);
-        }
-
-        $opciones = [];
-
-        foreach ($query->all() as $proyecto) {
-            $opciones[$proyecto->id] = $proyecto->etiqueta();
-        }
-
-        return $opciones;
+        return ['/elaborar-presupuesto/index', 'idProyecto' => $proyecto->id];
     }
 
     /**
@@ -225,18 +213,16 @@ class ProyectoService
      *  - 'hecho'      ya se completo
      *  - 'actual'     es el siguiente por hacer
      *  - 'pendiente'  todavia no corresponde
-     * y, si ya tiene pantalla, la ruta a la que lleva ('url' => null: la
-     * pantalla de ese paso aun no esta construida).
+     * y la ruta a la que lleva ('url' => null: ese paso ya no se puede
+     * abrir en el estado actual del proyecto, ej. Plantilla con la lista
+     * enviada a cotizar).
      *
      * @return array<int, array{titulo: string, estado: string, url: array|null}>
      */
     public function pasos(Proyecto $proyecto): array
     {
         $presupuesto = $proyecto->presupuesto;
-
-        $urlPresupuesto = $presupuesto === null
-            ? ['/presupuesto/create', 'idProyecto' => $proyecto->id]
-            : ['/presupuesto/view', 'id' => $presupuesto->id];
+        $urlPresupuesto = $this->urlPresupuesto($proyecto);
 
         $listaEnEdicion = $proyecto->estadoLista === Proyecto::LISTA_EDICION;
 
@@ -263,10 +249,9 @@ class ProyectoService
                 // la pantalla de plantilla ya no aplica.
                 'url' => $this->puedeEditarse($proyecto) && $listaEnEdicion ? ['/proyecto/plantilla', 'id' => $proyecto->id] : null,
             ],
-            ['titulo' => 'Lista de ítems', 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
-            // Las especificaciones se enlazan item por item EN la lista (son
-            // opcionales): el paso avanza junto con la lista.
-            ['titulo' => 'Especificaciones', 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
+            // Un solo paso: las especificaciones se enlazan item por item EN la
+            // lista (son opcionales), en la misma pantalla y al mismo tiempo.
+            ['titulo' => self::PASO_LISTA, 'estado' => $estadoLista, 'url' => ['/lista-items/index', 'id' => $proyecto->id]],
             [
                 // Solicitudes de cotizacion: se arman con la lista ya enviada a cotizar.
                 'titulo' => 'Cotización',
@@ -274,7 +259,6 @@ class ProyectoService
                 'url' => ['/solicitud-cotizacion/index', 'id' => $proyecto->id],
             ],
             ['titulo' => 'Presupuesto', 'estado' => $estadoPresupuesto, 'url' => $urlPresupuesto],
-            ['titulo' => 'Documentos', 'estado' => 'pendiente', 'url' => null],
         ];
     }
 
@@ -293,7 +277,7 @@ class ProyectoService
         $proyecto->codigosBloque = $this->limpiarLista($proyecto->codigosBloque);
         $proyecto->nombresProyectista = $this->limpiarLista($proyecto->nombresProyectista);
 
-        foreach (['tipo', 'codigoFacultad', 'codigoEdificio', 'idProyectoAnterior'] as $atributo) {
+        foreach (['idTipoProyecto', 'codigoFacultad', 'codigoEdificio', 'idProyectoAnterior'] as $atributo) {
             if ($proyecto->$atributo === '') {
                 $proyecto->$atributo = null;
             }
@@ -347,7 +331,7 @@ class ProyectoService
     }
 
     /**
-     * Verifica contra los parametros que tipo, facultad, edificio y bloques
+     * Verifica contra los parametros que facultad, edificio y bloques
      * existan (y que el edificio sea de esa facultad y los bloques de ese
      * edificio), y copia los NOMBRES de facultad y edificio al proyecto.
      *
@@ -355,10 +339,6 @@ class ProyectoService
      */
     private function aplicarParametros(Proyecto $proyecto): array
     {
-        if ($proyecto->tipo !== null && $this->parametros->nombreTipo($proyecto->tipo) === null) {
-            $proyecto->addError('tipo', 'El tipo de proyecto elegido no existe.');
-        }
-
         $proyecto->facultad = $this->parametros->nombreFacultad($proyecto->codigoFacultad);
         $proyecto->edificio = $this->parametros->nombreEdificio($proyecto->codigoFacultad, $proyecto->codigoEdificio);
 
@@ -427,47 +407,17 @@ class ProyectoService
     }
 
     /**
-     * Inserta el proyecto con el siguiente codigo libre. Si justo otra
-     * persona guardo un proyecto con ese mismo codigo, el indice unico de la
-     * base rechaza el INSERT (IntegrityException) y se reintenta con el
-     * siguiente numero.
+     * Inserta el proyecto con el siguiente codigo del correlativo PT
+     * (RD-PI-PT-005, ver CorrelativoDocumento::codigo()). Se llama dentro de la
+     * transaccion de guardar(): si el INSERT falla, el numero tomado vuelve
+     * atras con todo lo demas. El indice unico de la base impide igual
+     * cualquier codigo repetido.
      */
     private function insertarConCodigo(Proyecto $proyecto): void
     {
-        for ($intento = 1; $intento <= self::INTENTOS_CODIGO; $intento++) {
-            $proyecto->codigo = $this->siguienteCodigo();
-
-            try {
-                $proyecto->save(false);
-
-                return;
-            } catch (IntegrityException $e) {
-                if ($intento === self::INTENTOS_CODIGO) {
-                    throw new RuntimeException('No se pudo generar un código de proyecto único.', 0, $e);
-                }
-            }
-        }
-    }
-
-    /**
-     * Prefijo (params.php) + correlativo global: el mayor numero ya usado
-     * mas uno, con al menos dos digitos (RD-PI-PT-08; despues de 99, -100).
-     */
-    private function siguienteCodigo(): string
-    {
-        $prefijo = (string) Yii::$app->params['prefijoCodigoProyecto'];
-        $patron = '/^' . preg_quote($prefijo, '/') . '(\d+)$/';
-        $mayor = 0;
-
-        $codigos = Proyecto::find()->select('codigo')->andWhere(['not', ['codigo' => null]])->column();
-
-        foreach ($codigos as $codigo) {
-            if (preg_match($patron, (string) $codigo, $partes) === 1) {
-                $mayor = max($mayor, (int) $partes[1]);
-            }
-        }
-
-        return $prefijo . str_pad((string) ($mayor + 1), 2, '0', STR_PAD_LEFT);
+        $numero = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_PROYECTO);
+        $proyecto->codigo = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, $numero);
+        $proyecto->save(false);
     }
 
     /**

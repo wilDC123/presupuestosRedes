@@ -1,0 +1,23 @@
+Carlito
+=======
+
+Fuente de los impresos del sistema (presupuesto, solicitud de cotizacion,
+formulario de especificacion, relacion con SIGMA). El lineamiento de la DTIC
+RD-GD-LI-001 (seccion 8.8.1) pide Calibri 11; Calibri es una fuente de
+Microsoft con licencia y no se puede copiar al servidor (Ubuntu). Carlito
+tiene exactamente las mismas medidas que Calibri (cada letra ocupa el mismo
+ancho), asi que el texto se acomoda igual.
+
+Origen: https://github.com/googlefonts/carlito (rama main, fonts/ttf),
+descargada el 2026-10-22.
+Licencia: SIL Open Font License 1.1 (OFL.txt). Se puede usar, copiar y
+llevar al servidor sin pedir permiso.
+
+Sin cambios respecto del original (ya viene en TrueType, que es lo que mPDF
+acepta).
+
+Archivos (SHA-256):
+  Carlito-Regular.ttf     f6418f708baede9789daef5d458c0f53d2a888af9820e8062934e504fedc6595
+  Carlito-Bold.ttf        bb5d20f79b82599ec72983597437373a80f2d2085fa91fc144fd74e876a594db
+  Carlito-Italic.ttf      0b019225e58d702bfedcbd35c21696769f8ee115cb6343f84c2f240312450d1c
+  Carlito-BoldItalic.ttf  b32928186c119599e03ca6a1ffc680fdcb7fac95772f4b95d989cf6cd3861517

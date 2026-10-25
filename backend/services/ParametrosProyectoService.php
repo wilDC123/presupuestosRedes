@@ -7,8 +7,9 @@ namespace backend\services;
 use backend\services\contracts\ParametrosProyectoProvider;
 
 /**
- * Capa de Servicio para los datos parametrizados de un proyecto (tipo,
- * facultad, edificio, bloques, proyectistas).
+ * Capa de Servicio para los datos parametrizados de un proyecto (facultad,
+ * edificio, bloques, proyectistas). El tipo de proyecto ya no es un
+ * parametro: es la tabla redes.TipoProyecto (ver TipoProyectoService).
  *
  * No sabe de donde vienen los datos: recibe en el constructor "algo que
  * cumple la interface ParametrosProyectoProvider". Yii decide cual clase
@@ -22,14 +23,6 @@ class ParametrosProyectoService
 {
     public function __construct(private ParametrosProyectoProvider $provider)
     {
-    }
-
-    /**
-     * @return array<string, string> [codigo => nombre] para el desplegable de tipo
-     */
-    public function opcionesTipo(): array
-    {
-        return array_column($this->provider->tiposProyecto(), 'nombre', 'codigo');
     }
 
     /**
@@ -62,11 +55,6 @@ class ParametrosProyectoService
     public function proyectistas(): array
     {
         return $this->provider->proyectistas();
-    }
-
-    public function nombreTipo(?string $codigo): ?string
-    {
-        return $this->opcionesTipo()[$codigo ?? ''] ?? null;
     }
 
     public function nombreFacultad(?string $codigo): ?string

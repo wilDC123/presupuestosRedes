@@ -10,6 +10,7 @@ use yii\widgets\ActiveForm;
  * @var backend\models\SubcatalogoItem $model
  * @var yii\widgets\ActiveForm $form
  * @var array<int, string> $categorias [id => nombre], ver CategoriaService::opciones()
+ * @var array<int, string> $unidades [id => "Metro (m)"], ver UnidadMedidaService::opcionesPorId()
  * @var backend\models\CatalogoSigma|null $sigma fila de dbo.CatalogoSigma del idSigma del item (null si no viene de SIGMA)
  * @var string[] $usadoPor nombres DTIC de otros items que apuntan al mismo idSigma
  * @var string|null $partidaSigma partida que SIGMA tiene para el idSigma del item (null si no se pudo obtener)
@@ -22,8 +23,10 @@ use yii\widgets\ActiveForm;
     <?= $form->field($model, 'idCategoria')->dropDownList($categorias, ['prompt' => 'Seleccione una categoría']) ?>
 
     <?= $form->field($model, 'descripcion')
-        ->textInput(['maxlength' => 300])
-        ->hint('Nombre corto y genérico que usa la DTIC (ej. "Switch PoE", "Regleta tapacable"). Las medidas o detalles de una compra concreta van en la observación de la línea del presupuesto, no aquí.') ?>
+        // text-transform solo muestra en mayusculas mientras se escribe; lo que
+        // se guarda en mayusculas lo asegura la regla "filter" del modelo.
+        ->textInput(['maxlength' => 300, 'style' => 'text-transform: uppercase'])
+        ->hint('Nombre corto y genérico que usa la DTIC (ej. "SWITCH POE", "REGLETA TAPACABLE"). Al elegir un ítem de SIGMA se copia su descripción como punto de partida: edítela para mejorar la redacción. Las medidas o detalles de una compra concreta van en la observación de la línea del presupuesto, no aquí.') ?>
 
     <?php if ($sigma !== null): ?>
         <div class="alert alert-secondary">
@@ -40,7 +43,9 @@ use yii\widgets\ActiveForm;
         </div>
     <?php endif; ?>
 
-    <?= $form->field($model, 'unidadDefecto')->textInput(['maxlength' => 20]) ?>
+    <?= $form->field($model, 'idUnidadMedida')
+        ->dropDownList($unidades, ['prompt' => 'Seleccione una unidad'])
+        ->hint('Se copia a la lista del proyecto al agregar el ítem. Si falta una, créela en ' . Html::a('Unidades de medida', ['/unidad-medida/index'], ['target' => '_blank']) . '.') ?>
 
     <?= $form->field($model, 'idSigma')->textInput(['maxlength' => 36])->hint('Solo lectura del catálogo institucional SIGMA. Dejar vacío si el ítem no proviene de ahí.') ?>
 

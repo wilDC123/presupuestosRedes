@@ -6,9 +6,9 @@ namespace backend\controllers;
 
 use backend\models\Plantilla;
 use backend\services\CategoriaService;
-use backend\services\ParametrosProyectoService;
 use backend\services\PlantillaService;
 use backend\services\SubcatalogoItemService;
+use backend\services\TipoProyectoService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -45,7 +45,6 @@ class PlantillaController extends Controller
     {
         return $this->render('index', [
             'filas' => $this->service->listar(),
-            'tipos' => Yii::$container->get(ParametrosProyectoService::class)->opcionesTipo(),
         ]);
     }
 
@@ -109,7 +108,7 @@ class PlantillaController extends Controller
             'items' => $items,
             'idsCategoria' => $idsCategoria,
             'categorias' => (new CategoriaService())->opciones(),
-            'tipos' => Yii::$container->get(ParametrosProyectoService::class)->opcionesTipo(),
+            'tipos' => (new TipoProyectoService())->opciones($model->getOldAttribute('idTipoProyecto')),
             'subcatalogo' => (new SubcatalogoItemService())->activos(),
         ]);
     }

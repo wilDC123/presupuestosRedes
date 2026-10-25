@@ -1,0 +1,430 @@
+<?php
+
+declare(strict_types=1);
+
+namespace backend\tests\Unit;
+
+use backend\models\Categoria;
+use backend\models\ConfiguracionEspecificacion;
+use backend\models\CorrelativoDocumento;
+use backend\models\Especificacion;
+use backend\models\EspecificacionEmision;
+use backend\models\Proyecto;
+use backend\models\ProyectoItem;
+use backend\models\SubcatalogoItem;
+use backend\services\EspecificacionEmisionService;
+use backend\services\EspecificacionService;
+use backend\services\ListaItemsService;
+use Codeception\Test\Unit;
+use DateTimeImmutable;
+
+/**
+ * Emisiones de especificaciones (RD-PI-ET): enlazar = emitir, correlativo
+ * sin repetir, anular, reemitir, avisos y registro.
+ *
+ * Usa la base local; el modulo Yii2 deshace cada test al terminar (tambien
+ * el correlativo).
+ */
+class EspecificacionEmisionTest extends Unit
+{
+    private EspecificacionEmisionService $emisiones;
+    private ListaItemsService $lista;
+    private Proyecto $proyecto;
+    private SubcatalogoItem $itemSubcatalogo;
+
+    protected function _before(): void
+    {
+        $this->emisiones = new EspecificacionEmisionService();
+        $this->lista = new ListaItemsService();
+
+        $itemSubcatalogo = SubcatalogoItem::find()->andWhere(['activo' => true])->one();
+        if ($itemSubcatalogo === null || Categoria::find()->count() == 0) {
+            $this->markTestSkipped('La base local no tiene ítems activos en el subcatálogo.');
+        }
+        $this->itemSubcatalogo = $itemSubcatalogo;
+
+        $this->proyecto = new Proyecto(['nombre' => 'Proyecto test NET', 'facultad' => 'Facultad de Tecnología', 'estadoLista' => Proyecto::LISTA_EDICION]);
+        $this->proyecto->save(false);
+        $this->proyecto->refresh();
+
+        // Correlativo conocido para el test, por encima de cualquier emision de la base local.
+        CorrelativoDocumento::updateAll(['siguiente' => (int) EspecificacionEmision::find()->max('numeroNet') + 1000], ['tipo' => CorrelativoDocumento::TIPO_ESPECIFICACION]);
+    }
+
+    public function testEnlazarEnLaListaEmiteConElSiguienteCodigoEt(): void
+    {
+        $siguiente = $this->siguienteEt();
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']], ['garantia' => '']);
+
+        $this->guardarLista([$this->fila(null, 5, $ficha)], 'encargado');
+
+        $item = $this->unicoItem();
+        $emision = $item->emisionVigente;
+        $this->assertNotNull($emision);
+        $this->assertSame(EspecificacionEmision::SERIE_ET, $emision->serie);
+        $this->assertSame($siguiente, (int) $emision->numeroNet);
+        $this->assertSame((int) date('y'), (int) $emision->anio);
+        $this->assertSame($siguiente + 1, $this->siguienteEt());
+        // Copias congeladas. El titulo es el nombre DTIC del item de la
+        // lista, no el de la ficha.
+        $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
+        $this->assertSame(5.0, (float) $emision->cantidad);
+        $this->assertSame('Facultad de Tecnología', $emision->dependencia);
+        $this->assertSame('Facultad de Tecnología', $emision->lugarEntrega);
+        $this->assertSame('encargado', $emision->elaboradoPor);
+        // Sin garantia propia en la ficha: se congela la de la configuracion.
+        $this->assertSame(ConfiguracionEspecificacion::obtener()->garantiaPorDefecto, $emision->garantia);
+        $this->assertSame(sprintf('RD-PI-ET-%03d', $siguiente), $item->referenciaEspecificacion());
+    }
+
+    public function testElNumeroEtPuedeCoincidirConElDeUnNetViejo(): void
+    {
+        // La serie ET empezo en 1 despues de los NET: el mismo numero en las
+        // dos series son dos documentos distintos (indice unico por serie).
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $nueva = $this->unicoItem()->emisionVigente;
+
+        $vieja = new EspecificacionEmision($nueva->getAttributes(null, ['id', 'serie', 'idProyectoItem', 'estado', 'fechaRegistro']));
+        $vieja->serie = EspecificacionEmision::SERIE_NET;
+        $vieja->estado = EspecificacionEmision::ESTADO_ANULADA;
+        $this->assertTrue($vieja->save(false));
+
+        $this->assertSame(sprintf('NET:%03d/%s', $nueva->numeroNet, date('y')), $vieja->codigo());
+        $this->assertSame(sprintf('RD-PI-ET-%03d', $nueva->numeroNet), $nueva->codigo());
+    }
+
+    public function testFichaSinContenidoNoSeEnlaza(): void
+    {
+        $ficha = new Especificacion(['titulo' => 'Ficha vacía test', 'activo' => true]);
+        $ficha->save(false);
+
+        $errores = $this->guardarLista([$this->fila(null, 1, $ficha)], null, false);
+
+        $this->assertStringContainsString('no tiene contenido técnico', implode(' ', $errores));
+    }
+
+    public function testRecordarComoSugeridaPoneElItemDeReferenciaAlGuardar(): void
+    {
+        $recordada = $this->ficha('Cable test recordar', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $sinMarcar = $this->ficha('Cable test sin marcar', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+
+        $this->guardarLista([
+            $this->fila(null, 1, $recordada) + ['recordarReferencia' => '1'],
+            $this->fila(null, 1, $sinMarcar),
+        ]);
+
+        $recordada->refresh();
+        $sinMarcar->refresh();
+        $this->assertSame((int) $this->itemSubcatalogo->id, (int) $recordada->idSubcatalogo);
+        $this->assertNull($sinMarcar->idSubcatalogo);
+    }
+
+    public function testVolverAGuardarSinCambiosNoEmiteOtra(): void
+    {
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $item = $this->unicoItem();
+        $siguiente = $this->siguienteEt();
+
+        $this->guardarLista([$this->fila($item, 8, $ficha)]);
+
+        $this->assertSame($siguiente, $this->siguienteEt());
+        $this->assertSame(1, (int) EspecificacionEmision::find()->andWhere(['idProyecto' => $this->proyecto->id])->count());
+    }
+
+    public function testCambiarLaFichaAnulaYEmiteOtra(): void
+    {
+        $fichaA = $this->ficha('Cable A test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $fichaB = $this->ficha('Cable B test', [['nombre' => 'Calibre', 'valor' => '24 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $fichaA)]);
+        $item = $this->unicoItem();
+        $primera = $item->emisionVigente;
+
+        $this->guardarLista([$this->fila($item, 5, $fichaB)]);
+
+        $primera->refresh();
+        $this->assertSame(EspecificacionEmision::ESTADO_ANULADA, $primera->estado);
+        $this->assertSame('Se cambió la especificación del ítem.', $primera->motivo);
+        $nueva = $this->unicoItem()->emisionVigente;
+        $this->assertSame((int) $fichaB->id, (int) $nueva->version->idEspecificacion);
+        $this->assertSame((int) $primera->numeroNet + 1, (int) $nueva->numeroNet);
+    }
+
+    public function testQuitarElItemAnulaPeroElDocumentoSeConserva(): void
+    {
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $emision = $this->unicoItem()->emisionVigente;
+
+        $this->guardarLista([]);
+
+        $emision->refresh();
+        $this->assertSame(EspecificacionEmision::ESTADO_ANULADA, $emision->estado);
+        $this->assertNull($emision->idProyectoItem);
+        $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
+    }
+
+    public function testReemitirConservaElCodigoYSubeLaVersion(): void
+    {
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $item = $this->unicoItem();
+        $anterior = $item->emisionVigente;
+
+        // Sin motivo no se reemite.
+        $this->assertNotNull($this->emisiones->reemitir($item, ['motivo' => ' '], 'encargado')['error']);
+
+        // La cantidad cambia en la lista: la emision avisa y al reemitir la toma.
+        $this->guardarLista([$this->fila($item, 7, $ficha)]);
+        $item = $this->unicoItem();
+        $avisos = $this->emisiones->estadoPorItem([$item])[$item->id]['avisos'];
+        $this->assertStringContainsString('ya no coincide', implode(' ', $avisos));
+
+        $resultado = $this->emisiones->reemitir($item, ['motivo' => 'cambió la cantidad', 'lugarEntrega' => 'Suministros USFX', 'tiempoEntregaDias' => '15'], 'encargado');
+
+        $this->assertNull($resultado['error']);
+        $nueva = $resultado['emision'];
+        // Lineamiento RD-GD-LI-001 (4.2): el mismo documento, version 02; no
+        // se gasta un numero del correlativo.
+        $siguiente = $this->siguienteEt();
+        $this->assertSame($anterior->codigo(), $nueva->codigo());
+        $this->assertSame(1, (int) $anterior->versionDocumento);
+        $this->assertSame(2, (int) $nueva->versionDocumento);
+        $this->assertSame($anterior->codigo() . ' v02', $nueva->codigoConVersion());
+        $this->assertSame($siguiente, $this->siguienteEt());
+        $this->assertSame(7.0, (float) $nueva->cantidad);
+        $this->assertSame('Suministros USFX', $nueva->lugarEntrega);
+        $this->assertSame(15, (int) $nueva->tiempoEntregaDias);
+        $anterior->refresh();
+        $this->assertSame(EspecificacionEmision::ESTADO_REEMPLAZADA, $anterior->estado);
+        $this->assertSame((int) $nueva->id, (int) $anterior->idReemplazadaPor);
+        $this->assertSame('cambió la cantidad', $anterior->motivo);
+        $this->assertSame([], $this->emisiones->estadoPorItem([$this->unicoItem()])[$item->id]['avisos']);
+
+        // Una tercera vez: v03, y la v02 queda reemplazada por ella.
+        $tercera = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'venció'], 'encargado')['emision'];
+        $this->assertSame($anterior->codigo(), $tercera->codigo());
+        $this->assertSame(3, (int) $tercera->versionDocumento);
+        $nueva->refresh();
+        $this->assertSame((int) $tercera->id, (int) $nueva->idReemplazadaPor);
+        $this->assertSame($siguiente, $this->siguienteEt());
+    }
+
+    public function testCambiarLaFichaDespuesDeReemitirDaOtroCodigo(): void
+    {
+        // Otra ficha es otro documento: codigo nuevo y v01.
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $otra = $this->ficha('Cable test otra', [['nombre' => 'Calibre', 'valor' => '24 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $reemitida = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'prueba'], 'encargado')['emision'];
+
+        $this->guardarLista([$this->fila($this->unicoItem(), 5, $otra)]);
+
+        $nueva = $this->unicoItem()->emisionVigente;
+        $this->assertNotSame($reemitida->codigo(), $nueva->codigo());
+        $this->assertSame(1, (int) $nueva->versionDocumento);
+    }
+
+    public function testElFormularioReemitidoImprimeLaVersionDelDocumento(): void
+    {
+        // La cabecera y el control de elaboracion llevan la version del
+        // documento, no la de la ficha (que aqui es v2).
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        (new EspecificacionService())->guardarVersion($ficha, [], [['nombre' => 'Calibre', 'valor' => '24 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $item = $this->unicoItem();
+        $this->emisiones->reemitir($item, ['motivo' => 'prueba'], 'encargado');
+        $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'prueba'], 'encargado');
+        $emision = $this->emisiones->obtener((int) $this->unicoItem()->emisionVigente->id);
+
+        $html = (new \yii\web\View())->renderFile(
+            \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
+            ['emision' => $emision]
+        );
+
+        $this->assertStringContainsString('<strong>Versión:</strong> 03', $html);
+        $this->assertStringContainsString('Versión: 03', $html);
+        $this->assertSame($emision->codigo() . '_v03.pdf', $this->emisiones->generarPdf($emision, $html)['nombreArchivo']);
+    }
+
+    public function testAvisaVencimientoYVersionNueva(): void
+    {
+        $servicio = new EspecificacionService();
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $servicio->guardarVersion($ficha, [], [['nombre' => 'Calibre', 'valor' => '23 AWG'], ['nombre' => 'Cubierta', 'valor' => 'LSZH']]);
+        $item = $this->unicoItem();
+
+        $avisos = implode(' ', $this->emisiones->estadoPorItem([$item], new DateTimeImmutable('+40 days'))[$item->id]['avisos']);
+
+        $this->assertStringContainsString('versión más nueva de la ficha (v2)', $avisos);
+        $this->assertStringContainsString('venció', $avisos);
+    }
+
+    public function testFormularioLlevaElControlDeElaboracionCopiadoAlEmitir(): void
+    {
+        ConfiguracionEspecificacion::updateAll([
+            'firma1Prefijo' => null, 'firma1Nombre' => 'Ing. Quien Elabora', 'firma1Cargo' => 'PROYECTOS DE REDES',
+            'firma2Prefijo' => 'V°B°', 'firma2Nombre' => 'Ing. Quien Aprueba', 'firma2Cargo' => 'RESPONSABLE DE REDES',
+        ]);
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 2, $ficha)]);
+        $emision = $this->emisiones->obtener((int) $this->unicoItem()->emisionVigente->id);
+
+        // Cambiar la configuracion despues de emitir no cambia el formulario.
+        ConfiguracionEspecificacion::updateAll(['firma1Nombre' => 'Ing. Otra Persona']);
+
+        $html = (new \yii\web\View())->renderFile(
+            \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
+            ['emision' => $emision]
+        );
+
+        $this->assertStringContainsString('Versión: 01', $html);
+        $this->assertStringContainsString('Ing. Quien Elabora', $html);
+        $this->assertStringContainsString('V°B° Ing. Quien Aprueba', $html);
+        $this->assertStringContainsString('RESPONSABLE DE REDES', $html);
+        $this->assertStringContainsString('Fecha de aprobación: ' .(new DateTimeImmutable($emision->fechaEmision))->format('d/m/Y'), $html);
+        $this->assertStringNotContainsString('Ing. Otra Persona', $html);
+    }
+
+    public function testFormularioPdfImprimeLasCopiasCongeladas(): void
+    {
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre del conductor', 'valor' => '23 AWG'], ['valor' => 'Cumple ANSI/TIA']], ['modeloSugerido' => 'Furukawa', 'garantia' => 'Dos años']);
+        $this->guardarLista([$this->fila(null, 2, $ficha)], 'encargado');
+        $emision = $this->emisiones->obtener((int) $this->unicoItem()->emisionVigente->id);
+
+        // Cambios DESPUES de emitir: no deben aparecer en el formulario.
+        ConfiguracionEspecificacion::updateAll(['textoNotaFinal' => 'NOTA NUEVA']);
+        (new EspecificacionService())->guardarVersion($ficha, ['garantia' => 'Tres años'], [['nombre' => 'Calibre del conductor', 'valor' => '24 AWG']]);
+
+        $html = (new \yii\web\View())->renderFile(
+            \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
+            ['emision' => $emision]
+        );
+
+        $this->assertStringContainsString($emision->codigo(), $html);
+        $this->assertStringContainsString('<strong>Calibre del conductor:</strong> 23 AWG', $html);
+        $this->assertStringContainsString('Cumple ANSI/TIA', $html);
+        $this->assertStringContainsString('Se sugiere: Furukawa o similar/superior.', $html);
+        $this->assertStringContainsString('Dos años', $html);
+        $this->assertStringContainsString('Facultad de Tecnología', $html);
+        $this->assertStringNotContainsString('24 AWG', $html);
+        $this->assertStringNotContainsString('Tres años', $html);
+        $this->assertStringNotContainsString('NOTA NUEVA', $html);
+
+        $pdf = $this->emisiones->generarPdf($emision, $html);
+        $this->assertStringStartsWith('%PDF', $pdf['contenido']);
+        $this->assertSame(str_replace([':', '/'], '_', $emision->codigo()) . '_v01.pdf', $pdf['nombreArchivo']);
+    }
+
+    public function testRegistroFiltraPorEstadoYBuscaPorCodigo(): void
+    {
+        $ficha = $this->ficha('Cable registro test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $item = $this->unicoItem();
+        $primera = $item->emisionVigente;
+        $segunda = $this->emisiones->reemitir($item, ['motivo' => 'prueba'], 'encargado')['emision'];
+        // Las dos versiones tienen el mismo numero: se distinguen por id.
+        $numero = (int) $primera->numeroNet;
+        $idPrimera = (int) $primera->id;
+        $idSegunda = (int) $segunda->id;
+        $deEsteProyecto = fn (array $filtros) => array_values(array_filter(
+            array_map(static fn (EspecificacionEmision $e) => (int) $e->id, $this->emisiones->registro($filtros, false)->getModels()),
+            static fn (int $id) => in_array($id, [$idPrimera, $idSegunda], true)
+        ));
+
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto([]));
+        $this->assertSame([$idSegunda], $deEsteProyecto(['estado' => 'vigente']));
+        $this->assertSame([$idPrimera], $deEsteProyecto(['estado' => 'reemplazada']));
+        $this->assertSame([], $deEsteProyecto(['estado' => 'vencida']));
+        // El codigo trae todas sus versiones; con la version, solo esa.
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => (string) $numero]));
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d', $numero)]));
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d', $numero)]));
+        $this->assertSame([$idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d v01', $numero)]));
+        $this->assertSame([$idSegunda], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d V02', $numero)]));
+        // Es de la serie ET: buscarla como NET no la encuentra.
+        $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $numero, date('y'))]));
+        // El titulo de la emision es el nombre DTIC del item.
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => $this->itemSubcatalogo->descripcion, 'dependencia' => 'Facultad de Tecnología']));
+
+        // Pasada la vigencia, la vigente aparece como vencida.
+        EspecificacionEmision::updateAll(['fechaEmision' => '2020-01-01'], ['id' => $segunda->id]);
+        $this->assertSame([$idSegunda], $deEsteProyecto(['estado' => 'vencida']));
+        $this->assertSame([], $deEsteProyecto(['estado' => 'vigente']));
+
+        $csv = $this->emisiones->exportarCsv(['buscar' => sprintf('RD-PI-ET-%03d v01', $numero)]);
+        $this->assertStringStartsWith("\xEF\xBB\xBF" . 'Código;Versión;"Código anterior";"Fecha de emisión"', $csv);
+        $this->assertStringContainsString(sprintf('RD-PI-ET-%03d;01;', $numero), $csv);
+        $this->assertStringContainsString(sprintf('Reemplazada;prueba;"RD-PI-ET-%03d v02"', $numero), $csv);
+    }
+
+    public function testUnaPasadaDeNetAEtSeBuscaPorSuCodigoAnterior(): void
+    {
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $emision = $this->unicoItem()->emisionVigente;
+        // Como la deja la migracion m261022_144239 (un NET que no exista en la base local).
+        EspecificacionEmision::updateAll(['codigoAnterior' => 'NET:7777/26'], ['id' => $emision->id]);
+        $ids = fn (string $buscar) => array_map(static fn (EspecificacionEmision $e) => (int) $e->id, $this->emisiones->registro(['buscar' => $buscar], false)->getModels());
+
+        $this->assertSame([(int) $emision->id], $ids('NET:7777/26'));
+        $this->assertSame([(int) $emision->id], $ids('NET:7777'));
+        $this->assertSame([(int) $emision->id], $ids('7777'));
+        $this->assertSame([], $ids('NET:7777/25'));
+        $this->assertStringContainsString('NET:7777/26', $this->emisiones->exportarCsv(['buscar' => 'NET:7777/26']));
+    }
+
+    /**
+     * @param array<int, array{nombre: string, valor: string}> $filas
+     */
+    private function ficha(string $titulo, array $filas, array $version = []): Especificacion
+    {
+        $ficha = new Especificacion(['titulo' => $titulo, 'activo' => true]);
+        $ficha->save(false);
+        (new EspecificacionService())->guardarVersion($ficha, $version, $filas);
+
+        return $ficha;
+    }
+
+    /**
+     * Una fila del formulario de la lista.
+     */
+    private function fila(?ProyectoItem $item, float $cantidad, Especificacion $ficha): array
+    {
+        return [
+            'id' => $item?->id ?? '',
+            'idSubcatalogo' => (string) $this->itemSubcatalogo->id,
+            'cantidad' => (string) $cantidad,
+            'observacion' => '',
+            'idEspecificacion' => (string) $ficha->id,
+        ];
+    }
+
+    /**
+     * @return string[] errores (vacio si se guardo)
+     */
+    private function guardarLista(array $filas, ?string $usuario = 'encargado', bool $debeGuardar = true): array
+    {
+        $errores = [];
+        $enviados = [];
+        $guardado =$this->lista->guardar($this->proyecto, $filas, $errores, $enviados, $usuario);
+        $this->assertSame($debeGuardar, $guardado, implode(' ', $errores));
+
+        return $errores;
+    }
+
+    private function unicoItem(): ProyectoItem
+    {
+        $items = $this->proyecto->getItems()->all();
+        $this->assertCount(1, $items);
+
+        return $items[0];
+    }
+
+    private function siguienteEt(): int
+    {
+        return (int) CorrelativoDocumento::findOne(CorrelativoDocumento::TIPO_ESPECIFICACION)->siguiente;
+    }
+}

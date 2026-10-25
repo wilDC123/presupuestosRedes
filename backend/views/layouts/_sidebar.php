@@ -18,14 +18,17 @@ $controladorActual = Yii::$app->controller->id;
 $menu = [
     ['Dashboard', ['/site/index'], ['site']],
     ['Categorías', ['/categoria/index'], ['categoria']],
+    ['Unidades de medida', ['/unidad-medida/index'], ['unidad-medida']],
+    ['Tipos de proyecto', ['/tipo-proyecto/index'], ['tipo-proyecto']],
     ['Proveedores', ['/proveedor/index'], ['proveedor']],
     ['Subcatálogo', ['/subcatalogo-item/index'], ['subcatalogo-item']],
     ['Plantillas', ['/plantilla/index'], ['plantilla']],
-    ['Proyectos', ['/proyecto/index'], ['proyecto', 'lista-items', 'solicitud-cotizacion']],
+    ['Proyectos', ['/proyecto/index'], ['proyecto', 'lista-items', 'solicitud-cotizacion', 'elaborar-presupuesto']],
     ['Especificaciones', ['/especificacion/index'], ['especificacion']],
+    ['Formularios de especificación', ['/especificacion-emision/index'], ['especificacion-emision']],
     ['Cotizaciones', ['/cotizacion/index'], ['cotizacion']],
     ['Presupuestos', ['/presupuesto/index'], ['presupuesto']],
-    ['Cómputos métricos', ['/computo-metrico/index'], ['computo-metrico']],
+    ['Codificación de documentos', ['/codificacion/index'], ['codificacion']],
 ];
 
 $usuario = Yii::$app->user->identity?->username;

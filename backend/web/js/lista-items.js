@@ -10,7 +10,9 @@
  *  5. Avisa que hay cambios sin guardar.
  *  6. Especificacion tecnica por fila (opcional): al elegirla muestra el
  *     enlace "Ver documento" y actualiza el contador; en las filas nuevas
- *     pone primero las especificaciones de la categoria del item.
+ *     pone primero las sugeridas para el item (su item de referencia) y
+ *     despues las de su categoria. "Ver detalle" lo maneja
+ *     especificacion-vista-previa.js.
  *
  * El servidor vuelve a validar todo en ListaItemsService::guardar().
  */
@@ -102,6 +104,25 @@ $(function () {
         $selectEsp.find('optgroup[data-categoria="' + $origen.data('categoria') + '"]')
             .insertAfter($selectEsp.find('option[value=""]'));
 
+        // Y antes que todas, las sugeridas para este item: se MUEVEN a
+        // "Sugeridas para este ítem", como en las filas que arma el servidor.
+        // CUALES son lo decide el servidor (EspecificacionService::selector(),
+        // mapa en #lista-sugeridas); aqui solo se acomodan. Los grupos que
+        // quedan vacios se quitan.
+        var idsSugeridas = ($('#lista-sugeridas').data('mapa') || {})[$origen.data('id')] || [];
+        var $sugeridas = $selectEsp.find('option').filter(function () {
+            return $.inArray(Number($(this).val()), idsSugeridas) !== -1;
+        });
+
+        if ($sugeridas.length > 0) {
+            $('<optgroup label="Sugeridas para este ítem" data-sugeridas="1"></optgroup>')
+                .append($sugeridas)
+                .insertAfter($selectEsp.find('option[value=""]'));
+            $selectEsp.find('optgroup').filter(function () {
+                return $(this).children().length === 0;
+            }).remove();
+        }
+
         grupoDe(String($origen.data('categoria')), String($origen.data('categoriaNombre')))
             .find('tr.subtotal-row').before($fila);
 
@@ -155,9 +176,16 @@ $(function () {
         }
     });
 
-    // El PDF sale de la lista GUARDADA.
-    $('#lista-imprimir').on('click', function (evento) {
+    // Los PDF (lista y especificaciones) salen de la lista GUARDADA.
+    $('#lista-imprimir, #lista-imprimir-esp').on('click', function (evento) {
         if (hayCambios && !window.confirm('Hay cambios sin guardar: la impresión mostrará la lista guardada. ¿Imprimir de todos modos?')) {
+            evento.preventDefault();
+        }
+    });
+
+    // Ir a otro paso del proyecto (barra de pasos) descarta lo no guardado.
+    $('.rd-pasos a').on('click', function (evento) {
+        if (hayCambios && !window.confirm('Hay cambios sin guardar en la lista y se perderán. ¿Ir a otro paso de todos modos?')) {
             evento.preventDefault();
         }
     });

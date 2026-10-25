@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\services\EspecificacionService;
 use yii\helpers\Html;
 
 /**
@@ -31,12 +32,13 @@ $hayFiltros = $filtros['categoria'] !== '' || $filtros['buscar'] !== '' || $filt
             </div>
         </div>
         <div class="rd-acciones">
+            <?= Html::a('Configuración del formulario', ['configuracion'], ['class' => 'btn btn-outline']) ?>
             <?= Html::a('+ Nueva especificación', ['create'], ['class' => 'btn btn-primary']) ?>
         </div>
     </div>
 
     <?= Html::beginForm(['index'], 'get', ['class' => 'rd-acciones mb-3']) ?>
-        <?= Html::dropDownList('categoria', $filtros['categoria'], $categorias, [
+        <?= Html::dropDownList('categoria', $filtros['categoria'], $categorias + [EspecificacionService::SIN_CATEGORIA => '— Sin categoría —'], [
             'class' => 'form-control',
             'prompt' => 'Todas las categorías',
             'aria-label' => 'Categoría',
@@ -48,7 +50,7 @@ $hayFiltros = $filtros['categoria'] !== '' || $filtros['buscar'] !== '' || $filt
         ]) ?>
         <?= Html::textInput('buscar', $filtros['buscar'], [
             'class' => 'form-control rd-buscar',
-            'placeholder' => 'Buscar por título, código NET o modelo...',
+            'placeholder' => 'Buscar por título, modelo o característica (ej. LSZH)...',
         ]) ?>
         <?= Html::submitButton('Filtrar', ['class' => 'btn btn-outline']) ?>
         <?php if ($hayFiltros): ?>
@@ -74,7 +76,7 @@ $hayFiltros = $filtros['categoria'] !== '' || $filtros['buscar'] !== '' || $filt
                     <tr>
                         <th>Especificación</th>
                         <th>Categoría</th>
-                        <th>Código NET</th>
+                        <th>Versión</th>
                         <th>Documento</th>
                         <th>Usos</th>
                         <th>Estado</th>
@@ -85,17 +87,18 @@ $hayFiltros = $filtros['categoria'] !== '' || $filtros['buscar'] !== '' || $filt
                     <?php foreach ($filas as $fila): ?>
                         <?php
                         $especificacion = $fila['especificacion'];
-                        $urlDocumento = $especificacion->urlDocumento();
+                        $versionActual = $especificacion->versionActual;
+                        $urlDocumento = $versionActual?->urlAdjunto();
                         ?>
                         <tr>
                             <td>
                                 <div class="rd-celda-titulo"><?= Html::a(Html::encode($especificacion->nombre()), ['view', 'id' => $especificacion->id]) ?></div>
-                                <?php if (!empty($especificacion->modeloSugerido)): ?>
-                                    <div class="rd-celda-sub">Modelo sugerido: <?= Html::encode($especificacion->modeloSugerido) ?></div>
+                                <?php if (!empty($versionActual?->modeloSugerido)): ?>
+                                    <div class="rd-celda-sub">Modelo sugerido: <?= Html::encode($versionActual->modeloSugerido) ?></div>
                                 <?php endif; ?>
                             </td>
                             <td><?= Html::encode($especificacion->categoria->nombre ?? 'Sin categoría') ?></td>
-                            <td class="mono"><?= Html::encode($especificacion->codigoNet ?: '—') ?></td>
+                            <td class="mono"><?= $versionActual !== null ? Html::encode($versionActual->etiqueta()) : '—' ?></td>
                             <td>
                                 <?= $urlDocumento === null
                                     ? '—'

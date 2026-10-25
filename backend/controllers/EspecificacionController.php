@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\components\ArchivoSubido;
+use backend\models\ConfiguracionEspecificacion;
 use backend\models\Especificacion;
+use backend\models\EspecificacionVersion;
 use backend\services\CategoriaService;
+use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
 use backend\services\SubcatalogoItemService;
 use Yii;
@@ -64,40 +68,138 @@ class EspecificacionController extends Controller
         ]);
     }
 
-    public function actionView(int $id): string
+    /**
+     * Ficha con su version actual. ?version=N muestra una version anterior
+     * del historial (solo lectura).
+     */
+    public function actionView(int $id, ?int $version = null): string
     {
         $model = $this->findModel($id);
+        $historial = $this->service->historial($model);
+        $actual = $historial[0]['version'] ?? null;
+        $mostrada = $version === null ? $actual : $this->service->version($model, $version);
+
+        if ($version !== null && $mostrada === null) {
+            throw new NotFoundHttpException('Esa versión de la especificación no existe.');
+        }
 
         return $this->render('view', [
             'model' => $model,
+            'version' => $mostrada,
+            'esActual' => $mostrada !== null && $actual !== null && $mostrada->id === $actual->id,
+            'historial' => $historial,
+            'garantiaPorDefecto' => ConfiguracionEspecificacion::obtener()->garantiaPorDefecto,
             'usos' => $this->service->usos($model),
+        ]);
+    }
+
+    /**
+     * Vista previa de la ficha (version actual) para la ventana "Ver detalle"
+     * de la lista de items: la pide por AJAX web/js/especificacion-vista-previa.js.
+     * renderPartial() devuelve solo el fragmento HTML de la vista, sin el
+     * layout (menu, cabecera), porque se inserta dentro de la ventana.
+     */
+    public function actionVistaPrevia(int $id): string
+    {
+        $model = $this->findModel($id);
+
+        return $this->renderPartial('_vista-previa', [
+            'model' => $model,
+            'version' => $model->versionActual,
+            'garantiaPorDefecto' => ConfiguracionEspecificacion::obtener()->garantiaPorDefecto,
+        ]);
+    }
+
+    /**
+     * Busqueda de la ventana "Ver detalle" (?q=24 poe). Responde JSON, no una
+     * pagina: asJson() pone la cabecera Content-Type: application/json y
+     * convierte el arreglo. Ver EspecificacionService::buscar().
+     */
+    public function actionBuscar(string $q = ''): Response
+    {
+        $resultados = $this->service->buscar($q);
+
+        return $this->asJson([
+            'resultados' => $resultados,
+            'limiteAlcanzado' => count($resultados) >= EspecificacionService::LIMITE_BUSQUEDA,
         ]);
     }
 
     public function actionCreate()
     {
-        $model = new Especificacion();
-
-        if ($this->guardarDesdeFormulario($model)) {
-            Yii::$app->session->setFlash('success', 'Especificación agregada a la librería.');
-
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        return $this->render('create', $this->datosFormulario($model));
+        return $this->formulario(new Especificacion(), 'create', 'Especificación agregada a la librería.');
     }
 
     public function actionUpdate(int $id)
     {
-        $model = $this->findModel($id);
+        return $this->formulario($this->findModel($id), 'update', 'Especificación actualizada.');
+    }
 
-        if ($this->guardarDesdeFormulario($model)) {
-            Yii::$app->session->setFlash('success', 'Especificación actualizada.');
+    /**
+     * Configuracion del formulario de especificacion: los textos fijos y los
+     * valores por defecto (el correlativo RD-PI-ET, en CodificacionController). Los cambios valen para las emisiones NUEVAS; las ya emitidas
+     * guardan su propia copia.
+     */
+    public function actionConfiguracion()
+    {
+        $configuracion = ConfiguracionEspecificacion::obtener();
+        $emisiones = new EspecificacionEmisionService();
 
-            return $this->redirect(['view', 'id' => $model->id]);
+        if (Yii::$app->request->isPost && $emisiones->guardarConfiguracion($configuracion, Yii::$app->request->post())) {
+            Yii::$app->session->setFlash('success', 'Configuración del formulario de especificación guardada.');
+
+            return $this->redirect(['configuracion']);
         }
 
-        return $this->render('update', $this->datosFormulario($model));
+        return $this->render('configuracion', [
+            'configuracion' => $configuracion,
+        ]);
+    }
+
+    /**
+     * Entrega el documento adjunto de una version (datasheet o documento
+     * original). Esta fuera de la carpeta publica (ver ArchivoSubido): solo se
+     * descarga con sesion iniciada.
+     *
+     * @param int $id id de la VERSION
+     */
+    public function actionAdjunto(int $id): Response
+    {
+        $version = $this->service->obtenerVersion($id);
+        $ruta = ArchivoSubido::rutaAbsoluta($version?->adjuntoRuta);
+
+        if ($ruta === null) {
+            throw new NotFoundHttpException('El documento adjunto no está disponible.');
+        }
+
+        return Yii::$app->response->sendFile($ruta, 'especificacion_' . $version->idEspecificacion . '_' . $version->etiqueta() . '.' . pathinfo($ruta, PATHINFO_EXTENSION), ['inline' => true]);
+    }
+
+    /**
+     * PDF del formulario de especificación de una emision (para imprimir, firmar y sellar).
+     * Se abre en el navegador ('inline') en vez de descargarse.
+     *
+     * @param int $id id de la EMISION
+     */
+    public function actionFormulario(int $id): Response
+    {
+        $emisiones = new EspecificacionEmisionService();
+        $emision = $emisiones->obtener($id);
+
+        if ($emision === null) {
+            throw new NotFoundHttpException('El formulario de especificación solicitado no existe.');
+        }
+
+        $html = $this->renderPartial('formulario-pdf', [
+            'emision' => $emision,
+        ]);
+        $pdf = $emisiones->generarPdf($emision, $html);
+
+        return Yii::$app->response->sendContentAsFile(
+            $pdf['contenido'],
+            $pdf['nombreArchivo'],
+            ['mimeType' => 'application/pdf', 'inline' => true]
+        );
     }
 
     public function actionDelete(int $id)
@@ -139,25 +241,56 @@ class EspecificacionController extends Controller
         return $model;
     }
 
-    private function guardarDesdeFormulario(Especificacion $model): bool
-    {
-        return $this->service->guardar(
-            $model,
-            Yii::$app->request->post(),
-            UploadedFile::getInstance($model, 'archivoEspecificacion')
-        );
-    }
-
     /**
-     * Lo que necesita el formulario (crear y editar): las opciones de los
-     * desplegables llegan listas desde los servicios.
+     * Crear y editar comparten todo: en GET muestra el formulario con lo
+     * guardado; en POST guarda la ficha y su version y, si algo no es
+     * valido, vuelve a mostrar lo que escribio el usuario.
      */
-    private function datosFormulario(Especificacion $model): array
+    private function formulario(Especificacion $model, string $vista, string $mensajeExito)
     {
-        return [
+        $formulario = $this->service->formulario($model);
+        // Numero de la version actual si ya se emitio (el formulario avisa que
+        // guardar cambios creara la siguiente). Se toma antes del POST: si el
+        // guardado falla, 'version' pasa a ser lo que escribio el usuario.
+        $numeroBloqueado = $formulario['emisiones'] > 0 ? (int) $formulario['version']->numero : null;
+        $errores = [];
+
+        if (Yii::$app->request->isPost) {
+            $resultado = $this->service->guardar(
+                $model,
+                Yii::$app->request->post(),
+                UploadedFile::getInstance($model, 'archivoEspecificacion')
+            );
+
+            if ($resultado['guardado']) {
+                $version = $resultado['version'];
+                $mensaje = $mensajeExito;
+                if ($resultado['nueva'] && $version->numero > 1) {
+                    $mensaje .= ' Se creó la ' . $version->etiqueta() . ': la versión anterior ya se usó en formularios de especificación emitidos y no se modifica.';
+                }
+                Yii::$app->session->setFlash('success', $mensaje);
+
+                return $this->redirect(['view', 'id' => $model->id]);
+            }
+
+            $formulario['version'] = $resultado['version'];
+            $formulario['filas'] = $resultado['filas'];
+            $errores = $resultado['errores'];
+        }
+
+        $configuracion = ConfiguracionEspecificacion::obtener();
+
+        return $this->render($vista, [
             'model' => $model,
+            'version' => $formulario['version'],
+            'filas' => $formulario['filas'],
+            'emisiones' => $formulario['emisiones'],
+            'numeroBloqueado' => $numeroBloqueado,
+            'errores' => $errores,
+            'garantiaPorDefecto' => $configuracion->garantiaPorDefecto,
             'categorias' => (new CategoriaService())->opciones(),
-            'items' => (new SubcatalogoItemService())->opciones(),
-        ];
+            // Solo items activos, mas el que la ficha ya tenia guardado.
+            'items' => (new SubcatalogoItemService())->opciones([$model->getOldAttribute('idSubcatalogo')]),
+        ]);
     }
 }
