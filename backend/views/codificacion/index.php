@@ -19,6 +19,7 @@ use yii\helpers\Html;
  */
 
 $this->title = 'Codificación de documentos';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="codificacion-index">

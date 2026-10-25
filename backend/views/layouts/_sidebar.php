@@ -3,10 +3,17 @@
 declare(strict_types=1);
 
 /**
- * Barra lateral del modulo (menu "Gestion" + usuario en sesion).
+ * Barra lateral del modulo (menu por grupos + usuario en sesion).
  *
- * Cada entrada indica con que controladores se marca como activa: asi el
- * menu "Proveedores" sigue resaltado en proveedor/create, proveedor/update, etc.
+ * Cada entrada indica en que pantallas se marca como activa:
+ * - un id de controlador ('proveedor') abarca todas sus acciones, asi
+ *   "Proveedores" sigue resaltado en proveedor/create, proveedor/update, etc.;
+ * - una ruta completa ('carta/configuracion') abarca solo esa accion y gana
+ *   sobre el controlador: la configuracion de la carta resalta su propio
+ *   enlace y no "Proyectos", aunque las dos sean de CartaController.
+ *
+ * El menu es solo datos: al integrarse al sistema institucional se copia
+ * esta lista a su menu.
  *
  * @var yii\web\View $this
  */
@@ -14,24 +21,55 @@ declare(strict_types=1);
 use yii\helpers\Html;
 
 $controladorActual = Yii::$app->controller->id;
+$rutaActual = Yii::$app->controller->route;
 
 $menu = [
-    ['Dashboard', ['/site/index'], ['site']],
-    ['Categorías', ['/categoria/index'], ['categoria']],
-    ['Unidades de medida', ['/unidad-medida/index'], ['unidad-medida']],
-    ['Tipos de proyecto', ['/tipo-proyecto/index'], ['tipo-proyecto']],
-    ['Proveedores', ['/proveedor/index'], ['proveedor']],
-    ['Subcatálogo', ['/subcatalogo-item/index'], ['subcatalogo-item']],
-    ['Plantillas', ['/plantilla/index'], ['plantilla']],
-    ['Proyectos', ['/proyecto/index'], ['proyecto', 'lista-items', 'solicitud-cotizacion', 'elaborar-presupuesto']],
-    ['Especificaciones', ['/especificacion/index'], ['especificacion']],
-    ['Formularios de especificación', ['/especificacion-emision/index'], ['especificacion-emision']],
-    ['Cotizaciones', ['/cotizacion/index'], ['cotizacion']],
-    ['Presupuestos', ['/presupuesto/index'], ['presupuesto']],
-    ['Codificación de documentos', ['/codificacion/index'], ['codificacion']],
+    'Trabajo' => [
+        ['Inicio', ['/site/index'], ['site']],
+        ['Proyectos', ['/proyecto/index'], ['proyecto', 'lista-items', 'solicitud-cotizacion', 'elaborar-presupuesto', 'carta']],
+        ['Presupuestos', ['/presupuesto/index'], ['presupuesto']],
+    ],
+    'Catálogos' => [
+        ['Subcatálogo', ['/subcatalogo-item/index'], ['subcatalogo-item']],
+        ['Especificaciones', ['/especificacion/index'], ['especificacion']],
+        ['Plantillas', ['/plantilla/index'], ['plantilla']],
+        ['Proveedores', ['/proveedor/index'], ['proveedor']],
+    ],
+    'Registros' => [
+        ['Formularios de especificación', ['/especificacion-emision/index'], ['especificacion-emision']],
+        ['Cotizaciones', ['/cotizacion/index'], ['cotizacion']],
+    ],
 ];
 
+// Lo que se toca poco vive en la pagina Configuracion (tarjetas), no en la
+// barra: este enlace se resalta en esa pagina y en cada pantalla a la que lleva.
+$configuracion = ['Configuración', ['/configuracion/index'], [
+    'configuracion', 'categoria', 'unidad-medida', 'tipo-proyecto', 'codificacion',
+    'presupuesto/configuracion', 'carta/configuracion',
+    'solicitud-cotizacion/configuracion', 'especificacion/configuracion',
+]];
+
+// Primero se busca una entrada con la ruta exacta; si ninguna la tiene,
+// se resalta la que abarca el controlador.
+$todas = [...array_merge(...array_values($menu)), $configuracion];
+$activa = null;
+foreach ($todas as $i => [, , $pantallas]) {
+    if (in_array($rutaActual, $pantallas, true)) {
+        $activa = $i;
+        break;
+    }
+}
+if ($activa === null) {
+    foreach ($todas as $i => [, , $pantallas]) {
+        if (in_array($controladorActual, $pantallas, true)) {
+            $activa = $i;
+            break;
+        }
+    }
+}
+
 $usuario = Yii::$app->user->identity?->username;
+$indice = 0;
 ?>
 <aside class="rd-sidebar">
     <div class="rd-brand">
@@ -42,14 +80,24 @@ $usuario = Yii::$app->user->identity?->username;
         </div>
     </div>
 
-    <div class="kicker">Gestión</div>
-    <nav class="rd-nav">
-        <?php foreach ($menu as [$etiqueta, $ruta, $controladores]): ?>
-            <?= Html::a(Html::encode($etiqueta), $ruta, [
-                'class' => 'navlink' . (in_array($controladorActual, $controladores, true) ? ' active' : ''),
-            ]) ?>
+    <?php // Solo esta parte se desplaza si no cabe: el logo y el usuario quedan siempre a la vista. ?>
+    <div class="rd-sidebar-menu">
+        <?php foreach ($menu as $grupo => $entradas): ?>
+            <div class="kicker"><?= Html::encode($grupo) ?></div>
+            <nav class="rd-nav">
+                <?php foreach ($entradas as [$etiqueta, $ruta]): ?>
+                    <?= Html::a(Html::encode($etiqueta), $ruta, [
+                        'class' => 'navlink' . ($indice++ === $activa ? ' active' : ''),
+                    ]) ?>
+                <?php endforeach; ?>
+            </nav>
         <?php endforeach; ?>
-    </nav>
+        <nav class="rd-nav rd-nav-config">
+            <?= Html::a(Html::encode($configuracion[0]), $configuracion[1], [
+                'class' => 'navlink' . ($indice === $activa ? ' active' : ''),
+            ]) ?>
+        </nav>
+    </div>
 
     <div class="rd-usuario">
         <?php if ($usuario === null): ?>

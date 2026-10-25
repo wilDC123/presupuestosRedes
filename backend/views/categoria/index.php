@@ -15,6 +15,7 @@ use yii\widgets\ActiveForm;
  */
 
 $this->title = 'Categorías de ítems';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = 'Categorías';
 ?>
 <div class="categoria-index">

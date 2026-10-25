@@ -10,6 +10,7 @@ use yii\helpers\Html;
  */
 
 $this->title = 'Nueva categoría';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = ['label' => 'Categorías', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 ?>

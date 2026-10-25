@@ -11,6 +11,7 @@ use yii\widgets\DetailView;
  */
 
 $this->title = $model->nombre;
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = ['label' => 'Categorías', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 ?>

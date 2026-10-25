@@ -15,6 +15,7 @@ use yii\widgets\ActiveForm;
  */
 
 $this->title = 'Tipos de proyecto';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = 'Tipos de proyecto';
 ?>
 <div class="tipo-proyecto-index">

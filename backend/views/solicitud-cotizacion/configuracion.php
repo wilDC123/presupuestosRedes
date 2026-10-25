@@ -16,10 +16,8 @@ use yii\widgets\ActiveForm;
  */
 
 $this->title = 'Configuración de la solicitud de cotización';
-if ($proyecto !== null) {
-    $this->params['breadcrumbs'][] = ['label' => 'Solicitudes de cotización', 'url' => ['index', 'id' => $proyecto->id]];
-}
-$this->params['breadcrumbs'][] = 'Configuración';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
+$this->params['breadcrumbs'][] = 'Solicitud de cotización';
 ?>
 <div class="solicitud-cotizacion-configuracion">
 

@@ -16,12 +16,12 @@ use yii\widgets\ActiveForm;
  */
 
 $this->title = 'Configuración del PDF del presupuesto';
-$this->params['breadcrumbs'][] = ['label' => 'Presupuestos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = 'Configuración';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
+$this->params['breadcrumbs'][] = 'PDF del presupuesto';
 
 $volver = $proyecto !== null
     ? Html::a('← Presupuesto del proyecto', ['/elaborar-presupuesto/index', 'idProyecto' => $proyecto], ['class' => 'btn btn-outline'])
-    : Html::a('← Presupuestos', ['index'], ['class' => 'btn btn-outline']);
+    : Html::a('← Configuración', ['/configuracion/index'], ['class' => 'btn btn-outline']);
 ?>
 <div class="presupuesto-configuracion">
 

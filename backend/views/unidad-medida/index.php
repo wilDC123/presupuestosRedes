@@ -15,6 +15,7 @@ use yii\widgets\ActiveForm;
  */
 
 $this->title = 'Unidades de medida';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = 'Unidades de medida';
 ?>
 <div class="unidad-medida-index">
