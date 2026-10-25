@@ -78,7 +78,7 @@ $hayFiltros = implode('', $filtros) !== '';
                 'label' => 'Código',
                 'format' => 'raw',
                 'contentOptions' => ['class' => 'mono text-nowrap'],
-                'value' => static fn (EspecificacionEmision $e) => Html::a(Html::encode($e->codigo()), ['/especificacion/formulario', 'id' => $e->id], ['target' => '_blank'])
+                'value' => static fn (EspecificacionEmision $e) => Html::a(Html::encode($e->codigoConVersion()), ['/especificacion/formulario', 'id' => $e->id], ['target' => '_blank'])
                     . ($e->codigoAnterior !== null ? '<div class="rd-celda-sub">antes ' . Html::encode($e->codigoAnterior) . '</div>' : ''),
             ],
             [
@@ -95,7 +95,7 @@ $hayFiltros = implode('', $filtros) !== '';
                 'format' => 'raw',
                 'value' => static fn (EspecificacionEmision $e) => '<div class="rd-celda-titulo">'
                     . Html::a(Html::encode($e->titulo), ['/especificacion/view', 'id' => $e->version->idEspecificacion, 'version' => $e->version->numero])
-                    . ' <span class="rd-celda-sub">' . Html::encode($e->version->etiqueta()) . '</span></div>'
+                    . ' <span class="rd-celda-sub">ficha ' . Html::encode($e->version->etiqueta()) . '</span></div>'
                     . (!empty($e->version->modeloSugerido) ? '<div class="rd-celda-sub">Modelo sugerido: ' . Html::encode($e->version->modeloSugerido) . '</div>' : ''),
             ],
             [
@@ -119,7 +119,7 @@ $hayFiltros = implode('', $filtros) !== '';
                 'format' => 'raw',
                 'value' => static fn (EspecificacionEmision $e) => Html::tag('span', Html::encode($e->estadoLabel()), ['class' => $e->estadoBadgeClass()])
                     . ($e->reemplazadaPor !== null
-                        ? '<div class="rd-celda-sub">por ' . Html::a(Html::encode($e->reemplazadaPor->codigo()), ['/especificacion/formulario', 'id' => $e->idReemplazadaPor], ['target' => '_blank']) . '</div>'
+                        ? '<div class="rd-celda-sub">por ' . Html::a(Html::encode($e->reemplazadaPor->codigoConVersion()), ['/especificacion/formulario', 'id' => $e->idReemplazadaPor], ['target' => '_blank']) . '</div>'
                         : '')
                     . (!empty($e->motivo) ? '<div class="rd-celda-sub">' . Html::encode($e->motivo) . '</div>' : ''),
             ],

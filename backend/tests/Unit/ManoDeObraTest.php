@@ -38,6 +38,16 @@ class ManoDeObraTest extends Unit
         $this->assertNull(Presupuesto::findOne($presupuesto->id)->manoDeObra);
     }
 
+    public function testUnPresupuestoNuevoYaLlevaLaManoDeObra(): void
+    {
+        $proyecto = new Proyecto(['nombre' => 'Proyecto test mano de obra nueva', 'estadoLista' => Proyecto::LISTA_EDICION]);
+        $proyecto->save(false);
+
+        $presupuesto = $this->service->delProyecto($proyecto);
+
+        $this->assertSame(Presupuesto::MANO_DE_OBRA_DTIC, Presupuesto::findOne($presupuesto->id)->manoDeObra);
+    }
+
     public function testNoSeCambiaFueraDeBorrador(): void
     {
         $presupuesto = $this->crearPresupuesto(Presupuesto::ESTADO_EN_REVISION);

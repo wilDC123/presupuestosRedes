@@ -71,6 +71,30 @@ $this->params['breadcrumbs'][] = 'Configuración';
         </div>
     </div>
 
+    <div class="card mb-3">
+        <div class="rd-card-head">
+            <div class="rd-card-titulo">Control de elaboración</div>
+            <div class="kicker">Lineamiento RD-GD-LI-001: versión (la de la ficha), elaborado por, aprobado por, firmas y fecha de aprobación (la de emisión).</div>
+        </div>
+        <div class="rd-card-pad">
+            <div class="row g-3">
+                <?php foreach ([1 => 'Elaborado por', 2 => 'Aprobado por (V°B°)'] as $n => $titulo): ?>
+                    <div class="col-md-6">
+                        <div class="rd-dato"><strong><?= $titulo ?></strong></div>
+                        <?= $form->field($configuracion, "firma{$n}Prefijo")->textInput(['maxlength' => 20, 'placeholder' => 'ej. V°B°'])
+                            ->hint('Opcional. Sale antes del nombre (ej. "V°B°" en quien aprueba).') ?>
+                        <?= $form->field($configuracion, "firma{$n}Nombre")->textInput(['maxlength' => 150, 'placeholder' => 'ej. Ing. Nombre Apellido'])
+                            ->hint('Con su tratamiento (Ing., Lic.…). Sin nombre, queda en blanco para llenarla a mano.') ?>
+                        <?= $form->field($configuracion, "firma{$n}Cargo")->textInput(['maxlength' => 200])
+                            ->hint('Se guarda en mayúsculas.') ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <p class="rd-nota mb-0">Cada formulario guarda su copia al emitirse: un cambio aquí no altera los ya emitidos
+                (para que un formulario salga con las firmas nuevas, hay que reemitirlo).</p>
+        </div>
+    </div>
+
     <div class="form-group">
         <?= Html::submitButton('Guardar', ['class' => 'btn btn-primary']) ?>
     </div>

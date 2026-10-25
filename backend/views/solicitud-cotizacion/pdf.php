@@ -117,7 +117,8 @@ $numero = 0;
     'titulo' => 'SOLICITUD DE COTIZACIÓN',
     'numero' => 'N.° ' . $solicitud->codigo(),
     'facultad' => $facultad,
-    'fecha' => date('d/m/Y'),
+    // La fecha de envio; sin ella, la del dia en que se imprime.
+    'fecha' => $solicitud->fechaDelDocumento(),
     'institucion' => $cabecera[0] ?? null,
     'unidad' => $cabecera[1] ?? null,
 ]) ?>

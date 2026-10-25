@@ -75,15 +75,11 @@ $botones = [
                         </div>
                         <div class="col-md-3">
                             <?= Html::activeLabel($presupuesto, 'fecha', ['class' => 'form-label']) ?>
-                            <?= Html::activeTextInput($presupuesto, 'fecha', [
+                            <?php // type="date": el navegador muestra el calendario y la fecha en dd/mm/aaaa, pero envia aaaa-mm-dd, que el modelo guarda tal cual. ?>
+                            <?= Html::activeInput('date', $presupuesto, 'fecha', [
                                 'class' => 'form-control',
-                                'value' => $presupuesto->fechaFormateada() ?: Yii::$app->formatter->asDate('now', 'php:d/m/Y'),
-                                'placeholder' => 'dd/mm/aaaa',
-                                'maxlength' => 10,
+                                'value' => $presupuesto->fecha ?: Yii::$app->formatter->asDate('now', 'php:Y-m-d'),
                                 'required' => true,
-                                // dd/mm/aaaa: el mismo formato que acepta Presupuesto::beforeValidate().
-                                'pattern' => '\d{1,2}/\d{1,2}/\d{4}',
-                                'title' => 'Formato dd/mm/aaaa',
                             ]) ?>
                         </div>
                     </div>

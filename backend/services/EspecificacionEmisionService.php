@@ -29,8 +29,10 @@ use yii\data\ActiveDataProvider;
  *    de 1 en 1, no se reinicia por año y un numero nunca se reutiliza,
  *  - una emision no cambia nunca: guarda copias de todo lo que imprime y
  *    apunta a una version que ya no se puede modificar,
- *  - un error se corrige REEMITIENDO: codigo nuevo con la ultima version y la
- *    cantidad actual de la lista; la anterior queda "reemplazada por",
+ *  - un error se corrige REEMITIENDO: el MISMO codigo con la version del
+ *    documento siguiente (RD-PI-ET-015 v01 -> v02, lineamiento RD-GD-LI-001,
+ *    4.2), la ultima version de la ficha y la cantidad actual de la lista; la
+ *    anterior queda "reemplazada por",
  *  - cambiar o quitar la especificacion de un item, o quitar el item, ANULA
  *    su emision vigente (el documento sigue en el historial),
  *  - reemitir se puede mientras el presupuesto no este aprobado ni cancelado,
@@ -63,6 +65,9 @@ class EspecificacionEmisionService
      * Emite el formulario de la especificacion enlazada al item, con la
      * version actual de la ficha y el siguiente codigo ET.
      *
+     * Con $corrige (lo usa reemitir()): es la version siguiente de ESE
+     * documento, con su mismo codigo; no se toma numero del correlativo.
+     *
      * $condiciones puede traer lugarEntrega, validezOfertaDias y
      * tiempoEntregaDias; lo que no venga sale de la configuracion (y el lugar,
      * de la facultad del proyecto).
@@ -72,8 +77,9 @@ class EspecificacionEmisionService
      * anida sin problema.
      *
      * @param array{lugarEntrega?: ?string, validezOfertaDias?: mixed, tiempoEntregaDias?: mixed} $condiciones
+     * @param EspecificacionEmision|null $corrige la emision que se reemite
      */
-    public function emitir(ProyectoItem $item, ?string $usuario, array $condiciones = []): EspecificacionEmision
+    public function emitir(ProyectoItem $item, ?string $usuario, array $condiciones = [], ?EspecificacionEmision $corrige = null): EspecificacionEmision
     {
         $especificacion = $item->idEspecificacion !== null ? Especificacion::findOne($item->idEspecificacion) : null;
         $motivo = $this->motivoParaNoEmitir($especificacion);
@@ -114,7 +120,25 @@ class EspecificacionEmisionService
             // Provisorio, para validar el resto: el numero real se toma recien
             // dentro de la transaccion, con la fila del correlativo bloqueada.
             'numeroNet' => 0,
+            'versionDocumento' => 1,
         ]);
+
+        if ($corrige !== null) {
+            // Mismo documento: mismo codigo y la version siguiente. Una NET
+            // de las de antes conserva tambien su año, que es parte del codigo.
+            $emision->serie = $corrige->serie;
+            $emision->numeroNet = $corrige->numeroNet;
+            $emision->versionDocumento = (int) $corrige->versionDocumento + 1;
+            if ($corrige->serie === EspecificacionEmision::SERIE_NET) {
+                $emision->anio = $corrige->anio;
+            }
+            $emision->codigoAnterior = $corrige->codigoAnterior;
+        }
+
+        // Control de elaboracion: tambien una copia, como los textos.
+        foreach (EspecificacionEmision::atributosFirmas() as $atributo) {
+            $emision->$atributo = $configuracion->$atributo;
+        }
 
         if (!$emision->validate()) {
             throw new DomainException('No se pudo emitir el formulario de especificación: ' . implode(' ', $emision->getErrorSummary(true)));
@@ -123,7 +147,11 @@ class EspecificacionEmisionService
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            $emision->numeroNet = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION);
+            if ($corrige === null) {
+                $emision->numeroNet = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION);
+            }
+            // Si otro usuario reemitio el mismo documento al mismo tiempo, el
+            // indice unico (serie, numeroNet, versionDocumento) lo rechaza.
             $emision->save(false);
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -147,14 +175,15 @@ class EspecificacionEmisionService
     }
 
     /**
-     * Reemite el formulario del item: codigo nuevo, ultima version de la
-     * ficha y cantidad ACTUAL de la lista (si la cantidad estaba mal, se
+     * Reemite el formulario del item: el MISMO codigo con la version del
+     * documento siguiente (v01 -> v02), ultima version de la ficha y
+     * cantidad ACTUAL de la lista (si la cantidad estaba mal, se
      * corrige en la lista y se reemite: asi el formulario y la lista nunca dicen
      * cosas distintas). Las condiciones de entrega si se pueden cambiar.
      * La emision anterior queda "reemplazada por" la nueva.
      *
      * Si el item todavia no tenia emision vigente (fichas enlazadas antes de
-     * que existieran las emisiones), simplemente emite.
+     * que existieran las emisiones), simplemente emite (codigo nuevo, v01).
      *
      * Devuelve la emision nueva o el motivo por el que no se pudo.
      *
@@ -191,7 +220,7 @@ class EspecificacionEmisionService
                 $anterior->updateAttributes(['estado' => EspecificacionEmision::ESTADO_REEMPLAZADA, 'motivo' => $motivo]);
             }
 
-            $nueva = $this->emitir($item, $usuario, $datos);
+            $nueva = $this->emitir($item, $usuario, $datos, $anterior);
 
             if ($anterior !== null) {
                 $anterior->updateAttributes(['idReemplazadaPor' => $nueva->id]);
@@ -303,7 +332,8 @@ class EspecificacionEmisionService
      *    guarda: es una vigente cuya fecha + vigencia ya paso, y "vigente"
      *    aqui son solo las que todavia no vencieron,
      *  - dependencia: texto exacto,
-     *  - buscar: "RD-PI-ET-007" o "NET:880/26" busca ese codigo (el NET
+     *  - buscar: "RD-PI-ET-007" o "NET:880/26" busca ese codigo, todas sus
+     *    versiones ("RD-PI-ET-007 v02": solo esa version) (el NET
      *    tambien en el codigo anterior de las que se pasaron a ET); un numero
      *    solo ("7", "880") lo busca en los dos; cualquier otro texto busca en
      *    el titulo y en el codigo del proyecto.
@@ -347,6 +377,12 @@ class EspecificacionEmisionService
         }
 
         $buscar = trim((string) ($filtros['buscar'] ?? ''));
+        // "RD-PI-ET-007 v02", como lo muestran las pantallas.
+        if (preg_match('/^(.+?)\s+v(\d+)$/i', $buscar, $conVersion) === 1
+            && CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($conVersion[1])) !== null) {
+            $buscar = $conVersion[1];
+            $query->andWhere(['e.versionDocumento' => (int) $conVersion[2]]);
+        }
         $numeroEt = CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($buscar));
         if ($numeroEt !== null) {
             $query->andWhere(['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $numeroEt]);
@@ -411,12 +447,13 @@ class EspecificacionEmisionService
         $formato = Yii::$app->formatter;
         $salida = fopen('php://temp', 'r+');
         fwrite($salida, "\xEF\xBB\xBF");
-        fputcsv($salida, ['Código', 'Código anterior', 'Fecha de emisión', 'Dependencia', 'Especificación', 'Versión', 'Ítem de la lista', 'Cantidad', 'Unidad', 'Modelo sugerido', 'Proyecto', 'Estado', 'Motivo', 'Reemplazada por', 'Elaborado por'], ';');
+        fputcsv($salida, ['Código', 'Versión', 'Código anterior', 'Fecha de emisión', 'Dependencia', 'Especificación', 'Versión de la ficha', 'Ítem de la lista', 'Cantidad', 'Unidad', 'Modelo sugerido', 'Proyecto', 'Estado', 'Motivo', 'Reemplazada por', 'Elaborado por'], ';');
 
         foreach ($this->registro($filtros, false)->getModels() as $emision) {
             /** @var EspecificacionEmision $emision */
             fputcsv($salida, [
                 $emision->codigo(),
+                $emision->versionTexto(),
                 $emision->codigoAnterior,
                 $formato->asDate($emision->fechaEmision, 'php:d/m/Y'),
                 $emision->dependencia,
@@ -429,7 +466,7 @@ class EspecificacionEmisionService
                 $emision->proyecto->codigo ?? '',
                 $emision->estadoLabel(),
                 $emision->motivo,
-                $emision->reemplazadaPor?->codigo() ?? '',
+                $emision->reemplazadaPor?->codigoConVersion() ?? '',
                 $emision->elaboradoPor,
             ], ';');
         }
@@ -461,8 +498,8 @@ class EspecificacionEmisionService
     {
         return [
             'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $this->marcaDeAgua($emision)),
-            // "RD-PI-ET-007.pdf" (o "NET_880_26.pdf"): el codigo es unico.
-            'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigo()) . '.pdf',
+            // "RD-PI-ET-007_v02.pdf" (o "NET_880_26_v01.pdf"): codigo + version es unico.
+            'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigoConVersion()) . '.pdf',
         ];
     }
 

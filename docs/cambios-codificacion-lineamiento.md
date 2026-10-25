@@ -42,8 +42,11 @@ Redes y Telecomunicaciones"** (versión 01, aprobado el 29-08-2024). Decidido co
   **Código | Versión | Fecha | Página**. La versión del formulario es la de la ficha emitida (v2 → 02).
   El formulario usa ahora esta cabecera en vez de la suya (se quitó el logo opcional
   `logo-formulario-net.png`). La solicitud de cotización mantiene su fila N.° | facultad | fecha | pág.
-- **Control de elaboración** (sección 8.12) al pie del PDF del presupuesto: tabla Versión / Elaborado por /
-  Aprobado por con Firma, Nombre y Cargo, y "Fecha de aprobación". Reemplaza a las dos firmas sueltas.
+- **Control de elaboración** (sección 8.12) al pie del PDF del presupuesto: dos firmas lado a lado con su
+  rótulo "ELABORADO POR" / "APROBADO POR" y debajo "Versión: 01 · Fecha de aprobación". Primero se hizo
+  como la tabla de la sección 11 del lineamiento; se cambió a firmas sin tabla (decidido el 2026-10-22)
+  porque el 8.12 pide el contenido y no una tabla, y en los registros de nivel D ya llenados (anexos de
+  RD-DS-FR-002) la DTIC usa firmas simples.
 - **Tipografía** (sección 8.8.1, Calibri 11; pie en 9): Calibri es de Microsoft y no se puede llevar al
   servidor Linux; se usa **Carlito** (licencia OFL, mismas medidas), en `backend/fonts/carlito` (ver su
   MANIFEST). Cuerpo en 11 pt en el presupuesto, el formulario y la solicitud; tablas en 10 pt. La carta
@@ -52,6 +55,24 @@ Redes y Telecomunicaciones"** (versión 01, aprobado el 29-08-2024). Decidido co
   sale con su propia cabecera y su "Página X de Y" (`PresupuestoPdfGenerator::empezarDocumento()`).
 - Migración `m261022_135030_codificacion_segun_lineamiento` (con `safeDown()`; se detiene si ya hay
   emisiones ET, para no dejar dos documentos con el mismo número).
+
+## Control de elaboración en el formulario de especificación (2026-10-22)
+
+Decidido: el formulario lleva el mismo control de elaboración que el presupuesto (tabla 5 del lineamiento:
+obligatorio en el nivel D). Reemplaza al renglón "Formulario elaborado por: ___ Firma: ___".
+
+- Versión = la de la ficha emitida (la misma de la cabecera); fecha de aprobación = fecha de emisión
+  (el formulario no tiene un estado "aprobado").
+- Nombres y cargos (elaborado por, aprobado por con su V°B°) en la configuración del formulario
+  (`ConfiguracionEspecificacion.firma1…/firma2…`). Al emitir se COPIAN a la emisión
+  (`EspecificacionEmision.firma1…/firma2…`), como los demás textos: un formulario emitido no cambia. Las
+  emitidas antes quedan en blanco (se llenan a mano). Al crearse, la configuración tomó las firmas del
+  presupuesto.
+- Las mismas firmas sin tabla que el presupuesto, en una sola vista para los dos impresos:
+  `views/pdf/_control-elaboracion.php`.
+- Migración `m261022_233202_control_elaboracion_en_formulario_especificacion`.
+- Diagrama de clases: `ConfiguracionEspecificacion` y `EspecificacionEmision` ganan firma1Prefijo,
+  firma1Nombre, firma1Cargo, firma2Prefijo, firma2Nombre, firma2Cargo.
 
 ## Conversión de los códigos viejos (2026-10-22, a pedido del desarrollador)
 
@@ -80,10 +101,40 @@ que todo el sistema use un solo formato. Migración `m261022_144239_convertir_co
 
 ## Pendiente
 
-- Confirmar con el Ing. si el formulario de especificación también debe llevar el control de elaboración
-  (elaborado / aprobado). Hoy conserva "Formulario elaborado por" y "Firma" en blanco.
+- Confirmar con el Ing. si el control de elaboración lleva también "Revisado por" (la sección 8.12 lo
+  menciona; hoy son 2 firmas en el presupuesto y en el formulario).
 - El lineamiento pide en la cabecera el logo y nombre de la "Unidad" (izquierda) y del "Área/Dependencia"
   (derecha). Se dejaron los dos logos de siempre (USFX y DTIC) con los nombres en el centro; si la DTIC
   tiene un logo propio de RedUSFX, se puede poner a la derecha.
 - Fijar con el encargado desde qué número siguen PT, PR y ET si el registro de Google Drive ya tiene
   números usados.
+
+## Versión del documento al reemitir una especificación (2026-10-24)
+
+El lineamiento define la **versión** como el "número de cambios que se han desarrollado en un documento;
+es consecutivo e inicia con versión 01" (4.2). Antes, reemitir un formulario le daba un **código nuevo**
+del correlativo (RD-PI-ET-015 → RD-PI-ET-023), porque en el formato NET no existía la versión. Decidido
+por el desarrollador: **reemitir conserva el código y sube la versión** (RD-PI-ET-015 v01 → v02).
+
+- Columna nueva **`EspecificacionEmision.versionDocumento`** (entero, desde 1). Cada versión sigue siendo
+  su propia fila: la anterior queda "reemplazada" y congelada, porque ya se entregó impresa. El índice
+  único pasa a (`serie`, `numeroNet`, `versionDocumento`). Migración
+  `m261025_000938_version_del_documento_en_emision` (su `safeDown()` se detiene si ya hay versiones 02).
+- Reemitir no gasta un número del correlativo ET.
+- La casilla **"Versión"** de la cabecera y del control de elaboración del formulario es ahora la del
+  DOCUMENTO. Antes era la de la ficha de la librería, que queda como dato interno ("ficha v3" en la
+  lista y el registro; columna "Versión de la ficha" en el CSV).
+- La carta, la solicitud de cotización y el PDF del presupuesto citan el código sin versión (siempre el
+  vigente). Las pantallas, el registro y el CSV muestran "RD-PI-ET-015 v02". El registro encuentra
+  todas las versiones buscando el código, o una sola con "RD-PI-ET-015 v02". El PDF se descarga como
+  `RD-PI-ET-015_v02.pdf`.
+- Cambiar la ficha de un ítem por otra sigue anulando la emisión y dando **código nuevo**: es otro
+  documento, no una corrección.
+- Las emisiones que ya se habían reemitido con código nuevo quedan como estaban (versión 01 cada una):
+  ya se entregaron con esos códigos.
+- Presupuesto: sigue con versión 01 fija (`Presupuesto::VERSION_DOCUMENTO`). Un presupuesto aprobado no
+  cambia, y las correcciones en revisión u observado son parte de su elaboración, no versiones nuevas.
+  Si algún día se permite modificar un presupuesto aprobado, se aplica la misma idea: mismo código RD-PI-PR
+  y versión + 1.
+- Diagrama de clases: `EspecificacionEmision` gana `versionDocumento`. Secuencia "Reemitir formulario":
+  el código sale de la emisión anterior, no de `CodificacionService`.

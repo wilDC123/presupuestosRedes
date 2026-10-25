@@ -85,11 +85,8 @@ $formato = Yii::$app->formatter;
                 <?= $form->field($cotizacion, 'numeroReferencia')->textInput(['maxlength' => 100]) ?>
             </div>
             <div class="col-md-2">
-                <?= $form->field($cotizacion, 'fecha')->textInput([
-                    'value' => $cotizacion->fechaFormateada(),
-                    'placeholder' => 'dd/mm/aaaa',
-                    'maxlength' => 10,
-                ]) ?>
+                <?php // type="date": calendario del navegador; envia aaaa-mm-dd, que el modelo guarda tal cual. ?>
+                <?= $form->field($cotizacion, 'fecha')->input('date') ?>
             </div>
             <div class="col-md-3">
                 <?= $form->field($cotizacion, 'validezDias')->textInput(['type' => 'number', 'min' => 0]) ?>

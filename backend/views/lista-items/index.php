@@ -102,9 +102,9 @@ $infoEmision = static function (ProyectoItem $item) use ($emisiones, $puedeReemi
     $html = '<div class="rd-celda-sub mt-1 lista-item-net">';
 
     if ($emision !== null) {
-        $html .= 'Formulario <strong class="mono">' . Html::encode($emision->codigo()) . '</strong> '
+        $html .= 'Formulario <strong class="mono">' . Html::encode($emision->codigoConVersion()) . '</strong> '
             . '<span class="' . $emision->estadoBadgeClass() . '">' . Html::encode($emision->estadoLabel()) . '</span> '
-            . Html::encode($emision->version->etiqueta() . ' · emitido el ' . $formato->asDate($emision->fechaEmision, 'php:d/m/Y'))
+            . Html::encode('ficha ' . $emision->version->etiqueta() . ' · emitido el ' . $formato->asDate($emision->fechaEmision, 'php:d/m/Y'))
             . ' ' . Html::a('Ver formulario', ['/especificacion/formulario', 'id' => $emision->id], ['class' => 'btn btn-outline btn-sm', 'target' => '_blank']);
     }
 
@@ -114,7 +114,7 @@ $infoEmision = static function (ProyectoItem $item) use ($emisiones, $puedeReemi
             'data' => [
                 'item' => $item->id,
                 'titulo' => ($item->especificacion?->nombre() ?? '') . ' — ' . ($item->subcatalogoItem->descripcion ?? ''),
-                'net' => $emision?->codigo() ?? '',
+                'net' => $emision?->codigoConVersion() ?? '',
                 'lugar' => $emision?->lugarEntrega ?? '',
                 'validez' => $emision?->validezOfertaDias ?? '',
                 'tiempo' => $emision?->tiempoEntregaDias ?? '',
@@ -381,8 +381,8 @@ $grupoCierra = static fn (int $cantidad): string =>
             <?= Html::beginForm(['reemitir', 'id' => $proyecto->id], 'post', ['id' => 'reemitir-form']) ?>
                 <div class="rd-card-titulo mb-1" id="reemitir-titulo">Reemitir formulario de especificación</div>
                 <p class="rd-nota">
-                    Se emite un formulario con código nuevo, la última versión de la ficha y la cantidad actual de la lista.
-                    El anterior queda "reemplazado" y se conserva en el historial. Si la cantidad está mal, corríjala
+                    Se emite la versión siguiente del formulario, con el mismo código, la última versión de la ficha y la
+                    cantidad actual de la lista. La versión anterior queda "reemplazada" y se conserva en el historial. Si la cantidad está mal, corríjala
                     primero en la lista.
                 </p>
                 <?= Html::hiddenInput('idProyectoItem', '', ['id' => 'reemitir-item']) ?>

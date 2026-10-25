@@ -11,12 +11,15 @@ use yii\helpers\Html;
  * EspecificacionController::actionFormulario().
  *
  * Cabecera del lineamiento de la DTIC RD-GD-LI-001 (views/pdf/_cabecera.php):
- * codigo RD-PI-ET-001 (o NET:880/26 en los de antes), version = la de la
- * ficha emitida, fecha de emision y pagina. Debajo, la estructura de los
+ * codigo RD-PI-ET-001 (o NET:880/26 en los de antes), version DEL DOCUMENTO
+ * (01, y 02... al reemitirlo; no la de la ficha de la libreria), fecha de
+ * emision y pagina. Debajo, la estructura de los
  * formularios del banco de especificaciones de DTIC: instrucciones, titulo,
  * cantidad y dependencia, y la tabla "Especificaciones tecnicas | Propuesta |
  * Cumple | No cumple" con las secciones I (requisitos), II (garantia) y III
- * (condiciones).
+ * (condiciones). Al final, el "control de elaboracion" del lineamiento (8.12):
+ * version, elaborado por, aprobado por, firmas y como fecha de aprobacion la
+ * de emision (las firmas son la copia que guardo la emision).
  *
  * TODO lo que se imprime sale de la EMISION (sus copias congeladas) y de su
  * VERSION (que ya no se modifica): reimprimir un formulario viejo da siempre
@@ -30,6 +33,8 @@ use yii\helpers\Html;
  */
 
 $version = $emision->version;
+// Version del documento (lineamiento RD-GD-LI-001, 4.2): sube al reemitir.
+$numeroVersion = $emision->versionTexto();
 $formato = Yii::$app->formatter;
 $cantidad = (float) $emision->cantidad == (int) $emision->cantidad
     ? (string) (int) $emision->cantidad
@@ -67,10 +72,6 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
         header: html_cabecera;
         margin-header: 5mm;
         margin-top: 37mm;
-    }
-    table.firma {
-        width: 100%;
-        border-collapse: collapse;
     }
     .instrucciones {
         text-align: justify;
@@ -116,11 +117,6 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
         margin-top: 10px;
         font-weight: bold;
     }
-    /* Va al fondo de la pagina (MARCA_AL_PIE); el margen solo separa del texto
-       cuando queda justo. */
-    .firma {
-        margin-top: 10px;
-    }
 </style>
 </head>
 <body>
@@ -128,7 +124,7 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
 <?= $this->render('//pdf/_cabecera', [
     'titulo' => 'ESPECIFICACIONES TÉCNICAS DE LOS BIENES OFRECIDOS',
     'codigo' => $emision->codigo(),
-    'version' => sprintf('%02d', (int) $version->numero),
+    'version' => $numeroVersion,
     'proceso' => backend\models\CorrelativoDocumento::NOMBRE_PROCESO,
     'fecha' => $fecha->format('d/m/Y'),
     'institucion' => $lineasCabecera[0] ?? null,
@@ -195,17 +191,16 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
 
 <div class="dato" style="margin-top: 6px;">Fecha de emisión: <?= Html::encode($fechaLarga) ?> · Formulario válido de <?= (int) $emision->vigenciaDias ?> días desde su emisión.</div>
 
-<?php // "Elaborado por" y firma: al fondo de la última página (PresupuestoPdfGenerator). ?>
+<?php // Control de elaboración: al fondo de la última página (PresupuestoPdfGenerator). ?>
 <?= backend\components\PresupuestoPdfGenerator::MARCA_AL_PIE ?>
 
-<table class="firma">
-    <tr>
-        <?php // En blanco, para escribir el nombre a mano. $emision->elaboradoPor (el
-        // usuario del sistema que emitio) solo se ve en el registro de formularios NET. ?>
-        <td style="width: 60%;">Formulario elaborado por: ______________________________</td>
-        <td>Firma: ______________________________</td>
-    </tr>
-</table>
+<?php // Copia de las firmas al emitir: las emitidas antes las tienen vacías y salen en blanco. ?>
+<?= $this->render('//pdf/_control-elaboracion', [
+    'version' => $numeroVersion,
+    'elaborado' => $emision->firma(1),
+    'aprobado' => $emision->firma(2),
+    'fechaAprobacion' => $fecha->format('d/m/Y'),
+]) ?>
 
 </body>
 </html>

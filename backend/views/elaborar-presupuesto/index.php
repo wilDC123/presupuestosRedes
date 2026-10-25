@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\models\PresupuestoComplemento;
 use backend\models\PresupuestoDetalle;
 use backend\services\ElaborarPresupuestoService;
 use yii\helpers\Html;
@@ -28,12 +29,18 @@ use yii\web\JqueryAsset;
  * @var string[] $estadosConBoton Ver PresupuestoService::estadosConBoton()
  * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Especificaciones")
  * @var string[] $erroresEnvio mensajes si "Enviar a revision" fallo (el panel se abre)
+ * @var array<string, array{filas: array, errores: string[]}> $complementosEnviados por tipo, lo escrito en una
+ *      seccion sin precio que no se pudo guardar (ver _complementos.php)
+ * @var array<int, string> $opcionesSubcatalogo Ver SubcatalogoItemService::opciones()
+ * @var array<int, string> $unidadesSubcatalogo Ver SubcatalogoItemService::abreviaturasDeUnidad()
+ * @var array<string, string> $unidades Ver UnidadMedidaService::opcionesPorAbreviatura()
  */
 
 $borrador = $presupuesto->esBorrador();
 
 if ($borrador) {
     $this->registerJsFile('@web/js/elaborar-presupuesto.js', ['depends' => [JqueryAsset::class]]);
+    $this->registerJsFile('@web/js/complementos-presupuesto.js', ['depends' => [JqueryAsset::class]]);
 }
 
 $this->title = 'Presupuesto';
@@ -261,7 +268,7 @@ $columnas = 5 + count($proveedores);
                     <tr class="cat-row"><td colspan="<?= $columnas ?>">Mano de obra</td></tr>
                     <tr>
                         <td><div class="rd-celda-titulo"><?= Html::encode($presupuesto->manoDeObra) ?></div></td>
-                        <td class="rd-num mono"><?= $formato->asDecimal(1, 2) ?></td>
+                        <td class="rd-num mono"><?= $formato->asDecimal($presupuesto::CANTIDAD_MANO_DE_OBRA, 2) ?></td>
                         <td><?= Html::encode($presupuesto::UNIDAD_MANO_DE_OBRA) ?></td>
                         <td colspan="<?= count($proveedores) + 1 ?>"><span class="rd-celda-sub">Personal de la DTIC: no se cotiza</span></td>
                         <td class="rd-num mono"><?= $formato->asDecimal(0, 2) ?></td>
@@ -293,9 +300,21 @@ $columnas = 5 + count($proveedores);
                 ]) ?>
                 <?= Html::submitButton('Guardar', ['class' => 'btn btn-outline']) ?>
             <?= Html::endForm() ?>
-            <div class="rd-nota mt-2">Sale en el PDF como la última fila, antes del total: unidad "<?= Html::encode($presupuesto::UNIDAD_MANO_DE_OBRA) ?>", cantidad 1 y precios en 0.00. No se cotiza ni suma al total.</div>
+            <div class="rd-nota mt-2">Sale en el PDF como la última fila, antes del total: unidad "<?= Html::encode($presupuesto::UNIDAD_MANO_DE_OBRA) ?>", cantidad y precios en 0.00. No se cotiza ni suma al total. Si este proyecto no lleva mano de obra de la DTIC, desmarque la casilla y guarde.</div>
         </div>
     <?php endif; ?>
+
+    <?php foreach ([PresupuestoComplemento::TIPO_MATERIAL, PresupuestoComplemento::TIPO_TRABAJO] as $tipoComplemento): ?>
+        <?= $this->render('_complementos', [
+            'proyecto' => $proyecto,
+            'presupuesto' => $presupuesto,
+            'tipo' => $tipoComplemento,
+            'enviado' => $complementosEnviados[$tipoComplemento] ?? null,
+            'opcionesSubcatalogo' => $opcionesSubcatalogo,
+            'unidadesSubcatalogo' => $unidadesSubcatalogo,
+            'unidades' => $unidades,
+        ]) ?>
+    <?php endforeach; ?>
 
     <div class="rd-cols mt-3">
         <div class="card rd-col-2 rd-card-pad" id="elaborar-partidas">

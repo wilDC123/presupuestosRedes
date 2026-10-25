@@ -10,11 +10,12 @@ use yii\db\ActiveRecord;
 
 /**
  * Modelo para la tabla "redes.EspecificacionEmision": el documento con codigo
- * NET que se firma, se sella y se entrega al proveedor.
+ * RD-PI-ET que se firma, se sella y se entrega al proveedor.
  *
  * REGLA DE NEGOCIO: una emision NUNCA cambia. Un error (facultad equivocada,
- * cantidad, especificacion vencida) se corrige emitiendo otra con NET nuevo,
- * y la anterior queda "reemplazada". Por eso guarda COPIAS de todo lo que
+ * cantidad, especificacion vencida) se corrige REEMITIENDO: otra fila con el
+ * MISMO codigo y la version siguiente (RD-PI-ET-015 v01 -> v02, lineamiento
+ * RD-GD-LI-001, 4.2), y la anterior queda "reemplazada". Por eso guarda COPIAS de todo lo que
  * imprime (titulo, cantidad, dependencia, textos fijos...), igual que el
  * precio congelado del presupuesto. El contenido tecnico no se copia: apunta a
  * una version que ya no se puede modificar.
@@ -24,11 +25,14 @@ use yii\db\ActiveRecord;
  *
  * @property int $id
  * @property string $serie SERIE_ET (las de ahora: RD-PI-ET-001) o SERIE_NET (las de antes del 2026-10-22: NET:880/26).
- * @property int $numeroNet Correlativo de su serie; no se reinicia por año.
+ * @property int $numeroNet Correlativo de su serie; no se reinicia por año. Las versiones de un
+ *           mismo documento repiten el numero.
+ * @property int $versionDocumento Version del DOCUMENTO (1, 2...): sube al reemitir. No confundir
+ *           con getVersion(), la version de la FICHA de la libreria que imprime.
  * @property string|null $codigoAnterior El NET que tenia antes de pasar a RD-PI-ET (migracion
  *           m261022_144239): el documento ya entregado lo lleva impreso. NULL en las emitidas como ET.
  * @property int $anio Dos digitos del año de emision (26). Solo forma parte del codigo en la serie NET.
- * @property int $idVersion
+ * @property int $idVersion Version de la ficha (EspecificacionVersion).
  * @property int $idProyecto
  * @property int|null $idProyectoItem NULL si el item se borro despues de emitir.
  * @property string $titulo
@@ -43,6 +47,12 @@ use yii\db\ActiveRecord;
  * @property string|null $textoInstrucciones
  * @property string|null $textoNotaFinal
  * @property string|null $garantia La que se imprimio: la de la version o, si no tenia, la de la configuracion.
+ * @property string|null $firma1Prefijo Control de elaboracion (copia de la configuracion al emitir):
+ * @property string|null $firma1Nombre  firma 1 = elaborado por, firma 2 = aprobado por. Sin nombre
+ * @property string|null $firma1Cargo   (las emitidas antes del 2026-10-22) sale en blanco.
+ * @property string|null $firma2Prefijo
+ * @property string|null $firma2Nombre
+ * @property string|null $firma2Cargo
  * @property string $fechaEmision aaaa-mm-dd
  * @property int $vigenciaDias
  * @property string $estado Ver las constantes ESTADO_*.
@@ -57,6 +67,8 @@ use yii\db\ActiveRecord;
  */
 class EspecificacionEmision extends ActiveRecord
 {
+    use FirmasDeControl;
+
     public const ESTADO_VIGENTE = 'vigente';
     public const ESTADO_REEMPLAZADA = 'reemplazada';
     public const ESTADO_ANULADA = 'anulada';
@@ -77,9 +89,11 @@ class EspecificacionEmision extends ActiveRecord
 
     public function rules(): array
     {
-        return [
+        return array_merge([
             [['numeroNet', 'anio', 'idVersion', 'idProyecto', 'titulo', 'cantidad', 'fechaEmision', 'vigenciaDias'], 'required'],
             [['numeroNet', 'anio', 'idVersion', 'idProyecto', 'idProyectoItem', 'validezOfertaDias', 'tiempoEntregaDias', 'vigenciaDias', 'idReemplazadaPor'], 'integer'],
+            [['versionDocumento'], 'default', 'value' => 1],
+            [['versionDocumento'], 'integer', 'min' => 1],
             [['cantidad'], 'number'],
             [['fechaEmision'], 'date', 'format' => 'php:Y-m-d'],
             [['titulo', 'lugarEntrega', 'motivo'], 'string', 'max' => 300],
@@ -93,7 +107,7 @@ class EspecificacionEmision extends ActiveRecord
             [['serie'], 'in', 'range' => [self::SERIE_ET, self::SERIE_NET]],
             [['estado'], 'default', 'value' => self::ESTADO_VIGENTE],
             [['estado'], 'in', 'range' => [self::ESTADO_VIGENTE, self::ESTADO_REEMPLAZADA, self::ESTADO_ANULADA]],
-        ];
+        ], $this->reglasFirmas());
     }
 
     public function attributeLabels(): array
@@ -102,9 +116,10 @@ class EspecificacionEmision extends ActiveRecord
             'id' => 'ID',
             'serie' => 'Serie',
             'numeroNet' => 'N.º',
+            'versionDocumento' => 'Versión del documento',
             'codigoAnterior' => 'Código anterior',
             'anio' => 'Año',
-            'idVersion' => 'Versión',
+            'idVersion' => 'Versión de la ficha',
             'idProyecto' => 'Proyecto',
             'idProyectoItem' => 'Ítem',
             'titulo' => 'Título',
@@ -121,7 +136,7 @@ class EspecificacionEmision extends ActiveRecord
             'idReemplazadaPor' => 'Reemplazada por',
             'motivo' => 'Motivo',
             'garantia' => 'Garantía',
-        ];
+        ] + self::etiquetasFirmas();
     }
 
     public function getVersion(): ActiveQuery
@@ -147,7 +162,9 @@ class EspecificacionEmision extends ActiveRecord
     /**
      * Como se imprime y se cita: "RD-PI-ET-001" (ver CorrelativoDocumento::codigo()) o,
      * si es de las de antes, "NET:880/26" (tres digitos como minimo, igual
-     * que el banco de DTIC: "NET:013/23").
+     * que el banco de DTIC: "NET:013/23"). Sin la version: es el mismo en
+     * todas las versiones del documento (la carta, la solicitud y el
+     * presupuesto citan la vigente). Para distinguir una version, codigoConVersion().
      */
     public function codigo(): string
     {
@@ -156,6 +173,24 @@ class EspecificacionEmision extends ActiveRecord
         }
 
         return CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_ESPECIFICACION, (int) $this->numeroNet);
+    }
+
+    /**
+     * "02": como sale en la casilla "Versión" de la cabecera y en el control
+     * de elaboracion del formulario.
+     */
+    public function versionTexto(): string
+    {
+        return sprintf('%02d', (int) ($this->versionDocumento ?? 1));
+    }
+
+    /**
+     * "RD-PI-ET-015 v02": para las pantallas y el registro, donde se ven
+     * juntas las versiones de un mismo documento.
+     */
+    public function codigoConVersion(): string
+    {
+        return $this->codigo() . ' v' . $this->versionTexto();
     }
 
     public function estadoLabel(): string

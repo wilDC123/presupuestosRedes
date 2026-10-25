@@ -105,6 +105,24 @@ class UnidadMedidaService
     /**
      * @return UnidadMedida[]
      */
+    /**
+     * Abreviaturas de las unidades activas como [abreviatura => "Metro (m)"],
+     * para las pantallas que guardan la unidad como texto (materiales que
+     * aporta la DTIC en el paso Presupuesto).
+     *
+     * @return array<string, string>
+     */
+    public function opcionesPorAbreviatura(): array
+    {
+        $opciones = [];
+
+        foreach ($this->activasOConId(null) as $unidad) {
+            $opciones[$unidad->abreviatura] = $unidad->etiqueta();
+        }
+
+        return $opciones;
+    }
+
     private function activasOConId(?int $id): array
     {
         $query = UnidadMedida::find()->andWhere(['activo' => true]);

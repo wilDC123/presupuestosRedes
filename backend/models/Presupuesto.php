@@ -33,6 +33,7 @@ use yii\db\ActiveRecord;
  * @property-read Proyecto $proyecto
  * @property-read PresupuestoDetalle[] $presupuestoDetalles
  * @property-read CartaPresupuesto|null $carta
+ * @property-read PresupuestoComplemento[] $complementos
  */
 class Presupuesto extends ActiveRecord
 {
@@ -53,10 +54,13 @@ class Presupuesto extends ActiveRecord
      * Mano de obra a cargo del personal de la DTIC: NO es un item del
      * subcatalogo (no se compra: no tiene partida, no se cotiza y no suma al
      * total). Se guarda como texto en el presupuesto y el PDF la muestra como
-     * la ultima fila de la tabla, con esta unidad, cantidad 1 y precios 0.00.
+     * la ultima fila de la tabla, con esta unidad y cantidad y precios en 0.00
+     * (cantidad 0 desde el 2026-10-23, pedido del encargado). Un presupuesto
+     * nuevo ya la lleva puesta; el encargado la quita si no corresponde.
      */
     public const MANO_DE_OBRA_DTIC = 'A ser implementado por personal de la D.T.I.C.';
     public const UNIDAD_MANO_DE_OBRA = 'Servicio';
+    public const CANTIDAD_MANO_DE_OBRA = 0;
 
     /**
      * Version del documento para la cabecera y el control de elaboracion
@@ -172,6 +176,16 @@ class Presupuesto extends ActiveRecord
     public function getPresupuestoDetalles(): ActiveQuery
     {
         return $this->hasMany(PresupuestoDetalle::class, ['idPresupuesto' => 'id']);
+    }
+
+    /**
+     * Materiales que aporta la DTIC y trabajos complementarios (sin precio),
+     * en el orden en que se escribieron. Ver PresupuestoComplemento.
+     */
+    public function getComplementos(): ActiveQuery
+    {
+        return $this->hasMany(PresupuestoComplemento::class, ['idPresupuesto' => 'id'])
+            ->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
     }
 
     /**

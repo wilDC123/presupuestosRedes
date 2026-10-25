@@ -182,6 +182,11 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                             <?php if (!empty($solicitud->nota)): ?>
                                 <div class="rd-celda-sub"><?= Html::encode($solicitud->nota) ?></div>
                             <?php endif; ?>
+                            <div class="rd-celda-sub">
+                                <?= $solicitud->fechaEnvio !== null
+                                    ? 'Fecha de envío: <span class="mono">' . Html::encode($solicitud->fechaEnvioFormateada()) . '</span>'
+                                    : 'Sin fecha de envío: el documento sale con la fecha del día en que se imprime.' ?>
+                            </div>
                         </div>
                         <div class="rd-acciones">
                             <span class="kicker"><?= count($solicitud->items) ?> ítems</span>
@@ -329,7 +334,7 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                     <?php if ($editable): ?>
                         <?php // <details>: el formulario para renombrar queda plegado hasta que se pulsa. ?>
                         <details class="rd-card-pad">
-                            <summary class="rd-nota">Cambiar nombre o nota</summary>
+                            <summary class="rd-nota">Cambiar nombre, nota o fecha de envío</summary>
                             <?= Html::beginForm(['actualizar', 'id' => $solicitud->id], 'post', ['class' => 'mt-2']) ?>
                                 <div class="form-group">
                                     <label>Nombre de la solicitud (rubro)</label>
@@ -338,6 +343,21 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                                 <div class="form-group">
                                     <label>Nota para el proveedor (opcional, sale en el documento)</label>
                                     <?= Html::textarea('SolicitudCotizacion[nota]', (string) $solicitud->nota, ['class' => 'form-control', 'rows' => 2, 'maxlength' => 500]) ?>
+                                </div>
+                                <div class="form-group">
+                                    <label>Fecha de envío (opcional, sale en el documento)</label>
+                                    <?php // type="date": calendario del navegador; envia aaaa-mm-dd. Vacia = la fecha del dia en que se imprime. ?>
+                                    <?= Html::input('date', 'SolicitudCotizacion[fechaEnvio]', (string) $solicitud->fechaEnvio, [
+                                        'class' => 'form-control',
+                                        'style' => 'max-width: 12rem;',
+                                        // Con cotizaciones el documento ya se envio: la fecha queda fija.
+                                        'disabled' => $conCotizaciones,
+                                    ]) ?>
+                                    <div class="rd-nota">
+                                        <?= $conCotizaciones
+                                            ? 'Ya tiene cotizaciones registradas: la fecha de envío no se cambia.'
+                                            : 'Déjela vacía para que el documento salga con la fecha del día en que se imprime.' ?>
+                                    </div>
                                 </div>
                                 <?= Html::submitButton('Guardar', ['class' => 'btn btn-outline btn-sm']) ?>
                             <?= Html::endForm() ?>

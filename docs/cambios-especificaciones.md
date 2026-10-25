@@ -26,8 +26,10 @@ PDF lo genera el sistema con el formato institucional.
 ## Reglas de negocio (confirmadas con el Ing. de DTIC)
 
 - **Una emisión no cambia nunca.** Es un documento oficial firmado y sellado. Un error (por ejemplo,
-  la facultad equivocada) se corrige **reemitiendo**: se emite otro formulario con NET nuevo y el
-  anterior queda "reemplazado por" el nuevo. Nada se borra.
+  la facultad equivocada) se corrige **reemitiendo**: se emite la versión siguiente del mismo
+  documento (mismo código, versión + 1; desde el 2026-10-24, ver
+  `docs/cambios-codificacion-lineamiento.md`; antes era un NET nuevo) y la anterior queda
+  "reemplazada por" la nueva. Nada se borra.
 - **Los cambios técnicos entran solo en emisiones nuevas.** Una versión de la ficha que ya se usó en
   una emisión no se modifica: editarla crea la versión siguiente. Las emisiones nuevas usan siempre
   la última versión; las ya emitidas conservan la suya.
@@ -81,8 +83,9 @@ PDF lo genera el sistema con el formato institucional.
 1. El encargado elige "Reemitir" en un ítem y escribe el motivo (y, si quiere, otro lugar o plazo de
    entrega).
 2. El sistema marca la emisión anterior como "reemplazada".
-3. El sistema emite una nueva con NET nuevo, la última versión de la ficha y la cantidad actual de
-   la lista, y enlaza la anterior con la nueva ("reemplazada por").
+3. El sistema emite la versión siguiente con el MISMO código (desde el 2026-10-24; antes, NET nuevo),
+   la última versión de la ficha y la cantidad actual de la lista, y enlaza la anterior con la nueva
+   ("reemplazada por").
 
 ### Secuencia "Elaborar presupuesto"
 

@@ -94,14 +94,22 @@ $firmasArriba = array_filter([$firmas[1] ?? null, $firmas[2] ?? null]);
         border-collapse: collapse;
         margin-top: 4mm;
     }
-    /* El padding de arriba es el espacio para firmar y sellar (mPDF no
-       respeta el alto de un div dentro de una celda). */
+    /* Nombres en una fila y cargos en otra: asi los nombres quedan a la
+       misma altura aunque un cargo ocupe mas renglones que el otro. El
+       padding de arriba de los nombres es el espacio para firmar y sellar
+       (mPDF no respeta el alto de un div dentro de una celda). */
     table.firmas td {
         width: 50%;
         text-align: center;
-        vertical-align: bottom;
         font-size: 10pt;
-        padding: 20mm 2mm 0 2mm;
+        padding: 0 2mm;
+    }
+    table.firmas td.nombre {
+        vertical-align: bottom;
+        padding-top: 20mm;
+    }
+    table.firmas td.cargo {
+        vertical-align: top;
     }
     .espacio-vobo {
         height: 24mm;
@@ -156,10 +164,12 @@ $firmasArriba = array_filter([$firmas[1] ?? null, $firmas[2] ?? null]);
     <table class="firmas">
         <tr>
             <?php foreach ($firmasArriba as $firma): ?>
-                <td>
-                    <?= Html::encode(trim($firma['prefijo'] . ' ' . $firma['nombre'])) ?><br>
-                    <span class="cargo"><?= Html::encode($firma['cargo']) ?></span>
-                </td>
+                <td class="nombre"><?= Html::encode(trim($firma['prefijo'] . ' ' . $firma['nombre'])) ?></td>
+            <?php endforeach; ?>
+        </tr>
+        <tr>
+            <?php foreach ($firmasArriba as $firma): ?>
+                <td class="cargo"><?= Html::encode($firma['cargo']) ?></td>
             <?php endforeach; ?>
         </tr>
     </table>

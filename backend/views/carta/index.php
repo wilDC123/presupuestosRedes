@@ -70,13 +70,8 @@ $marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los
         <div class="rd-card-pad">
             <div class="row g-3">
                 <div class="col-md-3">
-                    <?= $form->field($carta, 'fecha')->textInput([
-                        'value' => $carta->fechaFormateada(),
-                        'placeholder' => 'dd/mm/aaaa',
-                        'maxlength' => 10,
-                        'pattern' => '\d{1,2}/\d{1,2}/\d{4}',
-                        'title' => 'Formato dd/mm/aaaa',
-                    ]) ?>
+                    <?php // type="date": calendario del navegador; envia aaaa-mm-dd, que el modelo guarda tal cual. ?>
+                    <?= $form->field($carta, 'fecha')->input('date') ?>
                 </div>
                 <div class="col-md-3">
                     <?= $form->field($carta, 'tratamiento')->dropDownList(array_combine(CartaPresupuesto::TRATAMIENTOS, CartaPresupuesto::TRATAMIENTOS), ['id' => 'carta-tratamiento'])

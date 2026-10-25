@@ -31,7 +31,9 @@ use Yii;
  *  - una solicitud con cotizaciones registradas no se borra, y sus items
  *    no se mueven ni se quitan (ni se le agregan otros),
  *  - la marca y modelo de referencia de cada item se edita mientras la
- *    solicitud no tenga cotizaciones (ya se le pidio eso al proveedor).
+ *    solicitud no tenga cotizaciones (ya se le pidio eso al proveedor),
+ *  - la fecha de envio (la del PDF; vacia = la del dia en que se imprime)
+ *    tambien: con cotizaciones, el documento ya se envio con esa fecha.
  */
 class SolicitudCotizacionService
 {
@@ -214,8 +216,8 @@ class SolicitudCotizacionService
     }
 
     /**
-     * Cambia el nombre (rubro) y la nota. false si no es editable o el
-     * nombre no es valido (el error queda en $solicitud->errors).
+     * Cambia el nombre (rubro), la nota y la fecha de envio. false si no es
+     * editable o algo no es valido (el error queda en $solicitud->errors).
      */
     public function actualizar(SolicitudCotizacion $solicitud, array $datosFormulario): bool
     {
@@ -225,7 +227,20 @@ class SolicitudCotizacionService
             return false;
         }
 
-        return $solicitud->load($datosFormulario) && $solicitud->save();
+        if (!$solicitud->load($datosFormulario) || !$solicitud->validate()) {
+            return false;
+        }
+
+        // Con cotizaciones el campo llega deshabilitado (no viaja en el POST);
+        // esto frena a quien lo mande igual. isAttributeChanged() compara con
+        // el valor leido de la base, no con el que quedo en memoria.
+        if ($solicitud->isAttributeChanged('fechaEnvio') && $this->tieneCotizaciones($solicitud)) {
+            $solicitud->addError('fechaEnvio', $solicitud->codigoCorto() . ' ya tiene cotizaciones registradas: la fecha de envío ya no se cambia.');
+
+            return false;
+        }
+
+        return $solicitud->save(false);
     }
 
     /**

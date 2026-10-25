@@ -165,7 +165,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
     }
 
-    public function testReemitirReemplazaConCodigoNuevoYLaCantidadDeLaLista(): void
+    public function testReemitirConservaElCodigoYSubeLaVersion(): void
     {
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
         $this->guardarLista([$this->fila(null, 5, $ficha)]);
@@ -185,6 +185,14 @@ class EspecificacionEmisionTest extends Unit
 
         $this->assertNull($resultado['error']);
         $nueva = $resultado['emision'];
+        // Lineamiento RD-GD-LI-001 (4.2): el mismo documento, version 02; no
+        // se gasta un numero del correlativo.
+        $siguiente = $this->siguienteEt();
+        $this->assertSame($anterior->codigo(), $nueva->codigo());
+        $this->assertSame(1, (int) $anterior->versionDocumento);
+        $this->assertSame(2, (int) $nueva->versionDocumento);
+        $this->assertSame($anterior->codigo() . ' v02', $nueva->codigoConVersion());
+        $this->assertSame($siguiente, $this->siguienteEt());
         $this->assertSame(7.0, (float) $nueva->cantidad);
         $this->assertSame('Suministros USFX', $nueva->lugarEntrega);
         $this->assertSame(15, (int) $nueva->tiempoEntregaDias);
@@ -193,6 +201,51 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame((int) $nueva->id, (int) $anterior->idReemplazadaPor);
         $this->assertSame('cambió la cantidad', $anterior->motivo);
         $this->assertSame([], $this->emisiones->estadoPorItem([$this->unicoItem()])[$item->id]['avisos']);
+
+        // Una tercera vez: v03, y la v02 queda reemplazada por ella.
+        $tercera = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'venció'], 'encargado')['emision'];
+        $this->assertSame($anterior->codigo(), $tercera->codigo());
+        $this->assertSame(3, (int) $tercera->versionDocumento);
+        $nueva->refresh();
+        $this->assertSame((int) $tercera->id, (int) $nueva->idReemplazadaPor);
+        $this->assertSame($siguiente, $this->siguienteEt());
+    }
+
+    public function testCambiarLaFichaDespuesDeReemitirDaOtroCodigo(): void
+    {
+        // Otra ficha es otro documento: codigo nuevo y v01.
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $otra = $this->ficha('Cable test otra', [['nombre' => 'Calibre', 'valor' => '24 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $reemitida = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'prueba'], 'encargado')['emision'];
+
+        $this->guardarLista([$this->fila($this->unicoItem(), 5, $otra)]);
+
+        $nueva = $this->unicoItem()->emisionVigente;
+        $this->assertNotSame($reemitida->codigo(), $nueva->codigo());
+        $this->assertSame(1, (int) $nueva->versionDocumento);
+    }
+
+    public function testElFormularioReemitidoImprimeLaVersionDelDocumento(): void
+    {
+        // La cabecera y el control de elaboracion llevan la version del
+        // documento, no la de la ficha (que aqui es v2).
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        (new EspecificacionService())->guardarVersion($ficha, [], [['nombre' => 'Calibre', 'valor' => '24 AWG']]);
+        $this->guardarLista([$this->fila(null, 5, $ficha)]);
+        $item = $this->unicoItem();
+        $this->emisiones->reemitir($item, ['motivo' => 'prueba'], 'encargado');
+        $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'prueba'], 'encargado');
+        $emision = $this->emisiones->obtener((int) $this->unicoItem()->emisionVigente->id);
+
+        $html = (new \yii\web\View())->renderFile(
+            \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
+            ['emision' => $emision]
+        );
+
+        $this->assertStringContainsString('<strong>Versión:</strong> 03', $html);
+        $this->assertStringContainsString('Versión: 03', $html);
+        $this->assertSame($emision->codigo() . '_v03.pdf', $this->emisiones->generarPdf($emision, $html)['nombreArchivo']);
     }
 
     public function testAvisaVencimientoYVersionNueva(): void
@@ -207,6 +260,32 @@ class EspecificacionEmisionTest extends Unit
 
         $this->assertStringContainsString('versión más nueva de la ficha (v2)', $avisos);
         $this->assertStringContainsString('venció', $avisos);
+    }
+
+    public function testFormularioLlevaElControlDeElaboracionCopiadoAlEmitir(): void
+    {
+        ConfiguracionEspecificacion::updateAll([
+            'firma1Prefijo' => null, 'firma1Nombre' => 'Ing. Quien Elabora', 'firma1Cargo' => 'PROYECTOS DE REDES',
+            'firma2Prefijo' => 'V°B°', 'firma2Nombre' => 'Ing. Quien Aprueba', 'firma2Cargo' => 'RESPONSABLE DE REDES',
+        ]);
+        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        $this->guardarLista([$this->fila(null, 2, $ficha)]);
+        $emision = $this->emisiones->obtener((int) $this->unicoItem()->emisionVigente->id);
+
+        // Cambiar la configuracion despues de emitir no cambia el formulario.
+        ConfiguracionEspecificacion::updateAll(['firma1Nombre' => 'Ing. Otra Persona']);
+
+        $html = (new \yii\web\View())->renderFile(
+            \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
+            ['emision' => $emision]
+        );
+
+        $this->assertStringContainsString('Versión: 01', $html);
+        $this->assertStringContainsString('Ing. Quien Elabora', $html);
+        $this->assertStringContainsString('V°B° Ing. Quien Aprueba', $html);
+        $this->assertStringContainsString('RESPONSABLE DE REDES', $html);
+        $this->assertStringContainsString('Fecha de aprobación: ' .(new DateTimeImmutable($emision->fechaEmision))->format('d/m/Y'), $html);
+        $this->assertStringNotContainsString('Ing. Otra Persona', $html);
     }
 
     public function testFormularioPdfImprimeLasCopiasCongeladas(): void
@@ -236,7 +315,7 @@ class EspecificacionEmisionTest extends Unit
 
         $pdf = $this->emisiones->generarPdf($emision, $html);
         $this->assertStringStartsWith('%PDF', $pdf['contenido']);
-        $this->assertSame(str_replace([':', '/'], '_', $emision->codigo()) . '.pdf', $pdf['nombreArchivo']);
+        $this->assertSame(str_replace([':', '/'], '_', $emision->codigo()) . '_v01.pdf', $pdf['nombreArchivo']);
     }
 
     public function testRegistroFiltraPorEstadoYBuscaPorCodigo(): void
@@ -246,34 +325,39 @@ class EspecificacionEmisionTest extends Unit
         $item = $this->unicoItem();
         $primera = $item->emisionVigente;
         $segunda = $this->emisiones->reemitir($item, ['motivo' => 'prueba'], 'encargado')['emision'];
-        $netPrimera = (int) $primera->numeroNet;
-        $netSegunda = (int) $segunda->numeroNet;
+        // Las dos versiones tienen el mismo numero: se distinguen por id.
+        $numero = (int) $primera->numeroNet;
+        $idPrimera = (int) $primera->id;
+        $idSegunda = (int) $segunda->id;
         $deEsteProyecto = fn (array $filtros) => array_values(array_filter(
-            array_map(static fn (EspecificacionEmision $e) => (int) $e->numeroNet, $this->emisiones->registro($filtros, false)->getModels()),
-            static fn (int $n) => in_array($n, [$netPrimera, $netSegunda], true)
+            array_map(static fn (EspecificacionEmision $e) => (int) $e->id, $this->emisiones->registro($filtros, false)->getModels()),
+            static fn (int $id) => in_array($id, [$idPrimera, $idSegunda], true)
         ));
 
-        $this->assertSame([$netSegunda, $netPrimera], $deEsteProyecto([]));
-        $this->assertSame([$netSegunda], $deEsteProyecto(['estado' => 'vigente']));
-        $this->assertSame([$netPrimera], $deEsteProyecto(['estado' => 'reemplazada']));
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto([]));
+        $this->assertSame([$idSegunda], $deEsteProyecto(['estado' => 'vigente']));
+        $this->assertSame([$idPrimera], $deEsteProyecto(['estado' => 'reemplazada']));
         $this->assertSame([], $deEsteProyecto(['estado' => 'vencida']));
-        $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => (string) $netPrimera]));
-        $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d', $netPrimera)]));
-        $this->assertSame([$netPrimera], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d', $netPrimera)]));
+        // El codigo trae todas sus versiones; con la version, solo esa.
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => (string) $numero]));
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d', $numero)]));
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d', $numero)]));
+        $this->assertSame([$idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d v01', $numero)]));
+        $this->assertSame([$idSegunda], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d V02', $numero)]));
         // Es de la serie ET: buscarla como NET no la encuentra.
-        $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $netPrimera, date('y'))]));
+        $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $numero, date('y'))]));
         // El titulo de la emision es el nombre DTIC del item.
-        $this->assertSame([$netSegunda, $netPrimera], $deEsteProyecto(['buscar' => $this->itemSubcatalogo->descripcion, 'dependencia' => 'Facultad de Tecnología']));
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => $this->itemSubcatalogo->descripcion, 'dependencia' => 'Facultad de Tecnología']));
 
         // Pasada la vigencia, la vigente aparece como vencida.
         EspecificacionEmision::updateAll(['fechaEmision' => '2020-01-01'], ['id' => $segunda->id]);
-        $this->assertSame([$netSegunda], $deEsteProyecto(['estado' => 'vencida']));
+        $this->assertSame([$idSegunda], $deEsteProyecto(['estado' => 'vencida']));
         $this->assertSame([], $deEsteProyecto(['estado' => 'vigente']));
 
-        $csv = $this->emisiones->exportarCsv(['buscar' => (string) $netPrimera]);
-        $this->assertStringStartsWith("\xEF\xBB\xBF" . 'Código;"Código anterior";"Fecha de emisión"', $csv);
-        $this->assertStringContainsString(sprintf('RD-PI-ET-%03d', $netPrimera), $csv);
-        $this->assertStringContainsString('Reemplazada', $csv);
+        $csv = $this->emisiones->exportarCsv(['buscar' => sprintf('RD-PI-ET-%03d v01', $numero)]);
+        $this->assertStringStartsWith("\xEF\xBB\xBF" . 'Código;Versión;"Código anterior";"Fecha de emisión"', $csv);
+        $this->assertStringContainsString(sprintf('RD-PI-ET-%03d;01;', $numero), $csv);
+        $this->assertStringContainsString(sprintf('Reemplazada;prueba;"RD-PI-ET-%03d v02"', $numero), $csv);
     }
 
     public function testUnaPasadaDeNetAEtSeBuscaPorSuCodigoAnterior(): void

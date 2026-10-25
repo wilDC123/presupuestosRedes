@@ -24,9 +24,17 @@ use yii\db\ActiveRecord;
  * @property int $vigenciaDias
  * @property int $validezOfertaDias
  * @property int $tiempoEntregaDias
+ * @property string|null $firma1Prefijo Control de elaboracion: firma 1 = elaborado por,
+ * @property string|null $firma1Nombre  firma 2 = aprobado por (ver FirmasDeControl).
+ * @property string|null $firma1Cargo
+ * @property string|null $firma2Prefijo
+ * @property string|null $firma2Nombre
+ * @property string|null $firma2Cargo
  */
 class ConfiguracionEspecificacion extends ActiveRecord
 {
+    use FirmasDeControl;
+
     public static function tableName(): string
     {
         return 'redes.ConfiguracionEspecificacion';
@@ -49,14 +57,14 @@ class ConfiguracionEspecificacion extends ActiveRecord
 
     public function rules(): array
     {
-        return [
+        return array_merge([
             [['textoCabecera', 'textoInstrucciones', 'garantiaPorDefecto', 'textoNotaFinal'], 'trim'],
             [['textoCabecera', 'textoInstrucciones', 'garantiaPorDefecto', 'textoNotaFinal'], 'default', 'value' => null],
             [['vigenciaDias', 'validezOfertaDias', 'tiempoEntregaDias'], 'required'],
             [['vigenciaDias', 'validezOfertaDias', 'tiempoEntregaDias'], 'integer', 'min' => 1],
             [['textoCabecera', 'garantiaPorDefecto', 'textoNotaFinal'], 'string', 'max' => 500],
             [['textoInstrucciones'], 'string', 'max' => 1000],
-        ];
+        ], $this->reglasFirmas());
     }
 
     public function attributeLabels(): array
@@ -69,6 +77,6 @@ class ConfiguracionEspecificacion extends ActiveRecord
             'vigenciaDias' => 'Vigencia del formulario (días)',
             'validezOfertaDias' => 'Validez de la oferta por defecto (días)',
             'tiempoEntregaDias' => 'Tiempo de entrega por defecto (días)',
-        ];
+        ] + self::etiquetasFirmas();
     }
 }

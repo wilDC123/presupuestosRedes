@@ -6,6 +6,7 @@ namespace backend\services;
 
 use backend\models\CatalogoSigma;
 use backend\models\SubcatalogoItem;
+use backend\models\UnidadMedida;
 use yii\data\ActiveDataProvider;
 
 /**
@@ -137,6 +138,23 @@ class SubcatalogoItemService
         return $query
             ->select(['descripcion', 'id'])
             ->orderBy(['descripcion' => SORT_ASC])
+            ->indexBy('id')
+            ->column();
+    }
+
+    /**
+     * [id => abreviatura de su unidad] de los items que tienen unidad, para
+     * que la pantalla copie la unidad al elegir un item (materiales que
+     * aporta la DTIC en el paso Presupuesto). Una sola consulta.
+     *
+     * @return array<int, string>
+     */
+    public function abreviaturasDeUnidad(): array
+    {
+        return SubcatalogoItem::find()
+            ->alias('s')
+            ->innerJoin(['u' => UnidadMedida::tableName()], 'u.id = s.idUnidadMedida')
+            ->select(['u.abreviatura', 's.id'])
             ->indexBy('id')
             ->column();
     }

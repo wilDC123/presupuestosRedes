@@ -195,8 +195,8 @@ class ListaItemsController extends Controller
     }
 
     /**
-     * Emite de nuevo el formulario de especificación de un item (codigo nuevo, ultima version
-     * de la ficha, cantidad actual de la lista). Funciona con la lista en
+     * Emite de nuevo el formulario de especificación de un item (mismo codigo con la version
+     * siguiente, ultima version de la ficha, cantidad actual de la lista). Funciona con la lista en
      * edicion o en cotizacion: no cambia la lista.
      *
      * @param int $id id del proyecto
@@ -221,7 +221,7 @@ class ListaItemsController extends Controller
         if ($resultado['error'] !== null) {
             Yii::$app->session->setFlash('error', $resultado['error']);
         } else {
-            Yii::$app->session->setFlash('success', 'Se emitió el ' . $resultado['emision']->codigo() . ' para "' . $resultado['emision']->titulo . '".');
+            Yii::$app->session->setFlash('success', 'Se emitió el ' . $resultado['emision']->codigoConVersion() . ' para "' . $resultado['emision']->titulo . '".');
         }
 
         return $this->redirect(['index', 'id' => $proyecto->id]);

@@ -23,11 +23,8 @@ use yii\widgets\ActiveForm;
 
     <?= $form->field($model, 'numeroReferencia')->textInput(['maxlength' => 100]) ?>
 
-    <?= $form->field($model, 'fecha')->textInput([
-        'value' => $model->fechaFormateada(),
-        'placeholder' => 'dd/mm/aaaa',
-        'maxlength' => 10,
-    ])->hint('Formato: dd/mm/aaaa') ?>
+    <?php // type="date": calendario del navegador; envia aaaa-mm-dd, que el modelo guarda tal cual. ?>
+    <?= $form->field($model, 'fecha')->input('date') ?>
 
     <?= $form->field($model, 'validezDias')->textInput(['type' => 'number']) ?>
 

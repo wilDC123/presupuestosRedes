@@ -97,7 +97,7 @@ class CartaPresupuesto extends ActiveRecord
             [$textos, 'trim'],
             [['saludo', 'despedida', 'copia', 'adjunto'], 'default', 'value' => null],
             [['fecha', 'tratamiento', 'destinatarioNombre', 'destinatarioCargo', 'referencia', 'cuerpo'], 'required'],
-            [['fecha'], 'date', 'format' => 'php:Y-m-d', 'message' => 'Escriba la fecha como dd/mm/aaaa.'],
+            [['fecha'], 'date', 'format' => 'php:Y-m-d', 'message' => 'La fecha de la carta no es válida.'],
             [['tratamiento'], 'in', 'range' => self::TRATAMIENTOS],
             [['destinatarioCargo', 'referencia'], 'filter', 'filter' => [self::class, 'mayusculas']],
             [['destinatarioNombre'], 'string', 'max' => 150],

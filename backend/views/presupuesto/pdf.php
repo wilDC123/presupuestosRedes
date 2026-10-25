@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\models\PresupuestoComplemento;
 use yii\helpers\Html;
 
 /**
@@ -21,7 +22,10 @@ use yii\helpers\Html;
  * paréntesis (sin nombre SIGMA).
  * Si el presupuesto lleva mano de obra de la DTIC (Presupuesto::$manoDeObra),
  * va en la categoría "Mano de obra" (al final si no existe), con precios en
- * 0.00. Después del total: nota; al fondo de la última página, el "control de elaboración" del
+ * 0.00 (cantidad también 0.00). Después del total (fila "TOTAL (Bs.)" en azul claro): la nota, centrada, y
+ * las secciones SIN PRECIO, solo si tienen filas (Presupuesto::$complementos): "Otros materiales y
+ * equipamiento que proveerá la D.T.I.C." y "Trabajos complementarios...", agrupadas por subtítulo y sin
+ * sumar al total. Al fondo de la última página, el "control de elaboración" del
  * lineamiento RD-GD-LI-001 (versión, elaborado por, aprobado por, firmas y fecha de aprobación) y la
  * banda de pie verde con los contactos. Nombres, cargos y contactos salen de
  * redes.ConfiguracionPresupuesto (presupuesto/configuracion); nada de eso queda escrito aquí.
@@ -59,6 +63,13 @@ if ($presupuesto->manoDeObra !== null) {
         $grupoManoDeObra = 'Mano de obra';
         $grupos[$grupoManoDeObra] = ['orden' => PHP_INT_MAX, 'lineas' => [], 'subtotal' => 0.0];
     }
+}
+
+// Secciones sin precio: [tipo => [subtitulo => filas]], en el orden en que se escribieron.
+$complementos = [];
+
+foreach ($presupuesto->complementos as $complemento) {
+    $complementos[$complemento->tipo][$complemento->grupo][] = $complemento;
 }
 ?>
 <!DOCTYPE html>
@@ -99,9 +110,14 @@ if ($presupuesto->manoDeObra !== null) {
         padding: 4px 4px;
         font-size: 10pt;
     }
+    /* Mismos colores que las secciones sin precio (2026-10-23): titulos de
+       columna en azul oscuro, categorias en celeste, subtotales y total en
+       azul claro. */
     table.items th {
-        background-color: #e0e0e0;
-        text-align: left;
+        background-color: #1f3864;
+        color: #fff;
+        font-weight: bold;
+        text-align: center;
     }
     table.items td.numero {
         text-align: right;
@@ -115,7 +131,8 @@ if ($presupuesto->manoDeObra !== null) {
        margen y usa los mismos bordes que las celdas. Sin borde arriba (ya
        esta el de la tabla anterior), salvo el de la primera categoria. */
     .categoria-titulo {
-        background-color: #d0d0d0;
+        background-color: #ddebf7;
+        font-style: italic;
         font-weight: bold;
         padding: 4px;
         border: 1px solid #666;
@@ -127,48 +144,57 @@ if ($presupuesto->manoDeObra !== null) {
     tr.subtotal td {
         font-weight: bold;
         text-align: right;
-        background-color: #f2f2f2;
+        background-color: #eef3fa;
     }
-    .total-general {
-        text-align: right;
-        font-size: 12pt;
-        font-weight: bold;
-        margin-top: 10px;
-        border-top: 2px solid #000;
-        padding-top: 6px;
-    }
-    .nota {
-        margin-top: 10px;
-        font-size: 10pt;
-    }
-    /* Control de elaboracion (lineamiento RD-GD-LI-001, 8.12). page-break-inside:
-       mPDF no corta estas tablas entre dos paginas. */
-    table.elaboracion {
+    /* Fila de total pegada a la ultima categoria, con los mismos bordes. */
+    table.total-general {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 20px;
-        page-break-inside: avoid;
     }
-    table.elaboracion th,
-    table.elaboracion td {
-        border: 1px solid #000;
-        padding: 3px 5px;
-        font-size: 10pt;
-        vertical-align: middle;
+    table.total-general td {
+        border: 1px solid #666;
+        border-top: none;
+        background-color: #dbe5f1;
+        font-size: 11pt;
+        font-weight: bold;
+        text-align: right;
+        padding: 5px 4px;
     }
-    table.elaboracion th {
-        background-color: #e0e0e0;
+    .nota {
+        margin-top: 6px;
+        font-size: 8pt;
         text-align: center;
     }
-    table.elaboracion td.etiqueta {
+    /* Secciones sin precio (materiales de la DTIC, trabajos complementarios). */
+    .complementos-titulo {
+        font-weight: bold;
+        margin-top: 16px;
+        margin-bottom: 4px;
+    }
+    table.complementos {
+        width: 100%;
+        border-collapse: collapse;
+        page-break-inside: auto;
+    }
+    table.complementos th,
+    table.complementos td {
+        border: 1px solid #666;
+        padding: 4px;
+        font-size: 10pt;
+    }
+    table.complementos th {
+        background-color: #1f3864;
+        color: #fff;
+        font-weight: bold;
+        text-align: center;
+    }
+    table.complementos td.subtitulo {
+        background-color: #ddebf7;
+        font-style: italic;
         font-weight: bold;
     }
-    /* Espacio para firmar. */
-    table.elaboracion td.firma {
-        height: 55px;
-    }
-    table.elaboracion td.cargo {
-        font-weight: bold;
+    table.complementos td.numero {
+        text-align: right;
     }
     table.pie {
         width: 100%;
@@ -274,7 +300,7 @@ if ($presupuesto->manoDeObra !== null) {
                         </td>
                         <td width="8%"></td>
                         <td width="8%"><?= Html::encode($presupuesto::UNIDAD_MANO_DE_OBRA) ?></td>
-                        <td class="numero" width="10%"><?= Yii::$app->formatter->asDecimal(1, 2) ?></td>
+                        <td class="numero" width="10%"><?= Yii::$app->formatter->asDecimal($presupuesto::CANTIDAD_MANO_DE_OBRA, 2) ?></td>
                         <td class="numero" width="12%"><?= Yii::$app->formatter->asDecimal(0, 2) ?></td>
                         <td class="numero" width="12%"><?= Yii::$app->formatter->asDecimal(0, 2) ?></td>
                     </tr>
@@ -289,50 +315,83 @@ if ($presupuesto->manoDeObra !== null) {
         </table>
     <?php endforeach; ?>
 
-    <div class="total-general">
-        TOTAL GENERAL Bs.: <?= Yii::$app->formatter->asDecimal($totalGeneral, 2) ?>
-    </div>
+    <table class="total-general">
+        <tr>
+            <td width="88%">TOTAL (Bs.)</td>
+            <td width="12%"><?= Yii::$app->formatter->asDecimal($totalGeneral, 2) ?></td>
+        </tr>
+    </table>
 <?php endif; ?>
 
 <?php if (!empty($configuracion->textoNota)): ?>
     <div class="nota"><?= nl2br(Html::encode($configuracion->textoNota)) ?></div>
 <?php endif; ?>
 
+<?php if (!empty($complementos[PresupuestoComplemento::TIPO_MATERIAL])): ?>
+    <div class="complementos-titulo"><?= Html::encode(PresupuestoComplemento::TIPOS[PresupuestoComplemento::TIPO_MATERIAL]) ?></div>
+    <table class="complementos">
+        <thead>
+            <tr>
+                <th width="50%">Descripción *</th>
+                <th width="12%">Cantidad</th>
+                <th width="10%">Unidad</th>
+                <th width="28%">Observaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($complementos[PresupuestoComplemento::TIPO_MATERIAL] as $subtitulo => $filas): ?>
+                <tr><td colspan="4" class="subtitulo"><?= Html::encode($subtitulo) ?></td></tr>
+                <?php foreach ($filas as $fila): ?>
+                    <tr>
+                        <td><?= Html::encode($fila->descripcion) ?></td>
+                        <td class="numero"><?= Yii::$app->formatter->asDecimal($fila->cantidad, 2) ?></td>
+                        <td><?= Html::encode((string) $fila->unidadMedida) ?></td>
+                        <td><?= Html::encode((string) $fila->observacion) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
+
+<?php if (!empty($complementos[PresupuestoComplemento::TIPO_TRABAJO])): ?>
+    <div class="complementos-titulo"><?= Html::encode(PresupuestoComplemento::TIPOS[PresupuestoComplemento::TIPO_TRABAJO]) ?></div>
+    <table class="complementos">
+        <thead>
+            <tr>
+                <th width="45%">Trabajos complementarios</th>
+                <th width="25%">Unidad encargada</th>
+                <th width="30%">Observaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php // Los dos subtitulos fijos, en su orden, aunque se hayan escrito al reves. ?>
+            <?php foreach (PresupuestoComplemento::GRUPOS_TRABAJO as $subtitulo): ?>
+                <?php if (!empty($complementos[PresupuestoComplemento::TIPO_TRABAJO][$subtitulo])): ?>
+                    <tr><td colspan="3" class="subtitulo"><?= Html::encode($subtitulo) ?></td></tr>
+                    <?php foreach ($complementos[PresupuestoComplemento::TIPO_TRABAJO][$subtitulo] as $fila): ?>
+                        <tr>
+                            <td><?= Html::encode($fila->descripcion) ?></td>
+                            <td><?= Html::encode((string) $fila->unidadEncargada) ?></td>
+                            <td><?= Html::encode((string) $fila->observacion) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
+
 <?php // Control de elaboración y banda de pie: al fondo de la última página (PresupuestoPdfGenerator). ?>
 <?= backend\components\PresupuestoPdfGenerator::MARCA_AL_PIE ?>
 
-<?php
-// Elaborado por (firma 1) y aprobado por (firma 2, con su V°B°). Una firma
-// sin nombre en la configuracion queda en blanco, para llenarla a mano.
-$elaborado = $configuracion->firma(1);
-$aprobado = $configuracion->firma(2);
-?>
-<table class="elaboracion">
-    <tr>
-        <th width="20%">Versión: <?= Html::encode($presupuesto::VERSION_DOCUMENTO) ?></th>
-        <th width="40%">Elaborado por</th>
-        <th width="40%">Aprobado por</th>
-    </tr>
-    <tr>
-        <td class="etiqueta">Firma:</td>
-        <td class="firma"></td>
-        <td class="firma"></td>
-    </tr>
-    <tr>
-        <td class="etiqueta">Nombre:</td>
-        <td><?= Html::encode($elaborado !== null ? trim($elaborado['prefijo'] . ' ' . $elaborado['nombre']) : '') ?></td>
-        <td><?= Html::encode($aprobado !== null ? trim($aprobado['prefijo'] . ' ' . $aprobado['nombre']) : '') ?></td>
-    </tr>
-    <tr>
-        <td class="etiqueta">Cargo:</td>
-        <td class="cargo"><?= Html::encode($elaborado['cargo'] ?? '') ?></td>
-        <td class="cargo"><?= Html::encode($aprobado['cargo'] ?? '') ?></td>
-    </tr>
-    <tr>
-        <?php // Vacia hasta que se apruebe (o en los aprobados antes de que se guardara la fecha). ?>
-        <td colspan="3"><strong>Fecha de aprobación:</strong> <?= Html::encode($presupuesto->fechaAprobacionFormateada()) ?></td>
-    </tr>
-</table>
+<?php // Elaborado por (firma 1) y aprobado por (firma 2, con su V°B°); la fecha queda vacia hasta que se apruebe. ?>
+<?= $this->render('//pdf/_control-elaboracion', [
+    'version' => $presupuesto::VERSION_DOCUMENTO,
+    'elaborado' => $configuracion->firma(1),
+    'aprobado' => $configuracion->firma(2),
+    'fechaAprobacion' => $presupuesto->fechaAprobacionFormateada(),
+]) ?>
 
 <?php $columnasPie = $configuracion->columnasPie(); ?>
 <?php if ($columnasPie !== []): ?>
