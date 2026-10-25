@@ -17,8 +17,8 @@ use yii\widgets\ActiveForm;
  */
 
 $this->title = 'Configuración del formulario de especificación';
-$this->params['breadcrumbs'][] = ['label' => 'Librería de especificaciones', 'url' => ['index']];
-$this->params['breadcrumbs'][] = 'Configuración';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
+$this->params['breadcrumbs'][] = 'Formulario de especificación';
 ?>
 <div class="especificacion-configuracion">
 

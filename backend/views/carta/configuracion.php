@@ -17,12 +17,12 @@ use yii\widgets\ActiveForm;
  */
 
 $this->title = 'Configuración de la carta de entrega';
-$this->params['breadcrumbs'][] = ['label' => 'Presupuestos', 'url' => ['/presupuesto/index']];
-$this->params['breadcrumbs'][] = 'Configuración de la carta';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
+$this->params['breadcrumbs'][] = 'Carta de entrega';
 
 $volver = $proyecto !== null
     ? Html::a('← Carta del proyecto', ['index', 'idProyecto' => $proyecto], ['class' => 'btn btn-outline'])
-    : Html::a('← Presupuestos', ['/presupuesto/index'], ['class' => 'btn btn-outline']);
+    : Html::a('← Configuración', ['/configuracion/index'], ['class' => 'btn btn-outline']);
 ?>
 <div class="carta-configuracion">
 

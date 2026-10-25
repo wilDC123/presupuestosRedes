@@ -10,6 +10,7 @@ use yii\helpers\Html;
  */
 
 $this->title = 'Nueva unidad de medida';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = ['label' => 'Unidades de medida', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 ?>

@@ -10,6 +10,7 @@ use yii\helpers\Html;
  */
 
 $this->title = 'Editar categoría: ' . $model->nombre;
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = ['label' => 'Categorías', 'url' => ['index']];
 $this->params['breadcrumbs'][] = ['label' => $model->nombre, 'url' => ['view', 'id' => $model->id]];
 $this->params['breadcrumbs'][] = 'Editar';

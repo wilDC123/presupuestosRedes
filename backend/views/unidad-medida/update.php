@@ -10,6 +10,7 @@ use yii\helpers\Html;
  */
 
 $this->title = 'Editar unidad: ' . $model->nombre;
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = ['label' => 'Unidades de medida', 'url' => ['index']];
 $this->params['breadcrumbs'][] = 'Editar';
 ?>

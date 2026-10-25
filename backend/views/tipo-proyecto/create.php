@@ -10,6 +10,7 @@ use yii\helpers\Html;
  */
 
 $this->title = 'Nuevo tipo de proyecto';
+$this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = ['label' => 'Tipos de proyecto', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 ?>
