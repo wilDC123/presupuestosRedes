@@ -138,6 +138,13 @@ class PresupuestoService
         // Sale en el "control de elaboracion" del PDF (lineamiento RD-GD-LI-001).
         $presupuesto->fechaAprobacion = (new DateTimeImmutable('today'))->format('Y-m-d');
 
+        // Y las firmas, COPIADAS: un presupuesto aprobado ya no cambia aunque
+        // despues se edite la configuracion (ver Presupuesto::firmaDeControl()).
+        $configuracion = ConfiguracionPresupuesto::obtener();
+        foreach (Presupuesto::atributosFirmas() as $atributo) {
+            $presupuesto->$atributo = $configuracion->$atributo;
+        }
+
         // Al aprobar, la lista de items del proyecto queda cerrada: las dos
         // cosas juntas (una transaccion).
         $transaccion = Yii::$app->db->beginTransaction();

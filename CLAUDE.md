@@ -247,8 +247,13 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   de pie verde claro con 2 columnas de contactos (título en negrita + renglones). Todo sale de
   `redes.ConfiguracionPresupuesto` (una sola fila, CHECK id = 1; 2026-10-20), editable en
   "Configuración del PDF" (`presupuesto/configuracion`); NADA de eso queda escrito en la vista. Un
-  campo vacío no sale; una firma sin nombre queda en blanco para llenarla a mano. No guarda copia: un
-  cambio se ve también al reimprimir presupuestos anteriores
+  campo vacío no sale; una firma sin nombre queda en blanco para llenarla a mano. Un cambio se ve
+  también al reimprimir presupuestos anteriores, SALVO las firmas de los APROBADOS (2026-10-24,
+  documento controlado del lineamiento): `PresupuestoService::cambiarEstado()` las copia al aprobar a
+  `Presupuesto.firma1…/firma2…` (trait `FirmasDeControl`, sin reglas: no llegan de formularios;
+  migración `m261025_021822_copiar_firmas_al_aprobar_presupuesto`, que llenó los ya aprobados con la
+  configuración de ese día) y el PDF las toma con `Presupuesto::firmaDeControl()`: aprobado = la
+  copia, cualquier otro estado = la configuración de hoy
 - Mano de obra a cargo del personal de la DTIC (2026-10-20): NO es un ítem del subcatálogo (no se
   compra: sin partida, sin cotización, no suma al total). Es el texto `Presupuesto.manoDeObra`
   (NULL = no lleva), que se pone o quita con una casilla en el paso Presupuesto, solo en borrador
@@ -337,7 +342,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261025_014520_agregar_fecha_envio_a_solicitud_cotizacion`, aplicada el 2026-10-24), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261025_021822_copiar_firmas_al_aprobar_presupuesto`, aplicada el 2026-10-24), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -415,7 +420,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   entrega" (extiende Elaborar presupuesto)
 - PENDIENTE (tutor): codificación del lineamiento (2026-10-22): clase `CorrelativoDocumento`,
   `Presupuesto.fechaAprobacion` y `numeroAnterior`, `EspecificacionEmision.serie` (ET / NET) y
-  `codigoAnterior`, `EspecificacionEmision.versionDocumento` (2026-10-24: reemitir = mismo código, versión + 1), se quita
+  `codigoAnterior`, `EspecificacionEmision.versionDocumento` (2026-10-24: reemitir = mismo código, versión + 1),
+  `Presupuesto.firma1Prefijo…firma2Cargo` {congelado al aprobar} (2026-10-24), se quita
   `ConfiguracionEspecificacion.siguienteNet`, caso de uso "Configurar codificación de documentos"; resumen
   en `docs/cambios-codificacion-lineamiento.md`
 - PENDIENTE (tutor): agregar `PresupuestoComplemento` (2026-10-23; composición 0..* desde

@@ -93,7 +93,7 @@ $celdas = function (string $n, array $fila) use ($esMaterial, $opcionesSubcatalo
         $html .= Html::tag('td', Html::textInput($nombre('cantidad'), $valor('cantidad') === '' ? '' : (string) (float) $valor('cantidad'), [
             'class' => 'qty complemento-cantidad',
             'type' => 'number',
-            'step' => '0.01',
+            'step' => 'any',
             'min' => '0.01',
             'aria-label' => 'Cantidad',
         ]));

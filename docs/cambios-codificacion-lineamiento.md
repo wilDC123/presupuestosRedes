@@ -138,3 +138,23 @@ por el desarrollador: **reemitir conserva el código y sube la versión** (RD-PI
   y versión + 1.
 - Diagrama de clases: `EspecificacionEmision` gana `versionDocumento`. Secuencia "Reemitir formulario":
   el código sale de la emisión anterior, no de `CodificacionService`.
+
+## Firmas del presupuesto congeladas al aprobar (2026-10-24)
+
+El lineamiento trata los registros aprobados como **documentos controlados**. Hasta ahora el PDF del
+presupuesto leía las dos firmas del control de elaboración de `ConfiguracionPresupuesto` cada vez que se
+imprimía: si cambiaba el responsable de redes, un presupuesto ya aprobado salía con el nombre nuevo.
+
+- Al **aprobar**, `PresupuestoService::cambiarEstado()` copia las dos firmas (prefijo, nombre y cargo) al
+  presupuesto: columnas nuevas `Presupuesto.firma1Prefijo … firma2Cargo` (trait `FirmasDeControl`, el
+  mismo del formulario de especificación). Migración `m261025_021822_copiar_firmas_al_aprobar_presupuesto`.
+- El PDF usa `Presupuesto::firmaDeControl()`: un presupuesto **aprobado** usa su copia; en cualquier otro
+  estado (en proceso, en revisión, observado, cancelado) usa la configuración de hoy.
+- Una firma que estaba vacía al aprobar queda en blanco (para llenarla a mano), aunque después se escriba
+  un nombre en la configuración.
+- Los presupuestos ya aprobados se llenaron, en la migración, con las firmas que tenía la configuración
+  ese día (las mismas con que se imprimían).
+- La pantalla "Configuración del PDF" lo avisa: cambiar las firmas solo afecta a los que aún no están
+  aprobados.
+- Diagrama de clases: `Presupuesto` gana firma1Prefijo, firma1Nombre, firma1Cargo, firma2Prefijo,
+  firma2Nombre, firma2Cargo con la restricción {congelado}, como el precio de `PresupuestoDetalle`.

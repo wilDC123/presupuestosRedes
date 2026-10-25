@@ -181,7 +181,7 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
         . $emision
         . '</td>'
         . '<td class="lista-item-unidad">' . Html::encode($unidad) . '</td>'
-        . '<td class="rd-num">' . Html::textInput("items[$n][cantidad]", $cantidad, ['class' => 'qty', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'required' => true, 'aria-label' => 'Cantidad']) . '</td>'
+        . '<td class="rd-num">' . Html::textInput("items[$n][cantidad]", $cantidad, ['class' => 'qty', 'type' => 'number', 'step' => 'any', 'min' => '0', 'required' => true, 'aria-label' => 'Cantidad']) . '</td>'
         . '<td class="rd-num"><button type="button" class="rd-quitar" aria-label="Quitar ítem">×</button></td>'
         . '</tr>';
 };

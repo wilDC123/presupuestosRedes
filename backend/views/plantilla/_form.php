@@ -44,7 +44,7 @@ $fila = static function (string $n, string $idSubcatalogo, string $nombre, strin
         . '<td>' . Html::hiddenInput("items[$n][idSubcatalogo]", $idSubcatalogo)
         . '<span class="plantilla-item-nombre">' . Html::encode($nombre) . '</span></td>'
         . '<td>' . Html::dropDownList("items[$n][idCategoria]", $idCategoria, $categorias, ['class' => 'form-select plantilla-item-categoria']) . '</td>'
-        . '<td>' . Html::textInput("items[$n][cantidadSugerida]", $cantidad, ['class' => 'qty', 'type' => 'number', 'step' => '0.01', 'min' => '0']) . '</td>'
+        . '<td>' . Html::textInput("items[$n][cantidadSugerida]", $cantidad, ['class' => 'qty', 'type' => 'number', 'step' => 'any', 'min' => '0']) . '</td>'
         . '<td>' . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control', 'maxlength' => 300, 'placeholder' => 'Opcional: de 1 metro, según especificación...']) . '</td>'
         . '<td><button type="button" class="rd-quitar" aria-label="Quitar ítem">×</button></td>'
         . '</tr>';

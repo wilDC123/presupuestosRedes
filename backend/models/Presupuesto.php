@@ -30,6 +30,13 @@ use yii\db\ActiveRecord;
  * @property string|null $fechaAprobacion aaaa-mm-dd; la pone PresupuestoService al aprobar (null en los
  *           aprobados antes del 2026-10-22, cuando no se guardaba).
  *
+ * @property string|null $firma1Prefijo Control de elaboracion CONGELADO al aprobar (copia de
+ * @property string|null $firma1Nombre  ConfiguracionPresupuesto): firma 1 = elaborado por, firma 2 =
+ * @property string|null $firma1Cargo   aprobado por. Los no aprobados las tienen vacias y el PDF lee la
+ * @property string|null $firma2Prefijo configuracion (ver firmaDeControl()). No llegan de ningun
+ * @property string|null $firma2Nombre  formulario: por eso no tienen reglas.
+ * @property string|null $firma2Cargo
+ *
  * @property-read Proyecto $proyecto
  * @property-read PresupuestoDetalle[] $presupuestoDetalles
  * @property-read CartaPresupuesto|null $carta
@@ -37,6 +44,9 @@ use yii\db\ActiveRecord;
  */
 class Presupuesto extends ActiveRecord
 {
+    // Solo atributosFirmas() y firma(): las firmas las copia el servicio, sin reglas.
+    use FirmasDeControl;
+
     public const ESTADO_EN_PROCESO = 'en_proceso';
     public const ESTADO_EN_REVISION = 'en_revision';
     public const ESTADO_OBSERVADO = 'observado';
@@ -281,6 +291,22 @@ class Presupuesto extends ActiveRecord
         $fecha = DateTime::createFromFormat('Y-m-d', substr((string) $this->fechaAprobacion, 0, 10));
 
         return $fecha !== false ? $fecha->format('d/m/Y') : (string) $this->fechaAprobacion;
+    }
+
+    /**
+     * La firma 1 (elaborado por) o 2 (aprobado por) que sale en el PDF, o
+     * null para dejarla en blanco.
+     *
+     * REGLA DE NEGOCIO (lineamiento RD-GD-LI-001: documento controlado): un
+     * presupuesto APROBADO usa su copia, congelada al aprobarlo, aunque
+     * despues cambie la configuracion. Los demas (borradores, en revision,
+     * cancelados) usan la configuracion de hoy.
+     *
+     * @return array{prefijo: string, nombre: string, cargo: string}|null
+     */
+    public function firmaDeControl(int $n, ConfiguracionPresupuesto $configuracion): ?array
+    {
+        return $this->estado === self::ESTADO_APROBADO ? $this->firma($n) : $configuracion->firma($n);
     }
 
     public function estadoLabel(): string

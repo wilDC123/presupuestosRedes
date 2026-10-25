@@ -29,6 +29,7 @@ use yii\helpers\Html;
  * lineamiento RD-GD-LI-001 (versión, elaborado por, aprobado por, firmas y fecha de aprobación) y la
  * banda de pie verde con los contactos. Nombres, cargos y contactos salen de
  * redes.ConfiguracionPresupuesto (presupuesto/configuracion); nada de eso queda escrito aquí.
+ * Un presupuesto APROBADO usa las firmas copiadas al aprobarlo (Presupuesto::firmaDeControl()).
  * Cabecera y fuente (Carlito = medidas de Calibri) también según el lineamiento. No lleva proveedor por línea, resumen por partida, anexo
  * comparativo, área de intervención ni estado: se ven en la pantalla del
  * paso Presupuesto.
@@ -388,8 +389,9 @@ foreach ($presupuesto->complementos as $complemento) {
 <?php // Elaborado por (firma 1) y aprobado por (firma 2, con su V°B°); la fecha queda vacia hasta que se apruebe. ?>
 <?= $this->render('//pdf/_control-elaboracion', [
     'version' => $presupuesto::VERSION_DOCUMENTO,
-    'elaborado' => $configuracion->firma(1),
-    'aprobado' => $configuracion->firma(2),
+    // Aprobado: la copia congelada al aprobar; si no, la configuracion de hoy.
+    'elaborado' => $presupuesto->firmaDeControl(1, $configuracion),
+    'aprobado' => $presupuesto->firmaDeControl(2, $configuracion),
     'fechaAprobacion' => $presupuesto->fechaAprobacionFormateada(),
 ]) ?>
 
