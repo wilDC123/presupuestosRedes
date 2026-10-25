@@ -112,7 +112,8 @@ class PresupuestoController extends Controller
     }
 
     /**
-     * Genera y descarga el PDF consolidado del presupuesto: encabezado
+     * Genera el PDF consolidado del presupuesto y lo abre en el navegador
+     * ('inline', como los demas impresos) en vez de descargarlo: encabezado
      * institucional, datos generales y las lineas en una tabla numerada,
      * como la solicitud de cotizacion. Disponible en cualquier estado; si
      * no esta aprobado lleva la marca "BORRADOR".
@@ -136,14 +137,14 @@ class PresupuestoController extends Controller
         return Yii::$app->response->sendContentAsFile(
             $pdf['contenido'],
             $pdf['nombreArchivo'],
-            ['mimeType' => 'application/pdf']
+            ['mimeType' => 'application/pdf', 'inline' => true]
         );
     }
 
     /**
      * Reporte de apoyo (PDF): cada linea del presupuesto con el item SIGMA al
-     * que apunta, para saber que item del catalogo es cada uno. No es el
-     * documento oficial: no lleva firmas.
+     * que apunta, para saber que item del catalogo es cada uno; se abre en el
+     * navegador ('inline'). No es el documento oficial: no lleva firmas.
      */
     public function actionPdfSigma(int $id): Response
     {
@@ -160,7 +161,7 @@ class PresupuestoController extends Controller
         return Yii::$app->response->sendContentAsFile(
             $pdf['contenido'],
             $pdf['nombreArchivo'],
-            ['mimeType' => 'application/pdf']
+            ['mimeType' => 'application/pdf', 'inline' => true]
         );
     }
 
