@@ -7,8 +7,8 @@ use yii\widgets\ActiveForm;
 
 /**
  * Configuracion del PDF del presupuesto: lo que sale despues del total (nota,
- * las firmas del control de elaboracion y banda de pie con los contactos). El presupuesto no guarda
- * copia, asi que un cambio tambien se ve al reimprimir los anteriores.
+ * las firmas del control de elaboracion y banda de pie con los contactos). Un cambio tambien se ve
+ * al reimprimir los anteriores, salvo las firmas de los aprobados (se copian al aprobar).
  *
  * @var yii\web\View $this
  * @var backend\models\ConfiguracionPresupuesto $configuracion
@@ -49,7 +49,8 @@ $volver = $proyecto !== null
     <div class="card mb-3">
         <div class="rd-card-head">
             <div class="rd-card-titulo">Control de elaboración</div>
-            <div class="kicker">Lineamiento RD-GD-LI-001: versión, elaborado por, aprobado por, firmas y fecha de aprobación (la pone el sistema al aprobar).</div>
+            <div class="kicker">Lineamiento RD-GD-LI-001: versión, elaborado por, aprobado por, firmas y fecha de aprobación (la pone el sistema al aprobar).
+                Un presupuesto aprobado conserva las firmas con que se aprobó: cambiarlas aquí solo afecta a los que aún no están aprobados.</div>
         </div>
         <div class="rd-card-pad">
             <div class="row g-3">

@@ -15,9 +15,9 @@ use yii\db\ActiveRecord;
  * 2 = aprobado por, con su V°B°) y la banda de pie con los contactos.
  * Editable por el encargado (presupuesto/configuracion).
  *
- * Como la solicitud de cotizacion, el presupuesto no guarda copia: el PDF se
- * arma al imprimir, asi que un cambio aqui tambien se ve al reimprimir
- * presupuestos anteriores.
+ * El PDF se arma al imprimir, asi que un cambio aqui tambien se ve al
+ * reimprimir presupuestos anteriores, SALVO las firmas de los aprobados:
+ * esas se copian al presupuesto al aprobarlo (Presupuesto::firmaDeControl()).
  *
  * @property int $id
  * @property string|null $textoNota

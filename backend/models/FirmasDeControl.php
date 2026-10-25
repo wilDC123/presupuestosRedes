@@ -6,13 +6,14 @@ namespace backend\models;
 
 /**
  * Las dos firmas del "control de elaboracion" del lineamiento de la DTIC
- * RD-GD-LI-001 (8.12) en el formulario de especificacion tecnica: firma 1 =
- * elaborado por, firma 2 = aprobado por (con su V°B°). Prefijo, nombre y
- * cargo de cada una. Las comparten ConfiguracionEspecificacion (los valores
- * por defecto) y EspecificacionEmision (la copia de cada formulario), igual
- * que FirmasDeCarta en la carta.
+ * RD-GD-LI-001 (8.12): firma 1 = elaborado por, firma 2 = aprobado por (con
+ * su V°B°). Prefijo, nombre y cargo de cada una. Las usan
+ * ConfiguracionEspecificacion (los valores por defecto del formulario de
+ * especificacion), EspecificacionEmision (la copia de cada formulario) y
+ * Presupuesto (la copia al aprobarlo), igual que FirmasDeCarta en la carta.
  *
- * (El presupuesto tiene las mismas dos firmas en ConfiguracionPresupuesto.)
+ * (Los valores por defecto del presupuesto estan en ConfiguracionPresupuesto,
+ * que tiene sus propias reglas.)
  */
 trait FirmasDeControl
 {
