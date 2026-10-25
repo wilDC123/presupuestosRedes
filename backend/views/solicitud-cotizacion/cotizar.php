@@ -146,7 +146,7 @@ $formato = Yii::$app->formatter;
                             <?= Html::textInput("filas[$idItem][precioUnitario]", $detalle->precioUnitario === null ? '' : (string) $detalle->precioUnitario, [
                                 'class' => 'form-control cotizar-precio text-end',
                                 'type' => 'number',
-                                'step' => '0.01',
+                                'step' => 'any',
                                 'min' => '0',
                                 'placeholder' => 'No cotizó',
                                 'disabled' => !$editable,
