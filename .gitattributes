@@ -1,0 +1,12 @@
+# Archivos que se quedan en el repositorio pero NO van en el .zip que se
+# entrega a la DTIC (git archive los omite por export-ignore).
+# Generar el .zip:  git archive --format=zip -o presupuestos-redes.zip main
+
+# Notas de trabajo e instrucciones para el asistente: tienen datos internos
+CLAUDE.md export-ignore
+.gitattributes export-ignore
+
+# Documentos para el tutor (la guia de instalacion SI se entrega)
+spec_tecnica_sistema.md export-ignore
+docs/cambios-*.md export-ignore
+docs/plan-especificaciones.md export-ignore
