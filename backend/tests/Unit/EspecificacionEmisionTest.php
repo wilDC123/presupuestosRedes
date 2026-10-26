@@ -70,7 +70,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
         $this->assertSame(5.0, (float) $emision->cantidad);
         $this->assertSame('Facultad de Tecnología', $emision->dependencia);
-        $this->assertSame('Facultad de Tecnología', $emision->lugarEntrega);
+        $this->assertSame('Administración de la Facultad de Tecnología', $emision->lugarEntrega);
         $this->assertSame('encargado', $emision->elaboradoPor);
         // Sin garantia propia en la ficha: se congela la de la configuracion.
         $this->assertSame(ConfiguracionEspecificacion::obtener()->garantiaPorDefecto, $emision->garantia);

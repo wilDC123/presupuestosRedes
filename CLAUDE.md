@@ -128,7 +128,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     `codigoAnterior`, que se ve y se busca en el registro; la serie 'NET' queda solo para su `safeDown()`) que se firma y se
     entrega al proveedor. NUNCA cambia: guarda copias congeladas (título = nombre DTIC del ítem de la lista desde el
     2026-10-21, antes el de la ficha; cantidad, unidad,
-    dependencia = facultad del proyecto, garantía, textos, condiciones de entrega) y apunta a una
+    dependencia = facultad del proyecto, garantía, textos, condiciones de entrega; el lugar de entrega por
+    defecto es "Administración de la <facultad>" desde el 2026-10-26,
+    `EspecificacionEmisionService::lugarEntregaPorDefecto()`, las anteriores conservan el suyo) y apunta a una
     versión que ya no cambia. Estados: vigente, reemplazada, anulada; "vencida" se calcula
     (fecha + vigencia). Reglas en `EspecificacionEmisionService`.
   Se ENLAZA a los ítems de la lista con `redes.ProyectoItem.idEspecificacion` (como máximo una por
