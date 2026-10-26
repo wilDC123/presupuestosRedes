@@ -337,12 +337,18 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   desarrollo (`common/config/test-local.php`, no se sube a git); cada test corre en una
   transacción que se deshace al terminar, así que no dejan datos
 - URL local del backend: http://presupuestos-redes.test:8080
-- Usuario de prueba local: admin / admin123 (SOLO en tabla `dbo.user` de desarrollo,
-  temporal hasta integrar autenticación institucional real)
+- Usuario de prueba local: admin / admin123. Desde el 2026-10-25 el ingreso usa
+  `redes.Usuario` (usuarios TEMPORALES hasta integrar la autenticación institucional;
+  modelo `backend\models\Usuario` = `identityClass`, formulario `backend\models\LoginForm`,
+  migración `m261026_003449_crear_usuario_temporal`, que copió los de `dbo.user`). Se
+  administran solo por consola: `php yii usuario` (lista), `usuario/crear <usuario>`,
+  `usuario/clave`, `usuario/desactivar`, `usuario/activar` (`UsuarioService`; contraseña de 8+
+  caracteres pedida por teclado, oculta en Linux). Un usuario no se borra, se desactiva. El
+  `frontend` sigue con `common\models\User` / `dbo.user` de la plantilla
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261025_021822_copiar_firmas_al_aprobar_presupuesto`, aplicada el 2026-10-24), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261026_003449_crear_usuario_temporal`, aplicada el 2026-10-25), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -369,7 +375,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   - Zona horaria `America/La_Paz` (`common/config/main.php`, también `formatter.defaultTimeZone`).
   - Historial de migraciones en `redes.migration` (`console/controllers/MigrateController.php`;
     copió el de `dbo.migration`, que en la base local se puede borrar). Las migraciones de la
-    plantilla (`dbo.user`) solo crean la tabla en desarrollo (`YII_ENV_DEV`).
+    plantilla (`dbo.user`) solo crean la tabla en desarrollo (`YII_ENV_DEV`); el backend ya no
+    la usa para ingresar (ver `redes.Usuario`).
   - mPDF escribe sus temporales en `@runtime/mpdf`, no en `vendor/`.
   - Probado: las 29 migraciones desde cero y los tests, sobre una base temporal con
     compatibilidad 110 (SQL Server 2012). La base local es SQL Server 2022 (compatibilidad 160).
@@ -389,7 +396,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   decide después de ver cómo queda el subcatálogo recargado
 - PENDIENTE (mejora posible): enlazar especificaciones desde las plantillas (`PlantillaItem`)
   para que se copien a la lista al cargar una plantilla
-- Autenticación en producción no resuelta: Windows Auth funciona en entorno local, pero en
+- PENDIENTE (DTIC): integrar el ingreso con el sistema de usuarios institucional; mientras
+  tanto, usuarios temporales en `redes.Usuario`. Al integrarlo se cambia `identityClass` en
+  `backend/config/main.php`; el resto del módulo solo lee `identity->username`
+  `redes.Usuario` NO es la "gestión de usuarios y roles propia" que está fuera de alcance: sin
+  roles, sin pantallas, solo para poder ingresar al servidor de prueba. Informarlo al tutor
+- Conexión a la BD en producción no resuelta: Windows Auth funciona en entorno local, pero en
   el servidor Linux real con Nginx/PHP-FPM probablemente se necesite un usuario SQL Server
   dedicado — validar con el equipo técnico antes de dar por sentado el mecanismo
 - Se usó una copia local de la base de datos institucional para desarrollo — pendiente
