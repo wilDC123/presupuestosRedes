@@ -17,7 +17,8 @@ acordar antes. El módulo está hecho en PHP con Yii2 Advanced y usa la base SQL
 - Tres carpetas en las que PHP pueda escribir: `backend/runtime`, `backend/web/assets` y
   `backend/uploads` (más `console/runtime` para los comandos).
 - Subir los límites de tamaño de archivo de Nginx y PHP a unos 12 MB.
-- Integrar la autenticación institucional antes de ponerlo en uso (ver punto 8).
+- Crear al menos un usuario temporal para ingresar (`php yii usuario/crear`, ver punto 8) e
+  integrar la autenticación institucional antes de ponerlo en uso real.
 
 ## 2. Requisitos del servidor
 
@@ -91,14 +92,22 @@ búsquedas.
    ```
 
    En producción no se crea la tabla de usuarios de prueba (`dbo.user`) de la plantilla de Yii.
-6. Dar permisos de escritura al usuario de PHP-FPM (normalmente `www-data`):
+   Sí se crea `redes.Usuario`, vacía.
+
+6. Crear el usuario con el que se va a ingresar (pide la contraseña dos veces, de 8 caracteres
+   como mínimo, y no se ve al escribirla):
+
+   ```
+   php yii usuario/crear encargado.redes
+   ```
+7. Dar permisos de escritura al usuario de PHP-FPM (normalmente `www-data`):
 
    ```
    chown -R www-data:www-data backend/runtime backend/web/assets backend/uploads console/runtime
    chmod -R 775 backend/runtime backend/web/assets backend/uploads console/runtime
    ```
 
-7. Opcional: cargar la librería de especificaciones desde el banco de documentos de DTIC. Primero
+8. Opcional: cargar la librería de especificaciones desde el banco de documentos de DTIC. Primero
    sin `--confirmar`, que solo genera un CSV para revisar (`/ruta/banco` es la carpeta con los .docx):
 
    ```
@@ -165,18 +174,35 @@ el resto de PHP coincida.
 - **Respaldo:** la carpeta `backend/uploads` contiene documentos que no están en la base de datos;
   tiene que entrar en el respaldo del servidor.
 
-## 8. Autenticación institucional (pendiente)
+## 8. Usuarios: temporales hasta integrar la autenticación institucional
 
-En desarrollo el ingreso usa una tabla de prueba de la plantilla de Yii (`dbo.user`, usuario
-`admin`). **En producción esa tabla no se crea**, así que antes de ponerlo en uso hay que conectar el
-ingreso con el sistema de usuarios de la universidad. En Yii2 eso se hace cambiando la clase de
-identidad (`identityClass` en `backend/config/main.php`) por una que use el sistema institucional.
-El módulo solo necesita saber quién está conectado: usa su nombre de usuario como "elaborado por" en
-los formularios NET.
+Mientras no se conecte con el sistema de usuarios de la universidad, el ingreso usa usuarios
+**temporales** propios del módulo, en la tabla `redes.Usuario` (no crea nada en `dbo`). Las
+contraseñas se guardan cifradas. No hay pantalla para administrarlos: se manejan por consola, desde
+la carpeta del proyecto:
+
+```
+php yii usuario                         # lista los usuarios
+php yii usuario/crear <usuario>         # crea uno (pide la contraseña dos veces)
+php yii usuario/clave <usuario>         # cambia la contraseña
+php yii usuario/desactivar <usuario>    # ya no puede ingresar
+php yii usuario/activar <usuario>
+```
+
+El usuario solo admite letras, números, punto, guion y guion bajo; la contraseña, 8 caracteres
+como mínimo. Se pide por teclado (no como argumento) para que no quede en el historial de comandos.
+Un usuario no se borra: se desactiva, porque su nombre queda como "elaborado por" en los
+formularios de especificación que emitió. Cambiar la contraseña o desactivarlo también cierra sus
+sesiones "recordadas" en otros equipos.
+
+**Para integrar la autenticación institucional** se cambia la clase de identidad
+(`identityClass` en `backend/config/main.php`) por una que use el sistema de la universidad. El
+módulo solo necesita saber quién está conectado (`identity->username`).
 
 ## 9. Verificación después de instalar
 
 - La pantalla de ingreso carga; sin sesión, cualquier otra dirección lleva al ingreso.
+- Se puede ingresar con el usuario creado en el paso 6.
 - `php yii migrate/history` muestra las migraciones aplicadas.
 - Se puede abrir el PDF de una lista de ítems y el de un formulario NET.
 - Se puede subir un PDF de unos 5 MB en una cotización y un .docx en una especificación (el .docx

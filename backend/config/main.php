@@ -50,7 +50,9 @@ return [
             'csrfParam' => '_csrf-backend',
         ],
         'user' => [
-            'identityClass' => \common\models\User::class,
+            // Usuarios temporales en redes.Usuario (php yii usuario/crear). Al
+            // integrar la autenticacion institucional, aqui va su clase.
+            'identityClass' => \backend\models\Usuario::class,
             'enableAutoLogin' => true,
             'identityCookie' => ['name' => '_identity-backend', 'httpOnly' => true],
         ],
