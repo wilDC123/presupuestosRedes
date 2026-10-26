@@ -70,7 +70,7 @@ class EspecificacionEmisionService
      *
      * $condiciones puede traer lugarEntrega, validezOfertaDias y
      * tiempoEntregaDias; lo que no venga sale de la configuracion (y el lugar,
-     * de la facultad del proyecto).
+     * de la facultad del proyecto: ver lugarEntregaPorDefecto()).
      *
      * Lanza DomainException con un mensaje para el usuario si no se puede.
      * Usa su propia transaccion; dentro de otra (la de guardar la lista) se
@@ -105,7 +105,7 @@ class EspecificacionEmisionService
             'cantidad' => $item->cantidad,
             'unidad' => $item->unidadMedida,
             'dependencia' => $proyecto->facultad,
-            'lugarEntrega' => $this->textoONull($condiciones['lugarEntrega'] ?? null) ?? $proyecto->facultad,
+            'lugarEntrega' => $this->textoONull($condiciones['lugarEntrega'] ?? null) ?? self::lugarEntregaPorDefecto($proyecto->facultad),
             'validezOfertaDias' => $this->textoONull($condiciones['validezOfertaDias'] ?? null) ?? $configuracion->validezOfertaDias,
             'tiempoEntregaDias' => $this->textoONull($condiciones['tiempoEntregaDias'] ?? null) ?? $configuracion->tiempoEntregaDias,
             'elaboradoPor' => $this->textoONull($usuario),
@@ -569,6 +569,18 @@ class EspecificacionEmisionService
             $emision->estaVencida() => 'VENCIDO',
             default => null,
         };
+    }
+
+    /**
+     * Lugar de entrega cuando no se escribe otro: la administracion de la
+     * facultad del proyecto ("Administración de la Facultad de Tecnología").
+     * Se congela al emitir: las emisiones anteriores conservan el suyo.
+     */
+    public static function lugarEntregaPorDefecto(?string $facultad): ?string
+    {
+        $facultad = trim((string) $facultad);
+
+        return $facultad === '' ? null : 'Administración de la ' . $facultad;
     }
 
     private function textoONull(mixed $valor): ?string
