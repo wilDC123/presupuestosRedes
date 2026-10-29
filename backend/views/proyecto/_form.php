@@ -123,7 +123,7 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
 
             <div class="rd-buscar-ambiente">
                 <input type="search" id="proyecto-buscar-ambiente" class="form-control" autocomplete="off"
-                       placeholder="Buscar edificio o ambiente: ej. «ciencias y tecnología», «E303», «laboratorio económicas»">
+                       placeholder="Buscar edificio o espacio: ej. «ciencias y tecnología», «E303», «laboratorio económicas»">
                 <ul class="rd-resultados-ambiente d-none" id="proyecto-resultados-ambiente"></ul>
             </div>
 
@@ -150,7 +150,7 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
                     <?= Html::textInput(null, '', [
                         'id' => 'proyecto-area-ambiente-texto',
                         'class' => 'form-control',
-                        'placeholder' => 'Ambiente (opcional)',
+                        'placeholder' => 'Espacio (opcional)',
                         'autocomplete' => 'off',
                         'disabled' => true,
                     ]) ?>
@@ -158,7 +158,7 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
                 </div>
             </div>
             <button type="button" class="btn btn-outline btn-sm mt-2" id="proyecto-agregar-area" disabled>+ Agregar área</button>
-            <div class="hint">Dónde se hace el trabajo. Puede agregar varias (ej. tres laboratorios). Los edificios y ambientes
+            <div class="hint">Dónde se hace el trabajo. Puede agregar varias (ej. tres laboratorios). Los edificios y espacios
                 salen de la infraestructura de la universidad (UsfxGEO): si falta alguno, lo registra su responsable, no este sistema.</div>
             <div class="help-block"><?= Html::encode($model->getFirstError('areas')) ?></div>
         </div>

@@ -49,7 +49,8 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
     carrera, oficina o persona). SIN catálogo: el `<datalist>` solo sugiere lo ya escrito y las
     facultades del JSON (`ProyectoService::sugerenciasUnidad()`). NUNCA gestionar unidades aquí
   - `redes.ProyectoAreaIntervencion` (0..* por proyecto): DÓNDE se trabaja, edificio → bloque →
-    nivel → ambiente (llega hasta donde haga falta, no se salta un nivel), elegido de la base
+    nivel → ambiente (en pantalla se llama "Espacio" desde el 2026-10-29, como en redes; en el código y la
+    base sigue siendo `ambiente`) (llega hasta donde haga falta, no se salta un nivel), elegido de la base
     `UsfxGEO` de Desarrollo, SOLO LECTURA y solo Estado 'V' (`InfraestructuraProvider`,
     `UsfxGeoInfraestructuraProvider`, conexión `dbGeo` en `main-local.php`). Guarda los id de
     UsfxGEO (referencia lógica, como idSigma) + COPIA congelada de los nombres; una ya guardada se
@@ -100,7 +101,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `Plantilla.idTipoProyecto` son FK. Solo se eligen tipos activos, pero quien ya tenía uno
   desactivado lo conserva (`TipoProyecto::reglaElegible()`); uno en uso no se elimina, se
   desactiva. En el JSON quedan SOLO las facultades (codigo + nombre), como sugerencia de unidad
-  solicitante; sus edificios y bloques se quitaron el 2026-10-28
+  solicitante; sus edificios y bloques se quitaron el 2026-10-28. Desde la revisión del 2026-10-29 un
+  tipo dice QUÉ se hace, no el sistema que se instala: Ampliación, Mejoramiento, Refuncionalización y
+  Equipamiento (migración `m261029_230226_tipos_de_proyecto_segun_revision`; Cableado estructurado y
+  Videovigilancia salen: se borran si nadie los usa y se desactivan si algún proyecto los tiene)
 - Proyectistas: catálogo `redes.Proyectista` (nombre único, activo), en Configuración → "Proyectistas"
   (2026-10-28; antes en el JSON; migración `m261028_202824_crear_proyectista`, cargó los 2 del JSON).
   Solo una lista de NOMBRES, no usuarios. `ProyectoProyectista` sigue guardando una COPIA del nombre
@@ -387,7 +391,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261028_202824_crear_proyectista`, aplicada el 2026-10-28), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261029_230226_tipos_de_proyecto_segun_revision`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -493,9 +497,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   configuración del formulario) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a
   Proyecto y a Plantilla (0..1 tipo por proyecto/plantilla)
-- PENDIENTE (Ing. de DTIC): confirmar los tipos de proyecto reales; los 4 cargados
-  (Ampliación de red, Cableado estructurado, Videovigilancia, Equipamiento activo) venían de
-  los mockups
+- RESUELTO (2026-10-29): tipos de proyecto confirmados por el Ing. de DTIC (Ampliación, Mejoramiento,
+  Refuncionalización, Equipamiento). En la reunión nombró también "Despliegue" una vez: si hace falta,
+  el encargado lo agrega en "Tipos de proyecto"
 - PENDIENTE: `PresupuestoService::crearNuevaVersion()` (`backend/services/PresupuestoService.php`) ahora
   crea la nueva versión VACÍA a propósito (cada versión es solo el incremento/cambio
   solicitado, no un snapshot completo de líneas ya aprobadas). Como consecuencia, falta
