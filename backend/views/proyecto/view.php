@@ -62,16 +62,31 @@ $formato = Yii::$app->formatter;
             <div class="rd-card-titulo mb-3">Datos generales</div>
 
             <div class="rd-dato"><strong>Tipo:</strong> <?= Html::encode($nombreTipo ?? '—') ?></div>
-            <div class="rd-dato"><strong>Facultad:</strong> <?= Html::encode($model->facultad ?: '—') ?></div>
-            <div class="rd-dato"><strong>Edificio:</strong> <?= Html::encode($model->edificio ?: '—') ?></div>
+            <div class="rd-dato"><strong>Unidad solicitante:</strong> <?= Html::encode($model->unidadSolicitante ?: '—') ?></div>
             <div class="rd-dato">
-                <strong>Bloques:</strong>
-                <?php if ($model->bloques === []): ?>
-                    —
-                <?php else: ?>
-                    <?php foreach ($model->bloques as $bloque): ?>
-                        <span class="chip"><?= Html::encode($bloque->nombre) ?></span>
+                <strong>Área de intervención:</strong>
+                <?php if ($model->areasIntervencion !== []): ?>
+                    <?php // Agrupadas por edificio y bloque, como en el formulario: el grupo arriba y un chip por area. ?>
+                    <?php
+                    $grupos = [];
+                    foreach ($model->areasIntervencion as $area) {
+                        $grupos[$area->grupo()][] = $area->detalle();
+                    }
+                    ?>
+                    <?php foreach ($grupos as $grupo => $detalles): ?>
+                        <div class="rd-area-grupo mt-1">
+                            <div class="rd-area-titulo"><?= Html::encode($grupo) ?></div>
+                            <?php foreach ($detalles as $detalle): ?>
+                                <span class="chip"><?= Html::encode($detalle) ?></span>
+                            <?php endforeach; ?>
+                        </div>
                     <?php endforeach; ?>
+                <?php elseif ($model->ubicacionAnterior() !== ''): ?>
+                    <?php // Proyectos registrados antes del 2026-10-28: edificio y bloques del JSON de entonces. ?>
+                    <?= Html::encode($model->ubicacionAnterior()) ?>
+                    <span class="rd-nota">(ubicación registrada antes del cambio; al editar el proyecto puede elegir sus áreas)</span>
+                <?php else: ?>
+                    —
                 <?php endif; ?>
             </div>
             <div class="rd-dato">

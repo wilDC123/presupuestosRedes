@@ -18,7 +18,8 @@ use yii\db\ActiveRecord;
  * y se leen al imprimir.
  *
  * Marcadores que se reemplazan (ver CartaService::MARCADORES):
- *  - al llenar la carta nueva: {proyecto}, {facultad}
+ *  - al llenar la carta nueva: {proyecto}, {unidad} (la unidad solicitante;
+ *    {facultad} es el nombre de antes y se reemplaza igual)
  *  - al imprimir: {oficio}, {numeroPresupuesto} (y {anio} en formatoOficio)
  *
  * @property int $id

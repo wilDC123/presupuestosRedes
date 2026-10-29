@@ -523,3 +523,46 @@ body.rd {
 .rd-pend-titulo { font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .rd-pend-fila { margin-top: 8px; font-size: 12.5px; }
 .rd-pend-fila .mono { color: var(--rd-texto-suave); margin-right: 6px; }
+
+/* Area de intervencion del proyecto: buscador de ambientes y elegir paso a paso. */
+.rd-fila-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 700px) { .rd-fila-3 { grid-template-columns: minmax(0, 1fr); } }
+.rd-buscar-ambiente { position: relative; }
+.rd-resultados-ambiente {
+    position: absolute; z-index: 20; left: 0; right: 0; top: 100%;
+    max-height: 280px; overflow-y: auto; margin: 2px 0 0; padding: 4px 0; list-style: none;
+    background: #fff; border: 1px solid var(--rd-borde); border-radius: 6px; box-shadow: 0 6px 16px rgba(0, 0, 0, .08);
+}
+.rd-resultados-ambiente li { padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
+.rd-resultados-ambiente li:hover, .rd-resultados-ambiente li.activo { background: var(--rd-fila-hover); }
+.rd-resultados-ambiente li.vacio { cursor: default; color: var(--rd-texto-tenue); }
+.rd-resultados-ambiente li.edificio { border-bottom: 1px solid var(--rd-borde); }
+/* Campos "Edificio" y "Ambiente" del paso a paso: lista propia, siempre debajo y de alto fijo. */
+.rd-combo { position: relative; }
+.rd-combo .rd-resultados-ambiente { max-height: 260px; }
+/* Resultado del buscador en dos renglones: lo buscado y, debajo, donde esta. */
+.rd-resultado-titulo { font-weight: 600; color: var(--rd-texto, inherit); }
+.rd-resultado-sub { font-size: 11.5px; color: var(--rd-texto-tenue); margin-top: 1px; }
+/* Areas elegidas: un titulo por edificio y bloque y, debajo, cada area como chip. */
+.rd-areas:not(:empty) { margin-bottom: 10px; }
+.rd-area-grupo { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 10px; }
+.rd-area-titulo { flex-basis: 100%; font-size: 11.5px; font-weight: 600; color: var(--rd-texto-suave); }
+.rd-area {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--rd-azul-claro);
+    color: var(--rd-azul-oscuro);
+    border: 1px solid var(--rd-azul-borde);
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.rd-area .x { color: var(--rd-texto-tenue); font-weight: 700; background: none; border: 0; padding: 0; line-height: 1; cursor: pointer; }
+.rd-area .x:hover { color: #991b1b; }
+.rd-resultados-ambiente li.grupo {
+    cursor: default; padding-top: 8px; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase; color: var(--rd-texto-tenue);
+}
+.rd-resultados-ambiente li.grupo:hover { background: none; }

@@ -27,7 +27,7 @@ class SolicitudFechaEnvioTest extends Unit
     {
         $this->servicio = new SolicitudCotizacionService();
 
-        $proyecto = new Proyecto(['nombre' => 'Proyecto test fecha de envío', 'facultad' => 'Facultad de Tecnología', 'estadoLista' => Proyecto::LISTA_EN_COTIZACION]);
+        $proyecto = new Proyecto(['nombre' => 'Proyecto test fecha de envío', 'unidadSolicitante' => 'Facultad de Tecnología', 'estadoLista' => Proyecto::LISTA_EN_COTIZACION]);
         $proyecto->save(false);
 
         // "fecha" es la de creacion: no tiene que ver con el documento.

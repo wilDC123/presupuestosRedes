@@ -89,7 +89,7 @@ class TipoProyectoTest extends Unit
 
     private function crearProyecto(int $idTipoProyecto): Proyecto
     {
-        $proyecto = new Proyecto(['nombre' => 'Proyecto test tipo', 'idTipoProyecto' => $idTipoProyecto, 'estadoLista' => Proyecto::LISTA_EDICION]);
+        $proyecto = new Proyecto(['nombre' => 'Proyecto test tipo', 'unidadSolicitante' => 'Facultad test', 'idTipoProyecto' => $idTipoProyecto, 'estadoLista' => Proyecto::LISTA_EDICION]);
         $proyecto->save(false);
         $proyecto->refresh();
 

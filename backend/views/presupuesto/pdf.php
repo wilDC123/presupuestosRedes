@@ -45,7 +45,7 @@ use yii\helpers\Html;
 
 $proyecto = $presupuesto->proyecto;
 
-$ubicacion = $proyecto->ubicacion();
+$area = $proyecto->areaIntervencionTexto();
 $numero = 0;
 
 // La fila de mano de obra de la DTIC va dentro de la categoria "Mano de
@@ -236,7 +236,11 @@ foreach ($presupuesto->complementos as $complemento) {
     </tr>
     <tr>
         <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre ?? '—') ?></td>
-        <td><strong>Facultad / Edificio / Bloques:</strong> <?= Html::encode($ubicacion !== '' ? $ubicacion : '—') ?></td>
+        <td><strong>Unidad solicitante:</strong> <?= Html::encode($proyecto->unidadSolicitante ?: '—') ?></td>
+    </tr>
+    <?php // A todo el ancho: varias areas pueden ocupar mas de una linea. ?>
+    <tr>
+        <td colspan="2"><strong>Área de intervención:</strong> <?= Html::encode($area !== '' ? $area : '—') ?></td>
     </tr>
 </table>
 

@@ -43,6 +43,33 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   `backend/fonts/carlito`) en todos los impresos menos la carta
 - Gestión de proyectos (`redes.Proyecto`; código RD-PI-PT-NNN del correlativo PT al crearlo, los
   existentes se renumeraron a 3 cifras)
+- Unidad solicitante y área de intervención (2026-10-28, revisión con el Ing. del 2026-10-27; resumen
+  en `docs/cambios-unidad-area-intervencion.md`). Reemplazan a "Facultad / Edificio / Bloques":
+  - `Proyecto.unidadSolicitante` (obligatoria): QUIÉN pide, texto libre tal como la nota (facultad,
+    carrera, oficina o persona). SIN catálogo: el `<datalist>` solo sugiere lo ya escrito y las
+    facultades del JSON (`ProyectoService::sugerenciasUnidad()`). NUNCA gestionar unidades aquí
+  - `redes.ProyectoAreaIntervencion` (0..* por proyecto): DÓNDE se trabaja, edificio → bloque →
+    nivel → ambiente (llega hasta donde haga falta, no se salta un nivel), elegido de la base
+    `UsfxGEO` de Desarrollo, SOLO LECTURA y solo Estado 'V' (`InfraestructuraProvider`,
+    `UsfxGeoInfraestructuraProvider`, conexión `dbGeo` en `main-local.php`). Guarda los id de
+    UsfxGEO (referencia lógica, como idSigma) + COPIA congelada de los nombres; una ya guardada se
+    conserva aunque la den de baja. Sin "agregar" edificios ni ambientes. Formulario con buscador
+    (`proyecto/buscar-ambiente`, `ProyectoService::buscarAreas()`: primero los EDIFICIOS que coinciden,
+    que se ponen en el paso a paso, y luego hasta 30 ambientes con aviso "hay más"; ignora tildes y
+    guiones, "E303" = "E-303") y paso a paso: el EDIFICIO no es un `<select>` (con 134 la lista del
+    navegador se abría muy alta) sino un campo que filtra al escribir, con lista propia debajo y
+    los edificios ya usados en proyectos primero (`ProyectoService::edificiosParaFormulario()`, 2026-10-28),
+    a todo el ancho; debajo bloque y piso (selects) y AMBIENTE (otro campo que filtra, `crearCombo()` en
+    `web/js/proyecto-form.js`), en cascada (`proyecto/bloques|niveles|ambientes`). Resultados del buscador en
+    dos renglones (ambiente arriba, edificio · bloque · piso abajo). Las áreas elegidas se ven AGRUPADAS por
+    edificio · bloque, una línea por área (`ProyectoAreaIntervencion::grupo()` y `detalle()`). Desde el 2026-10-29 el
+    grupo NO lleva rótulo "Edificio:" (en los documentos ya va después de "Área de intervención:") y usa el
+    nombre de UsfxGEO tal cual (quitarle el "Edificio " inicial dejaba nombres como "II (ExCasona)" o "Carrera
+    de Pedagogia", que parece la unidad); piso y ambiente van con dos puntos: "Edificio Carrera de Pedagogia ·
+    Bloque A" / "Piso 1: A100 Gradas"; en los documentos "Edificio X · Bloque B: B101, B102; Edificio Y"
+  - Texto para documentos: `Proyecto::areaIntervencionTexto()` (agrupa por edificio y bloque). Los
+    proyectos de antes conservan `facultad`, `edificio` y `redes.ProyectoBloque` (ya no se escriben,
+    no se borraron) y muestran esa "ubicación anterior" hasta que se les elijan áreas
 - Subcatálogo curado de ítems de redes, con referencia lógica a `dbo.CatalogoSigma.IdSigma`
   (NUNCA duplicar el catálogo completo; selección manual/bajo demanda, no clasificación automática).
   Un ítem INACTIVO no se elige (2026-10-21): `SubcatalogoItemService::opciones($conservar)` trae solo
@@ -72,7 +99,13 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `backend/config/parametros-proyecto.json`). `Proyecto.idTipoProyecto` y
   `Plantilla.idTipoProyecto` son FK. Solo se eligen tipos activos, pero quien ya tenía uno
   desactivado lo conserva (`TipoProyecto::reglaElegible()`); uno en uso no se elimina, se
-  desactiva. Facultades, edificios, bloques y proyectistas SIGUEN en el JSON
+  desactiva. En el JSON quedan SOLO las facultades (codigo + nombre), como sugerencia de unidad
+  solicitante; sus edificios y bloques se quitaron el 2026-10-28
+- Proyectistas: catálogo `redes.Proyectista` (nombre único, activo), en Configuración → "Proyectistas"
+  (2026-10-28; antes en el JSON; migración `m261028_202824_crear_proyectista`, cargó los 2 del JSON).
+  Solo una lista de NOMBRES, no usuarios. `ProyectoProyectista` sigue guardando una COPIA del nombre
+  (sin FK): corregir o desactivar no cambia los proyectos; "en uso" se cuenta por nombre
+  (`ProyectistaService`). Solo se eligen activos; quien ya lo tenía lo conserva; en uso no se elimina
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
@@ -128,8 +161,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     `codigoAnterior`, que se ve y se busca en el registro; la serie 'NET' queda solo para su `safeDown()`) que se firma y se
     entrega al proveedor. NUNCA cambia: guarda copias congeladas (título = nombre DTIC del ítem de la lista desde el
     2026-10-21, antes el de la ficha; cantidad, unidad,
-    dependencia = facultad del proyecto, garantía, textos, condiciones de entrega; el lugar de entrega por
-    defecto es "Administración de la <facultad>" desde el 2026-10-26,
+    dependencia = unidad solicitante del proyecto desde el 2026-10-28 (antes la facultad), garantía, textos,
+    condiciones de entrega; el lugar de entrega por defecto es desde el 2026-10-28 el texto
+    `ConfiguracionEspecificacion.lugarEntregaPorDefecto` de la configuración del formulario (vacío = no sale;
+    del 2026-10-26 al 28 fue "Administración de la <facultad>"),
     `EspecificacionEmisionService::lugarEntregaPorDefecto()`, las anteriores conservan el suyo) y apunta a una
     versión que ya no cambia. Estados: vigente, reemplazada, anulada; "vencida" se calcula
     (fecha + vigencia). Reglas en `EspecificacionEmisionService`.
@@ -162,7 +197,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   especificación es OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud,
   cotización, presupuesto ni PDF. Los impresos citan el NET de la emisión vigente
   (`ProyectoItem::referenciaEspecificacion()`). El PDF de la solicitud de cotización no lleva
-  rubro, nombre del proyecto, edificio ni bloques (solo "Unidad" = facultad), pero desde el
+  rubro, nombre del proyecto, edificio ni bloques (solo "Unidad" = unidad solicitante desde el 2026-10-28; antes la facultad), pero desde el
   2026-10-21 SÍ cita el NET vigente junto al nombre del ítem y lleva AL FINAL del mismo PDF el
   formulario NET de cada ítem, cada uno en hoja nueva y con su marca de agua
   (`SolicitudCotizacionService::emisionesVigentes()` y `generarPdf()`; el 2026-10-20 se había
@@ -288,7 +323,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `numeroPresupuesto` (NO que esté aprobado). Sin marca de agua. GUARDA su texto (copiado de
   `redes.ConfiguracionCarta` al crearla: textos por defecto y 3 firmas propias, la 3.ª el V°B° del
   jefe, editables en "Configuración de la carta"); cambiar la configuración no altera las ya
-  escritas, salvo ciudad y formato del oficio. Marcadores: {proyecto} y {facultad} se reemplazan al
+  escritas, salvo ciudad y formato del oficio. Marcadores: {proyecto} y {unidad} (= unidad solicitante; {facultad} es el
+  nombre de antes y vale lo mismo, 2026-10-28; el cargo "DECANO/DECANA DE LA…" se sugiere solo si la unidad
+  empieza con "Facultad") se reemplazan al
   crear la carta; {oficio}, {numeroPresupuesto} y {especificaciones} quedan en el texto y se
   reemplazan AL IMPRIMIR ({especificaciones} = solo el NÚMERO de los NET vigentes del proyecto, sin
   "NET:" ni año, de menor a mayor, separados por comas: "896, 897, 900", `CartaService::codigosNet()`;
@@ -350,7 +387,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261026_003449_crear_usuario_temporal`, aplicada el 2026-10-25), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261028_202824_crear_proyectista`, aplicada el 2026-10-28), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -380,6 +417,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     plantilla (`dbo.user`) solo crean la tabla en desarrollo (`YII_ENV_DEV`); el backend ya no
     la usa para ingresar (ver `redes.Usuario`).
   - mPDF escribe sus temporales en `@runtime/mpdf`, no en `vendor/`.
+  - `assetManager.appendTimestamp` (2026-10-28): CSS y JS salen con `?v=<fecha>`, así el navegador
+    no se queda con una versión vieja después de un cambio.
   - Probado: las 29 migraciones desde cero y los tests, sobre una base temporal con
     compatibilidad 110 (SQL Server 2012). La base local es SQL Server 2022 (compatibilidad 160).
 - OJO con `sqlcmd` a mano: usar `-I` (QUOTED_IDENTIFIER ON). Sin eso, los DELETE/UPDATE sobre
@@ -444,6 +483,14 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   la DTIC y trabajos complementarios"
 - PENDIENTE (encargado): confirmar si la sección de trabajos complementarios debe salir aunque esté
   vacía (hoy, como la de materiales, sale solo si tiene filas)
+- PENDIENTE (tutor): unidad solicitante y área de intervención (2026-10-28): `Proyecto.unidadSolicitante`,
+  clase `ProyectoAreaIntervencion` (composición 0..*), `ConfiguracionEspecificacion.lugarEntregaPorDefecto`,
+  componente externo "Infraestructura física (UsfxGEO)"; salen facultad/edificio/bloques; clase
+  `Proyectista` (catálogo, sin asociación: el proyecto copia el nombre). Ver
+  `docs/cambios-unidad-area-intervencion.md`
+- PENDIENTE (Ing. de DTIC / Desarrollo): ¿seguir leyendo las tablas de UsfxGEO o usar vistas? ¿qué son
+  los estados E, C, D, R? Confirmar el texto del lugar de entrega por defecto (hoy vacío: llenarlo en la
+  configuración del formulario) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a
   Proyecto y a Plantilla (0..1 tipo por proyecto/plantilla)
 - PENDIENTE (Ing. de DTIC): confirmar los tipos de proyecto reales; los 4 cargados

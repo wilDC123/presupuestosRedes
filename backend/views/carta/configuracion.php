@@ -58,10 +58,10 @@ $volver = $proyecto !== null
         <div class="rd-card-head"><div class="rd-card-titulo">Texto</div></div>
         <div class="rd-card-pad">
             <?= $form->field($configuracion, 'plantillaReferencia')->textarea(['rows' => 2, 'maxlength' => 500])
-                ->hint('Sin "Ref." (lo pone la carta). {proyecto} = nombre del proyecto; {facultad} = su facultad. Se guarda en mayúsculas.') ?>
+                ->hint('Sin "Ref." (lo pone la carta). {proyecto} = nombre del proyecto; {unidad} = su unidad solicitante. Se guarda en mayúsculas.') ?>
             <?= $form->field($configuracion, 'saludo')->textInput(['maxlength' => 150]) ?>
             <?= $form->field($configuracion, 'plantillaCuerpo')->textarea(['rows' => 10, 'maxlength' => 4000])
-                ->hint('Deje una línea en blanco entre párrafos. {proyecto} y {facultad} se reemplazan al crear la carta; {oficio} y {numeroPresupuesto}, al imprimirla.') ?>
+                ->hint('Deje una línea en blanco entre párrafos. {proyecto} y {unidad} se reemplazan al crear la carta ({facultad}, el nombre de antes, también); {oficio} y {numeroPresupuesto}, al imprimirla.') ?>
             <?= $form->field($configuracion, 'despedida')->textInput(['maxlength' => 150]) ?>
         </div>
     </div>

@@ -25,8 +25,10 @@ use DateTime;
  *  - el PDF no lleva marca de agua: se imprime cuando ya esta todo.
  *
  * Marcadores:
- *  - {proyecto} y {facultad}: se reemplazan al llenar la carta nueva (asi el
- *    encargado puede corregir la frase),
+ *  - {proyecto} y {unidad} (la unidad solicitante; {facultad}, el nombre de
+ *    antes, se reemplaza igual para no romper las plantillas ya escritas):
+ *    se reemplazan al llenar la carta nueva (asi el encargado puede corregir
+ *    la frase),
  *  - {oficio}, {numeroPresupuesto} y {especificaciones} (los codigos de
  *    las especificaciones vigentes del proyecto): quedan en el texto y se
  *    reemplazan al imprimir,
@@ -50,33 +52,36 @@ class CartaService
 
     /**
      * Carta nueva (sin guardar) llena con la configuracion y el proyecto:
-     * fecha de hoy, cargo "DECANO DE LA <FACULTAD>", referencia y cuerpo con
-     * el nombre del proyecto y la facultad, y las tres firmas.
+     * fecha de hoy, cargo "DECANO DE LA <FACULTAD>" si la unidad solicitante
+     * es una facultad, referencia y cuerpo con el nombre del proyecto y la
+     * unidad solicitante, y las tres firmas.
      */
     public function nueva(Presupuesto $presupuesto): CartaPresupuesto
     {
         $configuracion = ConfiguracionCarta::obtener();
         $proyecto = $presupuesto->proyecto;
         $nombreProyecto = trim((string) $proyecto->nombre);
-        $facultad = trim((string) $proyecto->facultad);
+        $unidad = trim((string) $proyecto->unidadSolicitante);
 
         $carta = new CartaPresupuesto();
         $carta->idPresupuesto = $presupuesto->id;
         $carta->fecha = date('Y-m-d');
         $carta->tratamiento = 'Señor';
-        $carta->destinatarioCargo = $this->cargoSugerido('Señor', $facultad);
+        $carta->destinatarioCargo = $this->cargoSugerido('Señor', $unidad);
         // Los marcadores se normalizan antes de reemplazar: una plantilla
         // guardada con {PROYECTO} tambien funciona.
         $carta->referencia = CartaPresupuesto::mayusculas(strtr(CartaPresupuesto::normalizarMarcadores((string) $configuracion->plantillaReferencia), [
             '{proyecto}' => $nombreProyecto,
-            '{facultad}' => $facultad,
+            '{unidad}' => $unidad,
+            '{facultad}' => $unidad,
         ]));
         // En medio de una frase el nombre del proyecto va con minuscula
         // ("requerimiento de instalación de…"), salvo que empiece con una
         // sigla ("UPS…"), que se deja como esta.
         $carta->cuerpo = strtr(CartaPresupuesto::normalizarMarcadores((string) $configuracion->plantillaCuerpo), [
             '{proyecto}' => $this->minusculaInicial($nombreProyecto),
-            '{facultad}' => $facultad,
+            '{unidad}' => $unidad,
+            '{facultad}' => $unidad,
         ]);
         $carta->saludo = $configuracion->saludo;
         $carta->despedida = $configuracion->despedida;
@@ -92,19 +97,21 @@ class CartaService
 
     /**
      * Cargo sugerido para el destinatario: "DECANA DE LA FACULTAD DE…" con
-     * Señora/Señoras, "DECANO DE LA FACULTAD DE…" con los demas. Vacio si
-     * el proyecto no tiene facultad. La pantalla lo cambia sola al elegir
-     * otro tratamiento (web/js/carta.js), mientras no se haya escrito otro.
+     * Señora/Señoras, "DECANO DE LA FACULTAD DE…" con los demas. Solo si la
+     * unidad solicitante es una facultad (empieza con "Facultad"): para una
+     * carrera, oficina o persona queda vacio y se escribe a mano. La
+     * pantalla lo cambia sola al elegir otro tratamiento (web/js/carta.js),
+     * mientras no se haya escrito otro.
      */
-    public function cargoSugerido(string $tratamiento, string $facultad): string
+    public function cargoSugerido(string $tratamiento, string $unidad): string
     {
-        if ($facultad === '') {
+        if (!preg_match('/^facultad\b/iu', $unidad)) {
             return '';
         }
 
         $cargo = in_array($tratamiento, ['Señora', 'Señoras'], true) ? 'DECANA' : 'DECANO';
 
-        return mb_strtoupper($cargo . ' DE LA ' . $facultad, 'UTF-8');
+        return mb_strtoupper($cargo . ' DE LA ' . $unidad, 'UTF-8');
     }
 
     /**

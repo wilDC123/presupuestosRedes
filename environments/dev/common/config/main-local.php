@@ -43,6 +43,14 @@ return [
             'password' => '',
             'charset' => 'utf8',
         ],
+        // Infraestructura fisica para el area de intervencion (base UsfxGEO, solo lectura).
+        'dbGeo' => [
+            'class' => \yii\db\Connection::class,
+            'dsn' => 'sqlsrv:Server=localhost;Database=UsfxGEO',
+            'username' => '',
+            'password' => '',
+            'charset' => 'UTF-8',
+        ],
         'mailer' => \yii\mail\MailerInterface::class,
     ],
 ];

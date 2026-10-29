@@ -32,11 +32,6 @@ class JsonParametrosProyectoProvider implements ParametrosProyectoProvider
         return $this->datos()['facultades'] ?? [];
     }
 
-    public function proyectistas(): array
-    {
-        return $this->datos()['proyectistas'] ?? [];
-    }
-
     /**
      * @return array<string, mixed>
      */

@@ -20,10 +20,11 @@ use yii\db\ActiveRecord;
  * @property string $nombre
  * @property string|null $descripcion
  * @property int|null $idTipoProyecto FK a redes.TipoProyecto.
- * @property string|null $codigoFacultad
- * @property string|null $facultad Nombre de la facultad, copiado al guardar.
- * @property string|null $codigoEdificio
- * @property string|null $edificio Nombre del edificio, copiado al guardar.
+ * @property string|null $unidadSolicitante Quien pide, en texto libre tal como dice la nota.
+ * @property string|null $codigoFacultad Ubicacion ANTERIOR al 2026-10-28 (ya no se escribe).
+ * @property string|null $facultad       Idem: los proyectos nuevos usan unidadSolicitante
+ * @property string|null $codigoEdificio y las areas de intervencion.
+ * @property string|null $edificio
  * @property int|null $idProyectoAnterior
  * @property int $numeroFase
  * @property int|null $idPlantillaOrigen Plantilla de la que partio la lista (solo informativo).
@@ -32,7 +33,8 @@ use yii\db\ActiveRecord;
  * @property string $fechaCreacion
  *
  * @property-read TipoProyecto|null $tipoProyecto
- * @property-read ProyectoBloque[] $bloques
+ * @property-read ProyectoAreaIntervencion[] $areasIntervencion
+ * @property-read ProyectoBloque[] $bloques Ubicacion anterior al 2026-10-28.
  * @property-read ProyectoProyectista[] $proyectistas
  * @property-read Proyecto|null $proyectoAnterior
  * @property-read Proyecto[] $fasesSiguientes
@@ -53,12 +55,17 @@ class Proyecto extends ActiveRecord
 
     /**
      * Atributos virtuales: no son columnas de redes.Proyecto. Reciben del
-     * formulario los bloques y proyectistas elegidos; ProyectoService los
-     * guarda en redes.ProyectoBloque y redes.ProyectoProyectista.
+     * formulario las areas de intervencion y los proyectistas elegidos;
+     * ProyectoService los guarda en redes.ProyectoAreaIntervencion y
+     * redes.ProyectoProyectista.
      *
-     * @var string[]|string codigos de bloque
+     * Cada area llega como [idEdificio, idBloqueArea, numeroNivel, idEspacio]
+     * (los tres ultimos pueden venir vacios). Los nombres NO vienen del
+     * formulario: ProyectoService los pide a la fuente de infraestructura.
+     *
+     * @var array<int, array<string, string>>|string
      */
-    public $codigosBloque = [];
+    public $areas = [];
 
     /** @var string[]|string nombres de proyectistas */
     public $nombresProyectista = [];
@@ -81,11 +88,15 @@ class Proyecto extends ActiveRecord
             [['descripcion'], 'string', 'max' => 1000],
             [['idTipoProyecto'], 'integer'],
             TipoProyecto::reglaElegible(),
-            [['codigoFacultad', 'codigoEdificio'], 'string', 'max' => 30],
+            [['unidadSolicitante'], 'trim'],
+            [['unidadSolicitante'], 'required'],
+            [['unidadSolicitante'], 'string', 'max' => 250],
             [['idProyectoAnterior'], 'integer'],
             [['idProyectoAnterior'], 'exist', 'skipOnError' => true, 'targetClass' => self::class, 'targetAttribute' => ['idProyectoAnterior' => 'id']],
+            // 'safe': las areas las revisa ProyectoService una por una contra la
+            // fuente de infraestructura (que existan y esten vigentes).
+            [['areas'], 'safe'],
             // 'each' aplica la regla indicada a cada elemento del arreglo.
-            [['codigosBloque'], 'each', 'rule' => ['string', 'max' => 30]],
             [['nombresProyectista'], 'each', 'rule' => ['string', 'max' => 200]],
         ];
     }
@@ -98,11 +109,13 @@ class Proyecto extends ActiveRecord
             'nombre' => 'Nombre del proyecto',
             'descripcion' => 'Descripción',
             'idTipoProyecto' => 'Tipo de proyecto',
+            'unidadSolicitante' => 'Unidad solicitante',
+            'areas' => 'Área de intervención',
             'codigoFacultad' => 'Facultad',
             'facultad' => 'Facultad',
             'codigoEdificio' => 'Edificio',
             'edificio' => 'Edificio',
-            'codigosBloque' => 'Bloques involucrados',
+            'codigosBloque' => 'Bloques',
             'nombresProyectista' => 'Proyectistas asignados',
             'idProyectoAnterior' => 'Proyecto de fase anterior (opcional)',
             'numeroFase' => 'Fase',
@@ -115,6 +128,15 @@ class Proyecto extends ActiveRecord
         return $this->hasOne(TipoProyecto::class, ['id' => 'idTipoProyecto']);
     }
 
+    public function getAreasIntervencion(): ActiveQuery
+    {
+        return $this->hasMany(ProyectoAreaIntervencion::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /**
+     * Ubicacion anterior al 2026-10-28 (facultad / edificio / bloques del
+     * JSON). Solo se lee, para los proyectos registrados antes.
+     */
     public function getBloques(): ActiveQuery
     {
         return $this->hasMany(ProyectoBloque::class, ['idProyecto' => 'id'])->orderBy(['nombre' => SORT_ASC]);
@@ -182,14 +204,29 @@ class Proyecto extends ActiveRecord
     }
 
     /**
-     * "Facultad / Edificio / Bloque A, Bloque B" para mostrar en pantalla y
-     * en el PDF. Omite las partes que esten vacias.
+     * Area de intervencion para documentos y pantallas ("Edificio X – Bloque B
+     * – B101, B102"). Un proyecto registrado antes del 2026-10-28 no tiene
+     * areas: muestra su ubicacion anterior (edificio y bloques). '' si no hay
+     * ninguna de las dos.
      */
-    public function ubicacion(): string
+    public function areaIntervencionTexto(): string
+    {
+        if ($this->areasIntervencion !== []) {
+            return ProyectoAreaIntervencion::resumen($this->areasIntervencion);
+        }
+
+        return $this->ubicacionAnterior();
+    }
+
+    /**
+     * Ubicacion de los proyectos anteriores al 2026-10-28: "Edificio / Bloque
+     * A, Bloque B" (la facultad paso a ser la unidad solicitante).
+     */
+    public function ubicacionAnterior(): string
     {
         $bloques = implode(', ', array_map(static fn (ProyectoBloque $bloque) => $bloque->nombre, $this->bloques));
 
-        return implode(' / ', array_filter([$this->facultad, $this->edificio, $bloques]));
+        return implode(' / ', array_filter([$this->edificio, $bloques]));
     }
 
     /**

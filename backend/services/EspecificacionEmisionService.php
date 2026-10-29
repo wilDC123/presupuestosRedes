@@ -69,8 +69,8 @@ class EspecificacionEmisionService
      * documento, con su mismo codigo; no se toma numero del correlativo.
      *
      * $condiciones puede traer lugarEntrega, validezOfertaDias y
-     * tiempoEntregaDias; lo que no venga sale de la configuracion (y el lugar,
-     * de la facultad del proyecto: ver lugarEntregaPorDefecto()).
+     * tiempoEntregaDias; lo que no venga sale de la configuracion (tambien el
+     * lugar: ver lugarEntregaPorDefecto()).
      *
      * Lanza DomainException con un mensaje para el usuario si no se puede.
      * Usa su propia transaccion; dentro de otra (la de guardar la lista) se
@@ -104,8 +104,9 @@ class EspecificacionEmisionService
             'titulo' => $item->subcatalogoItem->descripcion ?? $especificacion->nombre(),
             'cantidad' => $item->cantidad,
             'unidad' => $item->unidadMedida,
-            'dependencia' => $proyecto->facultad,
-            'lugarEntrega' => $this->textoONull($condiciones['lugarEntrega'] ?? null) ?? self::lugarEntregaPorDefecto($proyecto->facultad),
+            // La unidad solicitante, tal como se escribio en el proyecto.
+            'dependencia' => $this->textoONull($proyecto->unidadSolicitante),
+            'lugarEntrega' => $this->textoONull($condiciones['lugarEntrega'] ?? null) ?? self::lugarEntregaPorDefecto(),
             'validezOfertaDias' => $this->textoONull($condiciones['validezOfertaDias'] ?? null) ?? $configuracion->validezOfertaDias,
             'tiempoEntregaDias' => $this->textoONull($condiciones['tiempoEntregaDias'] ?? null) ?? $configuracion->tiempoEntregaDias,
             'elaboradoPor' => $this->textoONull($usuario),
@@ -572,15 +573,17 @@ class EspecificacionEmisionService
     }
 
     /**
-     * Lugar de entrega cuando no se escribe otro: la administracion de la
-     * facultad del proyecto ("Administración de la Facultad de Tecnología").
-     * Se congela al emitir: las emisiones anteriores conservan el suyo.
+     * Lugar de entrega cuando no se escribe otro: el texto de la
+     * configuracion del formulario (null = no sale). Desde el 2026-10-28 ya no
+     * se arma con la facultad ("Administración de la …"): el proyecto tiene
+     * una unidad solicitante en texto libre, que puede ser una oficina o una
+     * persona. Se congela al emitir: las emisiones anteriores conservan el suyo.
      */
-    public static function lugarEntregaPorDefecto(?string $facultad): ?string
+    public static function lugarEntregaPorDefecto(): ?string
     {
-        $facultad = trim((string) $facultad);
+        $lugar = trim((string) ConfiguracionEspecificacion::obtener()->lugarEntregaPorDefecto);
 
-        return $facultad === '' ? null : 'Administración de la ' . $facultad;
+        return $lugar === '' ? null : $lugar;
     }
 
     private function textoONull(mixed $valor): ?string

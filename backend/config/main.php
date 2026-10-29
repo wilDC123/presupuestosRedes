@@ -28,18 +28,30 @@ return [
         ],
     ],
     // Contenedor de dependencias: aqui se decide que clase concreta se usa
-    // cuando alguien pide una interface. Para que facultades, edificios,
-    // bloques, tipos y proyectistas vengan de un servicio web en vez del
-    // JSON, basta con cambiar la clase de esta definicion.
+    // cuando alguien pide una interface. Para que las facultades vengan de un
+    // servicio web en vez del JSON, basta con cambiar la clase de esta
+    // definicion.
     'container' => [
         'definitions' => [
             \backend\services\contracts\ParametrosProyectoProvider::class => [
                 'class' => \backend\services\JsonParametrosProyectoProvider::class,
                 '__construct()' => ['@backend/config/parametros-proyecto.json'],
             ],
+            // Edificios, bloques, niveles y ambientes del area de intervencion:
+            // la base UsfxGEO (conexion "dbGeo"). Si Desarrollo entrega vistas
+            // o un servicio web, se cambia solo esta clase.
+            \backend\services\contracts\InfraestructuraProvider::class => [
+                'class' => \backend\services\UsfxGeoInfraestructuraProvider::class,
+                '__construct()' => ['dbGeo'],
+            ],
         ],
     ],
     'components' => [
+        // Agrega "?v=<fecha del archivo>" a cada CSS y JS: cuando uno cambia,
+        // el navegador baja la version nueva en vez de usar la guardada.
+        'assetManager' => [
+            'appendTimestamp' => true,
+        ],
         // Con 'language' => 'es' Yii formatearia los numeros como 1.234,56. Se
         // fija el formato 1,234.56 que usan los presupuestos de la DTIC.
         'formatter' => [

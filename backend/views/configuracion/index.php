@@ -19,6 +19,7 @@ $grupos = [
         ['Categorías', ['/categoria/index'], 'Agrupan los ítems del subcatálogo y las tablas del presupuesto.'],
         ['Unidades de medida', ['/unidad-medida/index'], 'Nombre y abreviatura; en listados e impresos sale la abreviatura.'],
         ['Tipos de proyecto', ['/tipo-proyecto/index'], 'Clasifican proyectos y plantillas.'],
+        ['Proyectistas', ['/proyectista/index'], 'Nombres que se asignan como proyectistas de un proyecto.'],
     ],
     'Codificación' => [
         ['Codificación de documentos', ['/codificacion/index'], 'Desde qué número siguen los códigos RD-PI-PT, RD-PI-PR y RD-PI-ET.'],
