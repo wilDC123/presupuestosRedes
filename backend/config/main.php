@@ -9,7 +9,7 @@ $params = array_merge(
 
 return [
     'id' => 'app-backend',
-    'name' => 'DTIC Redes',
+    'name' => 'ecoRED',
     // Idioma de los mensajes automaticos de Yii (validaciones, paginacion, etc.).
     'language' => 'es',
     'basePath' => dirname(__DIR__),

@@ -73,9 +73,9 @@ $indice = 0;
 ?>
 <aside class="rd-sidebar">
     <div class="rd-brand">
-        <div class="rd-brand-logo">DT</div>
+        <div class="rd-brand-logo">eR</div>
         <div>
-            <div class="rd-brand-nombre">DTIC</div>
+            <div class="rd-brand-nombre"><?= Html::encode(Yii::$app->name) ?></div>
             <div class="rd-brand-sub">Redes y Telecom. — USFX</div>
         </div>
     </div>
