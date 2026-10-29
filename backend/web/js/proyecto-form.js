@@ -73,7 +73,7 @@ $(function () {
         }
 
         function mostrar() {
-            // Deshabilitado (ej. "Ambiente" antes de elegir el piso): no hay lista que mostrar.
+            // Deshabilitado (ej. "Espacio" antes de elegir el piso): no hay lista que mostrar.
             if (cfg.$texto.prop('disabled')) {
                 return;
             }
@@ -323,7 +323,7 @@ $(function () {
         $texto: $('#proyecto-area-ambiente-texto'),
         $valor: $('#proyecto-area-ambiente'),
         $lista: $('#proyecto-lista-ambientes'),
-        sinResultados: 'Ningún ambiente de este piso con ese nombre.',
+        sinResultados: 'Ningún espacio de este piso con ese nombre.',
         alCambiar: function () {}
     });
 
@@ -446,21 +446,21 @@ $(function () {
                 $resultados.empty().removeClass('d-none');
 
                 if (respuesta.edificios.length === 0 && respuesta.ambientes.length === 0) {
-                    $resultados.append($('<li class="vacio">').text('Sin resultados en los edificios y ambientes vigentes.'));
+                    $resultados.append($('<li class="vacio">').text('Sin resultados en los edificios y espacios vigentes.'));
                 }
 
                 if (respuesta.edificios.length > 0) {
                     $resultados.append($('<li class="grupo">').text('Edificios'));
 
                     $.each(respuesta.edificios, function (_, e) {
-                        resultado(e.edificio, 'Elegir bloque, piso o ambiente, o agregarlo entero')
+                        resultado(e.edificio, 'Elegir bloque, piso o espacio, o agregarlo entero')
                             .data('edificio', e)
                             .appendTo($resultados);
                     });
                 }
 
                 if (respuesta.ambientes.length > 0) {
-                    $resultados.append($('<li class="grupo">').text('Ambientes'));
+                    $resultados.append($('<li class="grupo">').text('Espacios'));
 
                     $.each(respuesta.ambientes, function (_, fila) {
                         resultado(fila.ambiente, $.grep([fila.edificio, fila.bloque, fila.nivel], Boolean).join(' · '))
@@ -470,7 +470,7 @@ $(function () {
                 }
 
                 if (respuesta.hayMas) {
-                    $resultados.append($('<li class="vacio">').text('Hay más ambientes: escriba algo más preciso (ej. el código del ambiente o el bloque).'));
+                    $resultados.append($('<li class="vacio">').text('Hay más espacios: escriba algo más preciso (ej. el código del espacio o el bloque).'));
                 }
             });
         }, 300);
