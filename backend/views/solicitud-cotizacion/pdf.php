@@ -11,8 +11,8 @@ use yii\helpers\Html;
  *
  * Las columnas de precio van EN BLANCO: las llena el proveedor.
  *
- * Al proveedor solo le interesa la unidad que compra (la facultad): el
- * rubro, el nombre del proyecto, el edificio y los bloques son datos
+ * Al proveedor solo le interesa la unidad que compra (la unidad
+ * solicitante): el rubro, el nombre del proyecto y el area de intervencion son datos
  * internos de la DTIC y no salen en el documento. La especificacion tecnica
  * SI: cada item cita el codigo NET de su emision vigente, y los formularios
  * van al final del mismo PDF (SolicitudCotizacionService::generarPdf()).
@@ -26,7 +26,7 @@ use yii\helpers\Html;
  * @var backend\models\ConfiguracionEspecificacion $configuracionNet de aqui salen los plazos minimo/maximo
  */
 
-$facultad = $solicitud->proyecto->facultad;
+$unidad = $solicitud->proyecto->unidadSolicitante;
 $cabecera = $configuracion->lineasCabecera();
 $numero = 0;
 ?>
@@ -116,7 +116,7 @@ $numero = 0;
 <?= $this->render('//pdf/_cabecera', [
     'titulo' => 'SOLICITUD DE COTIZACIÓN',
     'numero' => 'N.° ' . $solicitud->codigo(),
-    'facultad' => $facultad,
+    'facultad' => $unidad,
     // La fecha de envio; sin ella, la del dia en que se imprime.
     'fecha' => $solicitud->fechaDelDocumento(),
     'institucion' => $cabecera[0] ?? null,

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use yii\helpers\Html;
-use yii\helpers\Json;
+use yii\helpers\Url;
 use yii\web\JqueryAsset;
 use yii\widgets\ActiveForm;
 
@@ -12,28 +12,30 @@ use yii\widgets\ActiveForm;
  * en el encabezado de la pagina; el atributo HTML form="proyecto-form" los
  * conecta con este formulario.
  *
- * Los bloques y proyectistas elegidos se muestran como "chips". Cada chip
- * lleva dentro un <input type="hidden">, que es lo que realmente se envia.
- * web/js/proyecto-form.js agrega y quita chips y actualiza edificios y
- * bloques cuando cambia la facultad.
+ * Las areas de intervencion elegidas se muestran como una lista agrupada
+ * por edificio y bloque, y los proyectistas como "chips". Cada una lleva
+ * dentro sus <input type="hidden">, que es lo que realmente se envia. web/js/proyecto-form.js agrega y quita chips y, al
+ * elegir edificio, bloque y nivel, pide al servidor los de abajo (acciones
+ * proyecto/bloques, niveles, ambientes y buscar-ambiente).
+ *
+ * La unidad solicitante es texto libre; el <datalist> solo SUGIERE lo ya
+ * escrito en otros proyectos y las facultades.
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model
  * @var yii\widgets\ActiveForm $form
  * @var array<int, string> $tipos [id => nombre] tipos activos (y el que ya tenia)
- * @var array<string, string> $facultades [codigo => nombre]
- * @var array<string, string> $edificios edificios de la facultad actual
- * @var array<string, string> $bloques bloques del edificio actual
+ * @var string[] $sugerenciasUnidad
+ * @var array<int, array{id: string, nombre: string, usos: int}> $edificios vigentes de UsfxGEO, con cuantos proyectos los usan
+ * @var array<int, array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string, texto: string, grupo: string, detalle: string}> $areas Ver ProyectoService::areasDelFormulario()
  * @var string[] $proyectistas nombres disponibles
- * @var array $arbolUbicacion facultades -> edificios -> bloques, para el JS
  * @var array<int, array{etiqueta: string, codigo: string, resumen: string}> $proyectosAprobados
  */
 
 $this->registerJsFile('@web/js/proyecto-form.js', ['depends' => [JqueryAsset::class]]);
 
-$nombreBloques = Html::getInputName($model, 'codigosBloque');
+$nombreAreas = Html::getInputName($model, 'areas');
 $nombreProyectistas = Html::getInputName($model, 'nombresProyectista');
-$bloquesElegidos = (array) $model->codigosBloque;
 $proyectistasElegidos = (array) $model->nombresProyectista;
 
 // Opciones del desplegable de fase anterior; cada <option> lleva como
@@ -50,7 +52,12 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
 ?>
 <?php $form = ActiveForm::begin([
     'id' => 'proyecto-form',
-    'options' => ['data-ubicacion' => Json::htmlEncode($arbolUbicacion)],
+    'options' => [
+        'data-url-bloques' => Url::to(['bloques']),
+        'data-url-niveles' => Url::to(['niveles']),
+        'data-url-ambientes' => Url::to(['ambientes']),
+        'data-url-buscar' => Url::to(['buscar-ambiente']),
+    ],
 ]); ?>
 
 <div class="rd-cols proyecto-form">
@@ -83,42 +90,77 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
             'placeholder' => 'Alcance general del proyecto...',
         ]) ?>
 
-        <div class="rd-fila-2">
-            <?= $form->field($model, 'codigoFacultad')->dropDownList($facultades, [
-                'prompt' => 'Seleccione la facultad',
-                'class' => 'form-select',
-                'id' => 'proyecto-facultad',
-            ]) ?>
+        <?= $form->field($model, 'unidadSolicitante')->textInput([
+            'maxlength' => 250,
+            'list' => 'proyecto-unidades-sugeridas',
+            'autocomplete' => 'off',
+            'placeholder' => 'Tal como dice la nota de solicitud. Ej. Secretaría General de Vicerrectorado',
+        ])->hint('Texto libre: una facultad, carrera, laboratorio, oficina o persona. Al escribir se sugieren las ya usadas.') ?>
+        <datalist id="proyecto-unidades-sugeridas">
+            <?php foreach ($sugerenciasUnidad as $sugerencia): ?>
+                <option value="<?= Html::encode($sugerencia) ?>"></option>
+            <?php endforeach; ?>
+        </datalist>
 
-            <?= $form->field($model, 'codigoEdificio')->dropDownList($edificios, [
-                'prompt' => 'Seleccione el edificio',
-                'class' => 'form-select',
-                'id' => 'proyecto-edificio',
-            ]) ?>
-        </div>
-
-        <div class="form-group<?= $model->hasErrors('codigosBloque') ? ' has-error' : '' ?>">
-            <label for="proyecto-agregar-bloque"><?= Html::encode($model->getAttributeLabel('codigosBloque')) ?></label>
-            <?php // Campo vacio previo: si se quitan todos los chips, igual llega "codigosBloque" (vacio) y se borran los guardados. ?>
-            <?= Html::hiddenInput($nombreBloques, '') ?>
-            <div class="rd-chips" id="proyecto-bloques" data-nombre="<?= Html::encode($nombreBloques) ?>[]">
-                <?php foreach ($bloquesElegidos as $codigo): ?>
-                    <?php if (isset($bloques[$codigo])): ?>
-                        <span class="chip" data-valor="<?= Html::encode($codigo) ?>">
-                            <?= Html::encode($bloques[$codigo]) ?>
-                            <?= Html::hiddenInput($nombreBloques . '[]', $codigo) ?>
-                            <button type="button" class="x" aria-label="Quitar">×</button>
-                        </span>
-                    <?php endif; ?>
+        <div class="form-group<?= $model->hasErrors('areas') ? ' has-error' : '' ?>">
+            <label for="proyecto-buscar-ambiente"><?= Html::encode($model->getAttributeLabel('areas')) ?></label>
+            <?php // Campo vacio previo: si se quitan todas las areas, igual llega "areas" (vacio) y se borran las guardadas. ?>
+            <?= Html::hiddenInput($nombreAreas, '') ?>
+            <?php // Cada area es un .rd-area con sus 4 hidden; web/js/proyecto-form.js las agrupa por edificio y bloque. ?>
+            <div class="rd-areas" id="proyecto-areas" data-nombre="<?= Html::encode($nombreAreas) ?>" data-siguiente="<?= count($areas) ?>">
+                <?php foreach ($areas as $i => $area): ?>
+                    <div class="rd-area" title="<?= Html::encode($area['texto']) ?>"
+                         data-valor="<?= Html::encode(implode('|', [$area['idEdificio'], $area['idBloqueArea'], $area['numeroNivel'], $area['idEspacio']])) ?>"
+                         data-grupo="<?= Html::encode($area['grupo']) ?>">
+                        <span class="rd-area-detalle"><?= Html::encode($area['detalle']) ?></span>
+                        <?php foreach (['idEdificio', 'idBloqueArea', 'numeroNivel', 'idEspacio'] as $campo): ?>
+                            <?= Html::hiddenInput($nombreAreas . "[$i][$campo]", (string) $area[$campo]) ?>
+                        <?php endforeach; ?>
+                        <button type="button" class="x" aria-label="Quitar">×</button>
+                    </div>
                 <?php endforeach; ?>
             </div>
-            <?= Html::dropDownList(null, null, $bloques, [
-                'id' => 'proyecto-agregar-bloque',
-                'class' => 'form-select',
-                'prompt' => '+ Agregar bloque...',
-            ]) ?>
-            <div class="hint">Un proyecto puede involucrar uno o varios bloques del edificio elegido.</div>
-            <div class="help-block"><?= Html::encode($model->getFirstError('codigosBloque')) ?></div>
+
+            <div class="rd-buscar-ambiente">
+                <input type="search" id="proyecto-buscar-ambiente" class="form-control" autocomplete="off"
+                       placeholder="Buscar edificio o ambiente: ej. «ciencias y tecnología», «E303», «laboratorio económicas»">
+                <ul class="rd-resultados-ambiente d-none" id="proyecto-resultados-ambiente"></ul>
+            </div>
+
+            <div class="rd-nota mt-2 mb-1">O elíjala paso a paso (puede quedarse en el edificio, el bloque o el piso):</div>
+            <?php // Edificio y ambiente no son <select>: sus listas son largas y la del navegador se abre muy alta.
+            // Son campos que filtran al escribir, con su propia lista debajo; el id elegido queda en el
+            // hidden, que es el que lee el resto del paso a paso. En el edificio, los usados en proyectos van primero. ?>
+            <div class="rd-combo mb-2">
+                <?= Html::hiddenInput(null, '', ['id' => 'proyecto-area-edificio']) ?>
+                <?= Html::textInput(null, '', [
+                    'id' => 'proyecto-area-edificio-texto',
+                    'class' => 'form-control',
+                    'placeholder' => 'Edificio: escriba para filtrar (ej. «tecnología», «medicina»)',
+                    'autocomplete' => 'off',
+                    'data-edificios' => $edificios,
+                ]) ?>
+                <ul class="rd-resultados-ambiente d-none" id="proyecto-lista-edificios"></ul>
+            </div>
+            <div class="rd-fila-3">
+                <?= Html::dropDownList(null, null, [], ['id' => 'proyecto-area-bloque', 'class' => 'form-select', 'prompt' => 'Bloque (opcional)', 'disabled' => true]) ?>
+                <?= Html::dropDownList(null, null, [], ['id' => 'proyecto-area-nivel', 'class' => 'form-select', 'prompt' => 'Piso (opcional)', 'disabled' => true]) ?>
+                <div class="rd-combo">
+                    <?= Html::hiddenInput(null, '', ['id' => 'proyecto-area-ambiente']) ?>
+                    <?= Html::textInput(null, '', [
+                        'id' => 'proyecto-area-ambiente-texto',
+                        'class' => 'form-control',
+                        'placeholder' => 'Ambiente (opcional)',
+                        'autocomplete' => 'off',
+                        'disabled' => true,
+                    ]) ?>
+                    <ul class="rd-resultados-ambiente d-none" id="proyecto-lista-ambientes"></ul>
+                </div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm mt-2" id="proyecto-agregar-area" disabled>+ Agregar área</button>
+            <div class="hint">Dónde se hace el trabajo. Puede agregar varias (ej. tres laboratorios). Los edificios y ambientes
+                salen de la infraestructura de la universidad (UsfxGEO): si falta alguno, lo registra su responsable, no este sistema.</div>
+            <div class="help-block"><?= Html::encode($model->getFirstError('areas')) ?></div>
         </div>
 
         <div class="form-group<?= $model->hasErrors('nombresProyectista') ? ' has-error' : '' ?>">

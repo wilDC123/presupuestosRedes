@@ -21,7 +21,7 @@ $this->render('_head');
 <html lang="<?= Yii::$app->language ?>" data-bs-theme="light">
 <head>
     <?php $this->head() ?>
-    <title><?= Html::encode($this->title) ?> — DTIC Redes</title>
+    <title><?= Html::encode($this->title) ?> — <?= Html::encode(Yii::$app->name) ?></title>
 </head>
 <body class="rd">
 <?php $this->beginBody() ?>
@@ -30,7 +30,7 @@ $this->render('_head');
 
 <main id="main" class="rd-main" role="main">
     <?= Breadcrumbs::widget([
-        'homeLink' => ['label' => 'DTIC / Redes', 'url' => Yii::$app->homeUrl],
+        'homeLink' => ['label' => Yii::$app->name, 'url' => Yii::$app->homeUrl],
         'links' => $this->params['breadcrumbs'] ?? [],
     ]) ?>
     <?= Alert::widget() ?>

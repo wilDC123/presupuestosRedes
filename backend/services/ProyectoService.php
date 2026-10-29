@@ -8,11 +8,13 @@ use backend\models\CorrelativoDocumento;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
-use backend\models\ProyectoBloque;
+use backend\models\ProyectoAreaIntervencion;
 use backend\models\ProyectoProyectista;
+use backend\services\contracts\InfraestructuraProvider;
 use Throwable;
 use Yii;
 use yii\data\ActiveDataProvider;
+use yii\db\Exception as DbException;
 use yii\db\IntegrityException;
 
 /**
@@ -22,8 +24,12 @@ use yii\db\IntegrityException;
  *
  * Reglas de negocio que viven aqui:
  *  - el codigo RD-PI-PT-NNN se genera al crear y no se repite,
- *  - facultad, edificio y bloques deben existir en los parametros (el tipo
- *    lo valida el modelo contra redes.TipoProyecto),
+ *  - la unidad solicitante es texto libre (sin catalogo: se sugiere lo ya
+ *    escrito),
+ *  - cada area de intervencion debe existir y estar vigente en la
+ *    infraestructura de la universidad (UsfxGEO); se guarda su referencia y
+ *    una copia de los nombres (el tipo lo valida el modelo contra
+ *    redes.TipoProyecto),
  *  - una fase nueva es un proyecto NUEVO enlazado a uno ya aprobado,
  *  - un proyecto con presupuesto aprobado o cancelado no se modifica.
  */
@@ -36,14 +42,17 @@ class ProyectoService
     public const PASO_LISTA = 'Lista de ítems y especificaciones';
 
     private ParametrosProyectoService $parametros;
+    private InfraestructuraProvider $infraestructura;
 
     /**
-     * Si no se pasa el servicio de parametros, se le pide al contenedor de
-     * Yii, que lo arma con la fuente configurada en backend/config/main.php.
+     * Lo que no se pasa se le pide al contenedor de Yii, que lo arma con la
+     * fuente configurada en backend/config/main.php (los tests pasan fuentes
+     * de prueba).
      */
-    public function __construct(?ParametrosProyectoService $parametros = null)
+    public function __construct(?ParametrosProyectoService $parametros = null, ?InfraestructuraProvider $infraestructura = null)
     {
         $this->parametros = $parametros ?? Yii::$container->get(ParametrosProyectoService::class);
+        $this->infraestructura = $infraestructura ?? Yii::$container->get(InfraestructuraProvider::class);
     }
 
     /**
@@ -68,8 +77,9 @@ class ProyectoService
     /**
      * Proyecto vacio para el formulario "Nuevo proyecto". Si llega el id de
      * un proyecto aprobado, se prepara como su FASE SIGUIENTE: queda
-     * enlazado a el y hereda tipo, facultad y edificio (se pueden cambiar).
-     * No hereda bloques, proyectistas ni items: la fase nueva empieza vacia.
+     * enlazado a el y hereda tipo, unidad solicitante y areas de
+     * intervencion (se pueden cambiar). No hereda proyectistas ni items: la
+     * fase nueva empieza vacia.
      */
     public function nuevo(?int $idProyectoAnterior = null): Proyecto
     {
@@ -80,8 +90,8 @@ class ProyectoService
             $proyecto->idProyectoAnterior = $anterior->id;
             $proyecto->numeroFase = $anterior->numeroFase + 1;
             $proyecto->idTipoProyecto = $anterior->idTipoProyecto;
-            $proyecto->codigoFacultad = $anterior->codigoFacultad;
-            $proyecto->codigoEdificio = $anterior->codigoEdificio;
+            $proyecto->unidadSolicitante = $anterior->unidadSolicitante;
+            $proyecto->areas = array_map(static fn (ProyectoAreaIntervencion $area) => $area->claves(), $anterior->areasIntervencion);
         } else {
             $proyecto->numeroFase = 1;
         }
@@ -90,12 +100,12 @@ class ProyectoService
     }
 
     /**
-     * Deja en el modelo los bloques y proyectistas ya guardados, para que el
+     * Deja en el modelo las areas y proyectistas ya guardados, para que el
      * formulario de edicion los muestre como seleccionados.
      */
     public function cargarSeleccion(Proyecto $proyecto): void
     {
-        $proyecto->codigosBloque = array_map(static fn (ProyectoBloque $bloque) => $bloque->codigo, $proyecto->bloques);
+        $proyecto->areas = array_map(static fn (ProyectoAreaIntervencion $area) => $area->claves(), $proyecto->areasIntervencion);
         $proyecto->nombresProyectista = array_map(static fn (ProyectoProyectista $persona) => $persona->nombre, $proyecto->proyectistas);
     }
 
@@ -163,6 +173,143 @@ class ProyectoService
         }
 
         return (float) PresupuestoDetalle::find()->andWhere(['idPresupuesto' => $presupuesto->id])->sum('precioTotal');
+    }
+
+    /**
+     * Sugerencias para el campo "Unidad solicitante": lo ya escrito en otros
+     * proyectos y las facultades de los parametros. Es solo ayuda para no
+     * transcribir de nuevo: el campo acepta cualquier texto.
+     *
+     * @return string[] ordenadas, sin repetidas (sin importar mayusculas)
+     */
+    public function sugerenciasUnidad(): array
+    {
+        $escritas = Proyecto::find()
+            ->select('unidadSolicitante')
+            ->distinct()
+            ->andWhere(['not', ['unidadSolicitante' => null]])
+            ->column();
+
+        $sugerencias = [];
+
+        foreach (array_merge($escritas, array_values($this->parametros->opcionesFacultad())) as $texto) {
+            $texto = trim((string) $texto);
+
+            if ($texto !== '') {
+                $sugerencias[mb_strtolower($texto, 'UTF-8')] ??= $texto;
+            }
+        }
+
+        ksort($sugerencias);
+
+        return array_values($sugerencias);
+    }
+
+    /**
+     * Las areas del modelo ($proyecto->areas: las guardadas, las heredadas de
+     * la fase anterior o las que llegaron en un POST con errores), cada una
+     * con su "texto", su "grupo" (edificio · bloque) y su "detalle" (piso y
+     * ambiente) para mostrarla en el formulario. Las guardadas usan sus
+     * nombres copiados; las demas se piden a la fuente.
+     *
+     * @return array<int, array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string, texto: string, grupo: string, detalle: string}>
+     */
+    public function areasDelFormulario(Proyecto $proyecto): array
+    {
+        $guardadas = [];
+
+        foreach ($proyecto->isNewRecord ? [] : $proyecto->areasIntervencion as $area) {
+            $guardadas[self::claveArea($area->claves())] = $area;
+        }
+
+        $areas = [];
+
+        foreach (is_array($proyecto->areas) ? $proyecto->areas : [] as $datos) {
+            $claves = self::normalizarArea(is_array($datos) ? $datos : []);
+
+            if ($claves === null) {
+                continue;
+            }
+
+            $area = $guardadas[self::claveArea($claves)] ?? null;
+
+            if ($area === null) {
+                try {
+                    $ruta = $this->infraestructura->ruta($claves['idEdificio'], $claves['idBloqueArea'], $claves['numeroNivel'], $claves['idEspacio']);
+                } catch (DbException $e) {
+                    $ruta = null;
+                }
+
+                if ($ruta === null) {
+                    $areas[] = $claves + ['texto' => $texto = 'Área no vigente (edificio ' . $claves['idEdificio'] . ')', 'grupo' => $texto, 'detalle' => ''];
+                    continue;
+                }
+
+                $area = new ProyectoAreaIntervencion($claves + $ruta);
+            }
+
+            $areas[] = $claves + ['texto' => $area->texto(), 'grupo' => $area->grupo(), 'detalle' => $area->detalle()];
+        }
+
+        return $areas;
+    }
+
+    /**
+     * Edificios vigentes para el campo "Edificio" del formulario, cada uno con
+     * cuantos proyectos ya lo tienen como area (el formulario pone primero
+     * los usados: casi siempre se trabaja en los mismos edificios).
+     *
+     * @return array<int, array{id: string, nombre: string, usos: int}> ordenados por nombre
+     */
+    public function edificiosParaFormulario(): array
+    {
+        $usos = ProyectoAreaIntervencion::find()
+            ->select(['total' => 'COUNT(DISTINCT idProyecto)', 'idEdificio'])
+            ->groupBy('idEdificio')
+            ->indexBy('idEdificio')
+            ->column();
+
+        $edificios = [];
+
+        foreach ($this->infraestructura->edificios() as $id => $nombre) {
+            $edificios[] = ['id' => (string) $id, 'nombre' => $nombre, 'usos' => (int) ($usos[(string) $id] ?? 0)];
+        }
+
+        return $edificios;
+    }
+
+    /** Cuantos ambientes muestra el buscador del formulario. */
+    public const MAX_AMBIENTES_BUSCADOS = 30;
+
+    /**
+     * Lo que encuentra el buscador del formulario:
+     *  - 'edificios': los edificios cuyo nombre coincide (van primero: asi
+     *    "ciencias y tecnologia" muestra el edificio aunque tenga cientos de
+     *    ambientes),
+     *  - 'ambientes': cada uno con su area completa y el "texto" para mostrar,
+     *  - 'hayMas': true si hay mas ambientes de los que se muestran (el
+     *    formulario pide escribir algo mas preciso).
+     *
+     * @return array{edificios: array<int, array{idEdificio: string, edificio: string}>, ambientes: array<int, array<string, mixed>>, hayMas: bool}
+     */
+    public function buscarAreas(string $texto): array
+    {
+        if (mb_strlen(trim($texto), 'UTF-8') < 2) {
+            return ['edificios' => [], 'ambientes' => [], 'hayMas' => false];
+        }
+
+        // Se pide uno mas de los que se muestran, solo para saber si hay mas.
+        $ambientes = $this->infraestructura->buscarAmbientes($texto, self::MAX_AMBIENTES_BUSCADOS + 1);
+
+        return [
+            'edificios' => $this->infraestructura->buscarEdificios($texto),
+            'ambientes' => array_map(static function (array $fila): array {
+                $fila['texto'] = (new ProyectoAreaIntervencion($fila))->texto();
+
+                return $fila;
+            }, array_slice($ambientes, 0, self::MAX_AMBIENTES_BUSCADOS)),
+            'hayMas' => count($ambientes) > self::MAX_AMBIENTES_BUSCADOS,
+        ];
     }
 
     /**
@@ -265,7 +412,10 @@ class ProyectoService
     /**
      * ORDEN (importa en Yii2): load() -> validar -> completar lo que calcula
      * el sistema -> guardar todo dentro de UNA transaccion, para que nunca
-     * quede un proyecto guardado sin sus bloques o proyectistas.
+     * quede un proyecto guardado sin sus areas o proyectistas.
+     *
+     * La ubicacion anterior (facultad, edificio, redes.ProyectoBloque) no se
+     * toca: queda como estaba en los proyectos registrados antes del cambio.
      */
     private function guardar(Proyecto $proyecto, array $datosFormulario): bool
     {
@@ -274,10 +424,9 @@ class ProyectoService
         }
 
         // Un campo vacio del formulario llega como '' y no como arreglo.
-        $proyecto->codigosBloque = $this->limpiarLista($proyecto->codigosBloque);
         $proyecto->nombresProyectista = $this->limpiarLista($proyecto->nombresProyectista);
 
-        foreach (['idTipoProyecto', 'codigoFacultad', 'codigoEdificio', 'idProyectoAnterior'] as $atributo) {
+        foreach (['idTipoProyecto', 'idProyectoAnterior'] as $atributo) {
             if ($proyecto->$atributo === '') {
                 $proyecto->$atributo = null;
             }
@@ -287,7 +436,7 @@ class ProyectoService
         // verificaciones propias del servicio, que agregan los suyos.
         $proyecto->validate();
 
-        $bloques = $this->aplicarParametros($proyecto);
+        $areas = $this->armarAreas($proyecto);
         $this->aplicarFase($proyecto);
         $this->validarProyectistas($proyecto);
 
@@ -304,7 +453,7 @@ class ProyectoService
                 $proyecto->save(false);
             }
 
-            $this->reemplazarBloques($proyecto, $bloques);
+            $this->reemplazarAreas($proyecto, $areas);
             $this->reemplazarProyectistas($proyecto);
 
             $transaccion->commit();
@@ -331,38 +480,97 @@ class ProyectoService
     }
 
     /**
-     * Verifica contra los parametros que facultad, edificio y bloques
-     * existan (y que el edificio sea de esa facultad y los bloques de ese
-     * edificio), y copia los NOMBRES de facultad y edificio al proyecto.
+     * Arma las areas de intervencion con lo que llego del formulario: cada
+     * una debe existir y estar vigente en la fuente de infraestructura, de la
+     * que se copian los nombres. Un area que el proyecto ya tenia guardada se
+     * conserva tal cual (con sus nombres de entonces), aunque despues la
+     * hayan dado de baja en UsfxGEO. Las repetidas se guardan una vez.
      *
-     * @return array<string, string> [codigo => nombre] de los bloques elegidos
+     * @return ProyectoAreaIntervencion[] sin guardar, en el orden recibido
      */
-    private function aplicarParametros(Proyecto $proyecto): array
+    private function armarAreas(Proyecto $proyecto): array
     {
-        $proyecto->facultad = $this->parametros->nombreFacultad($proyecto->codigoFacultad);
-        $proyecto->edificio = $this->parametros->nombreEdificio($proyecto->codigoFacultad, $proyecto->codigoEdificio);
+        $guardadas = [];
 
-        if ($proyecto->codigoFacultad !== null && $proyecto->facultad === null) {
-            $proyecto->addError('codigoFacultad', 'La facultad elegida no existe.');
+        if (!$proyecto->isNewRecord) {
+            foreach ($proyecto->areasIntervencion as $area) {
+                $guardadas[self::claveArea($area->claves())] = $area;
+            }
         }
 
-        if ($proyecto->codigoEdificio !== null && $proyecto->edificio === null) {
-            $proyecto->addError('codigoEdificio', 'El edificio elegido no pertenece a esa facultad.');
-        }
+        $areas = [];
 
-        $disponibles = $this->parametros->opcionesBloque($proyecto->codigoFacultad, $proyecto->codigoEdificio);
-        $elegidos = [];
+        foreach (is_array($proyecto->areas) ? $proyecto->areas : [] as $datos) {
+            $claves = self::normalizarArea(is_array($datos) ? $datos : []);
 
-        foreach ($proyecto->codigosBloque as $codigo) {
-            if (!isset($disponibles[$codigo])) {
-                $proyecto->addError('codigosBloque', 'Uno de los bloques elegidos no pertenece al edificio seleccionado.');
-                break;
+            if ($claves === null) {
+                continue;
             }
 
-            $elegidos[$codigo] = $disponibles[$codigo];
+            $clave = self::claveArea($claves);
+
+            if (isset($areas[$clave])) {
+                continue;
+            }
+
+            if (isset($guardadas[$clave])) {
+                $areas[$clave] = new ProyectoAreaIntervencion($guardadas[$clave]->getAttributes(null, ['id', 'idProyecto', 'orden']));
+                continue;
+            }
+
+            try {
+                $ruta = $this->infraestructura->ruta($claves['idEdificio'], $claves['idBloqueArea'], $claves['numeroNivel'], $claves['idEspacio']);
+            } catch (DbException $e) {
+                Yii::error($e->getMessage(), __METHOD__);
+                $proyecto->addError('areas', 'No se pudo consultar la infraestructura de la universidad (UsfxGEO). Intente de nuevo más tarde.');
+
+                return [];
+            }
+
+            if ($ruta === null) {
+                $proyecto->addError('areas', 'Una de las áreas de intervención no existe o ya no está vigente en la infraestructura de la universidad.');
+                continue;
+            }
+
+            $areas[$clave] = new ProyectoAreaIntervencion($claves + $ruta);
         }
 
-        return $elegidos;
+        return array_values($areas);
+    }
+
+    /**
+     * Deja los identificadores de un area como los espera la fuente ('' ->
+     * null). null si no tiene edificio (fila vacia: se ignora).
+     *
+     * @return array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string}|null
+     */
+    private static function normalizarArea(array $datos): ?array
+    {
+        $texto = static function ($valor): ?string {
+            $valor = is_scalar($valor) ? trim((string) $valor) : '';
+
+            return $valor === '' ? null : $valor;
+        };
+
+        $idEdificio = $texto($datos['idEdificio'] ?? null);
+
+        if ($idEdificio === null) {
+            return null;
+        }
+
+        $idBloque = $texto($datos['idBloqueArea'] ?? null);
+
+        return [
+            'idEdificio' => $idEdificio,
+            'idBloqueArea' => $idBloque !== null && ctype_digit($idBloque) ? (int) $idBloque : null,
+            'numeroNivel' => $texto($datos['numeroNivel'] ?? null),
+            'idEspacio' => $texto($datos['idEspacio'] ?? null),
+        ];
+    }
+
+    private static function claveArea(array $claves): string
+    {
+        return implode('|', [$claves['idEdificio'], $claves['idBloqueArea'] ?? '', $claves['numeroNivel'] ?? '', $claves['idEspacio'] ?? '']);
     }
 
     /**
@@ -389,9 +597,9 @@ class ProyectoService
     }
 
     /**
-     * Un proyectista debe estar en la lista de los parametros, o ya estar
-     * asignado a este proyecto (para no invalidar proyectos antiguos si la
-     * lista cambia).
+     * Un proyectista debe estar activo en redes.Proyectista, o ya estar
+     * asignado a este proyecto (para no invalidar proyectos antiguos si se
+     * desactiva o se corrige su nombre).
      */
     private function validarProyectistas(Proyecto $proyecto): void
     {
@@ -399,7 +607,7 @@ class ProyectoService
             ? []
             : array_map(static fn (ProyectoProyectista $persona) => $persona->nombre, $proyecto->proyectistas);
 
-        $permitidos = array_merge($this->parametros->proyectistas(), $yaAsignados);
+        $permitidos = array_merge((new ProyectistaService())->nombresActivos(), $yaAsignados);
 
         if (array_diff($proyecto->nombresProyectista, $permitidos) !== []) {
             $proyecto->addError('nombresProyectista', 'Uno de los proyectistas elegidos no está en la lista.');
@@ -421,23 +629,21 @@ class ProyectoService
     }
 
     /**
-     * @param array<string, string> $bloques [codigo => nombre]
+     * @param ProyectoAreaIntervencion[] $areas
      */
-    private function reemplazarBloques(Proyecto $proyecto, array $bloques): void
+    private function reemplazarAreas(Proyecto $proyecto, array $areas): void
     {
-        ProyectoBloque::deleteAll(['idProyecto' => $proyecto->id]);
+        ProyectoAreaIntervencion::deleteAll(['idProyecto' => $proyecto->id]);
 
-        foreach ($bloques as $codigo => $nombre) {
-            $bloque = new ProyectoBloque();
-            $bloque->idProyecto = $proyecto->id;
-            $bloque->codigo = (string) $codigo;
-            $bloque->nombre = $nombre;
-            $bloque->save(false);
+        foreach ($areas as $orden => $area) {
+            $area->idProyecto = $proyecto->id;
+            $area->orden = $orden;
+            $area->save(false);
         }
 
-        // Olvida los bloques que el modelo tenia cargados, para que la
-        // proxima lectura de $proyecto->bloques traiga los nuevos.
-        unset($proyecto->bloques);
+        // Olvida las areas que el modelo tenia cargadas, para que la proxima
+        // lectura de $proyecto->areasIntervencion traiga las nuevas.
+        unset($proyecto->areasIntervencion);
     }
 
     private function reemplazarProyectistas(Proyecto $proyecto): void

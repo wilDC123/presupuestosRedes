@@ -8,24 +8,29 @@ use backend\models\Proyecto;
 use backend\services\ListaItemsService;
 use backend\services\ParametrosProyectoService;
 use backend\services\PlantillaService;
+use backend\services\ProyectistaService;
 use backend\services\ProyectoService;
 use backend\services\TipoProyectoService;
+use backend\services\contracts\InfraestructuraProvider;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
+use yii\web\Response;
 
 /**
  * Controlador de "Gestionar Proyecto" (capa de Presentacion): solo los datos
  * basicos del proyecto y su pantalla central de navegacion.
  *
- * No consulta la base de datos ni conoce de donde salen facultades, edificios
- * o bloques: delega en ProyectoService y ParametrosProyectoService.
+ * No consulta la base de datos ni conoce de donde salen los edificios y
+ * ambientes: delega en ProyectoService, ParametrosProyectoService y la
+ * fuente de infraestructura (InfraestructuraProvider).
  */
 class ProyectoController extends Controller
 {
     private ProyectoService $service;
     private ParametrosProyectoService $parametros;
+    private InfraestructuraProvider $infraestructura;
 
     /**
      * init() es el "constructor" recomendado en Yii2 para componentes: se
@@ -38,7 +43,8 @@ class ProyectoController extends Controller
     {
         parent::init();
         $this->parametros = Yii::$container->get(ParametrosProyectoService::class);
-        $this->service = new ProyectoService($this->parametros);
+        $this->infraestructura = Yii::$container->get(InfraestructuraProvider::class);
+        $this->service = new ProyectoService($this->parametros, $this->infraestructura);
     }
 
     public function behaviors(): array
@@ -115,8 +121,8 @@ class ProyectoController extends Controller
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
-        // En GET se muestran los bloques y proyectistas guardados; si el
-        // POST fallo la validacion, se conserva lo que el usuario eligio.
+        // En GET se muestran las areas y proyectistas guardados; si el POST
+        // fallo la validacion, se conserva lo que el usuario eligio.
         if (!Yii::$app->request->isPost) {
             $this->service->cargarSeleccion($model);
         }
@@ -188,6 +194,38 @@ class ProyectoController extends Controller
         ]);
     }
 
+    /**
+     * Las cuatro acciones siguientes responden JSON al formulario
+     * (web/js/proyecto-form.js) para elegir el area de intervencion paso a
+     * paso. Devuelven listas [{id, nombre}] y no objetos {id: nombre}: el
+     * navegador reordena las claves numericas de un objeto, y el orden
+     * (por nombre, o de abajo hacia arriba en los niveles) importa.
+     */
+    public function actionBloques(string $idEdificio): Response
+    {
+        return $this->asJson(self::lista($this->infraestructura->bloques($idEdificio)));
+    }
+
+    public function actionNiveles(int $idBloqueArea): Response
+    {
+        return $this->asJson(self::lista($this->infraestructura->niveles($idBloqueArea)));
+    }
+
+    public function actionAmbientes(int $idBloqueArea, string $numeroNivel): Response
+    {
+        return $this->asJson(self::lista($this->infraestructura->ambientes($idBloqueArea, $numeroNivel)));
+    }
+
+    /**
+     * Buscador del area ("ciencias y tecnologia", "lab economicas", "E303"):
+     * edificios que coinciden y ambientes con su area completa, listos para
+     * agregarse. Ver ProyectoService::buscarAreas().
+     */
+    public function actionBuscarAmbiente(string $q = ''): Response
+    {
+        return $this->asJson($this->service->buscarAreas($q));
+    }
+
     public function actionDelete(int $id)
     {
         $model = $this->findModel($id);
@@ -210,13 +248,27 @@ class ProyectoController extends Controller
         return [
             'model' => $model,
             'tipos' => (new TipoProyectoService())->opciones($model->getOldAttribute('idTipoProyecto')),
-            'facultades' => $this->parametros->opcionesFacultad(),
-            'edificios' => $this->parametros->opcionesEdificio($model->codigoFacultad),
-            'bloques' => $this->parametros->opcionesBloque($model->codigoFacultad, $model->codigoEdificio),
-            'proyectistas' => $this->parametros->proyectistas(),
-            'arbolUbicacion' => $this->parametros->arbolUbicacion(),
+            'sugerenciasUnidad' => $this->service->sugerenciasUnidad(),
+            'edificios' => $this->service->edificiosParaFormulario(),
+            'areas' => $this->service->areasDelFormulario($model),
+            'proyectistas' => (new ProyectistaService())->nombresActivos(),
             'proyectosAprobados' => $this->service->proyectosAprobados($model->isNewRecord ? null : $model->id),
         ];
+    }
+
+    /**
+     * @param array<int|string, string> $opciones [id => nombre]
+     * @return array<int, array{id: string, nombre: string}>
+     */
+    private static function lista(array $opciones): array
+    {
+        $lista = [];
+
+        foreach ($opciones as $id => $nombre) {
+            $lista[] = ['id' => (string) $id, 'nombre' => $nombre];
+        }
+
+        return $lista;
     }
 
     protected function findModel(int $id): Proyecto

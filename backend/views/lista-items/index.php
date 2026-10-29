@@ -394,7 +394,7 @@ $grupoCierra = static fn (int $cantidad): string =>
                 <div class="row">
                     <div class="col-md-6 form-group mb-2">
                         <label for="reemitir-lugar">Lugar de entrega</label>
-                        <?= Html::textInput('lugarEntrega', '', ['id' => 'reemitir-lugar', 'class' => 'form-control', 'maxlength' => 300, 'placeholder' => (string) EspecificacionEmisionService::lugarEntregaPorDefecto($proyecto->facultad)]) ?>
+                        <?= Html::textInput('lugarEntrega', '', ['id' => 'reemitir-lugar', 'class' => 'form-control', 'maxlength' => 300, 'placeholder' => (string) EspecificacionEmisionService::lugarEntregaPorDefecto()]) ?>
                     </div>
                     <div class="col-md-3 form-group mb-2">
                         <label for="reemitir-validez">Validez de la oferta (días)</label>

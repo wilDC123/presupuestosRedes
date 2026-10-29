@@ -24,6 +24,7 @@ use yii\db\ActiveRecord;
  * @property int $vigenciaDias
  * @property int $validezOfertaDias
  * @property int $tiempoEntregaDias
+ * @property string|null $lugarEntregaPorDefecto Se copia a cada emision nueva (vacio = no sale).
  * @property string|null $firma1Prefijo Control de elaboracion: firma 1 = elaborado por,
  * @property string|null $firma1Nombre  firma 2 = aprobado por (ver FirmasDeControl).
  * @property string|null $firma1Cargo
@@ -58,12 +59,13 @@ class ConfiguracionEspecificacion extends ActiveRecord
     public function rules(): array
     {
         return array_merge([
-            [['textoCabecera', 'textoInstrucciones', 'garantiaPorDefecto', 'textoNotaFinal'], 'trim'],
-            [['textoCabecera', 'textoInstrucciones', 'garantiaPorDefecto', 'textoNotaFinal'], 'default', 'value' => null],
+            [['textoCabecera', 'textoInstrucciones', 'garantiaPorDefecto', 'textoNotaFinal', 'lugarEntregaPorDefecto'], 'trim'],
+            [['textoCabecera', 'textoInstrucciones', 'garantiaPorDefecto', 'textoNotaFinal', 'lugarEntregaPorDefecto'], 'default', 'value' => null],
             [['vigenciaDias', 'validezOfertaDias', 'tiempoEntregaDias'], 'required'],
             [['vigenciaDias', 'validezOfertaDias', 'tiempoEntregaDias'], 'integer', 'min' => 1],
             [['textoCabecera', 'garantiaPorDefecto', 'textoNotaFinal'], 'string', 'max' => 500],
             [['textoInstrucciones'], 'string', 'max' => 1000],
+            [['lugarEntregaPorDefecto'], 'string', 'max' => 300],
         ], $this->reglasFirmas());
     }
 
@@ -77,6 +79,7 @@ class ConfiguracionEspecificacion extends ActiveRecord
             'vigenciaDias' => 'Vigencia del formulario (días)',
             'validezOfertaDias' => 'Validez de la oferta por defecto (días)',
             'tiempoEntregaDias' => 'Tiempo de entrega por defecto (días)',
+            'lugarEntregaPorDefecto' => 'Lugar de entrega por defecto',
         ] + self::etiquetasFirmas();
     }
 }

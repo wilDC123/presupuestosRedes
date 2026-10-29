@@ -44,7 +44,7 @@ $menu = [
 // Lo que se toca poco vive en la pagina Configuracion (tarjetas), no en la
 // barra: este enlace se resalta en esa pagina y en cada pantalla a la que lleva.
 $configuracion = ['Configuración', ['/configuracion/index'], [
-    'configuracion', 'categoria', 'unidad-medida', 'tipo-proyecto', 'codificacion',
+    'configuracion', 'categoria', 'unidad-medida', 'tipo-proyecto', 'proyectista', 'codificacion',
     'presupuesto/configuracion', 'carta/configuracion',
     'solicitud-cotizacion/configuracion', 'especificacion/configuracion',
 ]];
@@ -73,9 +73,9 @@ $indice = 0;
 ?>
 <aside class="rd-sidebar">
     <div class="rd-brand">
-        <div class="rd-brand-logo">DT</div>
+        <div class="rd-brand-logo">eR</div>
         <div>
-            <div class="rd-brand-nombre">DTIC</div>
+            <div class="rd-brand-nombre"><?= Html::encode(Yii::$app->name) ?></div>
             <div class="rd-brand-sub">Redes y Telecom. — USFX</div>
         </div>
     </div>

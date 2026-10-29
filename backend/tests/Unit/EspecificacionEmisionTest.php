@@ -43,7 +43,7 @@ class EspecificacionEmisionTest extends Unit
         }
         $this->itemSubcatalogo = $itemSubcatalogo;
 
-        $this->proyecto = new Proyecto(['nombre' => 'Proyecto test NET', 'facultad' => 'Facultad de Tecnología', 'estadoLista' => Proyecto::LISTA_EDICION]);
+        $this->proyecto = new Proyecto(['nombre' => 'Proyecto test NET', 'unidadSolicitante' => 'Facultad de Tecnología', 'estadoLista' => Proyecto::LISTA_EDICION]);
         $this->proyecto->save(false);
         $this->proyecto->refresh();
 
@@ -55,6 +55,7 @@ class EspecificacionEmisionTest extends Unit
     {
         $siguiente = $this->siguienteEt();
         $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']], ['garantia' => '']);
+        ConfiguracionEspecificacion::updateAll(['lugarEntregaPorDefecto' => 'Almacenes test USFX'], ['id' => ConfiguracionEspecificacion::obtener()->id]);
 
         $this->guardarLista([$this->fila(null, 5, $ficha)], 'encargado');
 
@@ -69,8 +70,9 @@ class EspecificacionEmisionTest extends Unit
         // lista, no el de la ficha.
         $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
         $this->assertSame(5.0, (float) $emision->cantidad);
+        // Dependencia = unidad solicitante; lugar = el de la configuracion.
         $this->assertSame('Facultad de Tecnología', $emision->dependencia);
-        $this->assertSame('Administración de la Facultad de Tecnología', $emision->lugarEntrega);
+        $this->assertSame('Almacenes test USFX', $emision->lugarEntrega);
         $this->assertSame('encargado', $emision->elaboradoPor);
         // Sin garantia propia en la ficha: se congela la de la configuracion.
         $this->assertSame(ConfiguracionEspecificacion::obtener()->garantiaPorDefecto, $emision->garantia);

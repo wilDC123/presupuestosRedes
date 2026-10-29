@@ -28,6 +28,16 @@ return [
             'password' => '',
             'charset' => 'UTF-8',
         ],
+        // Infraestructura fisica para el area de intervencion: base UsfxGEO,
+        // SOLO LECTURA (el usuario de la aplicacion solo necesita SELECT sobre
+        // Edificios, BloquesAreas, Niveles y Espacios).
+        'dbGeo' => [
+            'class' => \yii\db\Connection::class,
+            'dsn' => 'sqlsrv:Server=172.16.1.250,1433;Database=UsfxGEO;Encrypt=yes;TrustServerCertificate=yes',
+            'username' => '',
+            'password' => '',
+            'charset' => 'UTF-8',
+        ],
         'mailer' => \yii\mail\MailerInterface::class,
     ],
 ];

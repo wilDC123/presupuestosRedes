@@ -14,6 +14,8 @@ acordar antes. El módulo está hecho en PHP con Yii2 Advanced y usa la base SQL
 - Un usuario de SQL Server propio para la aplicación (desde Linux no hay autenticación de Windows).
 - Permiso para crear el esquema `redes` y sus tablas en `POAPresupuestos`, y para leer
   `dbo.CatalogoSigma`. El módulo no crea ni modifica nada en `dbo`.
+- Permiso de solo lectura sobre la base `UsfxGEO` (edificios, bloques, niveles y ambientes), de
+  donde sale el área de intervención de los proyectos.
 - Tres carpetas en las que PHP pueda escribir: `backend/runtime`, `backend/web/assets` y
   `backend/uploads` (más `console/runtime` para los comandos).
 - Subir los límites de tamaño de archivo de Nginx y PHP a unos 12 MB.
@@ -38,6 +40,8 @@ de Microsoft para la versión de Ubuntu del servidor.
 **Usuario de la aplicación.** Un login de SQL Server (no de Windows) con:
 
 - `SELECT` sobre `dbo.CatalogoSigma` (solo lectura).
+- `SELECT` sobre `UsfxGEO.dbo.Edificios`, `BloquesAreas`, `Niveles` y `Espacios` (solo lectura;
+  el usuario `usrwebpresupuestoredes` ya lo tiene en 172.16.1.250).
 - En el esquema `redes`: crear, modificar y borrar tablas, y leer y escribir datos.
 - Para la primera instalación, permiso para crear el esquema `redes` (o que el DBA lo cree antes:
   `CREATE SCHEMA redes`).
@@ -84,7 +88,10 @@ búsquedas.
    ```
 
 4. Completar la conexión en `common/config/main-local.php` (servidor, usuario, contraseña y
-   opciones de cifrado del punto 3). Este archivo no se sube a git.
+   opciones de cifrado del punto 3). Este archivo no se sube a git. Son dos conexiones: `db`
+   (`POAPresupuestos`) y `dbGeo` (`UsfxGEO`, solo lectura, para el área de intervención). Si
+   Desarrollo entrega después vistas o un servicio web en vez de las tablas, se cambia solo la
+   clase `UsfxGeoInfraestructuraProvider` (definida en `backend/config/main.php`).
 5. Crear las tablas:
 
    ```
@@ -221,3 +228,5 @@ módulo solo necesita saber quién está conectado (`identity->username`).
 6. ¿Cómo se integra con el sistema de usuarios institucional?
 7. ¿`dbo.CatalogoSigma` es una tabla o una vista, y tiene los ~72.000 ítems?
 8. ¿Cómo se respalda la carpeta `backend/uploads`?
+9. ¿El área de intervención se sigue leyendo de las tablas de `UsfxGEO` o Desarrollo prefiere
+   publicar vistas? ¿Qué significan los estados E, C, D y R? (hoy se ofrece solo lo vigente, `V`)

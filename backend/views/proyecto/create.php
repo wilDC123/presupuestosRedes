@@ -29,11 +29,10 @@ $this->params['breadcrumbs'][] = 'Nuevo';
     <?= $this->render('_form', [
         'model' => $model,
         'tipos' => $tipos,
-        'facultades' => $facultades,
+        'sugerenciasUnidad' => $sugerenciasUnidad,
         'edificios' => $edificios,
-        'bloques' => $bloques,
+        'areas' => $areas,
         'proyectistas' => $proyectistas,
-        'arbolUbicacion' => $arbolUbicacion,
         'proyectosAprobados' => $proyectosAprobados,
     ]) ?>
 

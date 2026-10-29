@@ -65,10 +65,10 @@ $botones = [
                         </div>
                         <div class="col-md-5">
                             <?= Html::activeLabel($presupuesto, 'areaIntervencion', ['class' => 'form-label']) ?>
-                            <?php // Si aun no se escribio, se sugiere la facultad del proyecto (se puede cambiar). ?>
+                            <?php // Si aun no se escribio, se sugiere el area de intervencion del proyecto (se puede cambiar). ?>
                             <?= Html::activeTextInput($presupuesto, 'areaIntervencion', [
                                 'class' => 'form-control',
-                                'value' => $presupuesto->areaIntervencion ?: (string) $proyecto->facultad,
+                                'value' => $presupuesto->areaIntervencion ?: mb_substr($proyecto->areaIntervencionTexto(), 0, 300, 'UTF-8'),
                                 'maxlength' => 300,
                                 'required' => true,
                             ]) ?>

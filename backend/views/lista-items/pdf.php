@@ -19,7 +19,7 @@ use yii\helpers\Html;
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  */
 
-$ubicacion = $proyecto->ubicacion();
+$area = $proyecto->areaIntervencionTexto();
 $totalItems = array_sum(array_map(static fn ($grupo) => count($grupo['items']), $grupos));
 $numero = 0;
 ?>
@@ -131,7 +131,11 @@ $numero = 0;
     </tr>
     <tr>
         <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre) ?></td>
-        <td><strong>Facultad / Edificio / Bloques:</strong> <?= Html::encode($ubicacion !== '' ? $ubicacion : '—') ?></td>
+        <td><strong>Unidad solicitante:</strong> <?= Html::encode($proyecto->unidadSolicitante ?: '—') ?></td>
+    </tr>
+    <?php // A todo el ancho: varias areas pueden ocupar mas de una linea. ?>
+    <tr>
+        <td colspan="2"><strong>Área de intervención:</strong> <?= Html::encode($area !== '' ? $area : '—') ?></td>
     </tr>
     <tr>
         <td><strong>Fecha de impresión:</strong> <?= date('d/m/Y') ?></td>

@@ -51,8 +51,8 @@ $this->params['breadcrumbs'][] = $this->title;
                 'value' => static fn ($model) => '<span class="pill-fase">Fase ' . (int) $model->numeroFase . '</span>',
             ],
             [
-                'attribute' => 'facultad',
-                'value' => static fn ($model) => $model->facultad ?: '—',
+                'attribute' => 'unidadSolicitante',
+                'value' => static fn ($model) => $model->unidadSolicitante ?: '—',
             ],
             [
                 'label' => 'Presupuesto',

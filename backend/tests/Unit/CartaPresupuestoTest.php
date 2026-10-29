@@ -49,6 +49,8 @@ class CartaPresupuestoTest extends Unit
         $this->assertSame('DECANA DE LA FACULTAD DE MEDICINA', $this->service->cargoSugerido('Señora', 'Facultad de Medicina'));
         $this->assertSame('DECANO DE LA FACULTAD DE MEDICINA', $this->service->cargoSugerido('Señor', 'Facultad de Medicina'));
         $this->assertSame('', $this->service->cargoSugerido('Señora', ''));
+        // Solo para facultades: una oficina o persona no tiene decano.
+        $this->assertSame('', $this->service->cargoSugerido('Señor', 'Secretaría General de Vicerrectorado'));
     }
 
     public function testSeGuardaEnBorradorPeroNoSeImprimeSinOficioNiNumero(): void
@@ -126,7 +128,7 @@ class CartaPresupuestoTest extends Unit
     {
         $proyecto = new Proyecto([
             'nombre' => 'Instalación de puntos de red',
-            'facultad' => 'Facultad de Medicina',
+            'unidadSolicitante' => 'Facultad de Medicina',
             'estadoLista' => Proyecto::LISTA_EDICION,
         ]);
         $proyecto->save(false);

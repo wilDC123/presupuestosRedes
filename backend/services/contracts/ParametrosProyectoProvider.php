@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace backend\services\contracts;
 
 /**
- * Contrato de la FUENTE de los datos parametrizados de un proyecto:
- * facultades con sus edificios y bloques, y proyectistas. (Los tipos de
- * proyecto ya no estan aqui: los administra el encargado en redes.TipoProyecto.)
+ * Contrato de la FUENTE de los datos parametrizados de un proyecto: hoy solo
+ * las facultades, que sirven de sugerencia para la unidad solicitante. (Los
+ * tipos de proyecto y los proyectistas son tablas que administra el
+ * encargado; los edificios salen de InfraestructuraProvider.)
  *
  * Una "interface" solo dice QUE metodos existen y que devuelven, no como se
  * obtienen los datos. Hoy la implementa JsonParametrosProyectoProvider (lee
@@ -19,14 +20,7 @@ namespace backend\services\contracts;
 interface ParametrosProyectoProvider
 {
     /**
-     * Facultades con sus edificios y los bloques de cada edificio.
-     *
-     * @return array<int, array{codigo: string, nombre: string, edificios: array<int, array{codigo: string, nombre: string, bloques: array<int, array{codigo: string, nombre: string}>}>}>
+     * @return array<int, array{codigo: string, nombre: string}>
      */
     public function facultades(): array;
-
-    /**
-     * @return string[] nombres de las personas que pueden asignarse como proyectistas
-     */
-    public function proyectistas(): array;
 }
