@@ -61,7 +61,14 @@ $formato = Yii::$app->formatter;
     <div class="rd-cols">
 
         <div class="card rd-col-2 rd-card-pad">
-            <div class="rd-card-titulo mb-3">Datos generales</div>
+            <div class="rd-card-head-simple mb-3">
+                <div class="rd-card-titulo">Datos generales</div>
+                <?= Html::a('Imprimir ficha técnica', ['ficha', 'id' => $model->id], [
+                    'class' => 'btn btn-outline btn-sm',
+                    'target' => '_blank',
+                    'title' => 'Ficha técnica del proyecto en PDF (formato provisional)',
+                ]) ?>
+            </div>
 
             <div class="rd-dato"><strong>Tipo:</strong> <?= Html::encode($nombreTipo ?? '—') ?></div>
             <div class="rd-dato"><strong>Proceso:</strong> <?= Html::encode($model->proceso?->etiqueta() ?? '—') ?></div>

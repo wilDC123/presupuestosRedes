@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\components\PresupuestoPdfGenerator;
 use backend\models\Proyecto;
 use backend\services\HistorialService;
 use backend\services\ListaItemsService;
@@ -91,6 +92,29 @@ class ProyectoController extends Controller
             'puedeEditarse' => $this->service->puedeEditarse($model),
             'estaAprobado' => $this->service->estaAprobado($model),
         ]);
+    }
+
+    /**
+     * Ficha tecnica del proyecto en PDF (boton en "Datos generales" de la
+     * vista). Se abre en el navegador ('inline') para imprimirla. Formato
+     * provisional: ver ProyectoService::datosFicha().
+     */
+    public function actionFicha(int $id): Response
+    {
+        $model = $this->findModel($id);
+        $identidad = Yii::$app->user->identity;
+
+        $html = $this->renderPartial('ficha-pdf', [
+            'model' => $model,
+            'datos' => $this->service->datosFicha($model),
+            'usuario' => $identidad !== null ? (string) $identidad->username : null,
+        ]);
+
+        return Yii::$app->response->sendContentAsFile(
+            (new PresupuestoPdfGenerator())->generarDesdeHtml($html),
+            'ficha_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $model->codigo ?: (string) $model->id) . '.pdf',
+            ['mimeType' => 'application/pdf', 'inline' => true]
+        );
     }
 
     /**

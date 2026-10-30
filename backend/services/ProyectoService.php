@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\models\CorrelativoDocumento;
+use backend\models\EspecificacionEmision;
 use backend\models\HistorialProyecto;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
 use backend\models\ProyectoAreaIntervencion;
 use backend\models\ProyectoParticipante;
+use backend\models\SolicitudCotizacion;
 use backend\services\contracts\InfraestructuraProvider;
 use Throwable;
 use Yii;
@@ -233,6 +235,29 @@ class ProyectoService
         }
 
         return (float) PresupuestoDetalle::find()->andWhere(['idPresupuesto' => $presupuesto->id])->sum('precioTotal');
+    }
+
+    /**
+     * Lo que imprime la ficha tecnica del proyecto (revision del 2026-10-29,
+     * paso 7; formato PROVISIONAL hasta que el Ing. de DTIC pase el suyo):
+     * los datos del proyecto (van en la vista con el modelo), sus fechas y
+     * los documentos de su carpeta economica.
+     *
+     * @return array{
+     *   fechas: array{creacion: string|null, revision: string|null, aprobacion: string|null, ultimaModificacion: string|null, ultimoUsuario: string|null},
+     *   monto: float|null,
+     *   especificaciones: EspecificacionEmision[],
+     *   solicitudes: SolicitudCotizacion[]
+     * }
+     */
+    public function datosFicha(Proyecto $proyecto): array
+    {
+        return [
+            'fechas' => $this->historial->fechas($proyecto),
+            'monto' => $this->montoPresupuesto($proyecto),
+            'especificaciones' => (new EspecificacionEmisionService())->vigentesDelProyecto($proyecto),
+            'solicitudes' => (new SolicitudCotizacionService())->listar($proyecto),
+        ];
     }
 
     /**
