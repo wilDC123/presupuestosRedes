@@ -10,8 +10,8 @@ use backend\services\contracts\ParametrosProyectoProvider;
  * Capa de Servicio para los datos parametrizados de un proyecto: hoy solo
  * las facultades, que sirven de SUGERENCIA para la unidad solicitante (ver
  * ProyectoService::sugerenciasUnidad()). Lo demas ya no esta aqui: los tipos
- * de proyecto y los proyectistas son tablas que administra el encargado
- * (redes.TipoProyecto, redes.Proyectista) y los edificios salen de la
+ * de proyecto y el personal son tablas que administra el encargado
+ * (redes.TipoProyecto, redes.Personal) y los edificios salen de la
  * infraestructura de la universidad (InfraestructuraProvider).
  *
  * No sabe de donde vienen los datos: recibe en el constructor "algo que

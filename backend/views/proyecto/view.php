@@ -95,12 +95,16 @@ $formato = Yii::$app->formatter;
                 <?php endif; ?>
             </div>
             <div class="rd-dato">
-                <strong>Proyectistas:</strong>
-                <?php if ($model->proyectistas === []): ?>
+                <strong>Equipo del proyecto:</strong>
+                <?php if ($model->participantes === []): ?>
                     —
                 <?php else: ?>
-                    <?php foreach ($model->proyectistas as $persona): ?>
-                        <span class="chip"><?= Html::encode($persona->nombre) ?></span>
+                    <?php foreach ($model->participantes as $persona): ?>
+                        <div class="mt-1">
+                            <?= Html::encode($persona->nombre) ?>
+                            <span class="rd-nota">· <?= Html::encode($persona->rol->nombre ?? '') ?></span>
+                            <?php if ($persona->esResponsable): ?><span class="badge b-activo">Responsable</span><?php endif; ?>
+                        </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>

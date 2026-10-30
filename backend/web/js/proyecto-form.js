@@ -20,7 +20,9 @@
  *     Las areas elegidas se muestran agrupadas por edificio y bloque; cada
  *     una lleva sus <input type="hidden">: los 4 id, o "manual" y los 4
  *     nombres si se escribio a mano.
- *  2. Los proyectistas se eligen de un desplegable y quedan como "chips".
+ *  2. Equipo del proyecto: "+ Agregar persona" copia la fila modelo
+ *     (<template>) con una clave nueva; "Quitar" la borra. Si queda una sola
+ *     fila, o se quita la responsable, se marca la primera como responsable.
  *  3. Al elegir el proyecto de fase anterior se muestra su resumen y el
  *     numero de fase que le correspondera a este proyecto.
  *
@@ -40,8 +42,8 @@ $(function () {
     var $agregarArea = $('#proyecto-agregar-area');
     var $buscar = $('#proyecto-buscar-ambiente');
     var $resultados = $('#proyecto-resultados-ambiente');
-    var $agregarProyectista = $('#proyecto-agregar-proyectista');
-    var $proyectistas = $('#proyecto-proyectistas');
+    var $equipo = $('#proyecto-equipo tbody');
+    var siguienteFila = parseInt($('#proyecto-equipo').data('siguiente'), 10) || 0;
     var $faseAnterior = $('#proyecto-fase-anterior');
     var siguienteArea = parseInt($areas.data('siguiente'), 10) || 0;
 
@@ -585,29 +587,32 @@ $(function () {
         }
     });
 
-    // ---- Proyectistas, chips y fase ----
+    // ---- Equipo del proyecto ----
 
-    function agregarChip($contenedor, valor, texto) {
-        var yaElegido = $contenedor.find('.chip').filter(function () {
-            return String($(this).attr('data-valor')) === String(valor);
-        }).length > 0;
+    // Si nadie quedo como responsable, lo es la primera fila.
+    function asegurarResponsable() {
+        var $radios = $equipo.find('input[type="radio"]');
 
-        if (valor === '' || yaElegido) {
-            return;
+        if ($radios.length > 0 && $radios.filter(':checked').length === 0) {
+            $radios.first().prop('checked', true);
         }
-
-        $('<span class="chip">')
-            .attr('data-valor', valor)
-            .text(texto + ' ')
-            .append($('<input type="hidden">').attr('name', $contenedor.data('nombre')).val(valor))
-            .append($('<button type="button" class="x" aria-label="Quitar">').text('×'))
-            .appendTo($contenedor);
     }
 
-    $agregarProyectista.on('change', function () {
-        agregarChip($proyectistas, $agregarProyectista.val(), $agregarProyectista.find('option:selected').text());
-        $agregarProyectista.val('');
+    $('#proyecto-agregar-persona').on('click', function () {
+        var html = $('#proyecto-equipo-fila-modelo').html().replace(/__n__/g, String(siguienteFila));
+        siguienteFila++;
+
+        var $fila = $(html).appendTo($equipo);
+        asegurarResponsable();
+        $fila.find('select').first().trigger('focus');
     });
+
+    $equipo.on('click', '.rd-equipo-quitar', function () {
+        $(this).closest('tr').remove();
+        asegurarResponsable();
+    });
+
+    // ---- Chips de las areas y fase ----
 
     // Delegado en el formulario: tambien funciona con los chips agregados despues.
     $form.on('click', '.chip .x', function () {

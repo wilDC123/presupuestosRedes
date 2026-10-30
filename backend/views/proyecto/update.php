@@ -34,7 +34,8 @@ $this->params['breadcrumbs'][] = 'Editar';
         'sugerenciasUnidad' => $sugerenciasUnidad,
         'edificios' => $edificios,
         'areas' => $areas,
-        'proyectistas' => $proyectistas,
+        'personal' => $personal,
+        'roles' => $roles,
         'proyectosAprobados' => $proyectosAprobados,
     ]) ?>
 

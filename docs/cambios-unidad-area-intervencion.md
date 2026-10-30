@@ -49,6 +49,9 @@ Las emisiones y cartas ya hechas no cambian: guardan su propia copia.
 - Los proyectistas pasaron del JSON a la tabla `redes.Proyectista` (nombre, activo), que el encargado
   administra en Configuración → "Proyectistas" (como los tipos de proyecto). Es una lista de nombres,
   no de usuarios. El proyecto sigue guardando una copia del nombre.
+- ACTUALIZACIÓN 2026-10-29 (revisión con el Ing., paso 5): `redes.Proyectista` pasó a `redes.Personal` (sin
+  rol fijo) y el proyecto tiene un EQUIPO con roles (`redes.RolProyecto`, `redes.ProyectoParticipante`) y una
+  persona responsable. Ver CLAUDE.md, "EQUIPO DEL PROYECTO".
 - Del JSON `parametros-proyecto.json` se quitaron los edificios, los bloques y los proyectistas. Solo
   quedan las facultades, como sugerencia para la unidad solicitante. "Facultad de Ciencias
   Tecnológicas" se corrigió a "Facultad de Ciencias y Tecnología".
@@ -57,7 +60,8 @@ Las emisiones y cartas ya hechas no cambian: guardan su propia copia.
 
 ## Para los diagramas (pendiente del tutor)
 
-- **Clases**: clase `Proyectista` (catálogo de nombres, activo); `Proyecto.unidadSolicitante`; clase `ProyectoAreaIntervencion` (composición 0..* desde
+- **Clases**: clase `Proyectista` (catálogo de nombres, activo; desde el 2026-10-29 `Personal`, con
+  `RolProyecto` y `ProyectoParticipante`); `Proyecto.unidadSolicitante`; clase `ProyectoAreaIntervencion` (composición 0..* desde
   Proyecto) con referencias a un componente externo; `ConfiguracionEspecificacion.lugarEntregaPorDefecto`.
   Facultad, edificio y bloques salen del modelo (quedan solo como datos históricos).
 - **Casos de uso**: no hay "Gestionar unidades" ni "Gestionar edificios". Se puede agregar "Buscar

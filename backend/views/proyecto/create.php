@@ -33,7 +33,8 @@ $this->params['breadcrumbs'][] = 'Nuevo';
         'sugerenciasUnidad' => $sugerenciasUnidad,
         'edificios' => $edificios,
         'areas' => $areas,
-        'proyectistas' => $proyectistas,
+        'personal' => $personal,
+        'roles' => $roles,
         'proyectosAprobados' => $proyectosAprobados,
     ]) ?>
 

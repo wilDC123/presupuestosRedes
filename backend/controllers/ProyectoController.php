@@ -8,9 +8,10 @@ use backend\models\Proyecto;
 use backend\services\ListaItemsService;
 use backend\services\ParametrosProyectoService;
 use backend\services\PlantillaService;
-use backend\services\ProyectistaService;
+use backend\services\PersonalService;
 use backend\services\ProyectoService;
 use backend\services\ProcesoService;
+use backend\services\RolProyectoService;
 use backend\services\TipoProyectoService;
 use backend\services\contracts\InfraestructuraProvider;
 use Yii;
@@ -122,7 +123,7 @@ class ProyectoController extends Controller
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
-        // En GET se muestran las areas y proyectistas guardados; si el POST
+        // En GET se muestran las areas y el equipo guardados; si el POST
         // fallo la validacion, se conserva lo que el usuario eligio.
         if (!Yii::$app->request->isPost) {
             $this->service->cargarSeleccion($model);
@@ -246,6 +247,8 @@ class ProyectoController extends Controller
      */
     private function datosFormulario(Proyecto $model): array
     {
+        $equipo = array_filter(is_array($model->equipo) ? $model->equipo : [], 'is_array');
+
         return [
             'model' => $model,
             'tipos' => (new TipoProyectoService())->opciones($model->getOldAttribute('idTipoProyecto')),
@@ -253,7 +256,9 @@ class ProyectoController extends Controller
             'sugerenciasUnidad' => $this->service->sugerenciasUnidad(),
             'edificios' => $this->service->edificiosParaFormulario(),
             'areas' => $this->service->areasDelFormulario($model),
-            'proyectistas' => (new ProyectistaService())->nombresActivos(),
+            // Personas y roles activos, mas los que ya estan en el equipo del formulario.
+            'personal' => (new PersonalService())->opciones(array_column($equipo, 'nombre')),
+            'roles' => (new RolProyectoService())->opciones(array_map('intval', array_filter(array_column($equipo, 'idRol'), 'ctype_digit'))),
             'proyectosAprobados' => $this->service->proyectosAprobados($model->isNewRecord ? null : $model->id),
         ];
     }

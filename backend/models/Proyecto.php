@@ -41,7 +41,7 @@ use yii\db\ActiveRecord;
  * @property-read Proceso|null $proceso
  * @property-read ProyectoAreaIntervencion[] $areasIntervencion
  * @property-read ProyectoBloque[] $bloques Ubicacion anterior al 2026-10-28.
- * @property-read ProyectoProyectista[] $proyectistas
+ * @property-read ProyectoParticipante[] $participantes Equipo del proyecto, en orden.
  * @property-read Proyecto|null $proyectoAnterior
  * @property-read Proyecto[] $fasesSiguientes
  * @property-read Presupuesto|null $presupuesto
@@ -61,9 +61,9 @@ class Proyecto extends ActiveRecord
 
     /**
      * Atributos virtuales: no son columnas de redes.Proyecto. Reciben del
-     * formulario las areas de intervencion y los proyectistas elegidos;
+     * formulario las areas de intervencion y el equipo del proyecto;
      * ProyectoService los guarda en redes.ProyectoAreaIntervencion y
-     * redes.ProyectoProyectista.
+     * redes.ProyectoParticipante.
      *
      * Cada area llega como [idEdificio, idBloqueArea, numeroNivel, idEspacio]
      * (los tres ultimos pueden venir vacios). Los nombres NO vienen del
@@ -75,8 +75,21 @@ class Proyecto extends ActiveRecord
      */
     public $areas = [];
 
-    /** @var string[]|string nombres de proyectistas */
-    public $nombresProyectista = [];
+    /**
+     * Equipo del proyecto: una fila por persona, [clave => ['nombre' => ...,
+     * 'idRol' => ...]]. La clave es la de la fila en el formulario (no tiene
+     * por que ser 0, 1, 2...): la usa $equipoResponsable.
+     *
+     * @var array<int|string, array{nombre?: string, idRol?: string}>|string
+     */
+    public $equipo = [];
+
+    /**
+     * Clave (de $equipo) de la fila marcada como responsable del proyecto.
+     *
+     * @var int|string|null
+     */
+    public $equipoResponsable;
 
     public static function tableName(): string
     {
@@ -107,8 +120,9 @@ class Proyecto extends ActiveRecord
             // 'safe': las areas las revisa ProyectoService una por una contra la
             // fuente de infraestructura (que existan y esten vigentes).
             [['areas'], 'safe'],
-            // 'each' aplica la regla indicada a cada elemento del arreglo.
-            [['nombresProyectista'], 'each', 'rule' => ['string', 'max' => 200]],
+            // 'safe': el equipo lo revisa ProyectoService fila por fila
+            // (persona y rol de las listas, un responsable, sin repetidos).
+            [['equipo', 'equipoResponsable'], 'safe'],
         ];
     }
 
@@ -129,7 +143,7 @@ class Proyecto extends ActiveRecord
             'codigoEdificio' => 'Edificio',
             'edificio' => 'Edificio',
             'codigosBloque' => 'Bloques',
-            'nombresProyectista' => 'Proyectistas asignados',
+            'equipo' => 'Equipo del proyecto',
             'idProyectoAnterior' => 'Proyecto de fase anterior (opcional)',
             'numeroFase' => 'Fase',
             'fechaCreacion' => 'Fecha de creación',
@@ -160,9 +174,25 @@ class Proyecto extends ActiveRecord
         return $this->hasMany(ProyectoBloque::class, ['idProyecto' => 'id'])->orderBy(['nombre' => SORT_ASC]);
     }
 
-    public function getProyectistas(): ActiveQuery
+    public function getParticipantes(): ActiveQuery
     {
-        return $this->hasMany(ProyectoProyectista::class, ['idProyecto' => 'id'])->orderBy(['id' => SORT_ASC]);
+        return $this->hasMany(ProyectoParticipante::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /**
+     * La persona responsable del proyecto (la marcada en el equipo), o null
+     * si el proyecto todavia no tiene equipo (los registrados antes del
+     * 2026-10-29).
+     */
+    public function responsable(): ?ProyectoParticipante
+    {
+        foreach ($this->participantes as $participante) {
+            if ($participante->esResponsable) {
+                return $participante;
+            }
+        }
+
+        return null;
     }
 
     public function getProyectoAnterior(): ActiveQuery

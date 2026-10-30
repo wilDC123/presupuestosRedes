@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace backend\tests\Unit;
 
+use backend\models\Personal;
 use backend\models\Proyecto;
 use backend\models\ProyectoAreaIntervencion;
 use backend\models\ProyectoBloque;
 use backend\services\contracts\InfraestructuraProvider;
 use backend\services\ProcesoService;
 use backend\services\ProyectoService;
+use backend\services\RolProyectoService;
 use backend\services\UsfxGeoInfraestructuraProvider;
 use Codeception\Test\Unit;
 use Throwable;
@@ -34,9 +36,14 @@ class AreaIntervencionTest extends Unit
     /** Proceso PI: el proyecto lo exige al guardar. */
     private ?int $idProceso;
 
+    /** Equipo minimo (una persona responsable): el proyecto lo exige al guardar. */
+    private array $equipo;
+
     protected function _before(): void
     {
         $this->idProceso = (new ProcesoService())->idPorDefecto();
+        (new Personal(['nombre' => 'Ing. Test Área']))->save(false);
+        $this->equipo = [['nombre' => 'Ing. Test Área', 'idRol' => (string) (new RolProyectoService())->idProyectista()]];
         $this->fuente = new class implements InfraestructuraProvider {
             /** Si es false, el edificio "E1" deja de estar vigente. */
             public bool $vigente = true;
@@ -113,7 +120,7 @@ class AreaIntervencionTest extends Unit
 
         $guardado = $this->service->crear($proyecto, ['Proyecto' => [
             'nombre' => 'Proyecto test área',
-            'idProceso' => $this->idProceso, 'unidadDependencia' => ' Canal Universitario  ',
+            'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => ' Canal Universitario  ',
             'unidadSolicitante' => '  Secretaría General de Vicerrectorado ',
             'areas' => [
                 ['idEdificio' => 'E1', 'idBloqueArea' => '10', 'numeroNivel' => '1', 'idEspacio' => 'X1'],
@@ -153,7 +160,7 @@ class AreaIntervencionTest extends Unit
 
             $this->assertFalse($this->service->crear($proyecto, ['Proyecto' => [
                 'nombre' => 'Proyecto test área inválida',
-                'idProceso' => $this->idProceso, 'unidadDependencia' => 'Carrera test',
+                'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'Carrera test',
                 'unidadSolicitante' => 'Facultad test',
                 'areas' => [$area],
             ]]), json_encode($area));
@@ -165,12 +172,12 @@ class AreaIntervencionTest extends Unit
     public function testLasDosUnidadesSonObligatoriasYElAreaNo(): void
     {
         $proyecto = new Proyecto();
-        $this->assertFalse($this->service->crear($proyecto, ['Proyecto' => ['nombre' => 'Proyecto test sin unidad', 'idProceso' => $this->idProceso, 'unidadDependencia' => ' ', 'unidadSolicitante' => '  ']]));
+        $this->assertFalse($this->service->crear($proyecto, ['Proyecto' => ['nombre' => 'Proyecto test sin unidad', 'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => ' ', 'unidadSolicitante' => '  ']]));
         $this->assertTrue($proyecto->hasErrors('unidadDependencia'));
         $this->assertTrue($proyecto->hasErrors('unidadSolicitante'));
 
         $proyecto = new Proyecto();
-        $this->assertTrue($this->service->crear($proyecto, ['Proyecto' => ['nombre' => 'Proyecto test sin área', 'idProceso' => $this->idProceso, 'unidadDependencia' => 'Laboratorio de Física', 'unidadSolicitante' => 'Ing. Pérez, Laboratorio de Física']]), json_encode($proyecto->errors));
+        $this->assertTrue($this->service->crear($proyecto, ['Proyecto' => ['nombre' => 'Proyecto test sin área', 'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'Laboratorio de Física', 'unidadSolicitante' => 'Ing. Pérez, Laboratorio de Física']]), json_encode($proyecto->errors));
         $this->assertSame([], $proyecto->areasIntervencion);
     }
 
@@ -179,7 +186,7 @@ class AreaIntervencionTest extends Unit
         $proyecto = new Proyecto();
         $datos = ['Proyecto' => [
             'nombre' => 'Proyecto test área a mano',
-            'idProceso' => $this->idProceso, 'unidadDependencia' => 'Carrera test',
+            'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'Carrera test',
             'unidadSolicitante' => 'Facultad test',
             'areas' => [
                 // Edificio en construccion: no esta en la fuente.
@@ -224,7 +231,7 @@ class AreaIntervencionTest extends Unit
         $proyecto = new Proyecto();
         $this->assertTrue($this->service->crear($proyecto, ['Proyecto' => [
             'nombre' => 'Proyecto test área dada de baja',
-            'idProceso' => $this->idProceso, 'unidadDependencia' => 'Carrera test',
+            'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'Carrera test',
             'unidadSolicitante' => 'Facultad test',
             'areas' => [['idEdificio' => 'E1', 'idBloqueArea' => '10']],
         ]]));
@@ -236,7 +243,7 @@ class AreaIntervencionTest extends Unit
         $this->assertSame('Edificio Prueba · Bloque A', $this->service->areasDelFormulario($proyecto)[0]['texto']);
 
         // Editar otro dato no la pierde ni da error: conserva su nombre de entonces.
-        $datos = ['Proyecto' => ['nombre' => 'Proyecto test renombrado', 'idProceso' => $this->idProceso, 'unidadDependencia' => 'Carrera test', 'unidadSolicitante' => 'Facultad test', 'areas' => $proyecto->areas]];
+        $datos = ['Proyecto' => ['nombre' => 'Proyecto test renombrado', 'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'Carrera test', 'unidadSolicitante' => 'Facultad test', 'areas' => $proyecto->areas]];
         $this->assertTrue($this->service->actualizar($proyecto, $datos), json_encode($proyecto->errors));
         $this->assertSame('Edificio Prueba · Bloque A', Proyecto::findOne($proyecto->id)->areaIntervencionTexto());
 
@@ -258,6 +265,8 @@ class AreaIntervencionTest extends Unit
         $proyecto->idProceso = $this->idProceso;
         $proyecto->unidadDependencia = 'Facultad de Medicina';
         $proyecto->unidadSolicitante = 'Facultad de Medicina';
+        $proyecto->equipo = $this->equipo;
+        $proyecto->equipoResponsable = '0';
         $this->assertTrue($this->service->actualizar($proyecto, ['Proyecto' => ['areas' => [['idEdificio' => 'E1']]]]), json_encode($proyecto->errors));
         $proyecto = Proyecto::findOne($proyecto->id);
         $this->assertSame('Edificio Prueba', $proyecto->areaIntervencionTexto());
@@ -268,8 +277,8 @@ class AreaIntervencionTest extends Unit
     {
         (new Proyecto(['nombre' => 'Proyecto test sugerencia', 'unidadSolicitante' => 'Centro Bibliográfico Test', 'estadoLista' => Proyecto::LISTA_EDICION]))->save(false);
         // La misma unidad escrita como dependencia en otro proyecto tampoco se repite.
-        (new Proyecto(['nombre' => 'Proyecto test sugerencia 2', 'idProceso' => $this->idProceso, 'unidadDependencia' => 'CENTRO BIBLIOGRÁFICO TEST', 'estadoLista' => Proyecto::LISTA_EDICION]))->save(false);
-        (new Proyecto(['nombre' => 'Proyecto test sugerencia 3', 'idProceso' => $this->idProceso, 'unidadDependencia' => 'Canal Universitario Test', 'estadoLista' => Proyecto::LISTA_EDICION]))->save(false);
+        (new Proyecto(['nombre' => 'Proyecto test sugerencia 2', 'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'CENTRO BIBLIOGRÁFICO TEST', 'estadoLista' => Proyecto::LISTA_EDICION]))->save(false);
+        (new Proyecto(['nombre' => 'Proyecto test sugerencia 3', 'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'Canal Universitario Test', 'estadoLista' => Proyecto::LISTA_EDICION]))->save(false);
 
         $sugerencias = $this->service->sugerenciasUnidad();
 
@@ -285,7 +294,7 @@ class AreaIntervencionTest extends Unit
         foreach (['Proyecto test uso 1', 'Proyecto test uso 2'] as $nombre) {
             $this->assertTrue($this->service->crear(new Proyecto(), ['Proyecto' => [
                 'nombre' => $nombre,
-                'idProceso' => $this->idProceso, 'unidadDependencia' => 'Carrera test',
+                'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'Carrera test',
                 'unidadSolicitante' => 'Facultad test',
                 // Dos areas del mismo edificio cuentan como un proyecto.
                 'areas' => [['idEdificio' => 'E1'], ['idEdificio' => 'E1', 'idBloqueArea' => '10']],

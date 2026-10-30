@@ -133,11 +133,27 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   PI. En uso (por proyectos, especificaciones emitidas o presupuestos con su código): no se elimina (se
   desactiva) y su CÓDIGO no se cambia (va en el código de los documentos, ver CODIFICACIÓN); quien ya lo
   tenía lo conserva (`Proceso::reglaElegible()`)
-- Proyectistas: catálogo `redes.Proyectista` (nombre único, activo), en Configuración → "Proyectistas"
-  (2026-10-28; antes en el JSON; migración `m261028_202824_crear_proyectista`, cargó los 2 del JSON).
-  Solo una lista de NOMBRES, no usuarios. `ProyectoProyectista` sigue guardando una COPIA del nombre
-  (sin FK): corregir o desactivar no cambia los proyectos; "en uso" se cuenta por nombre
-  (`ProyectistaService`). Solo se eligen activos; quien ya lo tenía lo conserva; en uso no se elimina
+- EQUIPO DEL PROYECTO (revisión del 2026-10-29, paso 5; migración `m261030_030403_equipo_del_proyecto`;
+  antes, desde el 2026-10-28, solo "Proyectistas" con `redes.Proyectista` / `ProyectoProyectista`, que se
+  borraron): quiénes trabajan en el proyecto y con qué rol, para la ficha técnica.
+  - `redes.Personal` (nombre único, activo; Configuración → "Personal", `PersonalService`): solo una lista de
+    NOMBRES, no usuarios ni permisos, y SIN rol fijo (el rol es de cada participación). Cargó los 2 proyectistas.
+    El Ing. quiere que después venga del sistema institucional (web service); hasta entonces se administra aquí.
+  - `redes.RolProyecto` (nombre único, activo; Configuración → "Roles del proyecto", `RolProyectoService`):
+    Proyectista, Director del proyecto, Coordinador de infraestructura, Responsable de despliegue, Responsable de
+    administración, Supervisor (los que nombró el Ing.). No da permisos en el sistema.
+  - `redes.ProyectoParticipante` (0..* por proyecto, CASCADE): COPIA del nombre (sin FK, como antes: corregir o
+    desactivar a la persona no cambia los proyectos; "en uso" se cuenta por nombre) + `idRol` (FK) +
+    `esResponsable` + `orden`. Reglas en `ProyectoService::armarEquipo()`: al menos una persona y UNA responsable
+    (no tiene que ser proyectista: un mantenimiento del data center lo lleva quien lo administra; índice único
+    filtrado), persona y rol activos salvo los que el proyecto ya tenía o hereda, una persona puede tener dos
+    roles pero no el mismo dos veces, fila en blanco se ignora. `Proyecto::responsable()`.
+  - Formulario: tabla "Equipo del proyecto" (persona | rol | responsable | quitar; `Proyecto::$equipo` y
+    `$equipoResponsable`, fila modelo `<template>` en `_form.php`, JS en `proyecto-form.js`). Proyecto nuevo (o
+    uno de antes sin equipo, al editarlo) empieza con una fila de rol Proyectista marcada como responsable. La
+    FASE SIGUIENTE hereda el equipo con su responsable y se puede cambiar
+  - Quien crea el proyecto debería quedar como proyectista (pedido del Ing.): PENDIENTE hasta la autenticación
+    institucional (los usuarios temporales no tienen nombre completo)
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
@@ -421,7 +437,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_024446_especificacion_con_proceso_y_anio`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_030403_equipo_del_proyecto`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -521,9 +537,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - PENDIENTE (tutor): unidad solicitante y área de intervención (2026-10-28): `Proyecto.unidadSolicitante`
   y `Proyecto.unidadDependencia` (2026-10-29: beneficiaria, distinta de la solicitante),
   clase `ProyectoAreaIntervencion` (composición 0..*), `ConfiguracionEspecificacion.lugarEntregaPorDefecto`,
-  componente externo "Infraestructura física (UsfxGEO)"; salen facultad/edificio/bloques; clase
-  `Proyectista` (catálogo, sin asociación: el proyecto copia el nombre). Ver
+  componente externo "Infraestructura física (UsfxGEO)"; salen facultad/edificio/bloques. Ver
   `docs/cambios-unidad-area-intervencion.md`
+- PENDIENTE (tutor): equipo del proyecto (2026-10-29): clases `Personal` (catálogo, sin asociación: el proyecto
+  copia el nombre), `RolProyecto` (catálogo) y `ProyectoParticipante` (composición 0..* desde Proyecto; nombre
+  {copia}, esResponsable, orden; asociación 1 RolProyecto → 0..*); sale `Proyectista`. Casos de uso "Gestionar
+  personal" y "Gestionar roles del proyecto"; "Registrar proyecto" incluye el equipo
 - PENDIENTE (Ing. de DTIC / Desarrollo): ¿seguir leyendo las tablas de UsfxGEO o usar vistas? ¿qué son
   los estados E, C, D, R? Confirmar el texto del lugar de entrega por defecto (hoy vacío: llenarlo en la
   configuración del formulario) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)

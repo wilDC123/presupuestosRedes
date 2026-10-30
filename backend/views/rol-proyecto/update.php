@@ -6,15 +6,15 @@ use yii\helpers\Html;
 
 /**
  * @var yii\web\View $this
- * @var backend\models\Proyectista $model
+ * @var backend\models\RolProyecto $model
  */
 
-$this->title = 'Nuevo proyectista';
+$this->title = 'Editar rol: ' . $model->nombre;
 $this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
-$this->params['breadcrumbs'][] = ['label' => 'Proyectistas', 'url' => ['index']];
-$this->params['breadcrumbs'][] = $this->title;
+$this->params['breadcrumbs'][] = ['label' => 'Roles del proyecto', 'url' => ['index']];
+$this->params['breadcrumbs'][] = 'Editar';
 ?>
-<div class="proyectista-create">
+<div class="rol-proyecto-update">
 
     <h1><?= Html::encode($this->title) ?></h1>
 
