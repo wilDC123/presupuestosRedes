@@ -26,7 +26,8 @@ use yii\data\ActiveDataProvider;
  *  - enlazar una especificacion a un item de la lista ES emitir: se le asigna
  *    el siguiente numero del correlativo ET (CodificacionService),
  *  - el correlativo lo fija el encargado (Codificación de documentos), sube
- *    de 1 en 1, no se reinicia por año y un numero nunca se reutiliza,
+ *    de 1 en 1 y vuelve a 001 cada 1 de enero (el codigo lleva el año:
+ *    RD-PI-ET-001/27); un codigo nunca se reutiliza,
  *  - una emision no cambia nunca: guarda copias de todo lo que imprime y
  *    apunta a una version que ya no se puede modificar,
  *  - un error se corrige REEMITIENDO: el MISMO codigo con la version del
@@ -94,7 +95,9 @@ class EspecificacionEmisionService
         $hoy = new DateTimeImmutable('today');
 
         $emision = new EspecificacionEmision([
+            // Año y proceso forman parte del codigo: RD-GR-ET-001/27.
             'anio' => (int) $hoy->format('y'),
+            'proceso' => $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO,
             'idVersion' => $version->id,
             'idProyecto' => $item->idProyecto,
             'idProyectoItem' => $item->id,
@@ -125,14 +128,15 @@ class EspecificacionEmisionService
         ]);
 
         if ($corrige !== null) {
-            // Mismo documento: mismo codigo y la version siguiente. Una NET
-            // de las de antes conserva tambien su año, que es parte del codigo.
+            // Mismo documento: mismo codigo y la version siguiente. Conserva
+            // su año y su proceso, que son parte del codigo, aunque se
+            // reemita en enero o el proyecto haya cambiado de proceso
+            // (RD-PI-ET-850/26 v01 -> RD-PI-ET-850/26 v02).
             $emision->serie = $corrige->serie;
             $emision->numeroNet = $corrige->numeroNet;
             $emision->versionDocumento = (int) $corrige->versionDocumento + 1;
-            if ($corrige->serie === EspecificacionEmision::SERIE_NET) {
-                $emision->anio = $corrige->anio;
-            }
+            $emision->anio = $corrige->anio;
+            $emision->proceso = $corrige->proceso;
             $emision->codigoAnterior = $corrige->codigoAnterior;
         }
 
@@ -149,10 +153,11 @@ class EspecificacionEmisionService
 
         try {
             if ($corrige === null) {
-                $emision->numeroNet = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION);
+                // El del año de la emision: el primero del 1 de enero es el 001.
+                $emision->numeroNet = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION, (int) $emision->anio);
             }
             // Si otro usuario reemitio el mismo documento al mismo tiempo, el
-            // indice unico (serie, numeroNet, versionDocumento) lo rechaza.
+            // indice unico (serie, anio, numeroNet, versionDocumento) lo rechaza.
             $emision->save(false);
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -333,11 +338,12 @@ class EspecificacionEmisionService
      *    guarda: es una vigente cuya fecha + vigencia ya paso, y "vigente"
      *    aqui son solo las que todavia no vencieron,
      *  - dependencia: texto exacto,
-     *  - buscar: "RD-PI-ET-007" o "NET:880/26" busca ese codigo, todas sus
-     *    versiones ("RD-PI-ET-007 v02": solo esa version) (el NET
-     *    tambien en el codigo anterior de las que se pasaron a ET); un numero
-     *    solo ("7", "880") lo busca en los dos; cualquier otro texto busca en
-     *    el titulo y en el codigo del proyecto.
+     *  - buscar: "RD-PI-ET-007/26" o "NET:880/26" busca ese codigo, todas sus
+     *    versiones ("RD-PI-ET-007/26 v02": solo esa version) (el NET
+     *    tambien en el codigo anterior de las que se pasaron a ET); sin el
+     *    año ("RD-PI-ET-007"), la 007 de todos los años; un numero solo ("7",
+     *    "880", "7/26") lo busca en los dos; cualquier otro texto busca en el
+     *    titulo y en el codigo del proyecto.
      *
      * @param array{anio?: string, estado?: string, dependencia?: string, buscar?: string} $filtros
      * @param int|false $porPagina false = todas (para exportar)
@@ -378,15 +384,20 @@ class EspecificacionEmisionService
         }
 
         $buscar = trim((string) ($filtros['buscar'] ?? ''));
-        // "RD-PI-ET-007 v02", como lo muestran las pantallas.
+        // "RD-PI-ET-007/26 v02", como lo muestran las pantallas.
         if (preg_match('/^(.+?)\s+v(\d+)$/i', $buscar, $conVersion) === 1
             && CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($conVersion[1])) !== null) {
             $buscar = $conVersion[1];
             $query->andWhere(['e.versionDocumento' => (int) $conVersion[2]]);
         }
-        $numeroEt = CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($buscar));
-        if ($numeroEt !== null) {
-            $query->andWhere(['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $numeroEt]);
+        // Con cualquier proceso (el numero no se repite entre procesos) y, si
+        // no trae el año, de cualquier año.
+        $et = CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($buscar));
+        if ($et !== null) {
+            $query->andWhere(['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $et['numero']]);
+            if ($et['anio'] !== null) {
+                $query->andWhere(['e.anio' => $et['anio']]);
+            }
         } elseif (preg_match('/^(NET:\s*)?(\d+)(?:\/(\d{2}))?$/i', $buscar, $m) === 1) {
             // Un NET que siga como NET, o una ya pasada a ET con ese codigo anterior.
             $numero = (int) $m[2];
@@ -397,9 +408,11 @@ class EspecificacionEmisionService
             }
             $anterior = ['like', 'e.codigoAnterior', sprintf('NET:%03d/', $numero) . ($anio !== null ? sprintf('%02d', $anio) : '%'), false];
             $condiciones = ['or', $net, $anterior];
-            // Un numero solo tambien puede ser el de una ET.
-            if ($m[1] === '' && $anio === null) {
-                $condiciones[] = ['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $numero];
+            // Sin "NET:" tambien puede ser una ET ("7" o "7/26").
+            if ($m[1] === '') {
+                $condiciones[] = $anio === null
+                    ? ['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $numero]
+                    : ['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $numero, 'e.anio' => $anio];
             }
             $query->andWhere($condiciones);
         } elseif ($buscar !== '') {
@@ -499,7 +512,7 @@ class EspecificacionEmisionService
     {
         return [
             'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $this->marcaDeAgua($emision)),
-            // "RD-PI-ET-007_v02.pdf" (o "NET_880_26_v01.pdf"): codigo + version es unico.
+            // "RD-PI-ET-007_26_v02.pdf" (o "NET_880_26_v01.pdf"): codigo + version es unico.
             'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigoConVersion()) . '.pdf',
         ];
     }

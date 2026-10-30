@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\models\CorrelativoDocumento;
+use backend\models\EspecificacionEmision;
+use backend\models\Presupuesto;
 use backend\models\Proceso;
 use backend\models\Proyecto;
 
@@ -90,9 +93,9 @@ class ProcesoService
     }
 
     /**
-     * REGLA DE NEGOCIO: el codigo de un proceso que ya usa algun proyecto no
-     * se cambia (formara parte del codigo de sus documentos). El nombre y el
-     * estado si.
+     * REGLA DE NEGOCIO: el codigo de un proceso que ya usa algun proyecto o
+     * documento no se cambia (es parte del codigo de los presupuestos y las
+     * especificaciones). El nombre y el estado si.
      */
     public function actualizar(Proceso $proceso, array $datosFormulario): bool
     {
@@ -105,7 +108,7 @@ class ProcesoService
         }
 
         if ($proceso->isAttributeChanged('codigo') && $this->enUso($proceso)) {
-            $proceso->addError('codigo', 'No se puede cambiar el código: ya lo usan proyectos.');
+            $proceso->addError('codigo', 'No se puede cambiar el código: ya lo usan proyectos o documentos.');
 
             return false;
         }
@@ -118,11 +121,13 @@ class ProcesoService
      *
      * REGLA DE NEGOCIO: un proceso en uso no se elimina, se desactiva. La FK
      * de Proyecto ya lo impediria; se revisa antes para dar un mensaje claro.
+     * Tambien cuenta si solo lo tienen documentos (un proyecto que despues
+     * cambio de proceso): su cabecera "Proceso:" saca el nombre de aqui.
      */
     public function eliminar(Proceso $proceso): ?string
     {
         if ($this->enUso($proceso)) {
-            return 'No se puede eliminar "' . $proceso->etiqueta() . '" porque lo usan proyectos. Desactívelo con "Editar".';
+            return 'No se puede eliminar "' . $proceso->etiqueta() . '" porque lo usan proyectos o documentos. Desactívelo con "Editar".';
         }
 
         $proceso->delete();
@@ -130,8 +135,18 @@ class ProcesoService
         return null;
     }
 
+    /**
+     * Si lo tiene algun proyecto, especificacion emitida o presupuesto. Se
+     * mira el codigo GUARDADO (getOldAttribute): al editar, $proceso ya trae
+     * el codigo nuevo.
+     */
     private function enUso(Proceso $proceso): bool
     {
-        return Proyecto::find()->andWhere(['idProceso' => $proceso->id])->exists();
+        $codigo = (string) ($proceso->getOldAttribute('codigo') ?? $proceso->codigo);
+        $prefijo = CorrelativoDocumento::UNIDAD . '-' . $codigo . '-' . CorrelativoDocumento::TIPO_PRESUPUESTO . '-';
+
+        return Proyecto::find()->andWhere(['idProceso' => $proceso->id])->exists()
+            || EspecificacionEmision::find()->andWhere(['proceso' => $codigo])->exists()
+            || Presupuesto::find()->andWhere(['like', 'numeroPresupuesto', $prefijo . '%', false])->exists();
     }
 }

@@ -29,7 +29,7 @@ $this->params['breadcrumbs'][] = 'Carta de entrega';
 // Cambia DECANO <-> DECANA en el cargo al elegir otro tratamiento.
 $this->registerJsFile('@web/js/carta.js', ['depends' => [JqueryAsset::class]]);
 
-$marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los del presupuesto, y {especificaciones} con los códigos de las especificaciones técnicas vigentes del proyecto, separados por comas (ej. RD-PI-ET-001, RD-PI-ET-002).';
+$marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los del presupuesto, y {especificaciones} con los códigos de las especificaciones técnicas vigentes del proyecto, separados por comas (ej. RD-PI-ET-001/26, RD-PI-ET-002/26).';
 ?>
 <div class="carta-index">
 

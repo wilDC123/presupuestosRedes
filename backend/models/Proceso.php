@@ -11,9 +11,10 @@ use yii\db\ActiveRecord;
  * Telecomunicaciones de la tabla 4 (8.5) del lineamiento RD-GD-LI-001
  * (PI, DS, GR...). Cada proyecto dice de que proceso es (Proyecto.idProceso).
  *
- * El codigo (dos letras) formara parte del codigo de los documentos
- * (RD-PI-PR-001): por eso es unico y, una vez que un proyecto usa el
- * proceso, ya no se cambia (ProcesoService::actualizar()).
+ * El codigo (dos letras) es parte del codigo de los presupuestos y las
+ * especificaciones del proyecto (RD-GR-PR-016, RD-GR-ET-001/27): por eso es
+ * unico y, una vez que un proyecto o un documento lo usa, ya no se cambia
+ * (ProcesoService::actualizar()).
  *
  * Un proceso en uso no se elimina: se desactiva. Uno inactivo ya no se
  * ofrece para elegir, pero los proyectos que lo tenian lo conservan.
@@ -64,6 +65,22 @@ class Proceso extends ActiveRecord
     public function etiqueta(): string
     {
         return $this->codigo . ' – ' . $this->nombre;
+    }
+
+    /**
+     * Nombre del proceso de ese codigo, para la linea "Proceso:" de la
+     * cabecera de los impresos. Si ya no existe, el codigo tal cual (y el
+     * nombre del lineamiento si es PI).
+     */
+    public static function nombreDe(string $codigo): string
+    {
+        $nombre = self::find()->select('nombre')->where(['codigo' => $codigo])->scalar();
+
+        if (is_string($nombre) && $nombre !== '') {
+            return $nombre;
+        }
+
+        return $codigo === CorrelativoDocumento::PROCESO ? CorrelativoDocumento::NOMBRE_PROCESO : $codigo;
     }
 
     /**

@@ -158,6 +158,7 @@ class EspecificacionFormularioTest extends Unit
         (new EspecificacionEmision([
             'numeroNet' => (int) EspecificacionEmision::find()->max('numeroNet') + 1,
             'anio' => 26,
+            'proceso' => 'PI',
             'idVersion' => $idVersion,
             'idProyecto' => $proyecto->id,
             'titulo' => 'test',
