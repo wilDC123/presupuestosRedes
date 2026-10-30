@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use backend\models\PresupuestoComplemento;
 use yii\helpers\Html;
 
 /**
@@ -22,10 +21,9 @@ use yii\helpers\Html;
  * paréntesis (sin nombre SIGMA).
  * Si el presupuesto lleva mano de obra de la DTIC (Presupuesto::$manoDeObra),
  * va en la categoría "Mano de obra" (al final si no existe), con precios en
- * 0.00 (cantidad también 0.00). Después del total (fila "TOTAL (Bs.)" en azul claro): la nota, centrada, y
- * las secciones SIN PRECIO, solo si tienen filas (Presupuesto::$complementos): "Otros materiales y
- * equipamiento que proveerá la D.T.I.C." y "Trabajos complementarios...", agrupadas por subtítulo y sin
- * sumar al total. Al fondo de la última página, el "control de elaboración" del
+ * 0.00 (cantidad también 0.00). Después del total (fila "TOTAL (Bs.)" en azul claro): la nota, centrada.
+ * Desde el 2026-10-29 el presupuesto es SOLO FINANCIERO: lo que provee la DTIC y las condiciones previas
+ * (antes "Otros materiales…" y "Trabajos complementarios…" aquí) van en la lista de materiales. Al fondo de la última página, el "control de elaboración" del
  * lineamiento RD-GD-LI-001 (versión, elaborado por, aprobado por, firmas y fecha de aprobación) y la
  * banda de pie verde con los contactos. Nombres, cargos y contactos salen de
  * redes.ConfiguracionPresupuesto (presupuesto/configuracion); nada de eso queda escrito aquí.
@@ -64,13 +62,6 @@ if ($presupuesto->manoDeObra !== null) {
         $grupoManoDeObra = 'Mano de obra';
         $grupos[$grupoManoDeObra] = ['orden' => PHP_INT_MAX, 'lineas' => [], 'subtotal' => 0.0];
     }
-}
-
-// Secciones sin precio: [tipo => [subtitulo => filas]], en el orden en que se escribieron.
-$complementos = [];
-
-foreach ($presupuesto->complementos as $complemento) {
-    $complementos[$complemento->tipo][$complemento->grupo][] = $complemento;
 }
 ?>
 <!DOCTYPE html>
@@ -165,37 +156,6 @@ foreach ($presupuesto->complementos as $complemento) {
         margin-top: 6px;
         font-size: 8pt;
         text-align: center;
-    }
-    /* Secciones sin precio (materiales de la DTIC, trabajos complementarios). */
-    .complementos-titulo {
-        font-weight: bold;
-        margin-top: 16px;
-        margin-bottom: 4px;
-    }
-    table.complementos {
-        width: 100%;
-        border-collapse: collapse;
-        page-break-inside: auto;
-    }
-    table.complementos th,
-    table.complementos td {
-        border: 1px solid #666;
-        padding: 4px;
-        font-size: 10pt;
-    }
-    table.complementos th {
-        background-color: #1f3864;
-        color: #fff;
-        font-weight: bold;
-        text-align: center;
-    }
-    table.complementos td.subtitulo {
-        background-color: #ddebf7;
-        font-style: italic;
-        font-weight: bold;
-    }
-    table.complementos td.numero {
-        text-align: right;
     }
     table.pie {
         width: 100%;
@@ -330,61 +290,6 @@ foreach ($presupuesto->complementos as $complemento) {
 
 <?php if (!empty($configuracion->textoNota)): ?>
     <div class="nota"><?= nl2br(Html::encode($configuracion->textoNota)) ?></div>
-<?php endif; ?>
-
-<?php if (!empty($complementos[PresupuestoComplemento::TIPO_MATERIAL])): ?>
-    <div class="complementos-titulo"><?= Html::encode(PresupuestoComplemento::TIPOS[PresupuestoComplemento::TIPO_MATERIAL]) ?></div>
-    <table class="complementos">
-        <thead>
-            <tr>
-                <th width="50%">Descripción *</th>
-                <th width="12%">Cantidad</th>
-                <th width="10%">Unidad</th>
-                <th width="28%">Observaciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($complementos[PresupuestoComplemento::TIPO_MATERIAL] as $subtitulo => $filas): ?>
-                <tr><td colspan="4" class="subtitulo"><?= Html::encode($subtitulo) ?></td></tr>
-                <?php foreach ($filas as $fila): ?>
-                    <tr>
-                        <td><?= Html::encode($fila->descripcion) ?></td>
-                        <td class="numero"><?= Yii::$app->formatter->asDecimal($fila->cantidad, 2) ?></td>
-                        <td><?= Html::encode((string) $fila->unidadMedida) ?></td>
-                        <td><?= Html::encode((string) $fila->observacion) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-<?php endif; ?>
-
-<?php if (!empty($complementos[PresupuestoComplemento::TIPO_TRABAJO])): ?>
-    <div class="complementos-titulo"><?= Html::encode(PresupuestoComplemento::TIPOS[PresupuestoComplemento::TIPO_TRABAJO]) ?></div>
-    <table class="complementos">
-        <thead>
-            <tr>
-                <th width="45%">Trabajos complementarios</th>
-                <th width="25%">Unidad encargada</th>
-                <th width="30%">Observaciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php // Los dos subtitulos fijos, en su orden, aunque se hayan escrito al reves. ?>
-            <?php foreach (PresupuestoComplemento::GRUPOS_TRABAJO as $subtitulo): ?>
-                <?php if (!empty($complementos[PresupuestoComplemento::TIPO_TRABAJO][$subtitulo])): ?>
-                    <tr><td colspan="3" class="subtitulo"><?= Html::encode($subtitulo) ?></td></tr>
-                    <?php foreach ($complementos[PresupuestoComplemento::TIPO_TRABAJO][$subtitulo] as $fila): ?>
-                        <tr>
-                            <td><?= Html::encode($fila->descripcion) ?></td>
-                            <td><?= Html::encode((string) $fila->unidadEncargada) ?></td>
-                            <td><?= Html::encode((string) $fila->observacion) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
 <?php endif; ?>
 
 <?php // Control de elaboración y banda de pie: al fondo de la última página (PresupuestoPdfGenerator). ?>

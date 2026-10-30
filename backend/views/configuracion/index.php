@@ -22,6 +22,7 @@ $grupos = [
         ['Procesos', ['/proceso/index'], 'Qué proceso lleva adelante cada proyecto (PI, DS, GR…), según el lineamiento.'],
         ['Personal', ['/personal/index'], 'Personas que se ponen en el equipo de un proyecto.'],
         ['Roles del proyecto', ['/rol-proyecto/index'], 'Con qué rol participa cada persona del equipo (proyectista, coordinador…).'],
+        ['Tipos de trabajo complementario', ['/tipo-condicion-previa/index'], 'Lo que deben hacer otras unidades (condiciones previas): instalación eléctrica, obras civiles, ductos…'],
     ],
     'Codificación' => [
         ['Codificación de documentos', ['/codificacion/index'], 'Desde qué número siguen los códigos RD-PI-PT, RD-PI-PR y RD-PI-ET.'],

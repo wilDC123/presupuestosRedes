@@ -106,6 +106,13 @@ class ListaItemsService
      * su formulario de especificación vigente y se emite el nuevo; $usuario queda como
      * "elaborado por".
      *
+     * Debajo de la lista van dos secciones sin precio (2026-10-29; antes en el
+     * presupuesto): "Otros materiales y equipamiento que proveera la DTIC"
+     * ($materiales, materiales[n][...], MaterialDticService) y los trabajos
+     * complementarios ($condiciones, condiciones[n][...],
+     * CondicionPreviaService). Se guardan en la misma transaccion; null = no
+     * se tocan.
+     *
      * Devuelve false si la lista no es editable o si algo no es valido. Los
      * mensajes quedan en $errores y $enviados trae los items tal como
      * llegaron, para volver a mostrarlos.
@@ -113,8 +120,10 @@ class ListaItemsService
      * @param mixed $filas
      * @param string[] $errores (por referencia)
      * @param ProyectoItem[] $enviados (por referencia)
+     * @param mixed $condiciones
+     * @param mixed $materiales
      */
-    public function guardar(Proyecto $proyecto, $filas, array &$errores = [], array &$enviados = [], ?string $usuario = null): bool
+    public function guardar(Proyecto $proyecto, $filas, array &$errores = [], array &$enviados = [], ?string $usuario = null, $condiciones = null, $materiales = null): bool
     {
         $errores = [];
         $enviados = [];
@@ -198,6 +207,7 @@ class ListaItemsService
         }
 
         $quitados = array_diff_key($guardados, $conservados);
+
         // Mientras el presupuesto es un borrador ("en proceso"), sus
         // lineas siguen a la lista: quitar un item borra su linea, y la
         // cantidad y la observacion se copian otra vez. El PRECIO no se toca
@@ -216,6 +226,9 @@ class ListaItemsService
             // Vuelve a la pantalla, para que no parezca que se quito.
             $enviados[] = $item;
         }
+
+        $materialesDtic = $materiales === null ? null : (new MaterialDticService())->armar($proyecto, $materiales, $errores);
+        $condicionesPrevias = $condiciones === null ? null : (new CondicionPreviaService())->armar($proyecto, $condiciones, $errores);
 
         if ($errores !== []) {
             return false;
@@ -265,6 +278,14 @@ class ListaItemsService
 
             foreach ($recordar as $idEspecificacion => $idSubcatalogo) {
                 $especificaciones->recordarItemDeReferencia($idEspecificacion, $idSubcatalogo);
+            }
+
+            if ($materialesDtic !== null) {
+                (new MaterialDticService())->reemplazar($proyecto, $materialesDtic);
+            }
+
+            if ($condicionesPrevias !== null) {
+                (new CondicionPreviaService())->reemplazar($proyecto, $condicionesPrevias);
             }
 
             // Editar la lista a mano tambien resuelve el paso "Plantilla".
@@ -380,7 +401,7 @@ class ListaItemsService
 
         return [
             'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html),
-            'nombreArchivo' => 'lista_items_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf',
+            'nombreArchivo' => 'lista_materiales_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf',
         ];
     }
 

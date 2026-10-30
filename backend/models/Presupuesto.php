@@ -40,7 +40,6 @@ use yii\db\ActiveRecord;
  * @property-read Proyecto $proyecto
  * @property-read PresupuestoDetalle[] $presupuestoDetalles
  * @property-read CartaPresupuesto|null $carta
- * @property-read PresupuestoComplemento[] $complementos
  */
 class Presupuesto extends ActiveRecord
 {
@@ -186,16 +185,6 @@ class Presupuesto extends ActiveRecord
     public function getPresupuestoDetalles(): ActiveQuery
     {
         return $this->hasMany(PresupuestoDetalle::class, ['idPresupuesto' => 'id']);
-    }
-
-    /**
-     * Materiales que aporta la DTIC y trabajos complementarios (sin precio),
-     * en el orden en que se escribieron. Ver PresupuestoComplemento.
-     */
-    public function getComplementos(): ActiveQuery
-    {
-        return $this->hasMany(PresupuestoComplemento::class, ['idPresupuesto' => 'id'])
-            ->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
     }
 
     /**

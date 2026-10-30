@@ -44,7 +44,7 @@ $menu = [
 // Lo que se toca poco vive en la pagina Configuracion (tarjetas), no en la
 // barra: este enlace se resalta en esa pagina y en cada pantalla a la que lleva.
 $configuracion = ['Configuración', ['/configuracion/index'], [
-    'configuracion', 'categoria', 'unidad-medida', 'tipo-proyecto', 'proceso', 'personal', 'rol-proyecto', 'codificacion',
+    'configuracion', 'categoria', 'unidad-medida', 'tipo-proyecto', 'proceso', 'personal', 'rol-proyecto', 'tipo-condicion-previa', 'codificacion',
     'presupuesto/configuracion', 'carta/configuracion',
     'solicitud-cotizacion/configuracion', 'especificacion/configuracion',
 ]];

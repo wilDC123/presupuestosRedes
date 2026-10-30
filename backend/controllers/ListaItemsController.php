@@ -8,13 +8,17 @@ use backend\models\ConfiguracionEspecificacion;
 use backend\models\CorrelativoDocumento;
 use backend\models\OrdenCambio;
 use backend\models\Proyecto;
+use backend\services\CategoriaService;
 use backend\services\CodificacionService;
+use backend\services\CondicionPreviaService;
 use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
 use backend\services\ListaItemsService;
 use backend\services\OrdenCambioService;
 use backend\services\ProyectoService;
 use backend\services\SubcatalogoItemService;
+use backend\services\TipoCondicionPreviaService;
+use backend\services\UnidadMedidaService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
@@ -66,11 +70,16 @@ class ListaItemsController extends Controller
         $peticion = Yii::$app->request;
         $errores = [];
         $enviados = null;
+        $condicionesEnviadas = null;
+        $materialesEnviados = null;
 
         if ($peticion->isPost) {
             $items = [];
+            // Sin filas, "condiciones" y "materiales" llegan como '' (campo oculto): se borran todas.
+            $condiciones = $peticion->post('condiciones', []);
+            $materiales = $peticion->post('materiales', []);
 
-            if ($this->service->guardar($proyecto, $peticion->post('items', []), $errores, $items, $this->usuario())) {
+            if ($this->service->guardar($proyecto, $peticion->post('items', []), $errores, $items, $this->usuario(), $condiciones, $materiales)) {
                 if ($peticion->post('accion') !== 'enviar') {
                     Yii::$app->session->setFlash('success', 'Lista guardada.');
                 } elseif ($this->service->enviarACotizacion($proyecto)) {
@@ -90,6 +99,8 @@ class ListaItemsController extends Controller
 
             // No se guardo: se vuelve a mostrar lo que el usuario envio.
             $enviados = $items;
+            $condicionesEnviadas = array_values(array_filter((array) $condiciones, 'is_array'));
+            $materialesEnviados = array_values(array_filter((array) $materiales, 'is_array'));
         }
 
         $editable = $this->service->puedeEditarse($proyecto);
@@ -123,6 +134,15 @@ class ListaItemsController extends Controller
             // Las mismas opciones, ya ordenadas para cada fila (sugeridas primero).
             'opcionesPorItem' => $editable ? $especificaciones->opcionesPorItem($selector, $itemsDeLaLista) : [],
             'ordenes' => $this->ordenes->historial($proyecto),
+            // Secciones sin precio: lo guardado o lo que se envio si no se pudo guardar.
+            'materiales' => $materialesEnviados ?? array_map(static fn ($m) => $m->fila(), $proyecto->materialesDtic),
+            // Subtitulos para lo escrito a mano (lo del subcatalogo usa la categoria del item,
+            // que el buscador toma del panel "Subcatálogo de redes").
+            'categorias' => $editable ? array_values((new CategoriaService())->opciones()) : [],
+            'unidades' => $editable ? (new UnidadMedidaService())->opcionesPorAbreviatura() : [],
+            'condiciones' => $condicionesEnviadas ?? array_map(static fn ($c) => $c->fila(), $proyecto->condicionesPrevias),
+            'tiposCondicion' => (new TipoCondicionPreviaService())->opciones(array_map(static fn ($c) => (int) $c->idTipo, $proyecto->condicionesPrevias)),
+            'sugerenciasUnidadEncargada' => $editable ? (new CondicionPreviaService())->sugerenciasUnidad() : [],
         ]);
     }
 

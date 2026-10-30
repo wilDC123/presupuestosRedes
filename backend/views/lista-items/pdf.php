@@ -11,6 +11,11 @@ use yii\helpers\Html;
  *
  * SIN columnas de precio: la lista no es el presupuesto.
  *
+ * Despues de los items, las dos secciones sin precio que hasta el 2026-10-29
+ * salian al final del presupuesto, SOLO si tienen filas: "Otros materiales y
+ * equipamiento que proveerá la D.T.I.C." (agrupados por subtitulo) y los
+ * trabajos complementarios (agrupados por tipo).
+ *
  * CSS deliberadamente simple, igual que el PDF del presupuesto: mPDF
  * interpreta un subconjunto de CSS pensado para documentos.
  *
@@ -22,6 +27,16 @@ use yii\helpers\Html;
 $area = $proyecto->areaIntervencionTexto();
 $totalItems = array_sum(array_map(static fn ($grupo) => count($grupo['items']), $grupos));
 $numero = 0;
+
+// Secciones sin precio, agrupadas: [subtitulo => materiales] y [tipo => trabajos].
+$materiales = [];
+foreach ($proyecto->materialesDtic as $material) {
+    $materiales[$material->grupo][] = $material;
+}
+$trabajos = [];
+foreach ($proyecto->condicionesPrevias as $condicion) {
+    $trabajos[$condicion->tipo->nombre ?? ''][] = $condicion;
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -103,6 +118,17 @@ $numero = 0;
         border-top: 2px solid #000;
         padding-top: 6px;
     }
+    /* Secciones sin precio (materiales de la DTIC, trabajos complementarios). */
+    .seccion-titulo {
+        font-weight: bold;
+        margin-top: 16px;
+        margin-bottom: 4px;
+    }
+    td.subtitulo {
+        background-color: #f2f2f2;
+        font-style: italic;
+        font-weight: bold;
+    }
     .firmas {
         margin-top: 60px;
     }
@@ -121,7 +147,7 @@ $numero = 0;
 <div class="encabezado">
     <div class="institucion">Universidad Mayor, Real y Pontificia de San Francisco Xavier de Chuquisaca</div>
     <div class="unidad">D.T.I.C. - Unidad de Redes y Telecomunicaciones</div>
-    <div class="titulo">LISTA DE ÍTEMS DEL PROYECTO</div>
+    <div class="titulo">LISTA DE MATERIALES Y CONDICIONES PREVIAS</div>
 </div>
 
 <table class="datos-generales">
@@ -188,6 +214,54 @@ $numero = 0;
     <div class="total-general">
         TOTAL: <?= $totalItems ?> ÍTEM(S) EN <?= count($grupos) ?> CLASIFICACIÓN(ES)
     </div>
+<?php endif; ?>
+
+<?php if ($materiales !== []): ?>
+    <div class="seccion-titulo"><?= Html::encode(backend\models\ProyectoMaterialDtic::TITULO) ?></div>
+    <table class="items">
+        <thead>
+            <tr>
+                <th>Descripción</th>
+                <th width="14%">Unidad</th>
+                <th width="14%">Cantidad</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($materiales as $subtitulo => $filas): ?>
+                <tr><td colspan="3" class="subtitulo"><?= Html::encode($subtitulo) ?></td></tr>
+                <?php foreach ($filas as $fila): ?>
+                    <tr>
+                        <td><?= Html::encode($fila->descripcion) ?></td>
+                        <td><?= Html::encode((string) $fila->unidadMedida) ?></td>
+                        <td class="numero"><?= Yii::$app->formatter->asDecimal($fila->cantidad, 2) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
+
+<?php if ($trabajos !== []): ?>
+    <div class="seccion-titulo"><?= Html::encode(backend\models\ProyectoCondicionPrevia::TITULO) ?></div>
+    <table class="items">
+        <thead>
+            <tr>
+                <th>Trabajos complementarios</th>
+                <th width="30%">Unidad encargada</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($trabajos as $tipo => $filas): ?>
+                <tr><td colspan="2" class="subtitulo"><?= Html::encode($tipo) ?></td></tr>
+                <?php foreach ($filas as $fila): ?>
+                    <tr>
+                        <td><?= Html::encode($fila->descripcion) ?></td>
+                        <td><?= Html::encode((string) $fila->unidadEncargada) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
 <?php endif; ?>
 
 <div class="firmas">

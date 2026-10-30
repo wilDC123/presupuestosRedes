@@ -47,6 +47,8 @@ use yii\db\ActiveRecord;
  * @property-read Presupuesto|null $presupuesto
  * @property-read Plantilla|null $plantillaOrigen
  * @property-read ProyectoItem[] $items
+ * @property-read ProyectoCondicionPrevia[] $condicionesPrevias Trabajos complementarios.
+ * @property-read ProyectoMaterialDtic[] $materialesDtic Otros materiales que proveera la DTIC.
  */
 class Proyecto extends ActiveRecord
 {
@@ -228,6 +230,24 @@ class Proyecto extends ActiveRecord
     public function getItems(): ActiveQuery
     {
         return $this->hasMany(ProyectoItem::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /**
+     * Trabajos complementarios (condiciones y requerimientos previos): lo que
+     * deben hacer otras unidades (2026-10-29), en orden.
+     */
+    public function getCondicionesPrevias(): ActiveQuery
+    {
+        return $this->hasMany(ProyectoCondicionPrevia::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /**
+     * Otros materiales y equipamiento que proveera la DTIC (2026-10-29; antes
+     * en el presupuesto), en orden.
+     */
+    public function getMaterialesDtic(): ActiveQuery
+    {
+        return $this->hasMany(ProyectoMaterialDtic::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
     }
 
     public function estadoListaLabel(): string

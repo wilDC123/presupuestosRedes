@@ -540,6 +540,8 @@ body.rd {
 /* Campos "Edificio" y "Ambiente" del paso a paso: lista propia, siempre debajo y de alto fijo. */
 .rd-combo { position: relative; }
 .rd-combo .rd-resultados-ambiente { max-height: 260px; }
+/* Icono de ayuda junto a un titulo: el texto va en el title (al pasar el mouse). */
+.rd-info { cursor: help; color: var(--rd-texto-tenue); font-weight: 400; margin-left: 2px; }
 /* Resultado del buscador en dos renglones: lo buscado y, debajo, donde esta. */
 .rd-resultado-titulo { font-weight: 600; color: var(--rd-texto, inherit); }
 .rd-resultado-sub { font-size: 11.5px; color: var(--rd-texto-tenue); margin-top: 1px; }

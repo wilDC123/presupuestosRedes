@@ -378,20 +378,39 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   (`ElaborarPresupuestoService::delProyecto()`) y el encargado la desmarca si no corresponde; los
   ya creados quedan como estaban. La mano de obra CONTRATADA
   a una empresa sí es un ítem normal (categoría "Mano de obra", con partida y cotización)
-- Secciones SIN PRECIO al final del PDF del presupuesto (2026-10-23, pedido del encargado; se usan
-  "solo a veces"): "Otros materiales y equipamiento que proveerá la D.T.I.C." (descripción, cantidad,
-  unidad, observaciones) y "Trabajos complementarios que deberá ser realizado por la unidad y/o
-  unidades encargadas" (trabajo, unidad encargada, observaciones; subtítulos fijos "Instalaciones
-  eléctricas" y "Otras obras civiles requeridas"). Tabla `redes.PresupuestoComplemento` (columna
-  `tipo` = material / trabajo, `grupo` = subtítulo, `orden`; FK CASCADE al presupuesto; migración
-  `m261024_015005_crear_presupuesto_complemento`). NO son ítems de la lista (no se cotizan, sin
-  especificación ni partida, no suman al total). Se escriben en el paso Presupuesto, debajo de la
-  mano de obra (`_complementos.php`, `web/js/complementos-presupuesto.js`), solo en borrador;
-  "Guardar" reemplaza todas las filas de la sección (`ElaborarPresupuestoService::guardarComplementos()`;
-  fila en blanco se ignora, una inválida no deja guardar ninguna). Un material puede tomar nombre y
-  unidad de un ítem del subcatálogo (`idSubcatalogo` opcional, SET NULL si se borra el ítem). En el
-  PDF salen después de la nota, agrupadas por subtítulo, y SOLO si tienen filas. En el mismo cambio
-  el total del PDF pasó a "TOTAL (Bs.)" en una fila azul claro y la nota va centrada en letra pequeña
+- SECCIONES SIN PRECIO EN LA LISTA (revisión del Ing. de DTIC del 2026-10-29, paso 8a; migración
+  `m261030_035251_secciones_sin_precio_a_la_lista`). "El presupuesto es financiero: si no tiene cantidades y montos,
+  no puede ir". Del 2026-10-23 al 29 el presupuesto llevaba al final (paso Presupuesto y su PDF) "Otros materiales y
+  equipamiento que proveerá la D.T.I.C." y "Trabajos complementarios…" (`redes.PresupuestoComplemento`, ELIMINADA;
+  la migración pasó sus filas al proyecto de su presupuesto). Ahora son del PROYECTO y se escriben DEBAJO DE LA LISTA
+  DE ÍTEMS, en el mismo formulario y con el mismo botón (`ListaItemsService::guardar(..., $condiciones, $materiales)`,
+  misma transacción; null = no se tocan, '' = se borran todas), mientras la lista está en edición. La lista de
+  ítems NO cambió (decidido con el desarrollador el 2026-10-30: nada de "provisión" por ítem; todo lo de la lista se
+  cotiza y va al presupuesto, como antes). Se llenan "solo a veces" y salen en el impreso SOLO si tienen filas
+  (hoy en el PDF de la lista, `lista-items/pdf.php`, después de los ítems):
+  - `redes.ProyectoMaterialDtic` (`MaterialDticService`, `views/lista-items/_materiales-dtic.php`): mismas columnas
+    que antes (subtítulo, ítem del subcatálogo opcional, descripción, cantidad > 0, unidad; SIN observaciones desde el
+    2026-10-30; fila en blanco o solo con subtítulo se ignora). El Ing. dijo que deberían ser "necesariamente ítems del
+    catálogo"; hoy se admite también escribir a mano. Pantalla rehecha el 2026-10-30: título corto "Materiales que aporta
+    la DTIC" (el oficial en un ⓘ y en el PDF), filas AGRUPADAS por subtítulo; un buscador que filtra al escribir (los
+    ítems del panel del subcatálogo) agrega la fila con nombre y unidad FIJOS y solo pide la cantidad (si ya está, va a
+    su cantidad); "¿No está? Escribirlo a mano" agrega una fila editable. El SUBTÍTULO es la categoría del ítem (COPIA
+    del nombre al guardar, siempre la actual); a mano se elige la categoría, "Otros" por defecto
+    (`ProyectoMaterialDtic::GRUPO_OTROS`)
+  - Las dos secciones: agrupadas en pantalla (trabajos por tipo; cambiar el tipo o la categoría pasa la fila a su
+    grupo), mensaje "Todavía no hay" si están vacías, y un segundo "Guardar lista" debajo con el aviso de cambios sin
+    guardar (`.lista-sin-guardar`)
+  - `redes.ProyectoCondicionPrevia` = los trabajos complementarios (condiciones y requerimientos previos;
+    `CondicionPreviaService`, `views/lista-items/_condiciones.php`): tipo, descripción, unidad encargada (texto libre
+    con sugerencias); SIN observaciones (2026-10-30). El tipo ya no es uno de los 2 subtítulos fijos: sale del catálogo
+    `redes.TipoCondicionPrevia` (Configuración → "Tipos de trabajo complementario"; Instalaciones eléctricas, Obras
+    civiles, Apertura de ductos, Despeje del ambiente; "que haya algo para crear"; en uso no se elimina)
+  - Títulos en `ProyectoMaterialDtic::TITULO` y `ProyectoCondicionPrevia::TITULO` (los de antes). JS común en
+    `lista-items.js` (`.lista-seccion`)
+  - PENDIENTE (paso 8b): el documento PDF normado "Lista de materiales y condiciones previas" (cabecera del
+    lineamiento, código provisional LM, aprobación al "Enviar a cotización" y versión + 1 en cada reapertura)
+  - PENDIENTE (Ing. de DTIC): la mano de obra de la DTIC sigue en el presupuesto con 0 (¿o va a condiciones
+    previas?); se decide en el paso 9
 - Carta de entrega del presupuesto (2026-10-21, `CartaController`, `CartaService`; botón "Carta de
   entrega" en el paso Presupuesto): la nota con membrete que acompaña al presupuesto. UNA por
   presupuesto (`redes.CartaPresupuesto`, índice único, FK CASCADE). Se escribe y guarda en CUALQUIER
@@ -464,7 +483,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_032255_crear_historial_proyecto`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_035251_secciones_sin_precio_a_la_lista`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -555,12 +574,11 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `ConfiguracionEspecificacion.siguienteNet`, caso de uso "Configurar codificación de documentos"; 2026-10-29:
   `EspecificacionEmision.proceso` {congelado} y `CorrelativoDocumento.anio` (ET por año); resumen
   en `docs/cambios-codificacion-lineamiento.md`
-- PENDIENTE (tutor): agregar `PresupuestoComplemento` (2026-10-23; composición 0..* desde
-  Presupuesto, enumerado tipo material / trabajo, asociación 0..1 a SubcatalogoItem) al diagrama de
-  clases; la secuencia "Elaborar presupuesto" gana el paso opcional "registrar materiales que aporta
-  la DTIC y trabajos complementarios"
-- PENDIENTE (encargado): confirmar si la sección de trabajos complementarios debe salir aunque esté
-  vacía (hoy, como la de materiales, sale solo si tiene filas)
+- PENDIENTE (tutor): secciones sin precio (2026-10-29): `PresupuestoComplemento` (2026-10-23) ya NO existe; nuevas
+  clases `ProyectoMaterialDtic` (composición 0..* desde Proyecto, asociación 0..1 a SubcatalogoItem),
+  `ProyectoCondicionPrevia` (composición 0..* desde Proyecto) y `TipoCondicionPrevia` (catálogo); caso de uso
+  "Gestionar tipos de trabajo complementario"; "Elaborar lista de ítems" incluye registrar materiales de la DTIC y
+  trabajos complementarios (antes en "Elaborar presupuesto")
 - PENDIENTE (tutor): unidad solicitante y área de intervención (2026-10-28): `Proyecto.unidadSolicitante`
   y `Proyecto.unidadDependencia` (2026-10-29: beneficiaria, distinta de la solicitante),
   clase `ProyectoAreaIntervencion` (composición 0..*), `ConfiguracionEspecificacion.lugarEntregaPorDefecto`,
