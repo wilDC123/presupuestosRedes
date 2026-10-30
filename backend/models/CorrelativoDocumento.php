@@ -11,20 +11,27 @@ use yii\db\ActiveRecord;
  * cada tipo de documento que codifica el sistema (una fila por tipo).
  *
  * Los codigos siguen el lineamiento de la DTIC RD-GD-LI-001: unidad (RD,
- * Redes y Telecomunicaciones) - proceso (PI, Proyectos de infraestructura de
- * redes y servicios) - tipo de documento - correlativo de 3 cifras. Ej.
- * RD-PI-PR-015:
+ * Redes y Telecomunicaciones) - proceso - tipo de documento - correlativo de
+ * 3 cifras. Ej. RD-GR-ET-015/26:
  *
- *     RD - PI - PR - 015
- *     |    |    |    +-- correlativo de 3 cifras (desde 001)
- *     |    |    +------- tipo: PT proyecto, PR presupuesto, ET especificacion
- *     |    +------------ proceso: Proyectos de infraestructura de redes y servicios
- *     +----------------- unidad: Redes y Telecomunicaciones
+ *     RD - GR - ET - 015 /26
+ *     |    |    |    |    +-- año: solo las especificaciones (vuelven a 001 cada 1 de enero)
+ *     |    |    |    +------- correlativo de 3 cifras (desde 001)
+ *     |    |    +------------ tipo: PT proyecto, PR presupuesto, ET especificacion
+ *     |    +----------------- proceso del proyecto (redes.Proceso); el PT siempre PI
+ *     +---------------------- unidad: Redes y Telecomunicaciones
+ *
+ * Desde la revision del 2026-10-29 (paso 4) el proceso de PR y ET es el del
+ * proyecto, pero el numero es UNO SOLO para todos los procesos: nunca hay un
+ * RD-PI-PR-016 y un RD-GR-PR-016. Las ET llevan el año porque son las que
+ * pueden pasar de 999 en un año.
  *
  * Los numeros los reparte CodificacionService.
  *
  * @property string $tipo Ver las constantes TIPO_*.
  * @property int $siguiente El numero que recibira el proximo documento.
+ * @property int|null $anio Dos digitos del año al que pertenece "siguiente" (solo ET): si
+ *           el año ya cambio, el proximo es el 001 del año nuevo. NULL en PT y PR.
  */
 class CorrelativoDocumento extends ActiveRecord
 {
@@ -33,11 +40,17 @@ class CorrelativoDocumento extends ActiveRecord
     public const TIPO_ESPECIFICACION = 'ET';
 
     public const UNIDAD = 'RD';
+
+    /**
+     * Proceso de los proyectos (PT) y el que se usa si el proyecto no tiene
+     * proceso o un codigo de antes no lo trae.
+     */
     public const PROCESO = 'PI';
 
     /**
      * Nombre del proceso PI en la tabla de codificacion de procesos del
-     * lineamiento. Sale en la cabecera de los impresos.
+     * lineamiento. Respaldo de Proceso::nombreDe() para la cabecera de los
+     * impresos.
      */
     public const NOMBRE_PROCESO = 'Proyectos de infraestructura de redes y servicios';
 
@@ -78,23 +91,66 @@ class CorrelativoDocumento extends ActiveRecord
     }
 
     /**
-     * "RD-PI-ET-007". Tres cifras como minimo; despues del 999 sigue con
-     * 1000 (el lineamiento no dice que hacer y asi nunca se repite uno).
+     * Si el tipo lleva el año en el codigo y su numero vuelve a 1 cada año:
+     * solo las especificaciones tecnicas (revision del 2026-10-29).
      */
-    public static function codigo(string $tipo, int $numero): string
+    public static function reiniciaPorAnio(string $tipo): bool
     {
-        return sprintf('%s-%s-%s-%03d', self::UNIDAD, self::PROCESO, $tipo, $numero);
+        return $tipo === self::TIPO_ESPECIFICACION;
     }
 
     /**
-     * El numero de un codigo de ese tipo ("RD-PI-PT-004" -> 4), o null si el
+     * "RD-PI-PR-007" o, con año, "RD-GR-ET-007/26". Tres cifras como minimo;
+     * si en un año (ET) o en total (PT, PR) se pasa del 999 sigue con 1000 (el
+     * lineamiento no dice que hacer y asi nunca se repite uno).
+     */
+    public static function codigo(string $tipo, int $numero, string $proceso = self::PROCESO, ?int $anio = null): string
+    {
+        $codigo = sprintf('%s-%s-%s-%03d', self::UNIDAD, $proceso, $tipo, $numero);
+
+        return $anio === null ? $codigo : $codigo . sprintf('/%02d', $anio % 100);
+    }
+
+    /**
+     * "007" o "007/26": el numero sin unidad, proceso ni tipo. Para los
+     * mensajes y la pantalla de codificacion, donde el proceso depende de
+     * cada proyecto.
+     */
+    public static function numeroTexto(int $numero, ?int $anio = null): string
+    {
+        return sprintf('%03d', $numero) . ($anio === null ? '' : sprintf('/%02d', $anio % 100));
+    }
+
+    /**
+     * Las partes de un codigo de ese tipo, con cualquier proceso:
+     * "RD-GR-ET-015/26" -> ['proceso' => 'GR', 'numero' => 15, 'anio' => 26].
+     * 'anio' es null si el codigo no lo trae. Null si el texto no es un
+     * codigo de ese tipo.
+     *
+     * @return array{proceso: string, numero: int, anio: int|null}|null
+     */
+    public static function partesDe(string $tipo, ?string $codigo): ?array
+    {
+        $patron = '/^' . preg_quote(self::UNIDAD, '/') . '-([A-Z]{2})-' . preg_quote($tipo, '/') . '-(\d+)(?:\/(\d{2}))?$/';
+
+        if (preg_match($patron, trim((string) $codigo), $partes) !== 1) {
+            return null;
+        }
+
+        return [
+            'proceso' => $partes[1],
+            'numero' => (int) $partes[2],
+            'anio' => isset($partes[3]) ? (int) $partes[3] : null,
+        ];
+    }
+
+    /**
+     * El numero de un codigo de ese tipo ("RD-GR-PR-004" -> 4), o null si el
      * texto no es un codigo de ese tipo.
      */
     public static function numeroDe(string $tipo, ?string $codigo): ?int
     {
-        $prefijo = preg_quote(self::UNIDAD . '-' . self::PROCESO . '-' . $tipo . '-', '/');
-
-        return preg_match('/^' . $prefijo . '(\d+)$/', trim((string) $codigo), $partes) === 1 ? (int) $partes[1] : null;
+        return self::partesDe($tipo, $codigo)['numero'] ?? null;
     }
 
     public function nombreTipo(): string

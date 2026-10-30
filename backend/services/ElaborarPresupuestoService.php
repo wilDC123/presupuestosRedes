@@ -72,8 +72,14 @@ class ElaborarPresupuestoService
                 $presupuesto->manoDeObra = Presupuesto::MANO_DE_OBRA_DTIC;
             }
 
+            // Con el proceso del proyecto (RD-GR-PR-016); el numero es uno
+            // solo para todos los procesos.
             $numero = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_PRESUPUESTO);
-            $presupuesto->numeroPresupuesto = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PRESUPUESTO, $numero);
+            $presupuesto->numeroPresupuesto = CorrelativoDocumento::codigo(
+                CorrelativoDocumento::TIPO_PRESUPUESTO,
+                $numero,
+                $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO
+            );
             $presupuesto->save(false);
             $transaccion->commit();
         } catch (Throwable $e) {

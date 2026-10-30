@@ -90,7 +90,7 @@ $volver = $proyecto !== null
         <div class="rd-card-pad">
             <?= $form->field($configuracion, 'copia')->textInput(['maxlength' => 200])->hint('Sale como "Copia: …".') ?>
             <?= $form->field($configuracion, 'plantillaAdjunto')->textInput(['maxlength' => 300])
-                ->hint('Sale como "Adjunto: …". Al imprimir, {numeroPresupuesto} se reemplaza con el del presupuesto y {especificaciones} con los códigos de las especificaciones técnicas vigentes del proyecto, separados por comas (ej. RD-PI-ET-001, RD-PI-ET-002).') ?>
+                ->hint('Sale como "Adjunto: …". Al imprimir, {numeroPresupuesto} se reemplaza con el del presupuesto y {especificaciones} con los códigos de las especificaciones técnicas vigentes del proyecto, separados por comas (ej. RD-PI-ET-001/26, RD-PI-ET-002/26).') ?>
         </div>
     </div>
 

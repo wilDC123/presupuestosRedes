@@ -224,7 +224,7 @@ foreach ($presupuesto->complementos as $complemento) {
     'titulo' => 'PRESUPUESTO DE INSTALACIÓN DE REDES',
     'codigo' => $presupuesto->numeroPresupuesto ?: '—',
     'version' => $presupuesto::VERSION_DOCUMENTO,
-    'proceso' => backend\models\CorrelativoDocumento::NOMBRE_PROCESO,
+    'proceso' => backend\models\Proceso::nombreDe($presupuesto->codigoProceso()),
     'fecha' => $presupuesto->fechaFormateada() ?: '—',
 ]) ?>
 

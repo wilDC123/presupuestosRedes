@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace backend\tests\Unit;
 
 use backend\models\CorrelativoDocumento;
+use backend\models\EspecificacionEmision;
 use backend\models\Presupuesto;
+use backend\models\Proceso;
 use backend\models\Proyecto;
 use backend\services\CodificacionService;
 use backend\services\ElaborarPresupuestoService;
@@ -16,8 +18,9 @@ use ReflectionMethod;
 
 /**
  * Codificacion segun el lineamiento de la DTIC RD-GD-LI-001: RD-PI-PT,
- * RD-PI-PR y RD-PI-ET, con correlativos que fija el encargado y que nunca
- * bajan del ultimo usado; y la fecha de aprobacion del presupuesto.
+ * RD-<proceso>-PR y RD-<proceso>-ET-.../AA (el ET vuelve a 1 cada año), con
+ * correlativos que fija el encargado y que nunca bajan del ultimo usado; y la
+ * fecha de aprobacion del presupuesto.
  *
  * Usa la base local; el modulo Yii2 deshace cada test al terminar (tambien
  * los correlativos).
@@ -35,12 +38,75 @@ class CodificacionTest extends Unit
     {
         $this->assertSame('RD-PI-PT-004', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, 4));
         $this->assertSame('RD-PI-PR-015', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PRESUPUESTO, 15));
-        // Despues del 999 sigue: nunca se repite un codigo.
-        $this->assertSame('RD-PI-ET-1000', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_ESPECIFICACION, 1000));
+        $this->assertSame('RD-GR-PR-016', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PRESUPUESTO, 16, 'GR'));
+        $this->assertSame('RD-PI-ET-001/27', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_ESPECIFICACION, 1, 'PI', 27));
+        // Si en un año pasa del 999 sigue: nunca se repite un codigo.
+        $this->assertSame('RD-PI-ET-1000/26', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_ESPECIFICACION, 1000, 'PI', 26));
 
         $this->assertSame(4, CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_PROYECTO, 'RD-PI-PT-004'));
+        $this->assertSame(16, CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_PRESUPUESTO, 'RD-GR-PR-016'));
+        $this->assertSame(['proceso' => 'DS', 'numero' => 15, 'anio' => 26], CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_ESPECIFICACION, 'RD-DS-ET-015/26'));
+        $this->assertSame(['proceso' => 'PI', 'numero' => 15, 'anio' => null], CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_ESPECIFICACION, 'RD-PI-ET-015'));
         $this->assertNull(CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_PRESUPUESTO, 'RD-PI-PT-004'));
         $this->assertNull(CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_PRESUPUESTO, '690'));
+    }
+
+    public function testElEtVuelveAUnoElPrimeroDeEnero(): void
+    {
+        // 31/12/2026: va por el 912.
+        CorrelativoDocumento::updateAll(['siguiente' => 912, 'anio' => 26], ['tipo' => CorrelativoDocumento::TIPO_ESPECIFICACION]);
+
+        $this->assertSame(912, $this->service->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION, 26));
+        // 01/01/2027: el primero del año es el 001, y sigue el 002.
+        $this->assertSame(1, $this->service->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION, 27));
+        $this->assertSame(2, $this->service->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION, 27));
+        $fila = CorrelativoDocumento::findOne(CorrelativoDocumento::TIPO_ESPECIFICACION);
+        $this->assertSame([3, 27], [(int) $fila->siguiente, (int) $fila->anio]);
+
+        // Presupuestos y proyectos no se reinician.
+        CorrelativoDocumento::updateAll(['siguiente' => 40], ['tipo' => CorrelativoDocumento::TIPO_PRESUPUESTO]);
+        $this->assertSame(40, $this->service->tomar(CorrelativoDocumento::TIPO_PRESUPUESTO, 27));
+    }
+
+    public function testLaPantallaMuestraElPrimeroDelAnioNuevoYElUltimoUsadoEsDeEsteAnio(): void
+    {
+        $anio = $this->service->anioActual();
+        // El contador quedo en el año pasado.
+        CorrelativoDocumento::updateAll(['siguiente' => 850, 'anio' => $anio - 1], ['tipo' => CorrelativoDocumento::TIPO_ESPECIFICACION]);
+
+        $correlativos = $this->service->correlativos();
+        $this->assertSame(1, (int) $correlativos[CorrelativoDocumento::TIPO_ESPECIFICACION]->siguiente);
+        $this->assertSame(sprintf('RD-GR-ET-001/%02d', $anio), $this->service->proximo(CorrelativoDocumento::TIPO_ESPECIFICACION, 'GR'));
+
+        // Al guardar la pantalla queda en este año.
+        $mayor = (int) EspecificacionEmision::find()->where(['serie' => EspecificacionEmision::SERIE_ET, 'anio' => $anio])->max('numeroNet');
+        $this->assertTrue($this->service->guardar($correlativos, $this->datos($correlativos, [CorrelativoDocumento::TIPO_ESPECIFICACION => (string) ($mayor + 5)])));
+        $fila = CorrelativoDocumento::findOne(CorrelativoDocumento::TIPO_ESPECIFICACION);
+        $this->assertSame([$mayor + 5, $anio], [(int) $fila->siguiente, (int) $fila->anio]);
+
+        // Una ET de otro año con numero alto no cuenta como "ultimo usado".
+        $this->assertSame($mayor === 0 ? null : $mayor, $this->service->ultimoUsado(CorrelativoDocumento::TIPO_ESPECIFICACION));
+        $this->assertSame(sprintf('%03d/%02d', 7, $anio), $this->service->numeroTexto(CorrelativoDocumento::TIPO_ESPECIFICACION, 7));
+        $this->assertSame('007', $this->service->numeroTexto(CorrelativoDocumento::TIPO_PRESUPUESTO, 7));
+    }
+
+    public function testElPresupuestoLlevaElProcesoDelProyecto(): void
+    {
+        $gr = Proceso::findOne(['codigo' => 'GR']);
+        if ($gr === null) {
+            $this->markTestSkipped('La base local no tiene el proceso GR.');
+        }
+        $siguiente = $this->fijar(CorrelativoDocumento::TIPO_PRESUPUESTO);
+        $proyecto = $this->proyecto();
+        Proyecto::updateAll(['idProceso' => $gr->id], ['id' => $proyecto->id]);
+
+        $presupuesto = (new ElaborarPresupuestoService())->delProyecto(Proyecto::findOne($proyecto->id));
+
+        $this->assertSame(sprintf('RD-GR-PR-%03d', $siguiente), $presupuesto->numeroPresupuesto);
+        $this->assertSame('GR', $presupuesto->codigoProceso());
+        $this->assertSame($gr->nombre, Proceso::nombreDe($presupuesto->codigoProceso()));
+        // El numero es uno solo para todos los procesos.
+        $this->assertSame($siguiente, $this->service->ultimoUsado(CorrelativoDocumento::TIPO_PRESUPUESTO));
     }
 
     public function testElProyectoRecibeElSiguienteCodigoPt(): void

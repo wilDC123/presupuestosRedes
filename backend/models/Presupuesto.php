@@ -266,6 +266,16 @@ class Presupuesto extends ActiveRecord
     }
 
     /**
+     * Codigo del proceso que lleva su numero (RD-GR-PR-016 -> "GR"); PI si
+     * es un numero de antes, escrito a mano.
+     */
+    public function codigoProceso(): string
+    {
+        return CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_PRESUPUESTO, $this->numeroPresupuesto)['proceso']
+            ?? CorrelativoDocumento::PROCESO;
+    }
+
+    /**
      * fecha para mostrar en pantalla (dd/mm/aaaa), no para guardar.
      */
     public function fechaFormateada(): string

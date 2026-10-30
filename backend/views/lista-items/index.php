@@ -48,7 +48,7 @@ use yii\web\JqueryAsset;
  * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
  * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
  * @var backend\models\ConfiguracionEspecificacion $configuracion
- * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001)
+ * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001/26)
  */
 
 if ($editable) {

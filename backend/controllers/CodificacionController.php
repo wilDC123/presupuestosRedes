@@ -11,8 +11,8 @@ use yii\web\Controller;
 /**
  * Codificacion de documentos (capa de Presentacion): el encargado fija desde
  * que numero siguen los codigos de proyectos (RD-PI-PT), presupuestos
- * (RD-PI-PR) y especificaciones tecnicas (RD-PI-ET), segun el lineamiento de
- * la DTIC RD-GD-LI-001. Las reglas viven en CodificacionService.
+ * (RD-PI-PR) y especificaciones tecnicas (RD-PI-ET-.../26), segun el
+ * lineamiento de la DTIC RD-GD-LI-001. Las reglas viven en CodificacionService.
  */
 class CodificacionController extends Controller
 {
@@ -34,9 +34,11 @@ class CodificacionController extends Controller
             return $this->redirect(['index']);
         }
 
+        // "015" o "026/26": sin proceso, porque depende de cada proyecto.
         $ultimos = [];
         foreach (array_keys($correlativos) as $tipo) {
-            $ultimos[$tipo] = $this->service->ultimoUsado($tipo);
+            $ultimo = $this->service->ultimoUsado($tipo);
+            $ultimos[$tipo] = $ultimo === null ? null : $this->service->numeroTexto($tipo, $ultimo);
         }
 
         return $this->render('index', [

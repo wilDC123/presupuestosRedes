@@ -34,8 +34,16 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 ## Alcance del sistema (confirmado en reuniones con el equipo técnico)
 ### SÍ incluye:
 - CODIFICACIÓN según el lineamiento de la DTIC RD-GD-LI-001 (2026-10-22; resumen y decisiones en
-  `docs/cambios-codificacion-lineamiento.md`): `RD-PI-PT-NNN` proyecto, `RD-PI-PR-NNN` presupuesto,
-  `RD-PI-ET-NNN` especificación técnica (3 cifras; después del 999 sigue con 1000). Los números los da
+  `docs/cambios-codificacion-lineamiento.md`): `RD-PI-PT-NNN` proyecto, `RD-<proceso>-PR-NNN` presupuesto,
+  `RD-<proceso>-ET-NNN/AA` especificación técnica (3 cifras; después del 999 sigue con 1000). Desde la
+  revisión del 2026-10-29 (paso 4, migración `m261030_024446_especificacion_con_proceso_y_anio`): PR y ET
+  llevan el proceso DEL PROYECTO (el PT siempre PI), con UN solo número para todos los procesos; SOLO la
+  ET lleva el año ("/26") y vuelve a 001 cada 1 de enero (`CorrelativoDocumento.anio`, `reiniciaPorAnio()`;
+  año del calendario de Bolivia, `CodificacionService::anioActual()`); PT y PR no llevan año ni se
+  reinician. Lo emitido conserva su código: `EspecificacionEmision.proceso` y `anio` congelados (reemitir en
+  enero un 850/26 da 850/26 v02); el presupuesto guarda el código entero en `numeroPresupuesto`
+  (`Presupuesto::codigoProceso()`). La línea "Proceso:" de la cabecera de los PDF sale de
+  `Proceso::nombreDe()` con ese código. Las ET emitidas antes (021–024, todas de 2026) pasaron a /26. Los números los da
   el sistema desde `redes.CorrelativoDocumento` (una fila por tipo, `CodificacionService::tomar()` con
   UPDLOCK); el encargado fija desde cuál siguen en el menú "Codificación de documentos" (solo mayor que
   el último usado). El formato está en `CorrelativoDocumento::codigo()`. La solicitud de cotización NO
@@ -122,10 +130,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   presupuesta va como proyecto, pero no siempre lo lleva PI: `Proyecto.idProceso` (FK, obligatorio en el
   formulario; NULL permitido en la base, como idTipoProyecto) dice qué proceso. Un proyecto nuevo trae PI
   (`ProcesoService::idPorDefecto()`); la fase siguiente hereda el de la anterior; los existentes quedaron en
-  PI. En uso: no se elimina (se desactiva) y su CÓDIGO no se cambia (irá en el código de los documentos);
-  quien ya lo tenía lo conserva (`Proceso::reglaElegible()`). TODAVÍA no cambia los códigos ni la línea
-  "Proceso:" de la cabecera de los PDF (siguen con `CorrelativoDocumento::PROCESO` = PI): es el paso
-  siguiente (codificación con proceso y año)
+  PI. En uso (por proyectos, especificaciones emitidas o presupuestos con su código): no se elimina (se
+  desactiva) y su CÓDIGO no se cambia (va en el código de los documentos, ver CODIFICACIÓN); quien ya lo
+  tenía lo conserva (`Proceso::reglaElegible()`)
 - Proyectistas: catálogo `redes.Proyectista` (nombre único, activo), en Configuración → "Proyectistas"
   (2026-10-28; antes en el JSON; migración `m261028_202824_crear_proyectista`, cargó los 2 del JSON).
   Solo una lista de NOMBRES, no usuarios. `ProyectoProyectista` sigue guardando una COPIA del nombre
@@ -180,7 +187,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     versión ya usada en una emisión NO se modifica: editarla crea la siguiente
     (`EspecificacionService::guardarVersion()`); cambiar solo título/categoría/activo no crea versión.
   - EMISIÓN `redes.EspecificacionEmision`: el formulario con código `RD-PI-ET-001` (columna `serie` =
-    'ET', desde el 2026-10-22, correlativo desde 1; índice único por serie + `numeroNet`;
+    'ET', desde el 2026-10-22, correlativo desde 1; desde el 2026-10-29 `RD-<proceso>-ET-001/26`, ver
+    CODIFICACIÓN; índice único por serie + `anio` + `numeroNet` + `versionDocumento`;
     `EspecificacionEmision::codigo()`. Las emitidas antes con `NET:880/26` se convirtieron a ET con la
     migración `m261022_144239_convertir_codigos_viejos_al_lineamiento` y guardan el NET en
     `codigoAnterior`, que se ve y se busca en el registro; la serie 'NET' queda solo para su `safeDown()`) que se firma y se
@@ -217,7 +225,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   y CSV. Cambiar la ficha por otra sí da código nuevo (es otro documento). Reemitir se permite mientras el presupuesto no
   esté aprobado ni cancelado. Correlativo: el ET de `redes.CorrelativoDocumento` (antes
   `ConfiguracionEspecificacion.siguienteNet`, eliminado el 2026-10-22; esa tabla sigue con los textos fijos
-  del formulario), sube de 1 en 1, no se reinicia por año y nunca se reutiliza. Avisos que
+  del formulario), sube de 1 en 1, vuelve a 001 cada 1 de enero (2026-10-29) y nunca se reutiliza. Avisos que
   no bloquean: cantidad distinta de la emitida, emisión vencida, versión nueva de la ficha. La
   especificación es OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud,
   cotización, presupuesto ni PDF. Los impresos citan el NET de la emisión vigente
@@ -413,7 +421,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_002958_crear_proceso`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_024446_especificacion_con_proceso_y_anio`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -501,7 +509,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `Presupuesto.fechaAprobacion` y `numeroAnterior`, `EspecificacionEmision.serie` (ET / NET) y
   `codigoAnterior`, `EspecificacionEmision.versionDocumento` (2026-10-24: reemitir = mismo código, versión + 1),
   `Presupuesto.firma1Prefijo…firma2Cargo` {congelado al aprobar} (2026-10-24), se quita
-  `ConfiguracionEspecificacion.siguienteNet`, caso de uso "Configurar codificación de documentos"; resumen
+  `ConfiguracionEspecificacion.siguienteNet`, caso de uso "Configurar codificación de documentos"; 2026-10-29:
+  `EspecificacionEmision.proceso` {congelado} y `CorrelativoDocumento.anio` (ET por año); resumen
   en `docs/cambios-codificacion-lineamiento.md`
 - PENDIENTE (tutor): agregar `PresupuestoComplemento` (2026-10-23; composición 0..* desde
   Presupuesto, enumerado tipo material / trabajo, asociación 0..1 a SubcatalogoItem) al diagrama de

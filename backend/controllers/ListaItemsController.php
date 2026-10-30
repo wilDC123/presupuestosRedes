@@ -112,7 +112,10 @@ class ListaItemsController extends Controller
             // Para el boton "Imprimir especificaciones (N)".
             'totalFormularios' => count($emisiones->vigentesDelProyecto($proyecto)),
             'configuracion' => ConfiguracionEspecificacion::obtener(),
-            'proximoCodigo' => (new CodificacionService())->proximo(CorrelativoDocumento::TIPO_ESPECIFICACION),
+            'proximoCodigo' => (new CodificacionService())->proximo(
+                CorrelativoDocumento::TIPO_ESPECIFICACION,
+                $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO
+            ),
             'errores' => $errores,
             'editable' => $editable,
             'subcatalogo' => $editable ? (new SubcatalogoItemService())->activos() : [],

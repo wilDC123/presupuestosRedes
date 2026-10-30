@@ -17,7 +17,7 @@ Redes y Telecomunicaciones"** (versión 01, aprobado el 29-08-2024). Decidido co
 | ¿Quién da el número? | El sistema, a partir de un número que fija el encargado (pantalla "Codificación de documentos") |
 | Solicitud de cotización | El código FR **no aplica** en el sistema: sigue como `RD-PI-PT-004 / SC-01` |
 | Control de elaboración del presupuesto | Elaborado por (ingeniero responsable de redes o de proyectos) y aprobado por (V°B°, quien revisa el borrador). 2 firmas |
-| ¿Qué pasa después del 999? | El lineamiento no lo dice; el sistema sigue con 1000 para no repetir nunca un código |
+| ¿Qué pasa después del 999? | El lineamiento no lo dice; el sistema sigue con 1000 para no repetir nunca un código. Desde el 2026-10-29 las ET llevan el año y vuelven a 001 cada año (ver al final) |
 
 ## Cambios en el sistema
 
@@ -158,3 +158,37 @@ imprimía: si cambiaba el responsable de redes, un presupuesto ya aprobado salí
   aprobados.
 - Diagrama de clases: `Presupuesto` gana firma1Prefijo, firma1Nombre, firma1Cargo, firma2Prefijo,
   firma2Nombre, firma2Cargo con la restricción {congelado}, como el precio de `PresupuestoDetalle`.
+
+## Proceso del proyecto y año en las especificaciones (2026-10-29)
+
+Revisión con el Ing. de DTIC del 2026-10-29. Los presupuestos no siempre los hace el proceso de proyectos
+(PI): pueden venir de despliegue (DS), de gestión de la red (GR), etc. Además, las especificaciones
+técnicas pueden pasar de 999 en un año (el NET llegó a ~900 en 2026). Decidido con el desarrollador:
+el año va **solo en las especificaciones técnicas**.
+
+| Documento | Antes | Ahora |
+|---|---|---|
+| Proyecto (PT) | `RD-PI-PT-022` | Igual: siempre PI, sin año, no se reinicia |
+| Presupuesto (PR) | `RD-PI-PR-016` | `RD-<proceso del proyecto>-PR-016` (ej. `RD-GR-PR-016`), sin año, no se reinicia |
+| Especificación técnica (ET) | `RD-PI-ET-027` | `RD-<proceso del proyecto>-ET-027/26`; el 1 de enero vuelve a `001/27` |
+
+- El número es **uno solo para todos los procesos**: no conviven `RD-PI-PR-016` y `RD-GR-PR-016`.
+- El año es el del calendario de Bolivia (zona horaria de la aplicación), del día en que se toma el número.
+  `CorrelativoDocumento.anio` guarda a qué año pertenece el siguiente de ET: si al tomar un número el año
+  ya cambió, el contador vuelve a 1 (`CodificacionService::tomar()`). La pantalla "Codificación de
+  documentos" muestra ya el 001 del año nuevo y el "último usado" de ET es el de este año.
+- Lo emitido **no cambia**: `EspecificacionEmision.proceso` (nuevo) y `anio` se congelan al emitir. Una
+  reemisión es el mismo documento: `RD-PI-ET-850/26 v01` reemitido en febrero de 2027 es
+  `RD-PI-ET-850/26 v02`, aunque el proyecto haya cambiado de proceso. Cambiar la ficha sí da código nuevo
+  (con el proceso y el año de ese día).
+- El presupuesto guarda el código entero en `numeroPresupuesto`: cambiar después el proceso del proyecto
+  no lo cambia.
+- La línea "Proceso:" de la cabecera de los PDF sale del proceso del código (`Proceso::nombreDe()`).
+- Un proceso que aparece en algún documento no se elimina ni se le cambia el código, aunque ya ningún
+  proyecto lo tenga.
+- El índice único de las emisiones pasa a (`serie`, `anio`, `numeroNet`, `versionDocumento`).
+- Las 4 ET ya emitidas (021–024, todas de 2026) pasan a citarse con `/26`; su proceso queda PI.
+- Migración `m261030_024446_especificacion_con_proceso_y_anio`.
+- Pendiente con el Ing.: el lineamiento (8.2 y 8.6) no menciona el "/AA"; conviene anotarlo como cambio del
+  lineamiento.
+- Diagrama de clases: `EspecificacionEmision` gana `proceso` {congelado}; `CorrelativoDocumento` gana `anio`.
