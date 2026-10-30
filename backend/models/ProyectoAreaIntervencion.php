@@ -18,12 +18,15 @@ use yii\db\ActiveRecord;
  * mismo aunque despues renombren el ambiente.
  *
  * No tiene reglas: sus filas las arma ProyectoService con lo que devuelve la
- * fuente de infraestructura, nunca con datos del formulario.
+ * fuente de infraestructura, nunca con nombres del formulario. La excepcion
+ * es el area ESCRITA A MANO (2026-10-29: un edificio en construccion o que
+ * aun no esta en UsfxGEO): sin ningun id, solo los nombres que se
+ * escribieron. Ver esManual().
  *
  * @property int $id
  * @property int $idProyecto
  * @property int $orden
- * @property string $idEdificio
+ * @property string|null $idEdificio NULL = area escrita a mano.
  * @property string $edificio
  * @property int|null $idBloqueArea
  * @property string|null $bloque
@@ -89,13 +92,32 @@ class ProyectoAreaIntervencion extends ActiveRecord
     }
 
     /**
-     * Los identificadores, como los envia el formulario (para volver a
-     * mostrar las areas guardadas al editar el proyecto).
+     * true si se escribio a mano: no viene de UsfxGEO (no tiene id).
+     */
+    public function esManual(): bool
+    {
+        return $this->idEdificio === null || $this->idEdificio === '';
+    }
+
+    /**
+     * Lo que envia el formulario por cada area (para volver a mostrar las
+     * guardadas al editar el proyecto): los identificadores de UsfxGEO, o
+     * los nombres si se escribio a mano.
      *
-     * @return array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string}
+     * @return array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string}|array{manual: true, edificio: string, bloque: ?string, nivel: ?string, ambiente: ?string}
      */
     public function claves(): array
     {
+        if ($this->esManual()) {
+            return [
+                'manual' => true,
+                'edificio' => (string) $this->edificio,
+                'bloque' => $this->bloque,
+                'nivel' => $this->nivel,
+                'ambiente' => $this->ambiente,
+            ];
+        }
+
         return [
             'idEdificio' => (string) $this->idEdificio,
             'idBloqueArea' => $this->idBloqueArea === null ? null : (int) $this->idBloqueArea,

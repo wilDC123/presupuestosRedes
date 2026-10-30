@@ -65,6 +65,8 @@ class Proyecto extends ActiveRecord
      * Cada area llega como [idEdificio, idBloqueArea, numeroNivel, idEspacio]
      * (los tres ultimos pueden venir vacios). Los nombres NO vienen del
      * formulario: ProyectoService los pide a la fuente de infraestructura.
+     * Salvo el area escrita a mano, que llega como [manual = 1, edificio,
+     * bloque, nivel, ambiente] (no esta en UsfxGEO, no tiene id).
      *
      * @var array<int, array<string, string>>|string
      */

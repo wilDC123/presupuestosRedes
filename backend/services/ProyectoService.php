@@ -216,9 +216,10 @@ class ProyectoService
      * la fase anterior o las que llegaron en un POST con errores), cada una
      * con su "texto", su "grupo" (edificio · bloque) y su "detalle" (piso y
      * ambiente) para mostrarla en el formulario. Las guardadas usan sus
-     * nombres copiados; las demas se piden a la fuente.
+     * nombres copiados; las escritas a mano, lo que se escribio; las demas
+     * se piden a la fuente. "manual" dice cual es cual.
      *
-     * @return array<int, array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string, texto: string, grupo: string, detalle: string}>
+     * @return array<int, array<string, mixed>> las claves de normalizarArea() + manual, texto, grupo y detalle
      */
     public function areasDelFormulario(Proyecto $proyecto): array
     {
@@ -239,7 +240,9 @@ class ProyectoService
 
             $area = $guardadas[self::claveArea($claves)] ?? null;
 
-            if ($area === null) {
+            if ($area === null && isset($claves['manual'])) {
+                $area = new ProyectoAreaIntervencion(array_diff_key($claves, ['manual' => true]));
+            } elseif ($area === null) {
                 try {
                     $ruta = $this->infraestructura->ruta($claves['idEdificio'], $claves['idBloqueArea'], $claves['numeroNivel'], $claves['idEspacio']);
                 } catch (DbException $e) {
@@ -247,14 +250,14 @@ class ProyectoService
                 }
 
                 if ($ruta === null) {
-                    $areas[] = $claves + ['texto' => $texto = 'Área no vigente (edificio ' . $claves['idEdificio'] . ')', 'grupo' => $texto, 'detalle' => ''];
+                    $areas[] = $claves + ['manual' => false, 'texto' => $texto = 'Área no vigente (edificio ' . $claves['idEdificio'] . ')', 'grupo' => $texto, 'detalle' => ''];
                     continue;
                 }
 
                 $area = new ProyectoAreaIntervencion($claves + $ruta);
             }
 
-            $areas[] = $claves + ['texto' => $area->texto(), 'grupo' => $area->grupo(), 'detalle' => $area->detalle()];
+            $areas[] = $claves + ['manual' => $area->esManual(), 'texto' => $area->texto(), 'grupo' => $area->grupo(), 'detalle' => $area->detalle()];
         }
 
         return $areas;
@@ -490,7 +493,8 @@ class ProyectoService
      * una debe existir y estar vigente en la fuente de infraestructura, de la
      * que se copian los nombres. Un area que el proyecto ya tenia guardada se
      * conserva tal cual (con sus nombres de entonces), aunque despues la
-     * hayan dado de baja en UsfxGEO. Las repetidas se guardan una vez.
+     * hayan dado de baja en UsfxGEO. Las escritas a mano se guardan con lo
+     * que se escribio (sin consultar la fuente). Las repetidas, una vez.
      *
      * @return ProyectoAreaIntervencion[] sin guardar, en el orden recibido
      */
@@ -524,6 +528,18 @@ class ProyectoService
                 continue;
             }
 
+            if (isset($claves['manual'])) {
+                $error = self::errorAreaManual($claves);
+
+                if ($error !== null) {
+                    $proyecto->addError('areas', $error);
+                    continue;
+                }
+
+                $areas[$clave] = new ProyectoAreaIntervencion(array_diff_key($claves, ['manual' => true]));
+                continue;
+            }
+
             try {
                 $ruta = $this->infraestructura->ruta($claves['idEdificio'], $claves['idBloqueArea'], $claves['numeroNivel'], $claves['idEspacio']);
             } catch (DbException $e) {
@@ -545,18 +561,44 @@ class ProyectoService
     }
 
     /**
-     * Deja los identificadores de un area como los espera la fuente ('' ->
-     * null). null si no tiene edificio (fila vacia: se ignora).
+     * Largo maximo de cada nombre de un area escrita a mano (las columnas de
+     * redes.ProyectoAreaIntervencion) y como se llama en pantalla.
+     */
+    private const LARGO_AREA_MANUAL = [
+        'edificio' => [200, 'edificio'],
+        'bloque' => [200, 'bloque'],
+        'nivel' => [100, 'piso'],
+        'ambiente' => [250, 'espacio'],
+    ];
+
+    /**
+     * Deja un area como la espera el resto del servicio ('' -> null):
+     *  - de UsfxGEO: sus identificadores, como los espera la fuente,
+     *  - escrita a mano (llega con "manual"): sus nombres, con los espacios
+     *    de mas quitados.
+     * null si no tiene edificio (fila vacia: se ignora).
      *
-     * @return array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string}|null
+     * @return array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string}|array{manual: true, edificio: string, bloque: ?string, nivel: ?string, ambiente: ?string}|null
      */
     private static function normalizarArea(array $datos): ?array
     {
         $texto = static function ($valor): ?string {
-            $valor = is_scalar($valor) ? trim((string) $valor) : '';
+            $valor = is_scalar($valor) ? trim(preg_replace('/\s+/u', ' ', (string) $valor)) : '';
 
             return $valor === '' ? null : $valor;
         };
+
+        if (!empty($datos['manual'])) {
+            $edificio = $texto($datos['edificio'] ?? null);
+
+            return $edificio === null ? null : [
+                'manual' => true,
+                'edificio' => $edificio,
+                'bloque' => $texto($datos['bloque'] ?? null),
+                'nivel' => $texto($datos['nivel'] ?? null),
+                'ambiente' => $texto($datos['ambiente'] ?? null),
+            ];
+        }
 
         $idEdificio = $texto($datos['idEdificio'] ?? null);
 
@@ -574,9 +616,32 @@ class ProyectoService
         ];
     }
 
+    /**
+     * Para no guardar dos veces la misma area. Las escritas a mano se
+     * comparan por sus nombres, sin importar mayusculas.
+     */
     private static function claveArea(array $claves): string
     {
+        if (isset($claves['manual'])) {
+            return 'manual|' . mb_strtolower(implode('|', [$claves['edificio'], $claves['bloque'] ?? '', $claves['nivel'] ?? '', $claves['ambiente'] ?? '']), 'UTF-8');
+        }
+
         return implode('|', [$claves['idEdificio'], $claves['idBloqueArea'] ?? '', $claves['numeroNivel'] ?? '', $claves['idEspacio'] ?? '']);
+    }
+
+    /**
+     * El error de un area escrita a mano, o null si esta bien. Solo se
+     * revisa el largo: el resto es texto libre.
+     */
+    private static function errorAreaManual(array $claves): ?string
+    {
+        foreach (self::LARGO_AREA_MANUAL as $campo => [$maximo, $nombre]) {
+            if ($claves[$campo] !== null && mb_strlen($claves[$campo], 'UTF-8') > $maximo) {
+                return "En un área escrita a mano, el $nombre tiene más de $maximo caracteres.";
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -60,7 +60,12 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
     `UsfxGEO` de Desarrollo, SOLO LECTURA y solo Estado 'V' (`InfraestructuraProvider`,
     `UsfxGeoInfraestructuraProvider`, conexión `dbGeo` en `main-local.php`). Guarda los id de
     UsfxGEO (referencia lógica, como idSigma) + COPIA congelada de los nombres; una ya guardada se
-    conserva aunque la den de baja. Sin "agregar" edificios ni ambientes. Formulario con buscador
+    conserva aunque la den de baja. Sin "agregar" edificios ni ambientes a UsfxGEO, PERO desde el 2026-10-29
+    (pedido del Ing.: edificios en construcción o aún no registrados) un área se puede ESCRIBIR A MANO
+    ("¿No está en la lista? Escríbala a mano", copia lo elegido en el paso a paso): sin ningún id
+    (`idEdificio` NULL = a mano, `ProyectoAreaIntervencion::esManual()`; migración
+    `m261030_001726_area_intervencion_escrita_a_mano`), solo los nombres; edificio obligatorio, sin repetidas
+    (por nombre, sin mayúsculas); marca "a mano" en formulario y vista, en los documentos sale igual. Formulario con buscador
     (`proyecto/buscar-ambiente`, `ProyectoService::buscarAreas()`: primero los EDIFICIOS que coinciden,
     que se ponen en el paso a paso, y luego hasta 30 ambientes con aviso "hay más"; ignora tildes y
     guiones, "E303" = "E-303") y paso a paso: el EDIFICIO no es un `<select>` (con 134 la lista del
@@ -398,7 +403,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261029_232347_agregar_unidad_dependencia_a_proyecto`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_001726_area_intervencion_escrita_a_mano`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).

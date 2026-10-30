@@ -169,6 +169,51 @@ class AreaIntervencionTest extends Unit
         $this->assertSame([], $proyecto->areasIntervencion);
     }
 
+    public function testUnAreaEscritaAManoSeGuardaSinConsultarUsfxGeo(): void
+    {
+        $proyecto = new Proyecto();
+        $datos = ['Proyecto' => [
+            'nombre' => 'Proyecto test área a mano',
+            'unidadDependencia' => 'Carrera test',
+            'unidadSolicitante' => 'Facultad test',
+            'areas' => [
+                // Edificio en construccion: no esta en la fuente.
+                ['manual' => '1', 'edificio' => '  Bloque   Ingeniería Civil ', 'bloque' => '', 'nivel' => 'Planta baja', 'ambiente' => 'Sala de servidores'],
+                // La misma con otras mayusculas: se guarda una vez.
+                ['manual' => '1', 'edificio' => 'BLOQUE INGENIERÍA CIVIL', 'nivel' => 'PLANTA BAJA', 'ambiente' => 'SALA DE SERVIDORES'],
+                // Sin edificio: fila vacia, se ignora.
+                ['manual' => '1', 'edificio' => ' ', 'bloque' => 'Bloque Z'],
+                // Junto a una de UsfxGEO.
+                ['idEdificio' => 'E1'],
+            ],
+        ]];
+
+        $this->assertTrue($this->service->crear($proyecto, $datos), json_encode($proyecto->errors));
+
+        $areas = Proyecto::findOne($proyecto->id)->areasIntervencion;
+        $this->assertCount(2, $areas);
+        $this->assertTrue($areas[0]->esManual());
+        $this->assertNull($areas[0]->idEdificio);
+        $this->assertSame('Bloque Ingeniería Civil · Planta baja: Sala de servidores', $areas[0]->texto());
+        $this->assertFalse($areas[1]->esManual());
+
+        // Al editar se conserva y el formulario la vuelve a mostrar como escrita a mano.
+        $proyecto = Proyecto::findOne($proyecto->id);
+        $this->service->cargarSeleccion($proyecto);
+        $formulario = $this->service->areasDelFormulario($proyecto);
+        $this->assertTrue($formulario[0]['manual']);
+        $this->assertSame('Bloque Ingeniería Civil', $formulario[0]['edificio']);
+
+        $this->assertTrue($this->service->actualizar($proyecto, ['Proyecto' => ['areas' => $proyecto->areas]]), json_encode($proyecto->errors));
+        // En los documentos sale igual que las demas (el resumen nombra el espacio sin el piso).
+        $this->assertSame('Bloque Ingeniería Civil: Sala de servidores; Edificio Prueba', Proyecto::findOne($proyecto->id)->areaIntervencionTexto());
+
+        // Un nombre demasiado largo no se guarda.
+        $datos['Proyecto']['areas'] = [['manual' => '1', 'edificio' => str_repeat('x', 201)]];
+        $this->assertFalse($this->service->actualizar($proyecto, $datos));
+        $this->assertTrue($proyecto->hasErrors('areas'));
+    }
+
     public function testUnAreaGuardadaSeConservaAunqueYaNoEsteVigente(): void
     {
         $proyecto = new Proyecto();

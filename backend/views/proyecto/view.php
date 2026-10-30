@@ -67,18 +67,21 @@ $formato = Yii::$app->formatter;
             <div class="rd-dato">
                 <strong>Área de intervención:</strong>
                 <?php if ($model->areasIntervencion !== []): ?>
-                    <?php // Agrupadas por edificio y bloque, como en el formulario: el grupo arriba y un chip por area. ?>
+                    <?php // Agrupadas por edificio y bloque, como en el formulario: el grupo arriba y un chip por area.
+                    // Las escritas a mano (no estan en UsfxGEO) llevan la marca, solo en pantalla. ?>
                     <?php
                     $grupos = [];
                     foreach ($model->areasIntervencion as $area) {
-                        $grupos[$area->grupo()][] = $area->detalle();
+                        $grupos[$area->grupo()][] = $area;
                     }
                     ?>
-                    <?php foreach ($grupos as $grupo => $detalles): ?>
+                    <?php foreach ($grupos as $grupo => $areasDelGrupo): ?>
                         <div class="rd-area-grupo mt-1">
                             <div class="rd-area-titulo"><?= Html::encode($grupo) ?></div>
-                            <?php foreach ($detalles as $detalle): ?>
-                                <span class="chip"><?= Html::encode($detalle) ?></span>
+                            <?php foreach ($areasDelGrupo as $area): ?>
+                                <span class="chip"><?= Html::encode($area->detalle()) ?>
+                                    <?php if ($area->esManual()): ?><span class="rd-area-marca" title="Escrita a mano: no está en la infraestructura de la universidad (UsfxGEO)">a mano</span><?php endif; ?>
+                                </span>
                             <?php endforeach; ?>
                         </div>
                     <?php endforeach; ?>
