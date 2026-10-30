@@ -9,7 +9,7 @@ use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
 use backend\models\ProyectoAreaIntervencion;
-use backend\models\ProyectoProyectista;
+use backend\models\ProyectoParticipante;
 use backend\services\contracts\InfraestructuraProvider;
 use Throwable;
 use Yii;
@@ -78,10 +78,12 @@ class ProyectoService
     /**
      * Proyecto vacio para el formulario "Nuevo proyecto". Si llega el id de
      * un proyecto aprobado, se prepara como su FASE SIGUIENTE: queda
-     * enlazado a el y hereda tipo, proceso, unidades y areas de
-     * intervencion (se pueden cambiar). No hereda proyectistas ni items: la
-     * fase nueva empieza vacia. Un proyecto nuevo sin fase anterior trae
-     * marcado el proceso PI (ProcesoService::idPorDefecto()).
+     * enlazado a el y hereda tipo, proceso, unidades, areas de intervencion
+     * y el EQUIPO con su responsable (todo se puede cambiar). No hereda los
+     * items: la lista de la fase nueva empieza vacia. Un proyecto nuevo sin
+     * fase anterior trae marcado el proceso PI (ProcesoService::idPorDefecto())
+     * y una fila de equipo con el rol Proyectista, marcada como responsable,
+     * para elegir a la persona.
      */
     public function nuevo(?int $idProyectoAnterior = null): Proyecto
     {
@@ -97,21 +99,58 @@ class ProyectoService
             $proyecto->unidadDependencia = $anterior->unidadDependencia;
             $proyecto->unidadSolicitante = $anterior->unidadSolicitante;
             $proyecto->areas = array_map(static fn (ProyectoAreaIntervencion $area) => $area->claves(), $anterior->areasIntervencion);
+            $this->copiarEquipo($anterior, $proyecto);
         } else {
             $proyecto->numeroFase = 1;
         }
+
+        $this->filaInicialSiNoHayEquipo($proyecto);
 
         return $proyecto;
     }
 
     /**
-     * Deja en el modelo las areas y proyectistas ya guardados, para que el
+     * Deja en el modelo las areas y el equipo ya guardados, para que el
      * formulario de edicion los muestre como seleccionados.
      */
     public function cargarSeleccion(Proyecto $proyecto): void
     {
         $proyecto->areas = array_map(static fn (ProyectoAreaIntervencion $area) => $area->claves(), $proyecto->areasIntervencion);
-        $proyecto->nombresProyectista = array_map(static fn (ProyectoProyectista $persona) => $persona->nombre, $proyecto->proyectistas);
+        $this->copiarEquipo($proyecto, $proyecto);
+        // Los registrados antes del 2026-10-29 no tienen equipo.
+        $this->filaInicialSiNoHayEquipo($proyecto);
+    }
+
+    /**
+     * Sin equipo, el formulario empieza con una fila de rol Proyectista,
+     * marcada como responsable: solo falta elegir a la persona.
+     */
+    private function filaInicialSiNoHayEquipo(Proyecto $proyecto): void
+    {
+        if ($proyecto->equipo !== []) {
+            return;
+        }
+
+        $idProyectista = (new RolProyectoService())->idProyectista();
+        $proyecto->equipo = [0 => ['nombre' => '', 'idRol' => $idProyectista === null ? '' : (string) $idProyectista]];
+        $proyecto->equipoResponsable = 0;
+    }
+
+    /**
+     * Pone en $destino->equipo (el del formulario) el equipo guardado de
+     * $origen, con su responsable.
+     */
+    private function copiarEquipo(Proyecto $origen, Proyecto $destino): void
+    {
+        $destino->equipo = [];
+        $destino->equipoResponsable = null;
+
+        foreach ($origen->participantes as $clave => $participante) {
+            $destino->equipo[$clave] = $participante->fila();
+            if ($participante->esResponsable) {
+                $destino->equipoResponsable = $clave;
+            }
+        }
     }
 
     /**
@@ -425,7 +464,7 @@ class ProyectoService
     /**
      * ORDEN (importa en Yii2): load() -> validar -> completar lo que calcula
      * el sistema -> guardar todo dentro de UNA transaccion, para que nunca
-     * quede un proyecto guardado sin sus areas o proyectistas.
+     * quede un proyecto guardado sin sus areas o su equipo.
      *
      * La ubicacion anterior (facultad, edificio, redes.ProyectoBloque) no se
      * toca: queda como estaba en los proyectos registrados antes del cambio.
@@ -435,9 +474,6 @@ class ProyectoService
         if (!$proyecto->load($datosFormulario)) {
             return false;
         }
-
-        // Un campo vacio del formulario llega como '' y no como arreglo.
-        $proyecto->nombresProyectista = $this->limpiarLista($proyecto->nombresProyectista);
 
         foreach (['idTipoProyecto', 'idProceso', 'idProyectoAnterior'] as $atributo) {
             if ($proyecto->$atributo === '') {
@@ -451,7 +487,7 @@ class ProyectoService
 
         $areas = $this->armarAreas($proyecto);
         $this->aplicarFase($proyecto);
-        $this->validarProyectistas($proyecto);
+        $equipo = $this->armarEquipo($proyecto);
 
         if ($proyecto->hasErrors()) {
             return false;
@@ -467,7 +503,7 @@ class ProyectoService
             }
 
             $this->reemplazarAreas($proyecto, $areas);
-            $this->reemplazarProyectistas($proyecto);
+            $this->reemplazarEquipo($proyecto, $equipo);
 
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -476,20 +512,6 @@ class ProyectoService
         }
 
         return true;
-    }
-
-    /**
-     * Deja una lista de textos no vacios y sin repetidos, venga lo que venga
-     * del formulario ('' cuando no se eligio nada, o un arreglo).
-     *
-     * @param mixed $valor
-     * @return string[]
-     */
-    private function limpiarLista($valor): array
-    {
-        $textos = array_filter((array) $valor, static fn ($elemento) => is_string($elemento) && trim($elemento) !== '');
-
-        return array_values(array_unique(array_map('trim', $textos)));
     }
 
     /**
@@ -672,21 +694,93 @@ class ProyectoService
     }
 
     /**
-     * Un proyectista debe estar activo en redes.Proyectista, o ya estar
-     * asignado a este proyecto (para no invalidar proyectos antiguos si se
-     * desactiva o se corrige su nombre).
+     * Arma el equipo del proyecto con lo que llego del formulario (revision
+     * del 2026-10-29). REGLAS DE NEGOCIO:
+     *  - al menos una persona, y UNA sola marcada como responsable (no tiene
+     *    por que ser proyectista: un mantenimiento del data center lo lleva
+     *    quien lo administra),
+     *  - cada fila con persona y rol; una fila sin ninguno de los dos se ignora,
+     *  - persona y rol de las listas (activos), salvo los que el proyecto ya
+     *    tenia o los que trae de la fase anterior: se conservan aunque se
+     *    hayan desactivado,
+     *  - una persona puede tener dos roles, pero no el mismo dos veces.
+     *
+     * @return ProyectoParticipante[] sin guardar, en el orden del formulario
      */
-    private function validarProyectistas(Proyecto $proyecto): void
+    private function armarEquipo(Proyecto $proyecto): array
     {
-        $yaAsignados = $proyecto->isNewRecord
-            ? []
-            : array_map(static fn (ProyectoProyectista $persona) => $persona->nombre, $proyecto->proyectistas);
+        $filas = is_array($proyecto->equipo) ? $proyecto->equipo : [];
+        $conservados = $this->participantesConservados($proyecto);
+        $nombresPermitidos = array_merge(
+            (new PersonalService())->nombresActivos(),
+            array_map(static fn (ProyectoParticipante $p) => $p->nombre, $conservados)
+        );
+        $rolesPermitidos = array_map('intval', array_keys(
+            (new RolProyectoService())->opciones(array_map(static fn (ProyectoParticipante $p) => (int) $p->idRol, $conservados))
+        ));
 
-        $permitidos = array_merge((new ProyectistaService())->nombresActivos(), $yaAsignados);
+        $equipo = [];
+        $vistos = [];
 
-        if (array_diff($proyecto->nombresProyectista, $permitidos) !== []) {
-            $proyecto->addError('nombresProyectista', 'Uno de los proyectistas elegidos no está en la lista.');
+        foreach ($filas as $clave => $fila) {
+            $nombre = trim((string) ($fila['nombre'] ?? ''));
+            $idRol = trim((string) ($fila['idRol'] ?? ''));
+
+            if ($nombre === '' && $idRol === '') {
+                continue;
+            }
+            if ($nombre === '' || $idRol === '') {
+                $proyecto->addError('equipo', 'Cada persona del equipo necesita su nombre y su rol.');
+                continue;
+            }
+            if (!in_array($nombre, $nombresPermitidos, true)) {
+                $proyecto->addError('equipo', '"' . $nombre . '" no está en la lista de personal.');
+                continue;
+            }
+            if (!ctype_digit($idRol) || !in_array((int) $idRol, $rolesPermitidos, true)) {
+                $proyecto->addError('equipo', 'El rol elegido para "' . $nombre . '" no existe o está inactivo.');
+                continue;
+            }
+
+            $persona = mb_strtolower($nombre, 'UTF-8') . '|' . $idRol;
+            if (isset($vistos[$persona])) {
+                $proyecto->addError('equipo', '"' . $nombre . '" está dos veces con el mismo rol.');
+                continue;
+            }
+            $vistos[$persona] = true;
+
+            $equipo[] = new ProyectoParticipante([
+                'nombre' => $nombre,
+                'idRol' => (int) $idRol,
+                'esResponsable' => $proyecto->equipoResponsable !== null && (string) $clave === (string) $proyecto->equipoResponsable,
+            ]);
         }
+
+        if (!$proyecto->hasErrors('equipo')) {
+            $responsables = array_filter($equipo, static fn (ProyectoParticipante $p) => $p->esResponsable);
+            if ($equipo === []) {
+                $proyecto->addError('equipo', 'Agregue al menos a una persona: el responsable del proyecto.');
+            } elseif (count($responsables) !== 1) {
+                $proyecto->addError('equipo', 'Marque quién es el responsable del proyecto.');
+            }
+        }
+
+        return $equipo;
+    }
+
+    /**
+     * Personas y roles que se aceptan aunque ya no esten activos: los del
+     * equipo guardado de este proyecto y los de la fase anterior (de donde
+     * se heredan).
+     *
+     * @return ProyectoParticipante[]
+     */
+    private function participantesConservados(Proyecto $proyecto): array
+    {
+        $conservados = $proyecto->isNewRecord ? [] : $proyecto->participantes;
+        $anterior = $proyecto->idProyectoAnterior === null ? null : Proyecto::findOne((int) $proyecto->idProyectoAnterior);
+
+        return $anterior === null ? $conservados : array_merge($conservados, $anterior->participantes);
     }
 
     /**
@@ -721,17 +815,19 @@ class ProyectoService
         unset($proyecto->areasIntervencion);
     }
 
-    private function reemplazarProyectistas(Proyecto $proyecto): void
+    /**
+     * @param ProyectoParticipante[] $equipo
+     */
+    private function reemplazarEquipo(Proyecto $proyecto, array $equipo): void
     {
-        ProyectoProyectista::deleteAll(['idProyecto' => $proyecto->id]);
+        ProyectoParticipante::deleteAll(['idProyecto' => $proyecto->id]);
 
-        foreach ($proyecto->nombresProyectista as $nombre) {
-            $persona = new ProyectoProyectista();
-            $persona->idProyecto = $proyecto->id;
-            $persona->nombre = $nombre;
-            $persona->save(false);
+        foreach ($equipo as $orden => $participante) {
+            $participante->idProyecto = $proyecto->id;
+            $participante->orden = $orden;
+            $participante->save(false);
         }
 
-        unset($proyecto->proyectistas);
+        unset($proyecto->participantes);
     }
 }

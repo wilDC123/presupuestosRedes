@@ -20,7 +20,8 @@ $grupos = [
         ['Unidades de medida', ['/unidad-medida/index'], 'Nombre y abreviatura; en listados e impresos sale la abreviatura.'],
         ['Tipos de proyecto', ['/tipo-proyecto/index'], 'Clasifican proyectos y plantillas.'],
         ['Procesos', ['/proceso/index'], 'Qué proceso lleva adelante cada proyecto (PI, DS, GR…), según el lineamiento.'],
-        ['Proyectistas', ['/proyectista/index'], 'Nombres que se asignan como proyectistas de un proyecto.'],
+        ['Personal', ['/personal/index'], 'Personas que se ponen en el equipo de un proyecto.'],
+        ['Roles del proyecto', ['/rol-proyecto/index'], 'Con qué rol participa cada persona del equipo (proyectista, coordinador…).'],
     ],
     'Codificación' => [
         ['Codificación de documentos', ['/codificacion/index'], 'Desde qué número siguen los códigos RD-PI-PT, RD-PI-PR y RD-PI-ET.'],

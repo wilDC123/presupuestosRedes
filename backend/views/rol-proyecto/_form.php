@@ -7,20 +7,20 @@ use yii\widgets\ActiveForm;
 
 /**
  * @var yii\web\View $this
- * @var backend\models\Proyectista $model
+ * @var backend\models\RolProyecto $model
  * @var yii\widgets\ActiveForm $form
  */
 ?>
-<div class="proyectista-form">
+<div class="rol-proyecto-form">
 
     <?php $form = ActiveForm::begin(); ?>
 
     <?= $form->field($model, 'nombre')
-        ->textInput(['maxlength' => 200, 'placeholder' => 'Ej. Ing. Paola Rojas'])
-        ->hint('Los proyectos ya guardados conservan el nombre con el que se asignó.') ?>
+        ->textInput(['maxlength' => 100, 'placeholder' => 'Ej. Coordinador de infraestructura'])
+        ->hint('Corregir el nombre lo cambia también en los proyectos que lo usan.') ?>
 
     <?php if (!$model->isNewRecord): ?>
-        <?= $form->field($model, 'activo')->checkbox()->hint('Un proyectista inactivo ya no aparece para elegir, pero los proyectos que lo tienen lo conservan.') ?>
+        <?= $form->field($model, 'activo')->checkbox()->hint('Un rol inactivo ya no aparece para elegir, pero los proyectos que lo tienen lo conservan.') ?>
     <?php endif; ?>
 
     <div class="form-group">

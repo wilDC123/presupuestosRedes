@@ -13,8 +13,10 @@ use yii\widgets\ActiveForm;
  * conecta con este formulario.
  *
  * Las areas de intervencion elegidas se muestran como una lista agrupada
- * por edificio y bloque, y los proyectistas como "chips". Cada una lleva
- * dentro sus <input type="hidden">, que es lo que realmente se envia. web/js/proyecto-form.js agrega y quita chips y, al
+ * por edificio y bloque. Cada una lleva dentro sus <input type="hidden">,
+ * que es lo que realmente se envia. El equipo del proyecto es una tabla:
+ * una fila por persona (persona, rol y si es la responsable). web/js/proyecto-form.js
+ * agrega y quita areas y filas del equipo y, al
  * elegir edificio, bloque y nivel, pide al servidor los de abajo (acciones
  * proyecto/bloques, niveles, ambientes y buscar-ambiente).
  *
@@ -29,15 +31,31 @@ use yii\widgets\ActiveForm;
  * @var string[] $sugerenciasUnidad
  * @var array<int, array{id: string, nombre: string, usos: int}> $edificios vigentes de UsfxGEO, con cuantos proyectos los usan
  * @var array<int, array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string, texto: string, grupo: string, detalle: string}> $areas Ver ProyectoService::areasDelFormulario()
- * @var string[] $proyectistas nombres disponibles
+ * @var string[] $personal nombres para el desplegable "Persona" (activos y los ya elegidos)
+ * @var array<int, string> $roles [id => nombre] para el desplegable "Rol" (activos y los ya elegidos)
  * @var array<int, array{etiqueta: string, codigo: string, resumen: string}> $proyectosAprobados
  */
 
 $this->registerJsFile('@web/js/proyecto-form.js', ['depends' => [JqueryAsset::class]]);
 
 $nombreAreas = Html::getInputName($model, 'areas');
-$nombreProyectistas = Html::getInputName($model, 'nombresProyectista');
-$proyectistasElegidos = (array) $model->nombresProyectista;
+$nombreEquipo = Html::getInputName($model, 'equipo');
+$nombreResponsable = Html::getInputName($model, 'equipoResponsable');
+$equipo = array_filter(is_array($model->equipo) ? $model->equipo : [], 'is_array');
+$numericas = array_filter(array_keys($equipo), 'is_int');
+$siguienteFila = $numericas === [] ? 0 : max($numericas) + 1;
+$opcionesPersona = $personal === [] ? [] : array_combine($personal, $personal);
+
+// Una fila del equipo. $clave es la de $model->equipo ('__n__' en la fila
+// modelo que copia el JS); el radio "Responsable" envia esa clave.
+$filaEquipo = static function ($clave, string $nombre, string $idRol, bool $responsable) use ($nombreEquipo, $nombreResponsable, $opcionesPersona, $roles): string {
+    return '<tr class="rd-equipo-fila">'
+        . '<td>' . Html::dropDownList($nombreEquipo . "[$clave][nombre]", $nombre, $opcionesPersona, ['class' => 'form-select', 'prompt' => 'Elija la persona...', 'aria-label' => 'Persona']) . '</td>'
+        . '<td>' . Html::dropDownList($nombreEquipo . "[$clave][idRol]", $idRol, $roles, ['class' => 'form-select', 'prompt' => 'Elija el rol...', 'aria-label' => 'Rol']) . '</td>'
+        . '<td class="rd-equipo-responsable">' . Html::radio($nombreResponsable, $responsable, ['value' => $clave, 'aria-label' => 'Responsable del proyecto']) . '</td>'
+        . '<td><button type="button" class="btn btn-link btn-sm rd-equipo-quitar">Quitar</button></td>'
+        . '</tr>';
+};
 
 // Opciones del desplegable de fase anterior; cada <option> lleva como
 // atributos data-* lo que se muestra en "Proyecto vinculado".
@@ -201,24 +219,36 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
             <div class="help-block"><?= Html::encode($model->getFirstError('areas')) ?></div>
         </div>
 
-        <div class="form-group<?= $model->hasErrors('nombresProyectista') ? ' has-error' : '' ?>">
-            <label for="proyecto-agregar-proyectista"><?= Html::encode($model->getAttributeLabel('nombresProyectista')) ?></label>
-            <?= Html::hiddenInput($nombreProyectistas, '') ?>
-            <div class="rd-chips" id="proyecto-proyectistas" data-nombre="<?= Html::encode($nombreProyectistas) ?>[]">
-                <?php foreach ($proyectistasElegidos as $nombre): ?>
-                    <span class="chip" data-valor="<?= Html::encode($nombre) ?>">
-                        <?= Html::encode($nombre) ?>
-                        <?= Html::hiddenInput($nombreProyectistas . '[]', $nombre) ?>
-                        <button type="button" class="x" aria-label="Quitar">×</button>
-                    </span>
-                <?php endforeach; ?>
-            </div>
-            <?= Html::dropDownList(null, null, array_combine($proyectistas, $proyectistas), [
-                'id' => 'proyecto-agregar-proyectista',
-                'class' => 'form-select',
-                'prompt' => '+ Agregar proyectista...',
-            ]) ?>
-            <div class="help-block"><?= Html::encode($model->getFirstError('nombresProyectista')) ?></div>
+        <div class="form-group<?= $model->hasErrors('equipo') ? ' has-error' : '' ?>">
+            <label for="proyecto-agregar-persona"><?= Html::encode($model->getAttributeLabel('equipo')) ?></label>
+            <?php // Sin filas, "equipo" igual llega (vacio) y el servidor avisa que falta el responsable. ?>
+            <?= Html::hiddenInput($nombreEquipo, '') ?>
+            <table class="table rd-equipo mb-2" id="proyecto-equipo" data-siguiente="<?= $siguienteFila ?>">
+                <thead>
+                    <tr>
+                        <th>Persona</th>
+                        <th>Rol</th>
+                        <th class="rd-equipo-responsable">Responsable</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($equipo as $clave => $fila): ?>
+                        <?= $filaEquipo(
+                            $clave,
+                            (string) ($fila['nombre'] ?? ''),
+                            (string) ($fila['idRol'] ?? ''),
+                            $model->equipoResponsable !== null && (string) $model->equipoResponsable === (string) $clave
+                        ) ?>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <template id="proyecto-equipo-fila-modelo"><?= $filaEquipo('__n__', '', '', false) ?></template>
+            <button type="button" class="btn btn-outline btn-sm" id="proyecto-agregar-persona">+ Agregar persona</button>
+            <div class="hint">Quiénes trabajan en el proyecto y con qué rol. Marque al responsable del proyecto (normalmente el
+                proyectista; en un mantenimiento, quien lo administra). Una persona puede tener dos roles. Las personas y
+                los roles se agregan en Configuración → Personal y Roles del proyecto.</div>
+            <div class="help-block"><?= Html::encode($model->getFirstError('equipo')) ?></div>
         </div>
     </div>
 

@@ -7,23 +7,22 @@ namespace backend\models;
 use yii\db\ActiveRecord;
 
 /**
- * Modelo para la tabla "redes.Proyectista": los nombres que se pueden
- * asignar como proyectistas de un proyecto. Solo una lista de nombres: no
- * son usuarios ni tienen permisos.
+ * Modelo para la tabla "redes.RolProyecto": con que rol participa una
+ * persona en el equipo de un proyecto (Proyectista, Director del proyecto,
+ * Coordinador de infraestructura...). Revision del 2026-10-29.
  *
- * El proyecto guarda una COPIA del nombre (redes.ProyectoProyectista), asi
- * que corregir o desactivar un proyectista no cambia los proyectos que ya lo
- * tienen. Uno en uso no se elimina: se desactiva.
+ * Un rol en uso no se elimina: se desactiva. Uno inactivo ya no se ofrece,
+ * pero los proyectos que lo tenian lo conservan.
  *
  * @property int $id
- * @property string $nombre ej. "Ing. Paola Rojas"
+ * @property string $nombre
  * @property bool $activo
  */
-class Proyectista extends ActiveRecord
+class RolProyecto extends ActiveRecord
 {
     public static function tableName(): string
     {
-        return 'redes.Proyectista';
+        return 'redes.RolProyecto';
     }
 
     public function rules(): array
@@ -31,11 +30,11 @@ class Proyectista extends ActiveRecord
         return [
             [['nombre'], 'trim'],
             [['nombre'], 'required'],
-            [['nombre'], 'string', 'max' => 200],
+            [['nombre'], 'string', 'max' => 100],
             [['activo'], 'default', 'value' => true],
             [['activo'], 'boolean'],
             // 'unique' consulta la base, asi que solo se valida en el servidor.
-            [['nombre'], 'unique', 'message' => 'Ya existe un proyectista con este nombre.'],
+            [['nombre'], 'unique', 'message' => 'Ya existe un rol con este nombre.'],
         ];
     }
 

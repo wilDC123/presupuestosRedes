@@ -7,7 +7,7 @@ namespace backend\services\contracts;
 /**
  * Contrato de la FUENTE de los datos parametrizados de un proyecto: hoy solo
  * las facultades, que sirven de sugerencia para la unidad solicitante. (Los
- * tipos de proyecto y los proyectistas son tablas que administra el
+ * tipos de proyecto y el personal son tablas que administra el
  * encargado; los edificios salen de InfraestructuraProvider.)
  *
  * Una "interface" solo dice QUE metodos existen y que devuelven, no como se
