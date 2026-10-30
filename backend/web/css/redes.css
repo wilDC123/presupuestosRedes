@@ -574,6 +574,9 @@ body.rd {
 .rd-equipo .rd-equipo-responsable { width: 110px; text-align: center; }
 .rd-equipo .rd-equipo-responsable input { width: 18px; height: 18px; cursor: pointer; }
 
+/* Titulo de tarjeta con un boton a la derecha (ej. "Datos generales" + "Imprimir ficha técnica"). */
+.rd-card-head-simple { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+
 /* Historial del proyecto (vista): fecha y usuario sin cortar, el detalle en varias lineas. */
 .rd-historial td { vertical-align: top; }
 .rd-historial td:nth-child(-n+3) { white-space: nowrap; }

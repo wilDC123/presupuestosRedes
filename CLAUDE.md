@@ -172,6 +172,15 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   no se anotan (se pueden agregar igual: un `registrar()` en su servicio). Vista del proyecto: recuadro "Fechas"
   (`HistorialService::fechas()`: creación = `Proyecto.fechaCreacion`, revisión = último paso a "en revisión",
   aprobación = `Presupuesto.fechaAprobacion`, última modificación = último hecho y quién) y sección "Historial"
+- FICHA TÉCNICA DEL PROYECTO (revisión del 2026-10-29, paso 7; formato PROVISIONAL hasta que el Ing. de DTIC
+  pase el suyo): PDF oficio desde el botón "Imprimir ficha técnica" de la tarjeta "Datos generales" de la vista
+  del proyecto (`proyecto/ficha`, `ProyectoController::actionFicha()`, vista `proyecto/ficha-pdf.php`, datos de
+  `ProyectoService::datosFicha()`), se abre en el navegador para imprimir. Secciones: 1 datos (código, nombre,
+  descripción, tipo, proceso, fase), 2 unidades, 3 área de intervención (agrupada), 4 equipo (persona, rol,
+  responsable), 5 fechas (las de `HistorialService::fechas()`), 6 documentos de la carpeta económica (presupuesto
+  con estado y total, especificaciones vigentes, solicitudes de cotización); al pie, cuándo y quién la imprimió.
+  "Es un reporte de control, no de la gestión documental": cabecera SIN código del lineamiento (la de la
+  solicitud: código del proyecto | unidad / dependencia | fecha de impresión | página), sin firmas ni marca de agua
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
