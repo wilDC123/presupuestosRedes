@@ -212,9 +212,13 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   a la lista: quitar un ítem borra su línea y la cantidad se vuelve a copiar (el precio no)
 - El número (`numeroPresupuesto`) es el código RD-PI-PR-NNN que el sistema le da al crear el
   presupuesto (`ElaborarPresupuestoService::delProyecto()`; ya no se escribe; los de antes, como "690",
-  se convirtieron a RD-PI-PR y guardan el número viejo en `Presupuesto.numeroAnterior`). La cabecera (oficio, área, fecha) se exige recién al "Enviar a revisión" (escenario
+  se convirtieron a RD-PI-PR y guardan el número viejo en `Presupuesto.numeroAnterior`). La cabecera (oficio y área) se exige recién al "Enviar a revisión" (escenario
   `Presupuesto::SCENARIO_ENVIAR`), junto con que todos los ítems tengan precio. Los estados se
-  cambian en la misma pantalla. El menú "Presupuestos" es solo un listado de consulta; las rutas
+  cambian en la misma pantalla. FECHAS (revisión del 2026-10-29, paso 9; "arriba va la fecha de creación del
+  documento", abajo la de aprobación): la "Fecha" de la cabecera del PDF, de la pantalla y del listado es
+  `Presupuesto.fechaCreacion` (cuando se empezó a elaborar, `Presupuesto::fechaFormateada()`); desde el 2026-10-30 ya
+  no se escribe una fecha al enviar a revisión (`Presupuesto.fecha` queda sin usar, con la de los de antes). El
+  mismo criterio en la lista de materiales. El menú "Presupuestos" es solo un listado de consulta; las rutas
   viejas (`presupuesto/view`, `detalle`, `armar`, `create`, `update`) redirigen al paso Presupuesto
 - Una línea solo puede usar una cotización de su mismo ítem, y si la cotización es de una fila de
   la lista (`CotizacionDetalle.idProyectoItem`), solo esa fila puede usarla (las sueltas, sin
@@ -356,8 +360,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   2026-10-22 son el "control de elaboración" del lineamiento: rotuladas "ELABORADO POR" (firma 1) y
   "APROBADO POR" (firma 2, V°B°), SIN tabla (decidido el 2026-10-22: el 8.12 pide el contenido, no una
   tabla), y debajo "Versión: 01 · Fecha de aprobación" (`Presupuesto.fechaAprobacion`, la pone
-  `PresupuestoService::cambiarEstado()` al aprobar; sin fecha, una raya), y una banda
-  de pie verde claro con 2 columnas de contactos (título en negrita + renglones). Todo sale de
+  `PresupuestoService::cambiarEstado()` al aprobar; sin fecha, una raya). SIN pie de página desde el
+  2026-10-30 (paso 9: "si es sistema de gestión documental no tiene pie de página"; los contactos están en el
+  membrete de la carta; migración `m261030_162507_quitar_pie_de_configuracion_presupuesto` quitó sus columnas;
+  del 20 al 30 hubo una banda verde con 2 columnas de contactos). Todo sale de
   `redes.ConfiguracionPresupuesto` (una sola fila, CHECK id = 1; 2026-10-20), editable en
   "Configuración del PDF" (`presupuesto/configuracion`); NADA de eso queda escrito en la vista. Un
   campo vacío no sale; una firma sin nombre queda en blanco para llenarla a mano. Un cambio se ve
@@ -416,12 +422,14 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     versión (01 la primera vez, +1 después de cada orden de cambio), nunca se modifica: fecha, usuario y COPIA de
     las firmas de "Configuración del PDF" del presupuesto (trait `FirmasDeControl`); se anota en el historial
     (`HistorialProyecto::ACCION_LISTA_APROBADA`). No guarda copia de la lista (mientras está aprobada no cambia).
-    `ListaItemsService::documento()`: en edición imprime la versión SIGUIENTE con marca BORRADOR, fecha de hoy y
-    las firmas de hoy; enviada o cerrada, la última aprobada. Las 4 listas ya enviadas recibieron su v01 sin
-    fecha (casilla "Fecha" con "—"). La versión sale también en la pantalla de la lista y en la ficha técnica.
+    `ListaItemsService::documento()`: en edición imprime la versión SIGUIENTE con marca BORRADOR y las firmas de
+    hoy; enviada o cerrada, la última aprobada. La "Fecha" de la cabecera es la de CREACIÓN de la versión (paso 9):
+    la v01 nace con el proyecto (`Proyecto.fechaCreacion`), cada una siguiente con la orden de cambio que reabrió
+    la lista (la 1.ª orden crea la v02…); la de aprobación va abajo. Las 4 listas ya enviadas recibieron su v01 sin
+    fecha de aprobación. La versión sale también en la pantalla de la lista y en la ficha técnica.
     Sin "documentos relacionados" (opcional en el nivel D: cada ítem ya cita su ET)
-  - PENDIENTE (Ing. de DTIC): la mano de obra de la DTIC sigue en el presupuesto con 0 (¿o va a condiciones
-    previas?); se decide en el paso 9
+  - RESUELTO (paso 9, transcripción del 29): la mano de obra de la DTIC se queda en el presupuesto con 0 ("cantidad
+    0, precio 0, total 0… pero tiene un valor cero"); la contratada es un ítem con precio
 - Carta de entrega del presupuesto (2026-10-21, `CartaController`, `CartaService`; botón "Carta de
   entrega" en el paso Presupuesto): la nota con membrete que acompaña al presupuesto. UNA por
   presupuesto (`redes.CartaPresupuesto`, índice único, FK CASCADE). Se escribe y guarda en CUALQUIER
@@ -442,7 +450,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   Cargo sugerido "DECANO/DECANA DE LA <FACULTAD>" según el tratamiento (`web/js/carta.js`). PDF
   oficio con el membrete `backend/web/img/fondo-carta.png` de fondo (@page background) y márgenes
   4,75 / 4,5 / 3 / 3 cm. El PDF del presupuesto muestra el oficio con el MISMO formato que la carta
-  ("DTIC Of. Nº 602/2026", año de la fecha del presupuesto; `CartaService::formatearOficio()`),
+  ("DTIC Of. Nº 602/2026"; el año es el de la fecha de la carta si ya existe, si no el de creación del presupuesto,
+  `Presupuesto::fechaParaOficio()`, 2026-10-30; `CartaService::formatearOficio()`),
   o "Oficio DTIC: —" si aún no tiene. Fuente "pagelladtic" (TeX Gyre Pagella convertida a TTF, en
   `backend/fonts/pagella-dtic`, ver su MANIFEST) en vez de Book Antiqua/Andalus, que son de Windows
   y no se pueden llevar al servidor
@@ -494,7 +503,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_160530_crear_aprobacion_lista_materiales`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_162507_quitar_pie_de_configuracion_presupuesto`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).

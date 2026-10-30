@@ -22,7 +22,8 @@ use yii\db\ActiveRecord;
  * @property string|null $oficioDtic
  * @property string|null $areaIntervencion
  * @property string $estado
- * @property string|null $fecha
+ * @property string|null $fecha Fecha escrita a mano al enviar a revision; YA NO SE USA desde el 2026-10-30
+ *           (la del documento es fechaCreacion). Se conserva la de los presupuestos de antes.
  * @property string $fechaCreacion
  * @property string|null $numeroAnterior El numero escrito a mano que tenia antes de pasar a RD-PI-PR
  *           (migracion m261022_144239; ej. "690"). NULL en los que nacieron con codigo.
@@ -145,7 +146,7 @@ class Presupuesto extends ActiveRecord
         return [
             [['idProyecto'], 'required'],
             [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'manoDeObra'], 'trim'],
-            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'fecha'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
+            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
             [['idProyecto'], 'integer'],
             // Mensaje claro en vez del error de la base por el indice unico.
             [['idProyecto'], 'unique', 'message' => 'Este proyecto ya tiene un presupuesto.'],
@@ -265,17 +266,25 @@ class Presupuesto extends ActiveRecord
     }
 
     /**
-     * fecha para mostrar en pantalla (dd/mm/aaaa), no para guardar.
+     * Fecha DEL DOCUMENTO para mostrar (dd/mm/aaaa): la de CREACION del
+     * presupuesto, cuando se empezo a elaborar (revision del Ing. de DTIC del
+     * 2026-10-29: "arriba va la fecha de creacion del documento", abajo la de
+     * aprobacion). Hasta el 2026-10-30 era la fecha escrita a mano al enviar a
+     * revision (Presupuesto.fecha, que ya no se usa).
      */
     public function fechaFormateada(): string
     {
-        if (empty($this->fecha)) {
-            return '';
-        }
+        return empty($this->fechaCreacion) ? '' : date('d/m/Y', strtotime((string) $this->fechaCreacion));
+    }
 
-        $fecha = DateTime::createFromFormat('Y-m-d', $this->fecha);
-
-        return $fecha !== false ? $fecha->format('d/m/Y') : $this->fecha;
+    /**
+     * aaaa-mm-dd de la que sale el año del oficio en el PDF ("DTIC Of. Nº
+     * 602/2026"): la de la carta de entrega si ya tiene una (el oficio es el
+     * de la carta), si no la de creacion.
+     */
+    public function fechaParaOficio(): string
+    {
+        return (string) ($this->carta->fecha ?? substr((string) $this->fechaCreacion, 0, 10));
     }
 
     /**

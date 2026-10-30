@@ -60,7 +60,7 @@ $formato = Yii::$app->formatter;
                 'value' => static fn ($model) => Html::tag('span', Html::encode($model->estadoLabel()), ['class' => $model->estadoBadgeClass()]),
             ],
             [
-                'attribute' => 'fecha',
+                'attribute' => 'fechaCreacion',
                 'value' => static fn ($model) => $model->fechaFormateada() ?: '—',
             ],
             [

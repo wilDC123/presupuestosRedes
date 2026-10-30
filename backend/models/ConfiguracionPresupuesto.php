@@ -12,7 +12,10 @@ use yii\db\ActiveRecord;
  * (id = 1, lo garantiza un CHECK en la base) con lo que lleva el PDF del
  * presupuesto despues del total: nota, las dos firmas del "control de
  * elaboracion" del lineamiento RD-GD-LI-001 (firma 1 = elaborado por, firma
- * 2 = aprobado por, con su V°B°) y la banda de pie con los contactos.
+ * 2 = aprobado por, con su V°B°). La banda de pie con los contactos se quito
+ * el 2026-10-30 (revision del Ing. de DTIC: un documento de la gestion
+ * documental no lleva pie de pagina). Las firmas las usa tambien la lista de
+ * materiales al aprobarse (ListaItemsService::aprobarVersion()).
  * Editable por el encargado (presupuesto/configuracion).
  *
  * El PDF se arma al imprimir, asi que un cambio aqui tambien se ve al
@@ -27,10 +30,6 @@ use yii\db\ActiveRecord;
  * @property string|null $firma2Prefijo
  * @property string|null $firma2Nombre
  * @property string|null $firma2Cargo
- * @property string|null $pieIzquierdaTitulo
- * @property string|null $pieIzquierdaLineas Una linea por renglon.
- * @property string|null $pieDerechaTitulo
- * @property string|null $pieDerechaLineas Una linea por renglon.
  */
 class ConfiguracionPresupuesto extends ActiveRecord
 {
@@ -38,7 +37,6 @@ class ConfiguracionPresupuesto extends ActiveRecord
         'textoNota',
         'firma1Prefijo', 'firma1Nombre', 'firma1Cargo',
         'firma2Prefijo', 'firma2Nombre', 'firma2Cargo',
-        'pieIzquierdaTitulo', 'pieIzquierdaLineas', 'pieDerechaTitulo', 'pieDerechaLineas',
     ];
 
     public static function tableName(): string
@@ -80,28 +78,6 @@ class ConfiguracionPresupuesto extends ActiveRecord
         ];
     }
 
-    /**
-     * Las columnas de la banda de pie que tienen algo (titulo o renglones),
-     * de izquierda a derecha, con los renglones sin lineas vacias.
-     *
-     * @return array<int, array{titulo: string, lineas: string[]}>
-     */
-    public function columnasPie(): array
-    {
-        $columnas = [];
-
-        foreach (['Izquierda', 'Derecha'] as $lado) {
-            $titulo = (string) $this->{"pie{$lado}Titulo"};
-            $lineas = array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $this->{"pie{$lado}Lineas"})), static fn (string $linea) => $linea !== ''));
-
-            if ($titulo !== '' || $lineas !== []) {
-                $columnas[] = ['titulo' => $titulo, 'lineas' => $lineas];
-            }
-        }
-
-        return $columnas;
-    }
-
     public function rules(): array
     {
         return [
@@ -110,9 +86,9 @@ class ConfiguracionPresupuesto extends ActiveRecord
             [self::TEXTOS, 'default', 'value' => null],
             // El cargo sale siempre en mayusculas (mb_: tambien con tildes).
             [['firma1Cargo', 'firma2Cargo'], 'filter', 'filter' => static fn ($valor) => is_string($valor) ? mb_strtoupper($valor, 'UTF-8') : $valor],
-            [['textoNota', 'pieIzquierdaLineas', 'pieDerechaLineas'], 'string', 'max' => 500],
+            [['textoNota'], 'string', 'max' => 500],
             [['firma1Prefijo', 'firma2Prefijo'], 'string', 'max' => 20],
-            [['firma1Nombre', 'firma2Nombre', 'pieIzquierdaTitulo', 'pieDerechaTitulo'], 'string', 'max' => 150],
+            [['firma1Nombre', 'firma2Nombre'], 'string', 'max' => 150],
             [['firma1Cargo', 'firma2Cargo'], 'string', 'max' => 200],
             // Un prefijo o un cargo sin nombre no saldria en el PDF.
             [['firma1Nombre'], 'required', 'when' => static fn (self $m) => (string) $m->firma1Prefijo !== '' || (string) $m->firma1Cargo !== '', 'whenClient' => 'function () { return false; }', 'message' => 'Escriba el nombre de quien elabora (sin nombre, el prefijo y el cargo no salen).'],
@@ -130,10 +106,6 @@ class ConfiguracionPresupuesto extends ActiveRecord
             'firma2Prefijo' => 'Prefijo',
             'firma2Nombre' => 'Nombre',
             'firma2Cargo' => 'Cargo',
-            'pieIzquierdaTitulo' => 'Título',
-            'pieIzquierdaLineas' => 'Renglones',
-            'pieDerechaTitulo' => 'Título',
-            'pieDerechaLineas' => 'Renglones',
         ];
     }
 }

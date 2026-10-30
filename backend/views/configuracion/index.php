@@ -28,7 +28,7 @@ $grupos = [
         ['Codificación de documentos', ['/codificacion/index'], 'Desde qué número siguen los códigos RD-PI-PT, RD-PI-PR y RD-PI-ET.'],
     ],
     'Textos de los impresos' => [
-        ['PDF del presupuesto', ['/presupuesto/configuracion'], 'Nota final, firmas del control de elaboración y contactos del pie.'],
+        ['PDF del presupuesto', ['/presupuesto/configuracion'], 'Nota final y firmas del control de elaboración (también de la lista de materiales).'],
         ['Carta de entrega', ['/carta/configuracion'], 'Textos por defecto, firmas y formato del oficio.'],
         ['Solicitud de cotización', ['/solicitud-cotizacion/configuracion'], 'Cabecera, instrucciones y nota final para el proveedor.'],
         ['Formulario de especificación', ['/especificacion/configuracion'], 'Textos fijos, condiciones de entrega y firmas del formulario.'],

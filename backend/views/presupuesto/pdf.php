@@ -24,9 +24,12 @@ use yii\helpers\Html;
  * 0.00 (cantidad también 0.00). Después del total (fila "TOTAL (Bs.)" en azul claro): la nota, centrada.
  * Desde el 2026-10-29 el presupuesto es SOLO FINANCIERO: lo que provee la DTIC y las condiciones previas
  * (antes "Otros materiales…" y "Trabajos complementarios…" aquí) van en la lista de materiales. Al fondo de la última página, el "control de elaboración" del
- * lineamiento RD-GD-LI-001 (versión, elaborado por, aprobado por, firmas y fecha de aprobación) y la
- * banda de pie verde con los contactos. Nombres, cargos y contactos salen de
+ * lineamiento RD-GD-LI-001 (versión, elaborado por, aprobado por, firmas y fecha de aprobación). SIN
+ * pie de página desde el 2026-10-30 (revisión del Ing. de DTIC: "si es sistema de gestión documental no
+ * tiene pie de página"; los contactos ya están en el membrete de la carta). Nombres y cargos salen de
  * redes.ConfiguracionPresupuesto (presupuesto/configuracion); nada de eso queda escrito aquí.
+ * La "Fecha" de la cabecera es la de CREACIÓN del presupuesto (Presupuesto::fechaFormateada()) y la de
+ * aprobación va abajo, en el control de elaboración.
  * Un presupuesto APROBADO usa las firmas copiadas al aprobarlo (Presupuesto::firmaDeControl()).
  * Cabecera y fuente (Carlito = medidas de Calibri) también según el lineamiento. No lleva proveedor por línea, resumen por partida, anexo
  * comparativo, área de intervención ni estado: se ven en la pantalla del
@@ -36,9 +39,9 @@ use yii\helpers\Html;
  * @var backend\models\Presupuesto $presupuesto
  * @var array $grupos Ver PresupuestoService::agruparPorCategoria()
  * @var float $totalGeneral
- * @var backend\models\ConfiguracionPresupuesto $configuracion nota, firmas y banda de pie (editables)
+ * @var backend\models\ConfiguracionPresupuesto $configuracion nota y firmas (editables)
  * @var string $oficio "DTIC Of. Nº 598/2026" (formato de la configuracion de la carta,
- *             CartaService::formatearOficio()); vacio si el presupuesto aun no tiene oficio
+ *             CartaService::formatearOficio(); año de la carta o de creacion); vacio si aun no tiene oficio
  */
 
 $proyecto = $presupuesto->proyecto;
@@ -157,25 +160,6 @@ if ($presupuesto->manoDeObra !== null) {
         font-size: 8pt;
         text-align: center;
     }
-    table.pie {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 30px;
-        page-break-inside: avoid;
-    }
-    /* Pie de pagina en tamaño 9 (lineamiento RD-GD-LI-001, 8.8.1). */
-    table.pie td {
-        background-color: #e2efda;
-        border: 1px solid #a9c99a;
-        text-align: center;
-        vertical-align: top;
-        padding: 6px;
-        font-size: 9pt;
-    }
-    .pie-titulo {
-        font-weight: bold;
-        margin-bottom: 2px;
-    }
 </style>
 </head>
 <body>
@@ -292,7 +276,7 @@ if ($presupuesto->manoDeObra !== null) {
     <div class="nota"><?= nl2br(Html::encode($configuracion->textoNota)) ?></div>
 <?php endif; ?>
 
-<?php // Control de elaboración y banda de pie: al fondo de la última página (PresupuestoPdfGenerator). ?>
+<?php // Control de elaboración: al fondo de la última página (PresupuestoPdfGenerator). ?>
 <?= backend\components\PresupuestoPdfGenerator::MARCA_AL_PIE ?>
 
 <?php // Elaborado por (firma 1) y aprobado por (firma 2, con su V°B°); la fecha queda vacia hasta que se apruebe. ?>
@@ -303,24 +287,6 @@ if ($presupuesto->manoDeObra !== null) {
     'aprobado' => $presupuesto->firmaDeControl(2, $configuracion),
     'fechaAprobacion' => $presupuesto->fechaAprobacionFormateada(),
 ]) ?>
-
-<?php $columnasPie = $configuracion->columnasPie(); ?>
-<?php if ($columnasPie !== []): ?>
-    <table class="pie">
-        <tr>
-            <?php foreach ($columnasPie as $columna): ?>
-                <td width="<?= 100 / count($columnasPie) ?>%">
-                    <?php if ($columna['titulo'] !== ''): ?>
-                        <div class="pie-titulo"><?= Html::encode($columna['titulo']) ?></div>
-                    <?php endif; ?>
-                    <?php foreach ($columna['lineas'] as $linea): ?>
-                        <div><?= Html::encode($linea) ?></div>
-                    <?php endforeach; ?>
-                </td>
-            <?php endforeach; ?>
-        </tr>
-    </table>
-<?php endif; ?>
 
 </body>
 </html>

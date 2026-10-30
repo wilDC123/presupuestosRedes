@@ -63,22 +63,13 @@ $botones = [
                             <?= Html::activeLabel($presupuesto, 'oficioDtic', ['class' => 'form-label']) ?>
                             <?= Html::activeTextInput($presupuesto, 'oficioDtic', ['class' => 'form-control', 'maxlength' => 100, 'required' => true]) ?>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-8">
                             <?= Html::activeLabel($presupuesto, 'areaIntervencion', ['class' => 'form-label']) ?>
                             <?php // Si aun no se escribio, se sugiere el area de intervencion del proyecto (se puede cambiar). ?>
                             <?= Html::activeTextInput($presupuesto, 'areaIntervencion', [
                                 'class' => 'form-control',
                                 'value' => $presupuesto->areaIntervencion ?: mb_substr($proyecto->areaIntervencionTexto(), 0, 300, 'UTF-8'),
                                 'maxlength' => 300,
-                                'required' => true,
-                            ]) ?>
-                        </div>
-                        <div class="col-md-3">
-                            <?= Html::activeLabel($presupuesto, 'fecha', ['class' => 'form-label']) ?>
-                            <?php // type="date": el navegador muestra el calendario y la fecha en dd/mm/aaaa, pero envia aaaa-mm-dd, que el modelo guarda tal cual. ?>
-                            <?= Html::activeInput('date', $presupuesto, 'fecha', [
-                                'class' => 'form-control',
-                                'value' => $presupuesto->fecha ?: Yii::$app->formatter->asDate('now', 'php:Y-m-d'),
                                 'required' => true,
                             ]) ?>
                         </div>
@@ -95,7 +86,7 @@ $botones = [
             <strong>Código:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?><?= $presupuesto->numeroAnterior !== null ? ' (antes ' . Html::encode($presupuesto->numeroAnterior) . ')' : '' ?> ·
             <strong>Oficio DTIC:</strong> <?= Html::encode($presupuesto->oficioDtic ?: '—') ?> ·
             <strong>Área:</strong> <?= Html::encode($presupuesto->areaIntervencion ?: '—') ?> ·
-            <strong>Fecha:</strong> <?= Html::encode($presupuesto->fechaFormateada() ?: '—') ?>
+            <strong>Fecha de creación:</strong> <?= Html::encode($presupuesto->fechaFormateada() ?: '—') ?>
         </div>
 
         <div class="rd-acciones mt-2">
