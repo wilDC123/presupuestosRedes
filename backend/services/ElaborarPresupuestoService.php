@@ -473,8 +473,9 @@ class ElaborarPresupuestoService
      * Las cotizaciones vencidas no bloquean (el controlador avisa).
      *
      * $cabecera es lo que llega del formulario (Presupuesto[...]); se copian
-     * SOLO oficio, area y fecha: nunca el estado, el proyecto ni el codigo
-     * (RD-PI-PR, lo asigna el sistema).
+     * SOLO oficio y area: nunca el estado, el proyecto ni el codigo
+     * (RD-PI-PR, lo asigna el sistema). La fecha del documento es la de
+     * creacion (desde el 2026-10-30 ya no se escribe).
      * Devuelve false con los mensajes en $errores; los errores de cada campo
      * quedan ademas en $presupuesto->errors.
      *
@@ -490,7 +491,7 @@ class ElaborarPresupuestoService
             return false;
         }
 
-        foreach (['oficioDtic', 'areaIntervencion', 'fecha'] as $atributo) {
+        foreach (['oficioDtic', 'areaIntervencion'] as $atributo) {
             if (array_key_exists($atributo, $cabecera) && is_string($cabecera[$atributo])) {
                 $presupuesto->$atributo = $cabecera[$atributo];
             }

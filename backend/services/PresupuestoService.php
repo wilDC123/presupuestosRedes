@@ -355,7 +355,7 @@ class PresupuestoService
     }
 
     /**
-     * Nota, firmas y banda de pie del PDF (redes.ConfiguracionPresupuesto).
+     * Nota y firmas del PDF (redes.ConfiguracionPresupuesto).
      */
     public function guardarConfiguracion(ConfiguracionPresupuesto $configuracion, array $datosFormulario): bool
     {

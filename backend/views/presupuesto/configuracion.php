@@ -6,9 +6,10 @@ use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 
 /**
- * Configuracion del PDF del presupuesto: lo que sale despues del total (nota,
- * las firmas del control de elaboracion y banda de pie con los contactos). Un cambio tambien se ve
- * al reimprimir los anteriores, salvo las firmas de los aprobados (se copian al aprobar).
+ * Configuracion del PDF del presupuesto: lo que sale despues del total (nota y
+ * las firmas del control de elaboracion; sin banda de pie desde el 2026-10-30). Un cambio tambien se ve
+ * al reimprimir los anteriores, salvo las firmas de los aprobados (se copian al aprobar). Las mismas
+ * firmas se copian a la lista de materiales al aprobarse.
  *
  * @var yii\web\View $this
  * @var backend\models\ConfiguracionPresupuesto $configuracion
@@ -66,24 +67,6 @@ $volver = $proyecto !== null
                     </div>
                 <?php endforeach; ?>
             </div>
-        </div>
-    </div>
-
-    <div class="card mb-3">
-        <div class="rd-card-head"><div class="rd-card-titulo">Banda de pie (contactos)</div></div>
-        <div class="rd-card-pad">
-            <div class="row g-3">
-                <?php foreach (['Izquierda' => 'Columna izquierda', 'Derecha' => 'Columna derecha'] as $lado => $titulo): ?>
-                    <div class="col-md-6">
-                        <div class="rd-dato"><strong><?= $titulo ?></strong></div>
-                        <?= $form->field($configuracion, "pie{$lado}Titulo")->textInput(['maxlength' => 150])
-                            ->hint('Sale en negrita, centrado.') ?>
-                        <?= $form->field($configuracion, "pie{$lado}Lineas")->textarea(['rows' => 3, 'maxlength' => 500])
-                            ->hint('Un renglón por línea (teléfonos, internos, correo).') ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <p class="rd-nota mb-0">Sale al final del documento, con fondo verde claro, debajo de las firmas.</p>
         </div>
     </div>
 

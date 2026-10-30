@@ -22,7 +22,8 @@ use yii\helpers\Html;
  * firmas salen de ListaItemsService::documento(): en edicion, la version
  * siguiente con marca de agua BORRADOR (la pone el controlador) y las firmas
  * de la configuracion de hoy; enviada o cerrada, la ultima aprobada con su
- * fecha y la COPIA de sus firmas.
+ * fecha y la COPIA de sus firmas. La "Fecha" de la cabecera es la de CREACION
+ * de la version (2026-10-30, paso 9).
  *
  * CSS deliberadamente simple, igual que el PDF del presupuesto: mPDF
  * interpreta un subconjunto de CSS pensado para documentos.
@@ -30,7 +31,7 @@ use yii\helpers\Html;
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
- * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null} $documento
+ * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string} $documento
  * @var backend\models\ConfiguracionPresupuesto $configuracion firmas de hoy (mientras no esta aprobada)
  */
 
@@ -143,8 +144,8 @@ $firmas = $aprobacion ?? $configuracion;
     'version' => $documento['version'],
     // El codigo es el del proyecto (RD-PI-PT-NNN), que siempre lleva PI.
     'proceso' => backend\models\Proceso::nombreDe(backend\models\CorrelativoDocumento::PROCESO),
-    // Borrador: la de hoy; aprobada: la de aprobacion ("—" si fue antes de que se registrara).
-    'fecha' => $documento['borrador'] ? date('d/m/Y') : ($fechaAprobacion !== '' ? $fechaAprobacion : '—'),
+    // La de CREACION de esta version (la de aprobacion va abajo, en el control de elaboracion).
+    'fecha' => $documento['fechaCreacion'] ?: '—',
 ]) ?>
 
 <?php // Codigo, version y fecha ya van en la cabecera. ?>

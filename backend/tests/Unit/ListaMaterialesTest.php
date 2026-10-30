@@ -180,6 +180,8 @@ class ListaMaterialesTest extends Unit
         // En edicion: la version 01, todavia borrador.
         $documento = $this->lista->documento(Proyecto::findOne($proyecto->id));
         $this->assertSame(['01', true, null], [$documento['version'], $documento['borrador'], $documento['aprobacion']]);
+        // Fecha de la cabecera = creacion de la version: la v01 nace con el proyecto.
+        $this->assertSame(date('d/m/Y'), $documento['fechaCreacion']);
 
         $this->assertTrue($this->lista->enviarACotizacion(Proyecto::findOne($proyecto->id)));
         $documento = $this->lista->documento(Proyecto::findOne($proyecto->id));
@@ -194,6 +196,8 @@ class ListaMaterialesTest extends Unit
         $this->assertTrue((new OrdenCambioService())->solicitarCambioLista(Proyecto::findOne($proyecto->id), new OrdenCambio(), ['OrdenCambio' => ['motivo' => 'Falta un ítem']], 'test'));
         $documento = $this->lista->documento(Proyecto::findOne($proyecto->id));
         $this->assertSame(['02', true], [$documento['version'], $documento['borrador']]);
+        // La v02 nace con la orden de cambio.
+        $this->assertSame(date('d/m/Y'), $documento['fechaCreacion']);
 
         $this->assertTrue($this->lista->enviarACotizacion(Proyecto::findOne($proyecto->id)));
         $this->assertSame([1, 2], array_map(static fn ($a) => (int) $a->version, Proyecto::findOne($proyecto->id)->aprobacionesLista));

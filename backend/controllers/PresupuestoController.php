@@ -16,8 +16,8 @@ use yii\web\Response;
 
 /**
  * Menu "Presupuestos" (capa de Presentacion): el listado de los
- * presupuestos de todos los proyectos, el PDF y su configuracion (nota,
- * firmas y banda de pie).
+ * presupuestos de todos los proyectos, el PDF y su configuracion (nota y
+ * firmas).
  *
  * El presupuesto se ELABORA en el paso "Presupuesto" de cada proyecto
  * (ElaborarPresupuestoController). Las rutas que antes servian para eso
@@ -128,8 +128,8 @@ class PresupuestoController extends Controller
             'grupos' => $grupos,
             'totalGeneral' => $this->service->totalGeneral($grupos),
             'configuracion' => ConfiguracionPresupuesto::obtener(),
-            // "DTIC Of. Nº 598/2026", con el mismo formato que la carta de entrega.
-            'oficio' => (new CartaService())->formatearOficio((string) $presupuesto->oficioDtic, (string) $presupuesto->fecha),
+            // "DTIC Of. Nº 598/2026", con el mismo formato que la carta de entrega (año: el de la carta o el de creacion).
+            'oficio' => (new CartaService())->formatearOficio((string) $presupuesto->oficioDtic, $presupuesto->fechaParaOficio()),
         ]);
 
         $pdf = $this->service->generarPdf($presupuesto, $html);
@@ -166,7 +166,7 @@ class PresupuestoController extends Controller
     }
 
     /**
-     * Lo que lleva el PDF despues del total: nota, firmas y banda de pie.
+     * Lo que lleva el PDF despues del total: nota y firmas.
      * Vale para todos los presupuestos, tambien al reimprimir los anteriores.
      *
      * @param int|null $proyecto id del proyecto desde el que se entro, solo

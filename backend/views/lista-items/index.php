@@ -47,7 +47,7 @@ use yii\web\JqueryAsset;
  * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  * @var string[] $errores mensajes si el guardado fallo
- * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null} $documento Ver ListaItemsService::documento()
+ * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string} $documento Ver ListaItemsService::documento()
  * @var bool $editable Ver ListaItemsService::puedeEditarse()
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
  * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>, subcatalogos: array<int, int>, sugeridasPorItem: array<int, int[]>} $especificaciones Ver EspecificacionService::selector()

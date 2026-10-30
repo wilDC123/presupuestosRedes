@@ -391,20 +391,40 @@ class ListaItemsService
     /**
      * Que version de la lista imprime el PDF y si es borrador: en edicion, la
      * SIGUIENTE a la ultima aprobada (todavia sin aprobar: marca de agua
-     * BORRADOR, sin fecha ni firmas copiadas); enviada o cerrada, la ultima
-     * aprobada.
+     * BORRADOR, sin fecha de aprobacion ni firmas copiadas); enviada o
+     * cerrada, la ultima aprobada.
      *
-     * @return array{version: string, borrador: bool, aprobacion: ListaMaterialesAprobacion|null}
+     * 'fechaCreacion' (dd/mm/aaaa) es la de la cabecera: "arriba va la fecha
+     * de creacion del documento" (revision del 2026-10-29, paso 9). La v01
+     * nace con el proyecto; cada version siguiente, con la orden de cambio que
+     * reabrio la lista (la 1.a orden crea la v02, la 2.a la v03...). '' si no
+     * se puede saber (listas aprobadas antes de que hubiera ordenes).
+     *
+     * @return array{version: string, borrador: bool, aprobacion: ListaMaterialesAprobacion|null, fechaCreacion: string}
      */
     public function documento(Proyecto $proyecto): array
     {
         $ultima = $proyecto->ultimaAprobacionLista();
         $borrador = $proyecto->estadoLista === Proyecto::LISTA_EDICION || $ultima === null;
+        $version = $borrador ? ($ultima?->version ?? 0) + 1 : (int) $ultima->version;
+
+        if ($version === 1) {
+            $creacion = $proyecto->fechaCreacion;
+        } else {
+            $creacion = OrdenCambio::find()
+                ->select('fecha')
+                ->where(['idProyecto' => $proyecto->id, 'alcance' => OrdenCambio::ALCANCE_LISTA])
+                ->orderBy(['fecha' => SORT_ASC, 'id' => SORT_ASC])
+                ->offset($version - 2)
+                ->limit(1)
+                ->scalar();
+        }
 
         return [
-            'version' => ListaMaterialesAprobacion::versionTexto($borrador ? ($ultima?->version ?? 0) + 1 : $ultima->version),
+            'version' => ListaMaterialesAprobacion::versionTexto($version),
             'borrador' => $borrador,
             'aprobacion' => $borrador ? null : $ultima,
+            'fechaCreacion' => $creacion ? date('d/m/Y', strtotime((string) $creacion)) : '',
         ];
     }
 

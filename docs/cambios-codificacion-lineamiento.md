@@ -202,7 +202,7 @@ código no cambia. Así no hay un tipo nuevo en el correlativo ni un código que
 
 | Momento | PDF |
 |---|---|
-| Lista en edición | Código del proyecto, versión siguiente, fecha de hoy, marca **BORRADOR** |
+| Lista en edición | Código del proyecto, versión siguiente, marca **BORRADOR** |
 | "Enviar a cotización" | Aprueba esa versión (01 la primera vez): fecha, usuario y copia de las firmas |
 | En cotización o cerrada | La última versión aprobada, sin marca |
 | Orden de cambio | Vuelve a ser borrador, con la versión + 1 |
@@ -213,3 +213,16 @@ código no cambia. Así no hay un tipo nuevo en el correlativo ni un código que
 - Riesgo: si algún día se imprime el "proyecto técnico" con el código PT, compartiría código con la lista.
   Hoy no pasa (la ficha técnica no lleva código del lineamiento).
 - Pendiente con el Ing.: informarle la decisión.
+
+## Fechas de los documentos (2026-10-30, revisión del 29, paso 9)
+
+"Arriba va la fecha de creación del documento; abajo, la de aprobación" (en todos los documentos):
+
+- **Presupuesto:** la "Fecha" de la cabecera es la de creación del presupuesto (cuando se empezó a elaborar al
+  entrar al paso Presupuesto). Ya no se escribe una fecha al "Enviar a revisión". La de aprobación sigue abajo.
+  El año del oficio ("DTIC Of. Nº 602/2026") sale de la carta de entrega si existe, si no de la creación.
+- **Lista de materiales:** la de creación de la versión: la v01 nace con el proyecto; la v02, con la primera orden
+  de cambio que reabrió la lista, y así.
+- **Especificación técnica:** sin cambios (se crea y se emite el mismo día).
+- El presupuesto ya no lleva pie de página con contactos (un documento de la gestión documental no lo lleva).
+

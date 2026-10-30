@@ -8,28 +8,23 @@ use backend\models\ConfiguracionPresupuesto;
 use Codeception\Test\Unit;
 
 /**
- * Nota, firmas y banda de pie del PDF del presupuesto
- * (redes.ConfiguracionPresupuesto): solo sale lo que tiene datos, el cargo
- * se guarda en mayusculas y una firma sin nombre no se acepta.
+ * Nota y firmas del PDF del presupuesto (redes.ConfiguracionPresupuesto):
+ * una firma sin nombre queda en blanco, el cargo se guarda en mayusculas y
+ * una firma con cargo pero sin nombre no se acepta.
  */
 class ConfiguracionPresupuestoTest extends Unit
 {
-    public function testUnaFirmaSinNombreQuedaEnBlancoYSoloSalenLasColumnasConDatos(): void
+    public function testUnaFirmaSinNombreQuedaEnBlanco(): void
     {
         $configuracion = new ConfiguracionPresupuesto([
             'firma1Nombre' => null,
             'firma2Prefijo' => 'V°B°',
             'firma2Nombre' => 'Ing. Prueba',
             'firma2Cargo' => 'CARGO',
-            'pieIzquierdaTitulo' => null,
-            'pieIzquierdaLineas' => null,
-            'pieDerechaTitulo' => 'Redes',
-            'pieDerechaLineas' => "Interno: 5002\n\n  Correo: x@usfx.bo  ",
         ]);
 
         $this->assertNull($configuracion->firma(1));
         $this->assertSame(['prefijo' => 'V°B°', 'nombre' => 'Ing. Prueba', 'cargo' => 'CARGO'], $configuracion->firma(2));
-        $this->assertSame([['titulo' => 'Redes', 'lineas' => ['Interno: 5002', 'Correo: x@usfx.bo']]], $configuracion->columnasPie());
     }
 
     public function testElCargoQuedaEnMayusculasYUnaFirmaSinNombreNoSeAcepta(): void
