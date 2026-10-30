@@ -7,6 +7,7 @@ namespace backend\services;
 use backend\components\PresupuestoPdfGenerator;
 use backend\models\ConfiguracionPresupuesto;
 use backend\models\CotizacionDetalle;
+use backend\models\HistorialProyecto;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use DateTimeImmutable;
@@ -129,10 +130,22 @@ class PresupuestoService
             return false;
         }
 
+        $anterior = $presupuesto->estado;
         $presupuesto->estado = $nuevoEstado;
 
         if ($nuevoEstado !== Presupuesto::ESTADO_APROBADO) {
-            return $presupuesto->save(false);
+            $transaccion = Yii::$app->db->beginTransaction();
+
+            try {
+                $presupuesto->save(false);
+                $this->anotarEstado($presupuesto, $anterior);
+                $transaccion->commit();
+            } catch (Throwable $e) {
+                $transaccion->rollBack();
+                throw $e;
+            }
+
+            return true;
         }
 
         // Sale en el "control de elaboracion" del PDF (lineamiento RD-GD-LI-001).
@@ -152,6 +165,7 @@ class PresupuestoService
         try {
             $presupuesto->save(false);
             (new ListaItemsService())->cerrar($presupuesto->proyecto);
+            $this->anotarEstado($presupuesto, $anterior);
 
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -172,6 +186,23 @@ class PresupuestoService
      * el unico metodo que cambia el estado, para que ningun otro camino (otro
      * controlador, un comando de consola) pueda saltarsela.
      */
+    /**
+     * "Presupuesto: aprobado" en el historial del proyecto, con el estado de
+     * antes ("RD-PI-PR-016: En revisión → Aprobado"). De aqui sale la fecha
+     * de revision del proyecto (HistorialService::fechas()).
+     */
+    private function anotarEstado(Presupuesto $presupuesto, string $anterior): void
+    {
+        $estados = Presupuesto::estados();
+
+        (new HistorialService())->registrar(
+            $presupuesto->proyecto,
+            HistorialProyecto::ACCION_PRESUPUESTO_ESTADO,
+            $presupuesto->numeroPresupuesto . ': ' . ($estados[$anterior] ?? $anterior) . ' → ' . ($estados[$presupuesto->estado] ?? $presupuesto->estado),
+            $presupuesto->estado
+        );
+    }
+
     private function cumpleRequisitosDeRevision(Presupuesto $presupuesto): bool
     {
         $escenario = $presupuesto->scenario;

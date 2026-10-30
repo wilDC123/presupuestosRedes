@@ -573,6 +573,11 @@ body.rd {
 .rd-equipo td { vertical-align: middle; }
 .rd-equipo .rd-equipo-responsable { width: 110px; text-align: center; }
 .rd-equipo .rd-equipo-responsable input { width: 18px; height: 18px; cursor: pointer; }
+
+/* Historial del proyecto (vista): fecha y usuario sin cortar, el detalle en varias lineas. */
+.rd-historial td { vertical-align: top; }
+.rd-historial td:nth-child(-n+3) { white-space: nowrap; }
+.rd-historial-detalle { font-size: 0.9em; }
 .rd-resultados-ambiente li.grupo {
     cursor: default; padding-top: 8px; font-size: 10.5px; font-weight: 700;
     letter-spacing: .04em; text-transform: uppercase; color: var(--rd-texto-tenue);

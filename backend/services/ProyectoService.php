@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\models\CorrelativoDocumento;
+use backend\models\HistorialProyecto;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
@@ -43,6 +44,7 @@ class ProyectoService
 
     private ParametrosProyectoService $parametros;
     private InfraestructuraProvider $infraestructura;
+    private HistorialService $historial;
 
     /**
      * Lo que no se pasa se le pide al contenedor de Yii, que lo arma con la
@@ -53,6 +55,7 @@ class ProyectoService
     {
         $this->parametros = $parametros ?? Yii::$container->get(ParametrosProyectoService::class);
         $this->infraestructura = $infraestructura ?? Yii::$container->get(InfraestructuraProvider::class);
+        $this->historial = new HistorialService();
     }
 
     /**
@@ -181,10 +184,23 @@ class ProyectoService
      */
     public function eliminar(Proyecto $proyecto): bool
     {
+        // El historial queda (no tiene llave foranea): se anota la eliminacion
+        // en la misma transaccion, por si el DELETE falla.
+        $transaccion = Yii::$app->db->beginTransaction();
+
         try {
-            return $proyecto->delete() !== false;
+            $this->historial->registrar($proyecto, HistorialProyecto::ACCION_PROYECTO_ELIMINADO, $proyecto->nombre);
+            $borrado = $proyecto->delete() !== false;
+            $borrado ? $transaccion->commit() : $transaccion->rollBack();
+
+            return $borrado;
         } catch (IntegrityException $e) {
+            $transaccion->rollBack();
+
             return false;
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
         }
     }
 
@@ -471,6 +487,9 @@ class ProyectoService
      */
     private function guardar(Proyecto $proyecto, array $datosFormulario): bool
     {
+        // Como estaba antes, para anotar en el historial solo lo que cambio.
+        $antes = $proyecto->isNewRecord ? null : $this->historial->foto(Proyecto::findOne($proyecto->id));
+
         if (!$proyecto->load($datosFormulario)) {
             return false;
         }
@@ -504,6 +523,7 @@ class ProyectoService
 
             $this->reemplazarAreas($proyecto, $areas);
             $this->reemplazarEquipo($proyecto, $equipo);
+            $this->anotarEnHistorial($proyecto, $antes);
 
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -691,6 +711,29 @@ class ProyectoService
         }
 
         $proyecto->numeroFase = $anterior->numeroFase + 1;
+    }
+
+    /**
+     * Proyecto nuevo: "Proyecto creado". Editado: un renglon por dato que
+     * cambio ("Unidad solicitante: Decanato → Rectorado"); si no cambio nada,
+     * no se anota. Se compara con el proyecto recien leido de la base.
+     *
+     * @param array<string, string>|null $antes HistorialService::foto() antes de guardar (null si es nuevo)
+     */
+    private function anotarEnHistorial(Proyecto $proyecto, ?array $antes): void
+    {
+        if ($antes === null) {
+            $detalle = $proyecto->nombre
+                . ($proyecto->idProyectoAnterior === null ? '' : "\nFase " . (int) $proyecto->numeroFase . ' de ' . ($proyecto->proyectoAnterior->codigo ?? ''));
+            $this->historial->registrar($proyecto, HistorialProyecto::ACCION_PROYECTO_CREADO, $detalle);
+
+            return;
+        }
+
+        $cambios = $this->historial->cambios($antes, $this->historial->foto(Proyecto::findOne($proyecto->id)));
+        if ($cambios !== '') {
+            $this->historial->registrar($proyecto, HistorialProyecto::ACCION_PROYECTO_MODIFICADO, $cambios);
+        }
     }
 
     /**
