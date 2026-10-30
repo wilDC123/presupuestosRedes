@@ -5,17 +5,13 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\Presupuesto;
-use backend\models\PresupuestoComplemento;
 use backend\models\Proyecto;
 use backend\services\ElaborarPresupuestoService;
 use backend\services\EspecificacionEmisionService;
 use backend\services\PresupuestoService;
 use backend\services\ProyectoService;
-use backend\services\SubcatalogoItemService;
-use backend\services\UnidadMedidaService;
 use Yii;
 use yii\filters\VerbFilter;
-use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -49,7 +45,6 @@ class ElaborarPresupuestoController extends Controller
                     'enviar' => ['POST'],
                     'estado' => ['POST'],
                     'mano-de-obra' => ['POST'],
-                    'complementos' => ['POST'],
                 ],
             ],
         ];
@@ -196,30 +191,6 @@ class ElaborarPresupuestoController extends Controller
     }
 
     /**
-     * Guarda una de las secciones sin precio del final del PDF (materiales
-     * que aporta la DTIC o trabajos complementarios): todas sus filas de una
-     * vez. Si una fila no es valida, vuelve a la pantalla con lo escrito y
-     * los mensajes, sin guardar nada.
-     */
-    public function actionComplementos(int $idProyecto, string $tipo)
-    {
-        $proyecto = $this->findProyecto($idProyecto);
-        $presupuesto = $this->service->delProyecto($proyecto);
-        $filas = (array) Yii::$app->request->post('filas', []);
-        $errores = [];
-
-        if ($this->service->guardarComplementos($presupuesto, $tipo, $filas, $errores)) {
-            Yii::$app->session->setFlash('success', $tipo === PresupuestoComplemento::TIPO_MATERIAL ? 'Materiales que proveerá la DTIC guardados.' : 'Trabajos complementarios guardados.');
-
-            return $this->redirect(['index', 'idProyecto' => $proyecto->id, '#' => 'elaborar-complementos-' . $tipo]);
-        }
-
-        return $this->render('index', [
-            'complementosEnviados' => [$tipo => ['filas' => array_values($filas), 'errores' => $errores]],
-        ] + $this->datosPantalla($proyecto, $presupuesto));
-    }
-
-    /**
      * Los demas cambios de estado, desde la misma pantalla: observar,
      * aprobar o cancelar (en revision) y volver a "en proceso" (observado).
      * "En revision" se alcanza con actionEnviar(): copia la cabecera del
@@ -265,13 +236,6 @@ class ElaborarPresupuestoController extends Controller
     {
         return [
             'erroresEnvio' => [],
-            // Lo escrito en una seccion sin precio que no se pudo guardar (ver actionComplementos()).
-            'complementosEnviados' => [],
-            // Para elegir un material del subcatalogo: [id => nombre DTIC] y [id => abreviatura de su unidad].
-            // (opciones() trae solo los activos, mas los que alguna fila ya tenia).
-            'opcionesSubcatalogo' => $presupuesto->esBorrador() ? (new SubcatalogoItemService())->opciones(ArrayHelper::getColumn($presupuesto->complementos, 'idSubcatalogo')) : [],
-            'unidadesSubcatalogo' => $presupuesto->esBorrador() ? (new SubcatalogoItemService())->abreviaturasDeUnidad() : [],
-            'unidades' => $presupuesto->esBorrador() ? (new UnidadMedidaService())->opcionesPorAbreviatura() : [],
             'proyecto' => $proyecto,
             'presupuesto' => $presupuesto,
             'pasos' => (new ProyectoService())->pasos($proyecto),

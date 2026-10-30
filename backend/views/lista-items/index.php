@@ -20,6 +20,14 @@ use yii\web\JqueryAsset;
  *   items[n][cantidad]
  *   items[n][observacion]
  *   items[n][idEspecificacion] especificacion de la libreria ('' = ninguna)
+ *   materiales[n][...]       otros materiales que proveera la DTIC (_materiales-dtic.php)
+ *   condiciones[n][...]      trabajos complementarios (_condiciones.php)
+ *
+ * Desde la revision del 2026-10-29 (paso 8) debajo de la lista van las dos
+ * secciones sin precio que antes estaban en el presupuesto: "Otros materiales
+ * y equipamiento que proveera la D.T.I.C." y los trabajos complementarios
+ * (condiciones previas). Se guardan con la lista y solo salen en el impreso
+ * si tienen filas.
  *
  * web/js/lista-items.js agrega y quita filas y filtra el subcatalogo. Cada
  * clasificacion es un <tbody> (data-categoria); las dos plantillas ocultas
@@ -49,6 +57,12 @@ use yii\web\JqueryAsset;
  * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
  * @var backend\models\ConfiguracionEspecificacion $configuracion
  * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001/26)
+ * @var array<int, array<string, string>> $materiales otros materiales de la DTIC (los guardados o lo enviado)
+ * @var string[] $categorias nombres de las categorias, subtitulos de los materiales escritos a mano
+ * @var array<string, string> $unidades [abreviatura => "Metro (m)"]
+ * @var array<int, array{idTipo: string, descripcion: string, unidadEncargada: string}> $condiciones trabajos complementarios (los guardados o lo enviado)
+ * @var array<int, string> $tiposCondicion [id => nombre] tipos activos (y los que ya tiene el proyecto)
+ * @var string[] $sugerenciasUnidadEncargada para el <datalist> de "Unidad encargada"
  */
 
 if ($editable) {
@@ -241,7 +255,7 @@ $grupoCierra = static fn (int $cantidad): string =>
 
     <div class="notice mb-3">
         Sin precios todavía — se completan al registrar cotizaciones.
-        <span class="d-none" id="lista-sin-guardar"><strong>Hay cambios sin guardar.</strong></span>
+        <span class="d-none lista-sin-guardar" id="lista-sin-guardar"><strong>Hay cambios sin guardar.</strong></span>
     </div>
 
     <?php if ($errores !== []): ?>
@@ -374,6 +388,30 @@ $grupoCierra = static fn (int $cantidad): string =>
         </div>
 
     </div>
+
+    <?php // Secciones sin precio (2026-10-29, antes en el presupuesto): dentro del mismo formulario, se guardan con la lista. ?>
+    <?= $this->render('_materiales-dtic', [
+        'materiales' => $materiales,
+        'categorias' => $categorias,
+        'unidades' => $unidades,
+        'editable' => $editable,
+    ]) ?>
+
+    <?= $this->render('_condiciones', [
+        'condiciones' => $condiciones,
+        'tipos' => $tiposCondicion,
+        'sugerencias' => $sugerenciasUnidadEncargada,
+        'editable' => $editable,
+    ]) ?>
+
+    <?php if ($editable): ?>
+        <?php // Segundo boton, junto a las secciones: el de arriba queda lejos. Guarda todo el formulario. ?>
+        <div class="d-flex justify-content-end align-items-center gap-3 mt-3">
+            <span class="rd-nota">Estas secciones se guardan con la lista.</span>
+            <span class="d-none lista-sin-guardar text-warning-emphasis">● Cambios sin guardar</span>
+            <?= Html::submitButton('Guardar lista', ['class' => 'btn btn-primary', 'name' => 'accion', 'value' => 'guardar']) ?>
+        </div>
+    <?php endif; ?>
 
     <?= $editable ? Html::endForm() : '' ?>
 

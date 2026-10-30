@@ -13,6 +13,14 @@
  *     pone primero las sugeridas para el item (su item de referencia) y
  *     despues las de su categoria. "Ver detalle" lo maneja
  *     especificacion-vista-previa.js.
+ *  7. Secciones sin precio debajo de la lista (materiales que aporta la
+ *     DTIC, _materiales-dtic.php, y trabajos complementarios,
+ *     _condiciones.php), agrupadas como la lista: materiales por categoria,
+ *     trabajos por tipo. En materiales, un buscador del subcatalogo (los
+ *     items del panel de la izquierda) agrega la fila con nombre, unidad y
+ *     categoria fijos; "Escribirlo a mano" agrega una fila editable. Cambiar
+ *     la categoria o el tipo de una fila la pasa a ese grupo. Se guardan con
+ *     la lista.
  *
  * El servidor vuelve a validar todo en ListaItemsService::guardar().
  */
@@ -32,7 +40,7 @@ $(function () {
 
     function marcarCambios() {
         hayCambios = true;
-        $('#lista-sin-guardar').removeClass('d-none');
+        $('.lista-sin-guardar').removeClass('d-none');
     }
 
     function actualizarTotales() {
@@ -145,6 +153,204 @@ $(function () {
     });
 
     $tabla.on('input', 'input', marcarCambios);
+
+    // ---- Secciones sin precio: materiales que aporta la DTIC y trabajos complementarios ----
+    // Minusculas y sin tildes: "Canaleta" y "canaleta" son lo mismo.
+    function normalizar(texto) {
+        return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    $('.lista-seccion').each(function () {
+        var $seccion = $(this);
+        var $tablaSeccion = $seccion.find('table');
+        var columnas = $tablaSeccion.find('thead th').length;
+        // Indice de la proxima fila (materiales[n] / condiciones[n]); solo crece.
+        var siguienteFila = parseInt($seccion.data('siguiente'), 10) || 0;
+
+        function nuevaFila(selectorModelo) {
+            return $($seccion.find(selectorModelo).html().replace(/__n__/g, String(siguienteFila++)));
+        }
+
+        // Grupo (subtitulo o tipo) con esa clave; si no existe, se crea al final.
+        function grupoDe(clave, nombre) {
+            var $grupo = $tablaSeccion.find('tbody.seccion-grupo').filter(function () {
+                return String($(this).attr('data-grupo')) === String(clave);
+            });
+
+            if ($grupo.length === 0) {
+                // .text() escapa el nombre: nunca se interpreta como HTML.
+                $grupo = $('<tbody class="seccion-grupo">').attr('data-grupo', clave)
+                    .append($('<tr class="cat-row">').append($('<td>').attr('colspan', columnas).text(nombre)));
+                $tablaSeccion.append($grupo);
+            }
+
+            return $grupo;
+        }
+
+        // Quita los grupos vacios, cuenta las filas y muestra "Todavia no hay".
+        function actualizar() {
+            $tablaSeccion.find('tbody.seccion-grupo').filter(function () {
+                return $(this).find('tr.seccion-fila').length === 0;
+            }).remove();
+
+            var total = $tablaSeccion.find('tr.seccion-fila').length;
+
+            $seccion.find('.seccion-total').text(total);
+            $seccion.find('.seccion-vacia').toggleClass('d-none', total > 0);
+            marcarCambios();
+        }
+
+        // Pone la fila en el grupo de lo elegido en su desplegable (categoria o tipo).
+        function ubicar($fila) {
+            var $select = $fila.find('.seccion-grupo-select');
+
+            grupoDe($select.val(), $select.find('option:selected').text()).append($fila);
+            actualizar();
+        }
+
+        $seccion.on('change', '.seccion-grupo-select', function () {
+            ubicar($(this).closest('tr'));
+        });
+
+        $seccion.on('click', '.seccion-quitar', function () {
+            $(this).closest('tr').remove();
+            actualizar();
+        });
+
+        $seccion.on('input change', 'input, select', function () {
+            // El buscador de materiales no es un dato del formulario.
+            if (!$(this).hasClass('material-buscar')) {
+                marcarCambios();
+            }
+        });
+
+        // Trabajos: "+ Agregar trabajo" agrega una fila en el grupo del primer tipo.
+        $seccion.on('click', '.seccion-agregar', function () {
+            var $fila = nuevaFila('template.seccion-modelo');
+
+            ubicar($fila);
+            $fila.find('input').first().trigger('focus');
+        });
+
+        // ---- Materiales: buscador del subcatalogo y "Escribirlo a mano" ----
+        var $buscar = $seccion.find('.material-buscar');
+        var $resultados = $seccion.find('.material-resultados');
+
+        if ($buscar.length === 0) {
+            return;
+        }
+
+        // Los items del panel "Subcatálogo de redes" (solo los activos).
+        var items = $('#lista-subcatalogo .row-item').map(function () {
+            var $item = $(this);
+
+            return {
+                id: String($item.data('id')),
+                nombre: String($item.data('nombre')),
+                unidad: String($item.data('unidad') || ''),
+                categoria: String($item.data('categoriaNombre') || 'Otros')
+            };
+        }).get();
+
+        function cerrarResultados() {
+            $resultados.addClass('d-none').empty();
+        }
+
+        function mostrarResultados() {
+            var palabras = normalizar($buscar.val()).split(/\s+/).filter(Boolean);
+
+            $resultados.empty().removeClass('d-none');
+
+            if (palabras.length === 0) {
+                $resultados.append($('<li class="vacio">').text('Escriba parte del nombre (ej. canaleta, patch cord).'));
+                return;
+            }
+
+            var encontrados = items.filter(function (item) {
+                var nombre = normalizar(item.nombre);
+
+                return palabras.every(function (p) { return nombre.indexOf(p) !== -1; });
+            });
+
+            if (encontrados.length === 0) {
+                $resultados.append($('<li class="vacio">').text('Ningún ítem activo con ese nombre. Puede escribirlo a mano.'));
+            }
+
+            $.each(encontrados.slice(0, 30), function (_, item) {
+                $resultados.append($('<li>').data('item', item)
+                    .append($('<div class="rd-resultado-titulo">').text(item.nombre))
+                    .append($('<div class="rd-resultado-sub">').text(item.categoria + (item.unidad ? ' · ' + item.unidad : ''))));
+            });
+
+            if (encontrados.length > 30) {
+                $resultados.append($('<li class="vacio">').text('Hay más: escriba otra palabra para acotar.'));
+            }
+        }
+
+        // Agrega el item como fila (nombre y unidad fijos); si ya esta, va a su cantidad.
+        function agregarItem(item) {
+            var $fila = $tablaSeccion.find('tr.seccion-fila').filter(function () {
+                return String($(this).attr('data-item')) === item.id;
+            });
+
+            if ($fila.length === 0) {
+                $fila = nuevaFila('template.material-modelo-item').attr('data-item', item.id);
+                $fila.find('.material-id').val(item.id);
+                $fila.find('.material-grupo').val(item.categoria);
+                $fila.find('.material-descripcion').val(item.nombre);
+                $fila.find('.material-nombre').text(item.nombre);
+                $fila.find('.material-unidad').val(item.unidad);
+                $fila.find('.material-unidad-texto').text(item.unidad);
+                $fila.find('.qty').val('1');
+                grupoDe(item.categoria, item.categoria).append($fila);
+                actualizar();
+            }
+
+            $buscar.val('');
+            cerrarResultados();
+            $fila.find('.qty').trigger('focus').trigger('select');
+        }
+
+        $buscar.on('focus input', mostrarResultados);
+
+        // Enter elige el primero (y no envia el formulario); Escape cierra.
+        $buscar.on('keydown', function (evento) {
+            if (evento.key === 'Enter') {
+                evento.preventDefault();
+                var $primero = $resultados.find('li').filter(function () { return $(this).data('item'); }).first();
+
+                if ($primero.length > 0) {
+                    agregarItem($primero.data('item'));
+                }
+            } else if (evento.key === 'Escape') {
+                cerrarResultados();
+            }
+        });
+
+        // mousedown (no click): ocurre antes de que el campo pierda el foco y cierre la lista.
+        $resultados.on('mousedown', 'li', function (evento) {
+            evento.preventDefault();
+
+            if ($(this).data('item')) {
+                agregarItem($(this).data('item'));
+            }
+        });
+
+        $buscar.on('blur', cerrarResultados);
+
+        $seccion.on('click', '.material-agregar', function () {
+            $buscar.trigger('focus');
+        });
+
+        $seccion.on('click', '.material-a-mano', function (evento) {
+            evento.preventDefault();
+            var $fila = nuevaFila('template.material-modelo-manual');
+
+            $fila.find('.qty').val('1');
+            ubicar($fila);
+            $fila.find('.material-descripcion').trigger('focus');
+        });
+    });
 
     $tabla.on('change', '.lista-item-esp', function () {
         actualizarEnlaceDocumento($(this));

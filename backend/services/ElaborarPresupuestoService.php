@@ -8,11 +8,9 @@ use backend\models\CorrelativoDocumento;
 use backend\models\CotizacionDetalle;
 use backend\models\HistorialProyecto;
 use backend\models\Presupuesto;
-use backend\models\PresupuestoComplemento;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
-use backend\models\SubcatalogoItem;
 use Throwable;
 use Yii;
 
@@ -539,89 +537,6 @@ class ElaborarPresupuestoService
         }
 
         return null;
-    }
-
-    /**
-     * Reemplaza TODAS las filas de una seccion sin precio (materiales que
-     * aporta la DTIC o trabajos complementarios, ver PresupuestoComplemento)
-     * por las que vienen del formulario, en ese orden. Una fila con todo en
-     * blanco se ignora (es la fila vacia que quedo en el formulario); sin
-     * filas, la seccion no sale en el PDF. Si una fila de material elige un
-     * item del subcatalogo y deja en blanco el nombre o la unidad, se toman
-     * del item. Como los precios, solo se cambia en borrador; si una fila no
-     * es valida no se guarda ninguna.
-     *
-     * @param array<int, array<string, mixed>> $filas
-     * @param string[] $errores mensajes por fila ("Fila 2: ...")
-     */
-    public function guardarComplementos(Presupuesto $presupuesto, string $tipo, array $filas, array &$errores = []): bool
-    {
-        $errores = [];
-
-        if (!$presupuesto->esBorrador()) {
-            $errores[] = 'Solo se cambian los materiales y trabajos de un presupuesto "En proceso".';
-            return false;
-        }
-
-        if (!isset(PresupuestoComplemento::TIPOS[$tipo])) {
-            $errores[] = 'Sección no válida.';
-            return false;
-        }
-
-        $nuevas = [];
-
-        foreach (array_values($filas) as $numero => $datos) {
-            $datos = array_map(static fn ($valor) => is_string($valor) ? trim($valor) : '', (array) $datos);
-
-            // El subtitulo solo no cuenta: en los trabajos es un desplegable que siempre tiene valor.
-            if (implode('', array_diff_key($datos, ['grupo' => true])) === '') {
-                continue;
-            }
-
-            $fila = new PresupuestoComplemento();
-            $fila->setAttributes(array_intersect_key($datos, array_flip(['grupo', 'descripcion', 'cantidad', 'unidadMedida', 'idSubcatalogo', 'unidadEncargada', 'observacion'])));
-            $fila->idPresupuesto = $presupuesto->id;
-            $fila->tipo = $tipo;
-            $fila->orden = count($nuevas) + 1;
-
-            if ($tipo === PresupuestoComplemento::TIPO_MATERIAL && ctype_digit((string) $fila->idSubcatalogo)) {
-                $item = SubcatalogoItem::findOne((int) $fila->idSubcatalogo);
-
-                if ($item !== null) {
-                    $fila->descripcion = $fila->descripcion ?: $item->descripcion;
-                    $fila->unidadMedida = $fila->unidadMedida ?: $item->abreviaturaUnidad();
-                }
-            }
-
-            if (!$fila->validate()) {
-                $errores[] = 'Fila ' . ($numero + 1) . ': ' . implode(' ', $fila->getErrorSummary(false));
-            }
-
-            $nuevas[] = $fila;
-        }
-
-        if ($errores !== []) {
-            return false;
-        }
-
-        $transaccion = Yii::$app->db->beginTransaction();
-
-        try {
-            PresupuestoComplemento::deleteAll(['idPresupuesto' => $presupuesto->id, 'tipo' => $tipo]);
-
-            foreach ($nuevas as $fila) {
-                $fila->save(false);
-            }
-
-            $transaccion->commit();
-        } catch (Throwable $e) {
-            $transaccion->rollBack();
-            throw $e;
-        }
-
-        unset($presupuesto->complementos);
-
-        return true;
     }
 
     /**
