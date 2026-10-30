@@ -25,6 +25,7 @@ use yii\widgets\ActiveForm;
  * @var backend\models\Proyecto $model
  * @var yii\widgets\ActiveForm $form
  * @var array<int, string> $tipos [id => nombre] tipos activos (y el que ya tenia)
+ * @var array<int, string> $procesos [id => "PI – nombre"] procesos activos (y el que ya tenia)
  * @var string[] $sugerenciasUnidad
  * @var array<int, array{id: string, nombre: string, usos: int}> $edificios vigentes de UsfxGEO, con cuantos proyectos los usan
  * @var array<int, array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string, texto: string, grupo: string, detalle: string}> $areas Ver ProyectoService::areasDelFormulario()
@@ -78,6 +79,11 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
 
             <?= $form->field($model, 'idTipoProyecto')->dropDownList($tipos, ['prompt' => 'Seleccione el tipo', 'class' => 'form-select']) ?>
         </div>
+
+        <?php // A todo el ancho: los nombres de los procesos son largos. ?>
+        <?= $form->field($model, 'idProceso')
+            ->dropDownList($procesos, ['prompt' => 'Seleccione el proceso', 'class' => 'form-select'])
+            ->hint('Qué proceso lleva adelante el proyecto. Lo normal es PI; otros procesos (despliegue, gestión de la red…) también registran sus requerimientos como proyecto.') ?>
 
         <?= $form->field($model, 'nombre')->textInput([
             'maxlength' => 300,

@@ -20,6 +20,8 @@ use yii\db\ActiveRecord;
  * @property string $nombre
  * @property string|null $descripcion
  * @property int|null $idTipoProyecto FK a redes.TipoProyecto.
+ * @property int|null $idProceso FK a redes.Proceso: que proceso lleva adelante el proyecto (PI, DS...).
+ *                               Obligatorio al guardar desde el formulario.
  * @property string|null $unidadDependencia Unidad BENEFICIARIA, a donde va el proyecto (texto libre).
  *                                         Es la que sale en los documentos ("Dependencia").
  * @property string|null $unidadSolicitante Quien pide, en texto libre tal como dice la nota. Puede
@@ -36,6 +38,7 @@ use yii\db\ActiveRecord;
  * @property string $fechaCreacion
  *
  * @property-read TipoProyecto|null $tipoProyecto
+ * @property-read Proceso|null $proceso
  * @property-read ProyectoAreaIntervencion[] $areasIntervencion
  * @property-read ProyectoBloque[] $bloques Ubicacion anterior al 2026-10-28.
  * @property-read ProyectoProyectista[] $proyectistas
@@ -93,6 +96,9 @@ class Proyecto extends ActiveRecord
             [['descripcion'], 'string', 'max' => 1000],
             [['idTipoProyecto'], 'integer'],
             TipoProyecto::reglaElegible(),
+            [['idProceso'], 'required'],
+            [['idProceso'], 'integer'],
+            Proceso::reglaElegible(),
             [['unidadDependencia', 'unidadSolicitante'], 'trim'],
             [['unidadDependencia', 'unidadSolicitante'], 'required'],
             [['unidadDependencia', 'unidadSolicitante'], 'string', 'max' => 250],
@@ -114,6 +120,7 @@ class Proyecto extends ActiveRecord
             'nombre' => 'Nombre del proyecto',
             'descripcion' => 'Descripción',
             'idTipoProyecto' => 'Tipo de proyecto',
+            'idProceso' => 'Proceso',
             'unidadDependencia' => 'Unidad / dependencia',
             'unidadSolicitante' => 'Unidad solicitante',
             'areas' => 'Área de intervención',
@@ -132,6 +139,11 @@ class Proyecto extends ActiveRecord
     public function getTipoProyecto(): ActiveQuery
     {
         return $this->hasOne(TipoProyecto::class, ['id' => 'idTipoProyecto']);
+    }
+
+    public function getProceso(): ActiveQuery
+    {
+        return $this->hasOne(Proceso::class, ['id' => 'idProceso']);
     }
 
     public function getAreasIntervencion(): ActiveQuery

@@ -7,6 +7,7 @@ namespace backend\tests\Unit;
 use backend\models\Plantilla;
 use backend\models\Proyecto;
 use backend\models\TipoProyecto;
+use backend\services\ProcesoService;
 use backend\services\TipoProyectoService;
 use Codeception\Test\Unit;
 
@@ -89,7 +90,7 @@ class TipoProyectoTest extends Unit
 
     private function crearProyecto(int $idTipoProyecto): Proyecto
     {
-        $proyecto = new Proyecto(['nombre' => 'Proyecto test tipo', 'unidadDependencia' => 'Carrera test', 'unidadSolicitante' => 'Facultad test', 'idTipoProyecto' => $idTipoProyecto, 'estadoLista' => Proyecto::LISTA_EDICION]);
+        $proyecto = new Proyecto(['nombre' => 'Proyecto test tipo', 'idProceso' => (new ProcesoService())->idPorDefecto(), 'unidadDependencia' => 'Carrera test', 'unidadSolicitante' => 'Facultad test', 'idTipoProyecto' => $idTipoProyecto, 'estadoLista' => Proyecto::LISTA_EDICION]);
         $proyecto->save(false);
         $proyecto->refresh();
 

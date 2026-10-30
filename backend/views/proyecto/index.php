@@ -45,6 +45,14 @@ $this->params['breadcrumbs'][] = $this->title;
                 'value' => static fn ($model) => $model->tipoProyecto?->nombre ?? '—',
             ],
             [
+                // Solo el codigo: el nombre completo sale al pasar el mouse.
+                'label' => 'Proceso',
+                'format' => 'raw',
+                'value' => static fn ($model) => $model->proceso === null
+                    ? '—'
+                    : Html::tag('span', Html::encode($model->proceso->codigo), ['class' => 'mono', 'title' => $model->proceso->nombre]),
+            ],
+            [
                 'attribute' => 'numeroFase',
                 'label' => 'Fase',
                 'format' => 'raw',

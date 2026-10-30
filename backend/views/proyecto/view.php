@@ -62,6 +62,7 @@ $formato = Yii::$app->formatter;
             <div class="rd-card-titulo mb-3">Datos generales</div>
 
             <div class="rd-dato"><strong>Tipo:</strong> <?= Html::encode($nombreTipo ?? '—') ?></div>
+            <div class="rd-dato"><strong>Proceso:</strong> <?= Html::encode($model->proceso?->etiqueta() ?? '—') ?></div>
             <div class="rd-dato"><strong>Unidad / dependencia:</strong> <?= Html::encode($model->unidadDependencia ?: '—') ?></div>
             <div class="rd-dato"><strong>Unidad solicitante:</strong> <?= Html::encode($model->unidadSolicitante ?: '—') ?></div>
             <div class="rd-dato">
