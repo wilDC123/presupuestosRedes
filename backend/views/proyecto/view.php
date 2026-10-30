@@ -18,6 +18,8 @@ use yii\helpers\Html;
  * @var bool $estaAprobado
  * @var int $totalItems items en la lista del proyecto
  * @var bool $listaEditable Ver ListaItemsService::puedeEditarse()
+ * @var array{creacion: string|null, revision: string|null, aprobacion: string|null, ultimaModificacion: string|null, ultimoUsuario: string|null} $fechas Ver HistorialService::fechas()
+ * @var backend\models\HistorialProyecto[] $historial de lo mas nuevo a lo mas antiguo
  */
 
 $this->title = $model->nombre;
@@ -108,7 +110,6 @@ $formato = Yii::$app->formatter;
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-            <div class="rd-dato"><strong>Creado:</strong> <?= $formato->asDate($model->fechaCreacion, 'php:d/m/Y') ?></div>
 
             <?php if (!empty($model->descripcion)): ?>
                 <div class="rd-dato mt-3"><strong>Descripción</strong></div>
@@ -168,6 +169,20 @@ $formato = Yii::$app->formatter;
             </div>
 
             <div class="card rd-card-pad">
+                <div class="kicker mb-2">Fechas</div>
+                <?php $fecha = static fn (?string $valor, string $formatoFecha) => $valor === null ? '—' : $formato->asDatetime($valor, $formatoFecha); ?>
+                <div class="rd-dato"><strong>Creación:</strong> <?= $fecha($fechas['creacion'], 'php:d/m/Y') ?></div>
+                <div class="rd-dato"><strong>Revisión:</strong> <?= $fecha($fechas['revision'], 'php:d/m/Y') ?></div>
+                <div class="rd-dato"><strong>Aprobación:</strong> <?= $fecha($fechas['aprobacion'], 'php:d/m/Y') ?></div>
+                <div class="rd-dato">
+                    <strong>Última modificación:</strong> <?= $fecha($fechas['ultimaModificacion'], 'php:d/m/Y H:i') ?>
+                    <?php if ($fechas['ultimoUsuario'] !== null): ?>
+                        <span class="rd-nota">· <?= Html::encode($fechas['ultimoUsuario']) ?></span>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="card rd-card-pad">
                 <div class="kicker mb-2">Continuidad de fases</div>
                 <div class="rd-dato">
                     <strong>Fase anterior:</strong>
@@ -188,6 +203,38 @@ $formato = Yii::$app->formatter;
             </div>
         </div>
 
+    </div>
+
+    <?php // Historial (paso 6 de la revision del 2026-10-29): todo lo que paso, con quien y cuando. ?>
+    <div class="card mt-3" id="historial">
+        <div class="rd-card-head">
+            <div class="rd-card-titulo">Historial</div>
+            <div class="kicker"><?= count($historial) ?> registros</div>
+        </div>
+        <?php if ($historial === []): ?>
+            <div class="rd-vacio">Todavía no hay registros.</div>
+        <?php else: ?>
+            <table class="table rd-historial">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Usuario</th>
+                        <th>Hecho</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($historial as $registro): ?>
+                        <tr>
+                            <td class="mono"><?= $formato->asDatetime($registro->fecha, 'php:d/m/Y H:i') ?></td>
+                            <td><?= Html::encode($registro->usuarioTexto()) ?></td>
+                            <td><?= Html::encode($registro->accionLabel()) ?></td>
+                            <td class="rd-historial-detalle"><?= nl2br(Html::encode((string) $registro->detalle)) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
     </div>
 
 </div>

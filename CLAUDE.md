@@ -154,6 +154,24 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     FASE SIGUIENTE hereda el equipo con su responsable y se puede cambiar
   - Quien crea el proyecto debería quedar como proyectista (pedido del Ing.): PENDIENTE hasta la autenticación
     institucional (los usuarios temporales no tienen nombre completo)
+- HISTORIAL Y FECHAS DEL PROYECTO (revisión del 2026-10-29, paso 6; migración
+  `m261030_032255_crear_historial_proyecto`): "cualquier cambio se tiene que poder consultar".
+  `redes.HistorialProyecto`, una fila por hecho, nunca se modifica ni se borra: fecha y hora (Bolivia), `usuario`
+  (COPIA del nombre de usuario; NULL = "(antes del historial)", también en consola y tests), `idProyecto` SIN FK +
+  `codigoProyecto` (si se elimina el proyecto, el historial queda), `accion` (`HistorialProyecto::ACCION_*`),
+  `estado` (nuevo estado del presupuesto, solo en sus cambios de estado) y `detalle` (texto, una línea por cambio).
+  Se escribe desde los SERVICIOS, dentro de su transacción (`HistorialService::registrar()`), no con eventos de
+  ActiveRecord (el sistema usa mucho updateAll/deleteAll). Se anotan: proyecto creado / eliminado; datos del
+  proyecto cambiados, SOLO lo que cambió, "Rótulo: antes → después" (`HistorialService::foto()` y `cambios()`:
+  nombre, descripción, tipo, proceso, unidades, área de intervención, equipo, fase anterior); presupuesto creado;
+  cada cambio de estado ("RD-PI-PR-016: En revisión → Aprobado", `PresupuestoService::anotarEstado()`); PRECIOS
+  elegidos o cambiados con el anterior ("Switch: 1,250.00 (Proveedor A) → 1,180.00 (Proveedor B)"), un registro
+  por operación (elegir, atajos, menor precio al entrar; `ElaborarPresupuestoService::anotarPrecios()`); cambiar
+  solo la fuente o la justificación no se anota. La migración cargó lo conocido sin usuario: creación de cada
+  proyecto y presupuesto y la aprobación de los aprobados. Lista de ítems, especificaciones y cotizaciones TODAVÍA
+  no se anotan (se pueden agregar igual: un `registrar()` en su servicio). Vista del proyecto: recuadro "Fechas"
+  (`HistorialService::fechas()`: creación = `Proyecto.fechaCreacion`, revisión = último paso a "en revisión",
+  aprobación = `Presupuesto.fechaAprobacion`, última modificación = último hecho y quién) y sección "Historial"
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
@@ -437,7 +455,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_030403_equipo_del_proyecto`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_032255_crear_historial_proyecto`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -543,6 +561,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   copia el nombre), `RolProyecto` (catálogo) y `ProyectoParticipante` (composición 0..* desde Proyecto; nombre
   {copia}, esResponsable, orden; asociación 1 RolProyecto → 0..*); sale `Proyectista`. Casos de uso "Gestionar
   personal" y "Gestionar roles del proyecto"; "Registrar proyecto" incluye el equipo
+- PENDIENTE (tutor): historial (2026-10-29): clase `HistorialProyecto` (sin asociación navegable: guarda idProyecto
+  y una copia del código para sobrevivir a la eliminación; usuario {copia}); caso de uso "Consultar historial del
+  proyecto"; las secuencias que cambian datos, precios o estados terminan registrando el hecho
 - PENDIENTE (Ing. de DTIC / Desarrollo): ¿seguir leyendo las tablas de UsfxGEO o usar vistas? ¿qué son
   los estados E, C, D, R? Confirmar el texto del lugar de entrega por defecto (hoy vacío: llenarlo en la
   configuración del formulario) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)

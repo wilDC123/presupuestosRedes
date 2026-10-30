@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\Proyecto;
+use backend\services\HistorialService;
 use backend\services\ListaItemsService;
 use backend\services\ParametrosProyectoService;
 use backend\services\PlantillaService;
@@ -75,9 +76,12 @@ class ProyectoController extends Controller
     public function actionView(int $id): string
     {
         $model = $this->findModel($id);
+        $historial = new HistorialService();
 
         return $this->render('view', [
             'model' => $model,
+            'fechas' => $historial->fechas($model),
+            'historial' => $historial->delProyecto($model->id),
             'pasos' => $this->service->pasos($model),
             'urlPresupuesto' => $this->service->urlPresupuesto($model),
             'nombreTipo' => $model->tipoProyecto?->nombre,

@@ -6,6 +6,7 @@ namespace backend\services;
 
 use backend\models\CorrelativoDocumento;
 use backend\models\CotizacionDetalle;
+use backend\models\HistorialProyecto;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoComplemento;
 use backend\models\PresupuestoDetalle;
@@ -39,10 +40,21 @@ class ElaborarPresupuestoService
     public const DIRECTO = 'directo';
 
     private PresupuestoService $presupuestos;
+    private HistorialService $historial;
+
+    /**
+     * Precios que reemplazarLinea() fue cambiando en esta operacion ("Switch:
+     * 1.250,00 (Proveedor A) → 1.180,00 (Proveedor B)"); anotarPrecios() los
+     * pasa al historial en un solo registro.
+     *
+     * @var string[]
+     */
+    private array $cambiosDePrecio = [];
 
     public function __construct()
     {
         $this->presupuestos = new PresupuestoService();
+        $this->historial = new HistorialService();
     }
 
     /**
@@ -63,7 +75,8 @@ class ElaborarPresupuestoService
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            if ($presupuesto === null) {
+            $esNuevo = $presupuesto === null;
+            if ($esNuevo) {
                 $presupuesto = new Presupuesto();
                 $presupuesto->idProyecto = $proyecto->id;
                 $presupuesto->estado = Presupuesto::ESTADO_EN_PROCESO;
@@ -81,6 +94,11 @@ class ElaborarPresupuestoService
                 $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO
             );
             $presupuesto->save(false);
+            $this->historial->registrar(
+                $proyecto,
+                HistorialProyecto::ACCION_PRESUPUESTO_CREADO,
+                $esNuevo ? $presupuesto->numeroPresupuesto : $presupuesto->numeroPresupuesto . ' (número asignado a un presupuesto de antes)'
+            );
             $transaccion->commit();
         } catch (Throwable $e) {
             $transaccion->rollBack();
@@ -119,6 +137,7 @@ class ElaborarPresupuestoService
                 }
             }
 
+            $this->anotarPrecios($presupuesto, 'Menor precio cotizado a los ítems que no tenían precio');
             $transaccion->commit();
         } catch (Throwable $e) {
             $transaccion->rollBack();
@@ -276,8 +295,10 @@ class ElaborarPresupuestoService
             );
 
             if ($error === null) {
+                $this->anotarPrecios($presupuesto, null);
                 $transaccion->commit();
             } else {
+                $this->cambiosDePrecio = [];
                 $transaccion->rollBack();
             }
         } catch (Throwable $e) {
@@ -358,6 +379,7 @@ class ElaborarPresupuestoService
                 $error = $this->reemplazarLinea($presupuesto, $item, $idCotizacionDetalle, null, $justificacionLinea, null);
 
                 if ($error !== null) {
+                    $this->cambiosDePrecio = [];
                     $transaccion->rollBack();
 
                     return ($item->subcatalogoItem->descripcion ?? 'Ítem') . ': ' . $error;
@@ -368,6 +390,7 @@ class ElaborarPresupuestoService
                 }
             }
 
+            $this->anotarPrecios($presupuesto, $modo === 'menor' ? 'Atajo: menor precio por ítem' : 'Atajo: todo a un proveedor');
             $transaccion->commit();
         } catch (Throwable $e) {
             $transaccion->rollBack();
@@ -406,6 +429,7 @@ class ElaborarPresupuestoService
                 $error = $this->reemplazarLinea($presupuesto, $item, null, (string) $sigma, null, PresupuestoDetalle::FUENTE_SIGMA);
 
                 if ($error !== null) {
+                    $this->cambiosDePrecio = [];
                     $transaccion->rollBack();
 
                     return ($item->subcatalogoItem->descripcion ?? 'Ítem') . ': ' . $error;
@@ -414,6 +438,7 @@ class ElaborarPresupuestoService
                 $aplicados++;
             }
 
+            $this->anotarPrecios($presupuesto, 'Atajo: precio SIGMA en los ítems sin precio');
             $transaccion->commit();
         } catch (Throwable $e) {
             $transaccion->rollBack();
@@ -732,6 +757,39 @@ class ElaborarPresupuestoService
         $actual?->delete();
         $linea->save(false);
 
+        $this->cambiosDePrecio[] = ($item->subcatalogoItem->descripcion ?? 'Ítem') . ': '
+            . ($actual === null ? '' : $this->precioTexto($actual) . ' → ') . $this->precioTexto($linea);
+
         return null;
+    }
+
+    /**
+     * "1.250,00 (Proveedor A)" o "300,00 (precio directo: Mercado)": el
+     * precio unitario congelado de la linea y de donde salio.
+     */
+    private function precioTexto(PresupuestoDetalle $linea): string
+    {
+        if ($linea->idCotizacionDetalle !== null) {
+            $origen = $linea->cotizacionDetalle->cotizacion->proveedor->razonSocial ?? 'cotización';
+        } else {
+            $origen = 'precio directo' . ($linea->fuentePrecio === null || $linea->fuentePrecio === '' ? '' : ': ' . $linea->fuentePrecio);
+        }
+
+        return Yii::$app->formatter->asDecimal((float) $linea->precioUnitario, 2) . ' (' . $origen . ')';
+    }
+
+    /**
+     * Pasa al historial, en UN registro, los precios que cambio la operacion
+     * (si cambio alguno), con un titulo opcional para los atajos. Se llama
+     * dentro de la transaccion de la operacion.
+     */
+    private function anotarPrecios(Presupuesto $presupuesto, ?string $titulo): void
+    {
+        if ($this->cambiosDePrecio !== []) {
+            $lineas = $titulo === null ? $this->cambiosDePrecio : array_merge([$titulo . ':'], $this->cambiosDePrecio);
+            $this->historial->registrar($presupuesto->proyecto, HistorialProyecto::ACCION_PRECIOS, implode("\n", $lineas));
+        }
+
+        $this->cambiosDePrecio = [];
     }
 }
