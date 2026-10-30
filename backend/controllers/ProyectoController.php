@@ -10,6 +10,7 @@ use backend\services\ParametrosProyectoService;
 use backend\services\PlantillaService;
 use backend\services\ProyectistaService;
 use backend\services\ProyectoService;
+use backend\services\ProcesoService;
 use backend\services\TipoProyectoService;
 use backend\services\contracts\InfraestructuraProvider;
 use Yii;
@@ -248,6 +249,7 @@ class ProyectoController extends Controller
         return [
             'model' => $model,
             'tipos' => (new TipoProyectoService())->opciones($model->getOldAttribute('idTipoProyecto')),
+            'procesos' => (new ProcesoService())->opciones($model->getOldAttribute('idProceso')),
             'sugerenciasUnidad' => $this->service->sugerenciasUnidad(),
             'edificios' => $this->service->edificiosParaFormulario(),
             'areas' => $this->service->areasDelFormulario($model),

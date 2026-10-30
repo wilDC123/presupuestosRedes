@@ -116,6 +116,16 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   tipo dice QUÉ se hace, no el sistema que se instala: Ampliación, Mejoramiento, Refuncionalización y
   Equipamiento (migración `m261029_230226_tipos_de_proyecto_segun_revision`; Cableado estructurado y
   Videovigilancia salen: se borran si nadie los usa y se desactivan si algún proyecto los tiene)
+- Procesos (revisión del 2026-10-29): catálogo `redes.Proceso` (código de 2 letras mayúsculas, único;
+  nombre único; activo), cargado con la tabla 4 (8.5) del lineamiento: GD, DC, PI, DS, GR; en
+  Configuración → "Procesos" (`ProcesoService`, migración `m261030_002958_crear_proceso`). Todo lo que se
+  presupuesta va como proyecto, pero no siempre lo lleva PI: `Proyecto.idProceso` (FK, obligatorio en el
+  formulario; NULL permitido en la base, como idTipoProyecto) dice qué proceso. Un proyecto nuevo trae PI
+  (`ProcesoService::idPorDefecto()`); la fase siguiente hereda el de la anterior; los existentes quedaron en
+  PI. En uso: no se elimina (se desactiva) y su CÓDIGO no se cambia (irá en el código de los documentos);
+  quien ya lo tenía lo conserva (`Proceso::reglaElegible()`). TODAVÍA no cambia los códigos ni la línea
+  "Proceso:" de la cabecera de los PDF (siguen con `CorrelativoDocumento::PROCESO` = PI): es el paso
+  siguiente (codificación con proceso y año)
 - Proyectistas: catálogo `redes.Proyectista` (nombre único, activo), en Configuración → "Proyectistas"
   (2026-10-28; antes en el JSON; migración `m261028_202824_crear_proyectista`, cargó los 2 del JSON).
   Solo una lista de NOMBRES, no usuarios. `ProyectoProyectista` sigue guardando una COPIA del nombre
@@ -403,7 +413,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_001726_area_intervencion_escrita_a_mano`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_002958_crear_proceso`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -508,6 +518,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - PENDIENTE (Ing. de DTIC / Desarrollo): ¿seguir leyendo las tablas de UsfxGEO o usar vistas? ¿qué son
   los estados E, C, D, R? Confirmar el texto del lugar de entrega por defecto (hoy vacío: llenarlo en la
   configuración del formulario) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
+- PENDIENTE (tutor): agregar la clase `Proceso` (2026-10-29; catálogo, asociación 1 proceso → 0..* proyectos)
+  al diagrama de clases y el caso de uso "Gestionar procesos"
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a
   Proyecto y a Plantilla (0..1 tipo por proyecto/plantilla)
 - RESUELTO (2026-10-29): tipos de proyecto confirmados por el Ing. de DTIC (Ampliación, Mejoramiento,

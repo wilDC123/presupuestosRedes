@@ -8,6 +8,7 @@ use backend\models\Proyectista;
 use backend\models\Proyecto;
 use backend\models\ProyectoProyectista;
 use backend\services\ProyectistaService;
+use backend\services\ProcesoService;
 use backend\services\ProyectoService;
 use Codeception\Test\Unit;
 
@@ -43,7 +44,7 @@ class ProyectistaTest extends Unit
         $proyectos = new ProyectoService();
 
         $proyecto = new Proyecto();
-        $datos = ['Proyecto' => ['nombre' => 'Proyecto test proyectista', 'unidadDependencia' => 'Carrera test', 'unidadSolicitante' => 'Facultad test', 'nombresProyectista' => ['Ing. Test Asignado']]];
+        $datos = ['Proyecto' => ['nombre' => 'Proyecto test proyectista', 'idProceso' => (new ProcesoService())->idPorDefecto(), 'unidadDependencia' => 'Carrera test', 'unidadSolicitante' => 'Facultad test', 'nombresProyectista' => ['Ing. Test Asignado']]];
         $this->assertTrue($proyectos->crear($proyecto, $datos), json_encode($proyecto->errors));
 
         // Se desactiva: ya no se ofrece, no se elimina, pero el proyecto lo conserva al editarse.

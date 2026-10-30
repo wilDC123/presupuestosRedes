@@ -56,13 +56,14 @@ class ProyectoService
     }
 
     /**
-     * with() carga el presupuesto y el tipo de todos los proyectos de la
-     * pagina en una consulta extra cada uno (el listado muestra ambos).
+     * with() carga el presupuesto, el tipo y el proceso de todos los
+     * proyectos de la pagina en una consulta extra cada uno (el listado
+     * muestra los tres).
      */
     public function listar(): ActiveDataProvider
     {
         return new ActiveDataProvider([
-            'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto'])->orderBy(['fechaCreacion' => SORT_DESC, 'id' => SORT_DESC]),
+            'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto', 'proceso'])->orderBy(['fechaCreacion' => SORT_DESC, 'id' => SORT_DESC]),
             'pagination' => [
                 'pageSize' => 20,
             ],
@@ -77,19 +78,22 @@ class ProyectoService
     /**
      * Proyecto vacio para el formulario "Nuevo proyecto". Si llega el id de
      * un proyecto aprobado, se prepara como su FASE SIGUIENTE: queda
-     * enlazado a el y hereda tipo, unidad solicitante y areas de
+     * enlazado a el y hereda tipo, proceso, unidades y areas de
      * intervencion (se pueden cambiar). No hereda proyectistas ni items: la
-     * fase nueva empieza vacia.
+     * fase nueva empieza vacia. Un proyecto nuevo sin fase anterior trae
+     * marcado el proceso PI (ProcesoService::idPorDefecto()).
      */
     public function nuevo(?int $idProyectoAnterior = null): Proyecto
     {
         $proyecto = new Proyecto();
+        $proyecto->idProceso = (new ProcesoService())->idPorDefecto();
         $anterior = $idProyectoAnterior === null ? null : $this->obtener($idProyectoAnterior);
 
         if ($anterior !== null && $this->estaAprobado($anterior)) {
             $proyecto->idProyectoAnterior = $anterior->id;
             $proyecto->numeroFase = $anterior->numeroFase + 1;
             $proyecto->idTipoProyecto = $anterior->idTipoProyecto;
+            $proyecto->idProceso = $anterior->idProceso ?? $proyecto->idProceso;
             $proyecto->unidadDependencia = $anterior->unidadDependencia;
             $proyecto->unidadSolicitante = $anterior->unidadSolicitante;
             $proyecto->areas = array_map(static fn (ProyectoAreaIntervencion $area) => $area->claves(), $anterior->areasIntervencion);
@@ -435,7 +439,7 @@ class ProyectoService
         // Un campo vacio del formulario llega como '' y no como arreglo.
         $proyecto->nombresProyectista = $this->limpiarLista($proyecto->nombresProyectista);
 
-        foreach (['idTipoProyecto', 'idProyectoAnterior'] as $atributo) {
+        foreach (['idTipoProyecto', 'idProceso', 'idProyectoAnterior'] as $atributo) {
             if ($proyecto->$atributo === '') {
                 $proyecto->$atributo = null;
             }

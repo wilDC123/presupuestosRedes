@@ -19,6 +19,7 @@ $grupos = [
         ['Categorías', ['/categoria/index'], 'Agrupan los ítems del subcatálogo y las tablas del presupuesto.'],
         ['Unidades de medida', ['/unidad-medida/index'], 'Nombre y abreviatura; en listados e impresos sale la abreviatura.'],
         ['Tipos de proyecto', ['/tipo-proyecto/index'], 'Clasifican proyectos y plantillas.'],
+        ['Procesos', ['/proceso/index'], 'Qué proceso lleva adelante cada proyecto (PI, DS, GR…), según el lineamiento.'],
         ['Proyectistas', ['/proyectista/index'], 'Nombres que se asignan como proyectistas de un proyecto.'],
     ],
     'Codificación' => [
