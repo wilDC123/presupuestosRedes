@@ -104,8 +104,8 @@ class EspecificacionEmisionService
             'titulo' => $item->subcatalogoItem->descripcion ?? $especificacion->nombre(),
             'cantidad' => $item->cantidad,
             'unidad' => $item->unidadMedida,
-            // La unidad solicitante, tal como se escribio en el proyecto.
-            'dependencia' => $this->textoONull($proyecto->unidadSolicitante),
+            // La unidad / dependencia (la beneficiaria), tal como se escribio en el proyecto.
+            'dependencia' => $this->textoONull($proyecto->unidadDependencia),
             'lugarEntrega' => $this->textoONull($condiciones['lugarEntrega'] ?? null) ?? self::lugarEntregaPorDefecto(),
             'validezOfertaDias' => $this->textoONull($condiciones['validezOfertaDias'] ?? null) ?? $configuracion->validezOfertaDias,
             'tiempoEntregaDias' => $this->textoONull($condiciones['tiempoEntregaDias'] ?? null) ?? $configuracion->tiempoEntregaDias,

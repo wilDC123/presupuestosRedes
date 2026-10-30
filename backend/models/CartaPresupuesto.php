@@ -59,7 +59,7 @@ class CartaPresupuesto extends ActiveRecord
      * Marcadores que la carta reemplaza (ver CartaService), escritos como se
      * reconocen. Ver normalizarMarcadores().
      */
-    public const MARCADORES = ['{proyecto}', '{unidad}', '{facultad}', '{oficio}', '{numeroPresupuesto}', '{especificaciones}', '{anio}'];
+    public const MARCADORES = ['{proyecto}', '{unidad}', '{facultad}', '{dependencia}', '{oficio}', '{numeroPresupuesto}', '{especificaciones}', '{anio}'];
 
     /**
      * Devuelve cada marcador conocido a su forma original, sin importar como

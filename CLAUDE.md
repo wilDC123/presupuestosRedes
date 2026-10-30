@@ -45,16 +45,27 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   existentes se renumeraron a 3 cifras)
 - Unidad solicitante y área de intervención (2026-10-28, revisión con el Ing. del 2026-10-27; resumen
   en `docs/cambios-unidad-area-intervencion.md`). Reemplazan a "Facultad / Edificio / Bloques":
-  - `Proyecto.unidadSolicitante` (obligatoria): QUIÉN pide, texto libre tal como la nota (facultad,
-    carrera, oficina o persona). SIN catálogo: el `<datalist>` solo sugiere lo ya escrito y las
-    facultades del JSON (`ProyectoService::sugerenciasUnidad()`). NUNCA gestionar unidades aquí
+  - DOS unidades (revisión del 2026-10-29, migración `m261029_232347_agregar_unidad_dependencia_a_proyecto`),
+    ambas obligatorias, pueden ser la misma o distintas:
+    `Proyecto.unidadDependencia` ("Unidad / dependencia") = la BENEFICIARIA, a dónde va el proyecto; es la que
+    sale en los documentos (formulario de especificación "Dependencia", solicitud "Unidad", lista, presupuesto).
+    `Proyecto.unidadSolicitante` = QUIÉN pide, tal como la nota (ej. el Rector pide cámaras para el Canal
+    Universitario); sale en la vista del proyecto, la carta de entrega y (pendiente) la ficha técnica. Los
+    proyectos de antes copiaron la solicitante en la dependencia. Las dos son texto libre (facultad, carrera,
+    oficina o persona). SIN catálogo: un mismo `<datalist>` sugiere lo ya escrito en cualquiera de las dos y
+    las facultades del JSON (`ProyectoService::sugerenciasUnidad()`). NUNCA gestionar unidades aquí
   - `redes.ProyectoAreaIntervencion` (0..* por proyecto): DÓNDE se trabaja, edificio → bloque →
     nivel → ambiente (en pantalla se llama "Espacio" desde el 2026-10-29, como en redes; en el código y la
     base sigue siendo `ambiente`) (llega hasta donde haga falta, no se salta un nivel), elegido de la base
     `UsfxGEO` de Desarrollo, SOLO LECTURA y solo Estado 'V' (`InfraestructuraProvider`,
     `UsfxGeoInfraestructuraProvider`, conexión `dbGeo` en `main-local.php`). Guarda los id de
     UsfxGEO (referencia lógica, como idSigma) + COPIA congelada de los nombres; una ya guardada se
-    conserva aunque la den de baja. Sin "agregar" edificios ni ambientes. Formulario con buscador
+    conserva aunque la den de baja. Sin "agregar" edificios ni ambientes a UsfxGEO, PERO desde el 2026-10-29
+    (pedido del Ing.: edificios en construcción o aún no registrados) un área se puede ESCRIBIR A MANO
+    ("¿No está en la lista? Escríbala a mano", copia lo elegido en el paso a paso): sin ningún id
+    (`idEdificio` NULL = a mano, `ProyectoAreaIntervencion::esManual()`; migración
+    `m261030_001726_area_intervencion_escrita_a_mano`), solo los nombres; edificio obligatorio, sin repetidas
+    (por nombre, sin mayúsculas); marca "a mano" en formulario y vista, en los documentos sale igual. Formulario con buscador
     (`proyecto/buscar-ambiente`, `ProyectoService::buscarAreas()`: primero los EDIFICIOS que coinciden,
     que se ponen en el paso a paso, y luego hasta 30 ambientes con aviso "hay más"; ignora tildes y
     guiones, "E303" = "E-303") y paso a paso: el EDIFICIO no es un `<select>` (con 134 la lista del
@@ -165,7 +176,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     `codigoAnterior`, que se ve y se busca en el registro; la serie 'NET' queda solo para su `safeDown()`) que se firma y se
     entrega al proveedor. NUNCA cambia: guarda copias congeladas (título = nombre DTIC del ítem de la lista desde el
     2026-10-21, antes el de la ficha; cantidad, unidad,
-    dependencia = unidad solicitante del proyecto desde el 2026-10-28 (antes la facultad), garantía, textos,
+    dependencia = unidad / dependencia del proyecto desde el 2026-10-29 (del 28 al 29 la solicitante, antes la facultad), garantía, textos,
     condiciones de entrega; el lugar de entrega por defecto es desde el 2026-10-28 el texto
     `ConfiguracionEspecificacion.lugarEntregaPorDefecto` de la configuración del formulario (vacío = no sale;
     del 2026-10-26 al 28 fue "Administración de la <facultad>"),
@@ -201,7 +212,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   especificación es OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud,
   cotización, presupuesto ni PDF. Los impresos citan el NET de la emisión vigente
   (`ProyectoItem::referenciaEspecificacion()`). El PDF de la solicitud de cotización no lleva
-  rubro, nombre del proyecto, edificio ni bloques (solo "Unidad" = unidad solicitante desde el 2026-10-28; antes la facultad), pero desde el
+  rubro, nombre del proyecto, edificio ni bloques (solo "Unidad" = unidad / dependencia desde el 2026-10-29; antes la solicitante y la facultad), pero desde el
   2026-10-21 SÍ cita el NET vigente junto al nombre del ítem y lleva AL FINAL del mismo PDF el
   formulario NET de cada ítem, cada uno en hoja nueva y con su marca de agua
   (`SolicitudCotizacionService::emisionesVigentes()` y `generarPdf()`; el 2026-10-20 se había
@@ -327,8 +338,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `numeroPresupuesto` (NO que esté aprobado). Sin marca de agua. GUARDA su texto (copiado de
   `redes.ConfiguracionCarta` al crearla: textos por defecto y 3 firmas propias, la 3.ª el V°B° del
   jefe, editables en "Configuración de la carta"); cambiar la configuración no altera las ya
-  escritas, salvo ciudad y formato del oficio. Marcadores: {proyecto} y {unidad} (= unidad solicitante; {facultad} es el
-  nombre de antes y vale lo mismo, 2026-10-28; el cargo "DECANO/DECANA DE LA…" se sugiere solo si la unidad
+  escritas, salvo ciudad y formato del oficio. Marcadores: {proyecto}, {unidad} (= unidad solicitante: la carta responde a quien
+  pidió, decidido el 2026-10-29; {facultad} es el nombre de antes y vale lo mismo) y {dependencia} (= la
+  beneficiaria, 2026-10-29); el cargo "DECANO/DECANA DE LA…" se sugiere solo si la unidad
   empieza con "Facultad") se reemplazan al
   crear la carta; {oficio}, {numeroPresupuesto} y {especificaciones} quedan en el texto y se
   reemplazan AL IMPRIMIR ({especificaciones} = solo el NÚMERO de los NET vigentes del proyecto, sin
@@ -391,7 +403,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261029_230226_tipos_de_proyecto_segun_revision`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_001726_area_intervencion_escrita_a_mano`, aplicada el 2026-10-29), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -487,7 +499,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   la DTIC y trabajos complementarios"
 - PENDIENTE (encargado): confirmar si la sección de trabajos complementarios debe salir aunque esté
   vacía (hoy, como la de materiales, sale solo si tiene filas)
-- PENDIENTE (tutor): unidad solicitante y área de intervención (2026-10-28): `Proyecto.unidadSolicitante`,
+- PENDIENTE (tutor): unidad solicitante y área de intervención (2026-10-28): `Proyecto.unidadSolicitante`
+  y `Proyecto.unidadDependencia` (2026-10-29: beneficiaria, distinta de la solicitante),
   clase `ProyectoAreaIntervencion` (composición 0..*), `ConfiguracionEspecificacion.lugarEntregaPorDefecto`,
   componente externo "Infraestructura física (UsfxGEO)"; salen facultad/edificio/bloques; clase
   `Proyectista` (catálogo, sin asociación: el proyecto copia el nombre). Ver

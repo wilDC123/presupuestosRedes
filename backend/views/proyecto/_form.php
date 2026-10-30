@@ -90,12 +90,20 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
             'placeholder' => 'Alcance general del proyecto...',
         ]) ?>
 
+        <?php // Las dos unidades comparten la lista de sugerencias (el <datalist> de abajo). ?>
+        <?= $form->field($model, 'unidadDependencia')->textInput([
+            'maxlength' => 250,
+            'list' => 'proyecto-unidades-sugeridas',
+            'autocomplete' => 'off',
+            'placeholder' => 'A dónde va el proyecto. Ej. Canal Universitario, Carrera de Psicología',
+        ])->hint('La unidad beneficiada: es la que sale como "Dependencia" en los documentos. Texto libre: facultad, carrera, oficina…') ?>
+
         <?= $form->field($model, 'unidadSolicitante')->textInput([
             'maxlength' => 250,
             'list' => 'proyecto-unidades-sugeridas',
             'autocomplete' => 'off',
-            'placeholder' => 'Tal como dice la nota de solicitud. Ej. Secretaría General de Vicerrectorado',
-        ])->hint('Texto libre: una facultad, carrera, laboratorio, oficina o persona. Al escribir se sugieren las ya usadas.') ?>
+            'placeholder' => 'Quién lo pide, tal como dice la nota. Ej. Rectorado, Decanato de Humanidades',
+        ])->hint('Puede ser la misma unidad u otra (ej. el Rector pide cámaras para el Canal Universitario). Al escribir se sugieren las ya usadas.') ?>
         <datalist id="proyecto-unidades-sugeridas">
             <?php foreach ($sugerenciasUnidad as $sugerencia): ?>
                 <option value="<?= Html::encode($sugerencia) ?>"></option>
@@ -106,15 +114,22 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
             <label for="proyecto-buscar-ambiente"><?= Html::encode($model->getAttributeLabel('areas')) ?></label>
             <?php // Campo vacio previo: si se quitan todas las areas, igual llega "areas" (vacio) y se borran las guardadas. ?>
             <?= Html::hiddenInput($nombreAreas, '') ?>
-            <?php // Cada area es un .rd-area con sus 4 hidden; web/js/proyecto-form.js las agrupa por edificio y bloque. ?>
+            <?php // Cada area es un .rd-area con sus hidden: los 4 id de UsfxGEO, o "manual" y los 4 nombres si se
+            // escribio a mano. web/js/proyecto-form.js las agrupa por edificio y bloque; data-valor evita repetidas
+            // (misma regla que valorDe() en el js). ?>
             <div class="rd-areas" id="proyecto-areas" data-nombre="<?= Html::encode($nombreAreas) ?>" data-siguiente="<?= count($areas) ?>">
                 <?php foreach ($areas as $i => $area): ?>
-                    <div class="rd-area" title="<?= Html::encode($area['texto']) ?>"
-                         data-valor="<?= Html::encode(implode('|', [$area['idEdificio'], $area['idBloqueArea'], $area['numeroNivel'], $area['idEspacio']])) ?>"
+                    <?php $campos = $area['manual'] ? ['manual', 'edificio', 'bloque', 'nivel', 'ambiente'] : ['idEdificio', 'idBloqueArea', 'numeroNivel', 'idEspacio']; ?>
+                    <?php $valor = $area['manual']
+                        ? 'manual|' . mb_strtolower(implode('|', [$area['edificio'], $area['bloque'], $area['nivel'], $area['ambiente']]), 'UTF-8')
+                        : implode('|', [$area['idEdificio'], $area['idBloqueArea'], $area['numeroNivel'], $area['idEspacio']]); ?>
+                    <div class="rd-area<?= $area['manual'] ? ' rd-area-manual' : '' ?>" title="<?= Html::encode($area['texto']) ?>"
+                         data-valor="<?= Html::encode($valor) ?>"
                          data-grupo="<?= Html::encode($area['grupo']) ?>">
                         <span class="rd-area-detalle"><?= Html::encode($area['detalle']) ?></span>
-                        <?php foreach (['idEdificio', 'idBloqueArea', 'numeroNivel', 'idEspacio'] as $campo): ?>
-                            <?= Html::hiddenInput($nombreAreas . "[$i][$campo]", (string) $area[$campo]) ?>
+                        <?php if ($area['manual']): ?><span class="rd-area-marca">a mano</span><?php endif; ?>
+                        <?php foreach ($campos as $campo): ?>
+                            <?= Html::hiddenInput($nombreAreas . "[$i][$campo]", $campo === 'manual' ? '1' : (string) $area[$campo]) ?>
                         <?php endforeach; ?>
                         <button type="button" class="x" aria-label="Quitar">×</button>
                     </div>
@@ -158,8 +173,25 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
                 </div>
             </div>
             <button type="button" class="btn btn-outline btn-sm mt-2" id="proyecto-agregar-area" disabled>+ Agregar área</button>
+            <button type="button" class="btn btn-link btn-sm mt-2" id="proyecto-abrir-manual">¿No está en la lista? Escríbala a mano</button>
+
+            <?php // Para un edificio en construccion o que aun no esta en UsfxGEO (o un bloque o espacio nuevo de uno
+            // que si esta). Al abrirlo se copia lo elegido en el paso a paso: solo se completa lo que falta. ?>
+            <div class="rd-area-manual-form d-none mt-2" id="proyecto-area-manual">
+                <div class="rd-nota mb-1">Escriba el área tal como se conoce. Solo el edificio es obligatorio.</div>
+                <?= Html::textInput(null, '', ['id' => 'proyecto-manual-edificio', 'class' => 'form-control mb-2', 'maxlength' => 200,
+                    'placeholder' => 'Edificio (ej. Bloque de Ingeniería Civil, en construcción)']) ?>
+                <div class="rd-fila-3">
+                    <?= Html::textInput(null, '', ['id' => 'proyecto-manual-bloque', 'class' => 'form-control', 'maxlength' => 200, 'placeholder' => 'Bloque (opcional)']) ?>
+                    <?= Html::textInput(null, '', ['id' => 'proyecto-manual-nivel', 'class' => 'form-control', 'maxlength' => 100, 'placeholder' => 'Piso (opcional)']) ?>
+                    <?= Html::textInput(null, '', ['id' => 'proyecto-manual-ambiente', 'class' => 'form-control', 'maxlength' => 250, 'placeholder' => 'Espacio (opcional)']) ?>
+                </div>
+                <button type="button" class="btn btn-outline btn-sm mt-2" id="proyecto-agregar-manual">+ Agregar área escrita a mano</button>
+                <button type="button" class="btn btn-link btn-sm mt-2" id="proyecto-cerrar-manual">Cancelar</button>
+            </div>
+
             <div class="hint">Dónde se hace el trabajo. Puede agregar varias (ej. tres laboratorios). Los edificios y espacios
-                salen de la infraestructura de la universidad (UsfxGEO): si falta alguno, lo registra su responsable, no este sistema.</div>
+                salen de la infraestructura de la universidad (UsfxGEO); si uno no está (ej. en construcción), escríbalo a mano.</div>
             <div class="help-block"><?= Html::encode($model->getFirstError('areas')) ?></div>
         </div>
 

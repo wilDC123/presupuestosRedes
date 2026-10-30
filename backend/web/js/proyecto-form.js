@@ -14,8 +14,12 @@
  *       proyectos van primero. Al elegir uno se piden al servidor los de
  *       abajo (urls en los data-url-* del <form>). Se puede agregar el area
  *       en cualquier paso: un edificio entero, un bloque, un piso o un ambiente.
+ *     - a mano: si el edificio (o el bloque, piso o espacio) no esta en
+ *       UsfxGEO, por ej. porque esta en construccion. Al abrir el bloque se
+ *       copia lo elegido en el paso a paso, para escribir solo lo que falta.
  *     Las areas elegidas se muestran agrupadas por edificio y bloque; cada
- *     una lleva sus 4 <input type="hidden">.
+ *     una lleva sus <input type="hidden">: los 4 id, o "manual" y los 4
+ *     nombres si se escribio a mano.
  *  2. Los proyectistas se eligen de un desplegable y quedan como "chips".
  *  3. Al elegir el proyecto de fase anterior se muestra su resumen y el
  *     numero de fase que le correspondera a este proyecto.
@@ -265,21 +269,38 @@ $(function () {
         }).length > 0;
     }
 
+    // Para no repetir un area. Misma regla que el data-valor de _form.php:
+    // las escritas a mano se comparan por sus nombres, sin mayusculas.
+    function valorDe(area) {
+        if (area.manual) {
+            return ('manual|' + [area.edificio, area.bloque || '', area.nivel || '', area.ambiente || ''].join('|')).toLowerCase();
+        }
+
+        return [area.idEdificio, area.idBloqueArea || '', area.numeroNivel || '', area.idEspacio || ''].join('|');
+    }
+
     // area = {idEdificio, idBloqueArea, numeroNivel, idEspacio, edificio, bloque, nivel, ambiente}
+    // o, escrita a mano, {manual: true, edificio, bloque, nivel, ambiente}.
     function agregarArea(area) {
-        var valor = [area.idEdificio, area.idBloqueArea || '', area.numeroNivel || '', area.idEspacio || ''].join('|');
+        var valor = valorDe(area);
 
         if (yaEsta(valor)) {
             return;
         }
 
         var nombre = $areas.data('nombre') + '[' + siguienteArea++ + ']';
+        var campos = area.manual ? ['manual', 'edificio', 'bloque', 'nivel', 'ambiente'] : ['idEdificio', 'idBloqueArea', 'numeroNivel', 'idEspacio'];
         var $area = $('<div class="rd-area">')
+            .toggleClass('rd-area-manual', !!area.manual)
             .attr({'data-valor': valor, 'data-grupo': grupoDe(area), title: $.grep([area.edificio, area.bloque, area.nivel, area.ambiente], Boolean).join(' – ')})
             .append($('<span class="rd-area-detalle">').text(detalleDe(area)));
 
-        $.each(['idEdificio', 'idBloqueArea', 'numeroNivel', 'idEspacio'], function (_, campo) {
-            $area.append($('<input type="hidden">').attr('name', nombre + '[' + campo + ']').val(area[campo] || ''));
+        if (area.manual) {
+            $area.append($('<span class="rd-area-marca">').text('a mano'));
+        }
+
+        $.each(campos, function (_, campo) {
+            $area.append($('<input type="hidden">').attr('name', nombre + '[' + campo + ']').val(campo === 'manual' ? '1' : (area[campo] || '')));
         });
 
         $area.append($('<button type="button" class="x" aria-label="Quitar">').text('×')).appendTo($areas);
@@ -406,6 +427,64 @@ $(function () {
         // Se dejan edificio, bloque y piso elegidos: lo comun es agregar otro
         // ambiente del mismo piso.
         ambiente.limpiar();
+    });
+
+    // ---- Area escrita a mano ----
+
+    var $manual = $('#proyecto-area-manual');
+    var $abrirManual = $('#proyecto-abrir-manual');
+    var manual = {
+        edificio: $('#proyecto-manual-edificio'),
+        bloque: $('#proyecto-manual-bloque'),
+        nivel: $('#proyecto-manual-nivel'),
+        ambiente: $('#proyecto-manual-ambiente')
+    };
+
+    function cerrarManual() {
+        $manual.addClass('d-none');
+        $abrirManual.removeClass('d-none');
+        $.each(manual, function (_, $campo) { $campo.val('').removeClass('is-invalid'); });
+    }
+
+    $abrirManual.on('click', function () {
+        // Lo elegido en el paso a paso se copia: si el edificio existe pero
+        // el bloque nuevo no, solo se escribe el bloque.
+        var conBloque = !!$bloque.val();
+
+        manual.edificio.val(edificio.nombre() || '');
+        manual.bloque.val(textoElegido($bloque) || '');
+        manual.nivel.val(conBloque ? (textoElegido($nivel) || '') : '');
+        manual.ambiente.val(conBloque && $nivel.val() ? (ambiente.nombre() || '') : '');
+
+        $abrirManual.addClass('d-none');
+        $manual.removeClass('d-none');
+        manual.edificio.trigger('focus');
+    });
+
+    $('#proyecto-cerrar-manual').on('click', cerrarManual);
+
+    $('#proyecto-agregar-manual').on('click', function () {
+        var area = {manual: true};
+
+        $.each(manual, function (campo, $campo) {
+            area[campo] = $.trim($campo.val()).replace(/\s+/g, ' ') || null;
+        });
+
+        if (!area.edificio) {
+            manual.edificio.addClass('is-invalid').trigger('focus');
+            return;
+        }
+
+        agregarArea(area);
+        cerrarManual();
+    });
+
+    // Enter en estos campos agrega el area, no envia el formulario.
+    $manual.on('keydown', 'input', function (evento) {
+        if (evento.key === 'Enter') {
+            evento.preventDefault();
+            $('#proyecto-agregar-manual').trigger('click');
+        }
     });
 
     // ---- Buscador de edificios y ambientes ----

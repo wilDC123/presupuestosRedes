@@ -37,7 +37,7 @@ use yii\helpers\Html;
  * @var string|null $version version del documento (ej. "01")
  * @var string|null $proceso proceso al que pertenece el documento
  * @var string|null $numero sin $codigo: ya con su etiqueta (ej. "N.° RD-PI-PT-004 / SC-01")
- * @var string|null $facultad sin $codigo: la unidad solicitante del proyecto
+ * @var string|null $facultad sin $codigo: la unidad / dependencia (beneficiaria) del proyecto
  * @var string|null $institucion primera linea (sale en mayusculas)
  * @var string|null $unidad segunda linea
  */

@@ -51,8 +51,9 @@ $this->params['breadcrumbs'][] = $this->title;
                 'value' => static fn ($model) => '<span class="pill-fase">Fase ' . (int) $model->numeroFase . '</span>',
             ],
             [
-                'attribute' => 'unidadSolicitante',
-                'value' => static fn ($model) => $model->unidadSolicitante ?: '—',
+                // En el listado, la beneficiaria (la misma que sale en los documentos).
+                'attribute' => 'unidadDependencia',
+                'value' => static fn ($model) => $model->unidadDependencia ?: '—',
             ],
             [
                 'label' => 'Presupuesto',
