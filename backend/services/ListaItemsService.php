@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\models\ConfiguracionPresupuesto;
 use backend\models\Especificacion;
+use backend\models\HistorialProyecto;
+use backend\models\ListaMaterialesAprobacion;
 use backend\models\OrdenCambio;
 use backend\models\Plantilla;
 use backend\models\PresupuestoDetalle;
@@ -13,6 +16,7 @@ use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SolicitudCotizacionItem;
 use backend\models\SubcatalogoItem;
+use DateTimeImmutable;
 use DomainException;
 use Throwable;
 use Yii;
@@ -320,6 +324,12 @@ class ListaItemsService
      * edicion -> en_cotizacion. Desde aqui la lista queda de solo lectura.
      * Cierra la orden de cambio que la habia reabierto, si habia una.
      *
+     * Y APRUEBA la version siguiente de la "Lista de materiales y condiciones
+     * previas" (paso 8b, 2026-10-30): la 01 la primera vez, +1 despues de
+     * cada orden de cambio. Guarda la fecha, el usuario y la COPIA de las
+     * firmas del control de elaboracion (las de la configuracion del
+     * presupuesto), y lo anota en el historial del proyecto.
+     *
      * Devuelve false si la lista no esta en edicion o no tiene items.
      */
     public function enviarACotizacion(Proyecto $proyecto): bool
@@ -333,6 +343,7 @@ class ListaItemsService
         try {
             $proyecto->updateAttributes(['estadoLista' => Proyecto::LISTA_EN_COTIZACION, 'listaIniciada' => true]);
             (new OrdenCambioService())->cerrarAbiertas($proyecto, OrdenCambio::ALCANCE_LISTA);
+            $this->aprobarVersion($proyecto);
 
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -341,6 +352,60 @@ class ListaItemsService
         }
 
         return true;
+    }
+
+    /**
+     * Crea la version aprobada siguiente de la lista. Se llama dentro de la
+     * transaccion de enviarACotizacion().
+     */
+    private function aprobarVersion(Proyecto $proyecto): ListaMaterialesAprobacion
+    {
+        $historial = new HistorialService();
+        $ultima = (int) ListaMaterialesAprobacion::find()->where(['idProyecto' => $proyecto->id])->max('version');
+
+        $aprobacion = new ListaMaterialesAprobacion([
+            'idProyecto' => $proyecto->id,
+            'version' => $ultima + 1,
+            'fechaAprobacion' => (new DateTimeImmutable('today'))->format('Y-m-d'),
+            'usuario' => $historial->usuarioActual(),
+        ]);
+
+        // COPIA de las firmas: una version aprobada no cambia aunque despues se edite la configuracion.
+        $configuracion = ConfiguracionPresupuesto::obtener();
+        foreach (ListaMaterialesAprobacion::atributosFirmas() as $atributo) {
+            $aprobacion->$atributo = $configuracion->$atributo;
+        }
+
+        $aprobacion->save(false);
+        unset($proyecto->aprobacionesLista);
+
+        $historial->registrar(
+            $proyecto,
+            HistorialProyecto::ACCION_LISTA_APROBADA,
+            'Versión ' . ListaMaterialesAprobacion::versionTexto($aprobacion->version) . ', enviada a cotización'
+        );
+
+        return $aprobacion;
+    }
+
+    /**
+     * Que version de la lista imprime el PDF y si es borrador: en edicion, la
+     * SIGUIENTE a la ultima aprobada (todavia sin aprobar: marca de agua
+     * BORRADOR, sin fecha ni firmas copiadas); enviada o cerrada, la ultima
+     * aprobada.
+     *
+     * @return array{version: string, borrador: bool, aprobacion: ListaMaterialesAprobacion|null}
+     */
+    public function documento(Proyecto $proyecto): array
+    {
+        $ultima = $proyecto->ultimaAprobacionLista();
+        $borrador = $proyecto->estadoLista === Proyecto::LISTA_EDICION || $ultima === null;
+
+        return [
+            'version' => ListaMaterialesAprobacion::versionTexto($borrador ? ($ultima?->version ?? 0) + 1 : $ultima->version),
+            'borrador' => $borrador,
+            'aprobacion' => $borrador ? null : $ultima,
+        ];
     }
 
     /**
@@ -391,16 +456,17 @@ class ListaItemsService
 
     /**
      * Convierte el HTML de la vista "pdf" (la arma el controlador) en el PDF
-     * de la lista, con el mismo generador que usa el presupuesto.
+     * de la lista, con el mismo generador que usa el presupuesto. $borrador:
+     * marca de agua BORRADOR (version todavia sin aprobar, ver documento()).
      *
      * @return array{contenido: string, nombreArchivo: string}
      */
-    public function generarPdf(Proyecto $proyecto, string $html): array
+    public function generarPdf(Proyecto $proyecto, string $html, bool $borrador = false): array
     {
         $referencia = $proyecto->codigo ?: (string) $proyecto->id;
 
         return [
-            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html),
+            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $borrador ? 'BORRADOR' : null),
             'nombreArchivo' => 'lista_materiales_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf',
         ];
     }

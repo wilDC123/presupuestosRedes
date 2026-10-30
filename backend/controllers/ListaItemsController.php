@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\models\ConfiguracionEspecificacion;
+use backend\models\ConfiguracionPresupuesto;
 use backend\models\CorrelativoDocumento;
 use backend\models\OrdenCambio;
 use backend\models\Proyecto;
@@ -128,6 +129,8 @@ class ListaItemsController extends Controller
                 $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO
             ),
             'errores' => $errores,
+            // Version del documento "Lista de materiales y condiciones previas" (paso 8b).
+            'documento' => $this->service->documento($proyecto),
             'editable' => $editable,
             'subcatalogo' => $editable ? (new SubcatalogoItemService())->activos() : [],
             'especificaciones' => $selector,
@@ -154,12 +157,16 @@ class ListaItemsController extends Controller
     {
         $proyecto = $this->findProyecto($id);
 
+        $documento = $this->service->documento($proyecto);
+
         $html = $this->renderPartial('pdf', [
             'proyecto' => $proyecto,
             'grupos' => $this->service->agrupar($proyecto),
+            'documento' => $documento,
+            'configuracion' => ConfiguracionPresupuesto::obtener(),
         ]);
 
-        $pdf = $this->service->generarPdf($proyecto, $html);
+        $pdf = $this->service->generarPdf($proyecto, $html, $documento['borrador']);
 
         return Yii::$app->response->sendContentAsFile(
             $pdf['contenido'],

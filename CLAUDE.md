@@ -407,8 +407,19 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     civiles, Apertura de ductos, Despeje del ambiente; "que haya algo para crear"; en uso no se elimina)
   - Títulos en `ProyectoMaterialDtic::TITULO` y `ProyectoCondicionPrevia::TITULO` (los de antes). JS común en
     `lista-items.js` (`.lista-seccion`)
-  - PENDIENTE (paso 8b): el documento PDF normado "Lista de materiales y condiciones previas" (cabecera del
-    lineamiento, código provisional LM, aprobación al "Enviar a cotización" y versión + 1 en cada reapertura)
+  - DOCUMENTO NORMADO (paso 8b, 2026-10-30; migración `m261030_160530_crear_aprobacion_lista_materiales`): el PDF
+    de la lista ("Imprimir lista de materiales") es la "LISTA DE MATERIALES Y CONDICIONES PREVIAS" con la cabecera
+    del lineamiento y el control de elaboración al fondo. SIN código propio (el 8.3 no tiene uno; decidido con el
+    desarrollador el 2026-10-30): lleva el CÓDIGO DEL PROYECTO (RD-PI-PT-NNN, "Proceso:" = PI), porque cada proyecto
+    tiene una sola lista y ese código no cambia. "Enviar a cotización" APRUEBA la versión siguiente
+    (`ListaItemsService::enviarACotizacion()` → `aprobarVersion()`): `redes.ListaMaterialesAprobacion`, una fila por
+    versión (01 la primera vez, +1 después de cada orden de cambio), nunca se modifica: fecha, usuario y COPIA de
+    las firmas de "Configuración del PDF" del presupuesto (trait `FirmasDeControl`); se anota en el historial
+    (`HistorialProyecto::ACCION_LISTA_APROBADA`). No guarda copia de la lista (mientras está aprobada no cambia).
+    `ListaItemsService::documento()`: en edición imprime la versión SIGUIENTE con marca BORRADOR, fecha de hoy y
+    las firmas de hoy; enviada o cerrada, la última aprobada. Las 4 listas ya enviadas recibieron su v01 sin
+    fecha (casilla "Fecha" con "—"). La versión sale también en la pantalla de la lista y en la ficha técnica.
+    Sin "documentos relacionados" (opcional en el nivel D: cada ítem ya cita su ET)
   - PENDIENTE (Ing. de DTIC): la mano de obra de la DTIC sigue en el presupuesto con 0 (¿o va a condiciones
     previas?); se decide en el paso 9
 - Carta de entrega del presupuesto (2026-10-21, `CartaController`, `CartaService`; botón "Carta de
@@ -483,7 +494,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_035251_secciones_sin_precio_a_la_lista`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_160530_crear_aprobacion_lista_materiales`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -579,6 +590,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `ProyectoCondicionPrevia` (composición 0..* desde Proyecto) y `TipoCondicionPrevia` (catálogo); caso de uso
   "Gestionar tipos de trabajo complementario"; "Elaborar lista de ítems" incluye registrar materiales de la DTIC y
   trabajos complementarios (antes en "Elaborar presupuesto")
+- PENDIENTE (tutor): lista de materiales normada (2026-10-30, paso 8b): clase `ListaMaterialesAprobacion`
+  (composición 0..* desde Proyecto; version, fechaAprobacion, usuario {copia}, firmas {congelado}); la secuencia
+  "Enviar a cotización" termina aprobando una versión. Informar al Ing. que la lista lleva el código del proyecto
 - PENDIENTE (tutor): unidad solicitante y área de intervención (2026-10-28): `Proyecto.unidadSolicitante`
   y `Proyecto.unidadDependencia` (2026-10-29: beneficiaria, distinta de la solicitante),
   clase `ProyectoAreaIntervencion` (composición 0..*), `ConfiguracionEspecificacion.lugarEntregaPorDefecto`,

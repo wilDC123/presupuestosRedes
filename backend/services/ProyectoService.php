@@ -257,6 +257,7 @@ class ProyectoService
             'monto' => $this->montoPresupuesto($proyecto),
             'especificaciones' => (new EspecificacionEmisionService())->vigentesDelProyecto($proyecto),
             'solicitudes' => (new SolicitudCotizacionService())->listar($proyecto),
+            'lista' => (new ListaItemsService())->documento($proyecto),
         ];
     }
 
