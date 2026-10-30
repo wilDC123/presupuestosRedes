@@ -43,7 +43,7 @@ class ProyectistaTest extends Unit
         $proyectos = new ProyectoService();
 
         $proyecto = new Proyecto();
-        $datos = ['Proyecto' => ['nombre' => 'Proyecto test proyectista', 'unidadSolicitante' => 'Facultad test', 'nombresProyectista' => ['Ing. Test Asignado']]];
+        $datos = ['Proyecto' => ['nombre' => 'Proyecto test proyectista', 'unidadDependencia' => 'Carrera test', 'unidadSolicitante' => 'Facultad test', 'nombresProyectista' => ['Ing. Test Asignado']]];
         $this->assertTrue($proyectos->crear($proyecto, $datos), json_encode($proyecto->errors));
 
         // Se desactiva: ya no se ofrece, no se elimina, pero el proyecto lo conserva al editarse.

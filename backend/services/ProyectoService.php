@@ -90,6 +90,7 @@ class ProyectoService
             $proyecto->idProyectoAnterior = $anterior->id;
             $proyecto->numeroFase = $anterior->numeroFase + 1;
             $proyecto->idTipoProyecto = $anterior->idTipoProyecto;
+            $proyecto->unidadDependencia = $anterior->unidadDependencia;
             $proyecto->unidadSolicitante = $anterior->unidadSolicitante;
             $proyecto->areas = array_map(static fn (ProyectoAreaIntervencion $area) => $area->claves(), $anterior->areasIntervencion);
         } else {
@@ -176,19 +177,24 @@ class ProyectoService
     }
 
     /**
-     * Sugerencias para el campo "Unidad solicitante": lo ya escrito en otros
-     * proyectos y las facultades de los parametros. Es solo ayuda para no
-     * transcribir de nuevo: el campo acepta cualquier texto.
+     * Sugerencias para los campos "Unidad / dependencia" y "Unidad
+     * solicitante" (comparten la lista): lo ya escrito en cualquiera de los
+     * dos en otros proyectos y las facultades de los parametros. Es solo
+     * ayuda para no transcribir de nuevo: los campos aceptan cualquier texto.
      *
      * @return string[] ordenadas, sin repetidas (sin importar mayusculas)
      */
     public function sugerenciasUnidad(): array
     {
-        $escritas = Proyecto::find()
-            ->select('unidadSolicitante')
-            ->distinct()
-            ->andWhere(['not', ['unidadSolicitante' => null]])
-            ->column();
+        $escritas = [];
+
+        foreach (['unidadDependencia', 'unidadSolicitante'] as $columna) {
+            $escritas = array_merge($escritas, Proyecto::find()
+                ->select($columna)
+                ->distinct()
+                ->andWhere(['not', [$columna => null]])
+                ->column());
+        }
 
         $sugerencias = [];
 

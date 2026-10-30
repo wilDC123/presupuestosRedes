@@ -26,7 +26,7 @@ use yii\helpers\Html;
  * @var backend\models\ConfiguracionEspecificacion $configuracionNet de aqui salen los plazos minimo/maximo
  */
 
-$unidad = $solicitud->proyecto->unidadSolicitante;
+$unidad = $solicitud->proyecto->unidadDependencia;
 $cabecera = $configuracion->lineasCabecera();
 $numero = 0;
 ?>

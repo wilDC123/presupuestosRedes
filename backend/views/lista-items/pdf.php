@@ -131,7 +131,7 @@ $numero = 0;
     </tr>
     <tr>
         <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre) ?></td>
-        <td><strong>Unidad solicitante:</strong> <?= Html::encode($proyecto->unidadSolicitante ?: '—') ?></td>
+        <td><strong>Unidad / dependencia:</strong> <?= Html::encode($proyecto->unidadDependencia ?: '—') ?></td>
     </tr>
     <?php // A todo el ancho: varias areas pueden ocupar mas de una linea. ?>
     <tr>

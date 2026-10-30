@@ -25,8 +25,9 @@ use DateTime;
  *  - el PDF no lleva marca de agua: se imprime cuando ya esta todo.
  *
  * Marcadores:
- *  - {proyecto} y {unidad} (la unidad solicitante; {facultad}, el nombre de
- *    antes, se reemplaza igual para no romper las plantillas ya escritas):
+ *  - {proyecto}, {unidad} (la unidad solicitante: la carta responde a quien
+ *    pidio; {facultad}, el nombre de antes, se reemplaza igual para no romper
+ *    las plantillas ya escritas) y {dependencia} (la unidad beneficiaria):
  *    se reemplazan al llenar la carta nueva (asi el encargado puede corregir
  *    la frase),
  *  - {oficio}, {numeroPresupuesto} y {especificaciones} (los codigos de
@@ -62,6 +63,7 @@ class CartaService
         $proyecto = $presupuesto->proyecto;
         $nombreProyecto = trim((string) $proyecto->nombre);
         $unidad = trim((string) $proyecto->unidadSolicitante);
+        $dependencia = trim((string) $proyecto->unidadDependencia);
 
         $carta = new CartaPresupuesto();
         $carta->idPresupuesto = $presupuesto->id;
@@ -74,6 +76,7 @@ class CartaService
             '{proyecto}' => $nombreProyecto,
             '{unidad}' => $unidad,
             '{facultad}' => $unidad,
+            '{dependencia}' => $dependencia,
         ]));
         // En medio de una frase el nombre del proyecto va con minuscula
         // ("requerimiento de instalación de…"), salvo que empiece con una
@@ -82,6 +85,7 @@ class CartaService
             '{proyecto}' => $this->minusculaInicial($nombreProyecto),
             '{unidad}' => $unidad,
             '{facultad}' => $unidad,
+            '{dependencia}' => $dependencia,
         ]);
         $carta->saludo = $configuracion->saludo;
         $carta->despedida = $configuracion->despedida;

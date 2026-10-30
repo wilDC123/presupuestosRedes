@@ -20,9 +20,12 @@ use yii\db\ActiveRecord;
  * @property string $nombre
  * @property string|null $descripcion
  * @property int|null $idTipoProyecto FK a redes.TipoProyecto.
- * @property string|null $unidadSolicitante Quien pide, en texto libre tal como dice la nota.
+ * @property string|null $unidadDependencia Unidad BENEFICIARIA, a donde va el proyecto (texto libre).
+ *                                         Es la que sale en los documentos ("Dependencia").
+ * @property string|null $unidadSolicitante Quien pide, en texto libre tal como dice la nota. Puede
+ *                                         ser otra (el Rector pide para el Canal Universitario).
  * @property string|null $codigoFacultad Ubicacion ANTERIOR al 2026-10-28 (ya no se escribe).
- * @property string|null $facultad       Idem: los proyectos nuevos usan unidadSolicitante
+ * @property string|null $facultad       Idem: los proyectos nuevos usan las unidades
  * @property string|null $codigoEdificio y las areas de intervencion.
  * @property string|null $edificio
  * @property int|null $idProyectoAnterior
@@ -88,9 +91,9 @@ class Proyecto extends ActiveRecord
             [['descripcion'], 'string', 'max' => 1000],
             [['idTipoProyecto'], 'integer'],
             TipoProyecto::reglaElegible(),
-            [['unidadSolicitante'], 'trim'],
-            [['unidadSolicitante'], 'required'],
-            [['unidadSolicitante'], 'string', 'max' => 250],
+            [['unidadDependencia', 'unidadSolicitante'], 'trim'],
+            [['unidadDependencia', 'unidadSolicitante'], 'required'],
+            [['unidadDependencia', 'unidadSolicitante'], 'string', 'max' => 250],
             [['idProyectoAnterior'], 'integer'],
             [['idProyectoAnterior'], 'exist', 'skipOnError' => true, 'targetClass' => self::class, 'targetAttribute' => ['idProyectoAnterior' => 'id']],
             // 'safe': las areas las revisa ProyectoService una por una contra la
@@ -109,6 +112,7 @@ class Proyecto extends ActiveRecord
             'nombre' => 'Nombre del proyecto',
             'descripcion' => 'Descripción',
             'idTipoProyecto' => 'Tipo de proyecto',
+            'unidadDependencia' => 'Unidad / dependencia',
             'unidadSolicitante' => 'Unidad solicitante',
             'areas' => 'Área de intervención',
             'codigoFacultad' => 'Facultad',

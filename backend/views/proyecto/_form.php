@@ -90,12 +90,20 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
             'placeholder' => 'Alcance general del proyecto...',
         ]) ?>
 
+        <?php // Las dos unidades comparten la lista de sugerencias (el <datalist> de abajo). ?>
+        <?= $form->field($model, 'unidadDependencia')->textInput([
+            'maxlength' => 250,
+            'list' => 'proyecto-unidades-sugeridas',
+            'autocomplete' => 'off',
+            'placeholder' => 'A dónde va el proyecto. Ej. Canal Universitario, Carrera de Psicología',
+        ])->hint('La unidad beneficiada: es la que sale como "Dependencia" en los documentos. Texto libre: facultad, carrera, oficina…') ?>
+
         <?= $form->field($model, 'unidadSolicitante')->textInput([
             'maxlength' => 250,
             'list' => 'proyecto-unidades-sugeridas',
             'autocomplete' => 'off',
-            'placeholder' => 'Tal como dice la nota de solicitud. Ej. Secretaría General de Vicerrectorado',
-        ])->hint('Texto libre: una facultad, carrera, laboratorio, oficina o persona. Al escribir se sugieren las ya usadas.') ?>
+            'placeholder' => 'Quién lo pide, tal como dice la nota. Ej. Rectorado, Decanato de Humanidades',
+        ])->hint('Puede ser la misma unidad u otra (ej. el Rector pide cámaras para el Canal Universitario). Al escribir se sugieren las ya usadas.') ?>
         <datalist id="proyecto-unidades-sugeridas">
             <?php foreach ($sugerenciasUnidad as $sugerencia): ?>
                 <option value="<?= Html::encode($sugerencia) ?>"></option>

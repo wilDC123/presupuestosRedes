@@ -119,6 +119,19 @@ class CartaPresupuestoTest extends Unit
         $this->assertSame('ENTREGA PARA INSTALACIÓN DE PUNTOS DE RED, PRESUPUESTO {numeroPresupuesto}', $carta->referencia);
     }
 
+    public function testLaCartaVaAQuienPidioYDependenciaEsLaBeneficiaria(): void
+    {
+        $configuracion = ConfiguracionCarta::obtener();
+        $configuracion->plantillaCuerpo = 'Pedido de {unidad} para {dependencia}.';
+        $this->assertTrue($configuracion->save());
+
+        $carta = $this->service->nueva($this->crearPresupuesto(Presupuesto::ESTADO_EN_PROCESO));
+
+        // El destinatario sale de la solicitante, no de la beneficiaria.
+        $this->assertSame('DECANO DE LA FACULTAD DE MEDICINA', $carta->destinatarioCargo);
+        $this->assertSame('Pedido de Facultad de Medicina para Carrera de Enfermería.', $carta->cuerpo);
+    }
+
     public function testParrafosSeSeparanPorLineaEnBlanco(): void
     {
         $this->assertSame(['Uno', "Dos\nsigue", 'Tres'], CartaPresupuesto::parrafos("Uno\n\nDos\nsigue\r\n\r\n\n  Tres  \n"));
@@ -128,6 +141,7 @@ class CartaPresupuestoTest extends Unit
     {
         $proyecto = new Proyecto([
             'nombre' => 'Instalación de puntos de red',
+            'unidadDependencia' => 'Carrera de Enfermería',
             'unidadSolicitante' => 'Facultad de Medicina',
             'estadoLista' => Proyecto::LISTA_EDICION,
         ]);

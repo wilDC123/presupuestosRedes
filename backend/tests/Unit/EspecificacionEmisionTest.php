@@ -43,7 +43,7 @@ class EspecificacionEmisionTest extends Unit
         }
         $this->itemSubcatalogo = $itemSubcatalogo;
 
-        $this->proyecto = new Proyecto(['nombre' => 'Proyecto test NET', 'unidadSolicitante' => 'Facultad de Tecnología', 'estadoLista' => Proyecto::LISTA_EDICION]);
+        $this->proyecto = new Proyecto(['nombre' => 'Proyecto test NET', 'unidadDependencia' => 'Carrera de Ingeniería de Sistemas', 'unidadSolicitante' => 'Facultad de Tecnología', 'estadoLista' => Proyecto::LISTA_EDICION]);
         $this->proyecto->save(false);
         $this->proyecto->refresh();
 
@@ -70,8 +70,8 @@ class EspecificacionEmisionTest extends Unit
         // lista, no el de la ficha.
         $this->assertSame($this->itemSubcatalogo->descripcion, $emision->titulo);
         $this->assertSame(5.0, (float) $emision->cantidad);
-        // Dependencia = unidad solicitante; lugar = el de la configuracion.
-        $this->assertSame('Facultad de Tecnología', $emision->dependencia);
+        // Dependencia = unidad / dependencia (la beneficiaria, no la solicitante); lugar = el de la configuracion.
+        $this->assertSame('Carrera de Ingeniería de Sistemas', $emision->dependencia);
         $this->assertSame('Almacenes test USFX', $emision->lugarEntrega);
         $this->assertSame('encargado', $emision->elaboradoPor);
         // Sin garantia propia en la ficha: se congela la de la configuracion.
@@ -310,7 +310,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertStringContainsString('Cumple ANSI/TIA', $html);
         $this->assertStringContainsString('Se sugiere: Furukawa o similar/superior.', $html);
         $this->assertStringContainsString('Dos años', $html);
-        $this->assertStringContainsString('Facultad de Tecnología', $html);
+        $this->assertStringContainsString('Carrera de Ingeniería de Sistemas', $html);
         $this->assertStringNotContainsString('24 AWG', $html);
         $this->assertStringNotContainsString('Tres años', $html);
         $this->assertStringNotContainsString('NOTA NUEVA', $html);
@@ -349,7 +349,7 @@ class EspecificacionEmisionTest extends Unit
         // Es de la serie ET: buscarla como NET no la encuentra.
         $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $numero, date('y'))]));
         // El titulo de la emision es el nombre DTIC del item.
-        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => $this->itemSubcatalogo->descripcion, 'dependencia' => 'Facultad de Tecnología']));
+        $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => $this->itemSubcatalogo->descripcion, 'dependencia' => 'Carrera de Ingeniería de Sistemas']));
 
         // Pasada la vigencia, la vigente aparece como vencida.
         EspecificacionEmision::updateAll(['fechaEmision' => '2020-01-01'], ['id' => $segunda->id]);
