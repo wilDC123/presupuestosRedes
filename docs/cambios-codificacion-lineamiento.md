@@ -192,3 +192,24 @@ el año va **solo en las especificaciones técnicas**.
 - Pendiente con el Ing.: el lineamiento (8.2 y 8.6) no menciona el "/AA"; conviene anotarlo como cambio del
   lineamiento.
 - Diagrama de clases: `EspecificacionEmision` gana `proceso` {congelado}; `CorrelativoDocumento` gana `anio`.
+
+## Lista de materiales y condiciones previas (2026-10-30, revisión del 29, paso 8b)
+
+El Ing. pidió normar y aprobar la lista de materiales, uno de los 4 documentos de la carpeta económica. El 8.3
+del lineamiento no tiene un código para listas de materiales. Decidido con el desarrollador: **no se le da
+código propio; lleva el código del proyecto** (`RD-PI-PT-022`), porque cada proyecto tiene una sola lista y ese
+código no cambia. Así no hay un tipo nuevo en el correlativo ni un código que el lineamiento no tenga.
+
+| Momento | PDF |
+|---|---|
+| Lista en edición | Código del proyecto, versión siguiente, fecha de hoy, marca **BORRADOR** |
+| "Enviar a cotización" | Aprueba esa versión (01 la primera vez): fecha, usuario y copia de las firmas |
+| En cotización o cerrada | La última versión aprobada, sin marca |
+| Orden de cambio | Vuelve a ser borrador, con la versión + 1 |
+
+- Tabla `redes.ListaMaterialesAprobacion` (una fila por versión aprobada, nunca se modifica); firmas copiadas
+  de la configuración del PDF del presupuesto. Migración `m261030_160530_crear_aprobacion_lista_materiales`;
+  las listas ya enviadas reciben su v01 sin fecha.
+- Riesgo: si algún día se imprime el "proyecto técnico" con el código PT, compartiría código con la lista.
+  Hoy no pasa (la ficha técnica no lleva código del lineamiento).
+- Pendiente con el Ing.: informarle la decisión.

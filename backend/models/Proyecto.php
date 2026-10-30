@@ -47,6 +47,7 @@ use yii\db\ActiveRecord;
  * @property-read Presupuesto|null $presupuesto
  * @property-read Plantilla|null $plantillaOrigen
  * @property-read ProyectoItem[] $items
+ * @property-read ListaMaterialesAprobacion[] $aprobacionesLista Versiones aprobadas de la lista, en orden.
  * @property-read ProyectoCondicionPrevia[] $condicionesPrevias Trabajos complementarios.
  * @property-read ProyectoMaterialDtic[] $materialesDtic Otros materiales que proveera la DTIC.
  */
@@ -248,6 +249,23 @@ class Proyecto extends ActiveRecord
     public function getMaterialesDtic(): ActiveQuery
     {
         return $this->hasMany(ProyectoMaterialDtic::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /**
+     * Versiones aprobadas de la "Lista de materiales y condiciones previas"
+     * (paso 8b, 2026-10-30), de la primera a la ultima.
+     */
+    public function getAprobacionesLista(): ActiveQuery
+    {
+        return $this->hasMany(ListaMaterialesAprobacion::class, ['idProyecto' => 'id'])->orderBy(['version' => SORT_ASC]);
+    }
+
+    /** La ultima version aprobada de la lista, o null si nunca se envio a cotizacion. */
+    public function ultimaAprobacionLista(): ?ListaMaterialesAprobacion
+    {
+        $aprobaciones = $this->aprobacionesLista;
+
+        return $aprobaciones === [] ? null : end($aprobaciones);
     }
 
     public function estadoListaLabel(): string

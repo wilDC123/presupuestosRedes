@@ -144,7 +144,8 @@ class HistorialService
         return trim($valor) === '' ? '—' : trim($valor);
     }
 
-    private function usuarioActual(): ?string
+    /** Nombre del usuario con sesion, o null (consola, tests). Tambien lo usa ListaItemsService. */
+    public function usuarioActual(): ?string
     {
         try {
             if (!Yii::$app->has('user')) {

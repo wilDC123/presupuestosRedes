@@ -176,6 +176,16 @@ foreach ($model->areasIntervencion as $area) {
 
 <h2>6. Documentos de la carpeta económica</h2>
 <table class="datos">
+    <?php $lista = $datos['lista']; ?>
+    <tr>
+        <th>Lista de materiales y condiciones previas</th>
+        <td>
+            <?= $texto($model->codigo) ?> versión <?= Html::encode($lista['version']) ?>
+            · <?= $lista['borrador']
+                ? 'Borrador (se aprueba al enviar a cotización)'
+                : 'Aprobada' . ($lista['aprobacion']->fechaAprobacion !== null ? ' el ' . Html::encode($lista['aprobacion']->fechaAprobacionFormateada()) : '') ?>
+        </td>
+    </tr>
     <tr>
         <th>Presupuesto</th>
         <td>

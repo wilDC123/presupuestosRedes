@@ -33,6 +33,8 @@ class HistorialProyecto extends ActiveRecord
     public const ACCION_PRESUPUESTO_CREADO = 'presupuesto_creado';
     public const ACCION_PRESUPUESTO_ESTADO = 'presupuesto_estado';
     public const ACCION_PRECIOS = 'precios';
+    /** "Enviar a cotizacion": aprueba una version de la lista de materiales (paso 8b). */
+    public const ACCION_LISTA_APROBADA = 'lista_aprobada';
 
     public static function tableName(): string
     {
@@ -51,6 +53,7 @@ class HistorialProyecto extends ActiveRecord
             self::ACCION_PRESUPUESTO_CREADO => 'Presupuesto creado',
             self::ACCION_PRESUPUESTO_ESTADO => 'Presupuesto: ' . mb_strtolower(Presupuesto::estados()[$this->estado] ?? (string) $this->estado, 'UTF-8'),
             self::ACCION_PRECIOS => 'Precios del presupuesto',
+            self::ACCION_LISTA_APROBADA => 'Lista de materiales aprobada',
             default => $this->accion,
         };
     }

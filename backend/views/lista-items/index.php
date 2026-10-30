@@ -47,6 +47,7 @@ use yii\web\JqueryAsset;
  * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  * @var string[] $errores mensajes si el guardado fallo
+ * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null} $documento Ver ListaItemsService::documento()
  * @var bool $editable Ver ListaItemsService::puedeEditarse()
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
  * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>, subcatalogos: array<int, int>, sugeridasPorItem: array<int, int[]>} $especificaciones Ver EspecificacionService::selector()
@@ -222,9 +223,20 @@ $grupoCierra = static fn (int $cantidad): string =>
                 <span class="<?= $proyecto->estadoListaBadgeClass() ?>"><?= Html::encode($proyecto->estadoListaLabel()) ?></span>
             </h1>
             <div class="rd-pagehead-sub"><?= Html::encode($proyecto->etiqueta()) ?></div>
+            <?php // El documento impreso lleva el codigo del proyecto y su version (paso 8b, 2026-10-30). ?>
+            <div class="rd-nota mt-1">
+                Lista de materiales <?= Html::encode($proyecto->codigo ?: '') ?> versión <?= Html::encode($documento['version']) ?>:
+                <?php if ($documento['borrador']): ?>
+                    borrador; se aprueba al enviar a cotización.
+                <?php elseif ($documento['aprobacion']->fechaAprobacion !== null): ?>
+                    aprobada el <?= Html::encode($documento['aprobacion']->fechaAprobacionFormateada()) ?><?= $documento['aprobacion']->usuario ? ' por ' . Html::encode($documento['aprobacion']->usuario) : '' ?>.
+                <?php else: ?>
+                    aprobada (antes de que el sistema registrara la fecha).
+                <?php endif; ?>
+            </div>
         </div>
         <div class="rd-acciones">
-            <?= Html::a('Imprimir lista', ['imprimir', 'id' => $proyecto->id], ['class' => 'btn btn-outline', 'target' => '_blank', 'id' => 'lista-imprimir']) ?>
+            <?= Html::a('Imprimir lista de materiales', ['imprimir', 'id' => $proyecto->id], ['class' => 'btn btn-outline', 'target' => '_blank', 'id' => 'lista-imprimir']) ?>
             <?php if ($totalFormularios > 0): ?>
                 <?= Html::a('Imprimir especificaciones (' . $totalFormularios . ')', ['imprimir-especificaciones', 'id' => $proyecto->id], [
                     'class' => 'btn btn-outline',

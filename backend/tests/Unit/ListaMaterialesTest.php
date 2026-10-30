@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace backend\tests\Unit;
 
+use backend\models\ConfiguracionPresupuesto;
+use backend\models\HistorialProyecto;
+use backend\models\OrdenCambio;
 use backend\models\Proyecto;
 use backend\models\ProyectoCondicionPrevia;
 use backend\models\ProyectoMaterialDtic;
 use backend\models\SubcatalogoItem;
 use backend\models\TipoCondicionPrevia;
 use backend\services\ListaItemsService;
+use backend\services\OrdenCambioService;
 use backend\services\TipoCondicionPreviaService;
 use Codeception\Test\Unit;
 use Yii;
@@ -142,6 +146,8 @@ class ListaMaterialesTest extends Unit
         $html = fn () => Yii::$app->view->render('@backend/views/lista-items/pdf.php', [
             'proyecto' => Proyecto::findOne($proyecto->id),
             'grupos' => $this->lista->agrupar(Proyecto::findOne($proyecto->id)),
+            'documento' => $this->lista->documento(Proyecto::findOne($proyecto->id)),
+            'configuracion' => ConfiguracionPresupuesto::obtener(),
         ]);
 
         $this->assertStringNotContainsString(ProyectoMaterialDtic::TITULO, $html());
@@ -163,6 +169,35 @@ class ListaMaterialesTest extends Unit
     {
         $this->assertFalse(class_exists('backend\models\PresupuestoComplemento'));
         $this->assertSame('Otros materiales y equipamiento que proveerá la D.T.I.C.', ProyectoMaterialDtic::TITULO);
+    }
+
+    public function testEnviarACotizacionApruebaUnaVersionDeLaLista(): void
+    {
+        $proyecto = $this->proyecto();
+        $errores = [];
+        $this->assertTrue($this->lista->guardar($proyecto, [$this->fila()], $errores), implode(' ', $errores));
+
+        // En edicion: la version 01, todavia borrador.
+        $documento = $this->lista->documento(Proyecto::findOne($proyecto->id));
+        $this->assertSame(['01', true, null], [$documento['version'], $documento['borrador'], $documento['aprobacion']]);
+
+        $this->assertTrue($this->lista->enviarACotizacion(Proyecto::findOne($proyecto->id)));
+        $documento = $this->lista->documento(Proyecto::findOne($proyecto->id));
+        $this->assertSame('01', $documento['version']);
+        $this->assertFalse($documento['borrador']);
+        $this->assertSame(date('Y-m-d'), substr((string) $documento['aprobacion']->fechaAprobacion, 0, 10));
+        // Las firmas son COPIA de la configuracion del presupuesto.
+        $this->assertSame(ConfiguracionPresupuesto::obtener()->firma2Nombre, $documento['aprobacion']->firma2Nombre);
+        $this->assertTrue(HistorialProyecto::find()->where(['idProyecto' => $proyecto->id, 'accion' => HistorialProyecto::ACCION_LISTA_APROBADA])->exists());
+
+        // Una orden de cambio la reabre: borrador de la 02; al reenviar queda aprobada la 02.
+        $this->assertTrue((new OrdenCambioService())->solicitarCambioLista(Proyecto::findOne($proyecto->id), new OrdenCambio(), ['OrdenCambio' => ['motivo' => 'Falta un ítem']], 'test'));
+        $documento = $this->lista->documento(Proyecto::findOne($proyecto->id));
+        $this->assertSame(['02', true], [$documento['version'], $documento['borrador']]);
+
+        $this->assertTrue($this->lista->enviarACotizacion(Proyecto::findOne($proyecto->id)));
+        $this->assertSame([1, 2], array_map(static fn ($a) => (int) $a->version, Proyecto::findOne($proyecto->id)->aprobacionesLista));
+        $this->assertSame(['02', false], array_values(array_slice($this->lista->documento(Proyecto::findOne($proyecto->id)), 0, 2)));
     }
 
     private function proyecto(): Proyecto
