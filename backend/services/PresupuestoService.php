@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\models\Categoria;
 use backend\models\ConfiguracionPresupuesto;
 use backend\models\CotizacionDetalle;
 use backend\models\HistorialProyecto;
@@ -287,6 +288,73 @@ class PresupuestoService
         uasort($grupos, static fn ($a, $b) => $a['orden'] <=> $b['orden']);
 
         return $grupos;
+    }
+
+    /**
+     * Para el PDF del presupuesto: marca con 'manoDeObra' => true el grupo
+     * donde va la fila de mano de obra de la DTIC (Presupuesto::$manoDeObra).
+     * Va dentro de la categoria "Mano de obra" si el presupuesto ya tiene una
+     * (mano de obra contratada); si no, en un grupo "Mano de obra" propio, al
+     * final y con subtotal 0.00. Sin mano de obra, ningun grupo la lleva.
+     * El reporte SIGMA no la usa (no lleva mano de obra).
+     *
+     * @param array $grupos resultado de agruparPorCategoria()
+     * @return array los mismos grupos, cada uno con la clave 'manoDeObra' (bool)
+     */
+    public function ubicarManoDeObra(Presupuesto $presupuesto, array $grupos): array
+    {
+        $donde = null;
+
+        if ($presupuesto->manoDeObra !== null) {
+            $buscado = mb_strtoupper(Categoria::NOMBRE_MANO_DE_OBRA, 'UTF-8');
+
+            foreach (array_keys($grupos) as $nombreCategoria) {
+                if (mb_strtoupper(trim((string) $nombreCategoria), 'UTF-8') === $buscado) {
+                    $donde = $nombreCategoria;
+                }
+            }
+
+            if ($donde === null) {
+                $donde = Categoria::NOMBRE_MANO_DE_OBRA;
+                $grupos[$donde] = ['orden' => PHP_INT_MAX, 'lineas' => [], 'subtotal' => 0.0];
+            }
+        }
+
+        foreach ($grupos as $nombreCategoria => $grupo) {
+            $grupos[$nombreCategoria]['manoDeObra'] = $nombreCategoria === $donde;
+        }
+
+        return $grupos;
+    }
+
+    /**
+     * Conteos del pie del reporte SIGMA: cuantas lineas hay, cuantas apuntan
+     * a un item SIGMA y en cuantas de esas la partida congelada en la linea es
+     * distinta de la que tiene hoy el catalogo (IdGasto).
+     *
+     * @param array $grupos resultado de agruparPorCategoria()
+     * @return array{totalLineas: int, conSigma: int, partidasDistintas: int}
+     */
+    public function resumenSigma(array $grupos): array
+    {
+        $resumen = ['totalLineas' => 0, 'conSigma' => 0, 'partidasDistintas' => 0];
+
+        foreach ($grupos as $grupo) {
+            foreach ($grupo['lineas'] as $linea) {
+                $resumen['totalLineas']++;
+                $sigma = $linea->subcatalogoItem->catalogoSigma ?? null;
+
+                if ($sigma !== null) {
+                    $resumen['conSigma']++;
+
+                    if (trim((string) $sigma->IdGasto) !== trim((string) $linea->partida)) {
+                        $resumen['partidasDistintas']++;
+                    }
+                }
+            }
+        }
+
+        return $resumen;
     }
 
     /**

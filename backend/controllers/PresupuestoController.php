@@ -121,7 +121,7 @@ class PresupuestoController extends Controller
     public function actionPdf(int $id): Response
     {
         $presupuesto = $this->findModel($id);
-        $grupos = $this->service->agruparPorCategoria($presupuesto);
+        $grupos = $this->service->ubicarManoDeObra($presupuesto, $this->service->agruparPorCategoria($presupuesto));
 
         $html = $this->renderPartial('pdf', [
             'presupuesto' => $presupuesto,
@@ -154,6 +154,7 @@ class PresupuestoController extends Controller
         $html = $this->renderPartial('pdf-sigma', [
             'presupuesto' => $presupuesto,
             'grupos' => $grupos,
+            'resumen' => $this->service->resumenSigma($grupos),
         ]);
 
         $pdf = $this->service->generarPdfSigma($presupuesto, $html);

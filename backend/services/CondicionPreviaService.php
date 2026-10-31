@@ -98,6 +98,24 @@ class CondicionPreviaService
     }
 
     /**
+     * Trabajos complementarios guardados del proyecto agrupados por el nombre
+     * de su tipo, en el orden en que aparece cada uno (impreso de la lista de
+     * materiales).
+     *
+     * @return array<string, ProyectoCondicionPrevia[]>
+     */
+    public function agrupar(Proyecto $proyecto): array
+    {
+        $grupos = [];
+
+        foreach ($proyecto->condicionesPrevias as $condicion) {
+            $grupos[$condicion->tipo->nombre ?? ''][] = $condicion;
+        }
+
+        return $grupos;
+    }
+
+    /**
      * Unidades encargadas para el <datalist>: las sugeridas y las ya
      * escritas en cualquier proyecto, sin repetir (sin importar mayusculas).
      *

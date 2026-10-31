@@ -15,6 +15,7 @@ use backend\services\CondicionPreviaService;
 use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
 use backend\services\ListaItemsService;
+use backend\services\MaterialDticService;
 use backend\services\OrdenCambioService;
 use backend\services\ProyectoService;
 use backend\services\SubcatalogoItemService;
@@ -177,6 +178,9 @@ class ListaItemsController extends Controller
             'grupos' => $this->service->agrupar($proyecto),
             'documento' => $documento,
             'configuracion' => ConfiguracionPresupuesto::obtener(),
+            // Secciones sin precio, agrupadas: [subtitulo => materiales] y [tipo => trabajos].
+            'materiales' => (new MaterialDticService())->agrupar($proyecto),
+            'trabajos' => (new CondicionPreviaService())->agrupar($proyecto),
         ]);
 
         $pdf = $this->service->generarPdf($proyecto, $html, $documento['borrador']);

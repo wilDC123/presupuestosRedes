@@ -15,6 +15,14 @@ use yii\db\ActiveRecord;
  */
 class Categoria extends ActiveRecord
 {
+    /**
+     * Categoria donde el PDF del presupuesto pone la mano de obra de la DTIC
+     * (PresupuestoService::ubicarManoDeObra()). Se compara sin mayusculas ni
+     * espacios; si se renombra la categoria, la mano de obra de la DTIC sale
+     * en una tabla propia al final.
+     */
+    public const NOMBRE_MANO_DE_OBRA = 'Mano de obra';
+
     public static function tableName(): string
     {
         return 'redes.Categoria';

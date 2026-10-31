@@ -33,21 +33,13 @@ use yii\helpers\Html;
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string} $documento
  * @var backend\models\ConfiguracionPresupuesto $configuracion firmas de hoy (mientras no esta aprobada)
+ * @var array<string, backend\models\ProyectoMaterialDtic[]> $materiales [subtitulo => materiales], ver MaterialDticService::agrupar()
+ * @var array<string, backend\models\ProyectoCondicionPrevia[]> $trabajos [tipo => trabajos], ver CondicionPreviaService::agrupar()
  */
 
 $area = $proyecto->areaIntervencionTexto();
 $totalItems = array_sum(array_map(static fn ($grupo) => count($grupo['items']), $grupos));
 $numero = 0;
-
-// Secciones sin precio, agrupadas: [subtitulo => materiales] y [tipo => trabajos].
-$materiales = [];
-foreach ($proyecto->materialesDtic as $material) {
-    $materiales[$material->grupo][] = $material;
-}
-$trabajos = [];
-foreach ($proyecto->condicionesPrevias as $condicion) {
-    $trabajos[$condicion->tipo->nombre ?? ''][] = $condicion;
-}
 
 // Aprobada: su fecha y sus firmas copiadas; borrador (o fecha desconocida): la de hoy y la configuracion.
 $aprobacion = $documento['aprobacion'];

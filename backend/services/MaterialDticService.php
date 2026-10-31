@@ -102,4 +102,21 @@ class MaterialDticService
 
         unset($proyecto->materialesDtic);
     }
+
+    /**
+     * Materiales guardados del proyecto agrupados por subtitulo, en el orden
+     * en que aparece cada uno (impreso de la lista de materiales).
+     *
+     * @return array<string, ProyectoMaterialDtic[]>
+     */
+    public function agrupar(Proyecto $proyecto): array
+    {
+        $grupos = [];
+
+        foreach ($proyecto->materialesDtic as $material) {
+            $grupos[$material->grupo][] = $material;
+        }
+
+        return $grupos;
+    }
 }
