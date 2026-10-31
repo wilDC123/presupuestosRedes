@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\models\Proyecto;
 use backend\models\ProyectoCondicionPrevia;
 use backend\models\TipoCondicionPrevia;
 
@@ -55,6 +56,17 @@ class TipoCondicionPreviaService
         }
 
         return $query->select(['nombre', 'id'])->orderBy(['id' => SORT_ASC])->indexBy('id')->column();
+    }
+
+    /**
+     * Opciones del desplegable "Tipo" en la lista de ese proyecto: las
+     * activas mas las que sus trabajos complementarios ya usan.
+     *
+     * @return array<int, string>
+     */
+    public function opcionesParaProyecto(Proyecto $proyecto): array
+    {
+        return $this->opciones(array_map(static fn (ProyectoCondicionPrevia $c): int => (int) $c->idTipo, $proyecto->condicionesPrevias));
     }
 
     public function obtener(int $id): ?TipoCondicionPrevia

@@ -137,6 +137,21 @@ class ListaMaterialesTest extends Unit
         $this->assertArrayHasKey($tipo->id, $tipos->opciones([$tipo->id]));
     }
 
+    public function testElDesplegableDelProyectoConservaSusTiposDesactivados(): void
+    {
+        $usado = new TipoCondicionPrevia(['nombre' => 'Tipo test usado', 'activo' => false]);
+        $this->assertTrue($usado->save());
+        $sinUso = new TipoCondicionPrevia(['nombre' => 'Tipo test sin uso', 'activo' => false]);
+        $this->assertTrue($sinUso->save());
+        $proyecto = $this->proyecto();
+        (new ProyectoCondicionPrevia(['idProyecto' => $proyecto->id, 'idTipo' => $usado->id, 'descripcion' => 'x']))->save(false);
+
+        $opciones = (new TipoCondicionPreviaService())->opcionesParaProyecto(Proyecto::findOne($proyecto->id));
+
+        $this->assertArrayHasKey($usado->id, $opciones);
+        $this->assertArrayNotHasKey($sinUso->id, $opciones);
+    }
+
     public function testElImpresoDeLaListaLlevaLasSeccionesSoloSiTienenFilas(): void
     {
         $proyecto = $this->proyecto();
