@@ -70,9 +70,7 @@ class ListaItemsController extends Controller
         $proyecto = $this->findProyecto($id);
         $peticion = Yii::$app->request;
         $errores = [];
-        $enviados = null;
-        $condicionesEnviadas = null;
-        $materialesEnviados = null;
+        $enviado = [];
 
         if ($peticion->isPost) {
             $items = [];
@@ -99,13 +97,28 @@ class ListaItemsController extends Controller
             }
 
             // No se guardo: se vuelve a mostrar lo que el usuario envio.
-            $enviados = $items;
-            $condicionesEnviadas = array_values(array_filter((array) $condiciones, 'is_array'));
-            $materialesEnviados = array_values(array_filter((array) $materiales, 'is_array'));
+            $enviado = [
+                'items' => $items,
+                'condiciones' => array_values(array_filter((array) $condiciones, 'is_array')),
+                'materiales' => array_values(array_filter((array) $materiales, 'is_array')),
+            ];
         }
 
+        return $this->render('index', $this->datosPantalla($proyecto, $errores, $enviado));
+    }
+
+    /**
+     * Todo lo que necesita la vista "index". Se separa de actionIndex() para
+     * que la accion solo atienda el formulario (como en ElaborarPresupuestoController).
+     *
+     * @param string[] $errores los del guardado que fallo ([] al abrir la pantalla)
+     * @param array{items?: array, condiciones?: array, materiales?: array} $enviado lo que el
+     *        usuario envio si no se pudo guardar ([] = mostrar lo guardado)
+     */
+    private function datosPantalla(Proyecto $proyecto, array $errores, array $enviado): array
+    {
         $editable = $this->service->puedeEditarse($proyecto);
-        $grupos = $this->service->agrupar($proyecto, $enviados);
+        $grupos = $this->service->agrupar($proyecto, $enviado['items'] ?? null);
         $itemsDeLaLista = array_merge([], ...array_column($grupos, 'items'));
         $emisiones = new EspecificacionEmisionService();
         $especificaciones = new EspecificacionService();
@@ -114,7 +127,7 @@ class ListaItemsController extends Controller
             ? $especificaciones->selector($this->service->especificacionesEnlazadas($proyecto))
             : EspecificacionService::SELECTOR_VACIO;
 
-        return $this->render('index', [
+        return [
             'proyecto' => $proyecto,
             'pasos' => (new ProyectoService())->pasos($proyecto),
             'grupos' => $grupos,
@@ -138,15 +151,15 @@ class ListaItemsController extends Controller
             'opcionesPorItem' => $editable ? $especificaciones->opcionesPorItem($selector, $itemsDeLaLista) : [],
             'ordenes' => $this->ordenes->historial($proyecto),
             // Secciones sin precio: lo guardado o lo que se envio si no se pudo guardar.
-            'materiales' => $materialesEnviados ?? array_map(static fn ($m) => $m->fila(), $proyecto->materialesDtic),
+            'materiales' => $enviado['materiales'] ?? array_map(static fn ($m) => $m->fila(), $proyecto->materialesDtic),
             // Subtitulos para lo escrito a mano (lo del subcatalogo usa la categoria del item,
             // que el buscador toma del panel "Subcatálogo de redes").
             'categorias' => $editable ? array_values((new CategoriaService())->opciones()) : [],
             'unidades' => $editable ? (new UnidadMedidaService())->opcionesPorAbreviatura() : [],
-            'condiciones' => $condicionesEnviadas ?? array_map(static fn ($c) => $c->fila(), $proyecto->condicionesPrevias),
-            'tiposCondicion' => (new TipoCondicionPreviaService())->opciones(array_map(static fn ($c) => (int) $c->idTipo, $proyecto->condicionesPrevias)),
+            'condiciones' => $enviado['condiciones'] ?? array_map(static fn ($c) => $c->fila(), $proyecto->condicionesPrevias),
+            'tiposCondicion' => (new TipoCondicionPreviaService())->opcionesParaProyecto($proyecto),
             'sugerenciasUnidadEncargada' => $editable ? (new CondicionPreviaService())->sugerenciasUnidad() : [],
-        ]);
+        ];
     }
 
     /**
