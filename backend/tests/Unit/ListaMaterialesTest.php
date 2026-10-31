@@ -12,7 +12,9 @@ use backend\models\ProyectoCondicionPrevia;
 use backend\models\ProyectoMaterialDtic;
 use backend\models\SubcatalogoItem;
 use backend\models\TipoCondicionPrevia;
+use backend\services\CondicionPreviaService;
 use backend\services\ListaItemsService;
+use backend\services\MaterialDticService;
 use backend\services\OrdenCambioService;
 use backend\services\TipoCondicionPreviaService;
 use Codeception\Test\Unit;
@@ -152,6 +154,25 @@ class ListaMaterialesTest extends Unit
         $this->assertArrayNotHasKey($sinUso->id, $opciones);
     }
 
+    public function testLasSeccionesSeAgrupanParaElImpreso(): void
+    {
+        $proyecto = $this->proyecto();
+        $tipo = new TipoCondicionPrevia(['nombre' => 'Tipo test agrupar']);
+        $this->assertTrue($tipo->save());
+        foreach ([['Cables', 'A'], ['Otros', 'B'], ['Cables', 'C']] as $orden => [$grupo, $descripcion]) {
+            (new ProyectoMaterialDtic(['idProyecto' => $proyecto->id, 'grupo' => $grupo, 'descripcion' => $descripcion, 'cantidad' => 1, 'orden' => $orden]))->save(false);
+        }
+        (new ProyectoCondicionPrevia(['idProyecto' => $proyecto->id, 'idTipo' => $tipo->id, 'descripcion' => 'x', 'orden' => 0]))->save(false);
+        $proyecto = Proyecto::findOne($proyecto->id);
+
+        $materiales = (new MaterialDticService())->agrupar($proyecto);
+        $this->assertSame(['Cables', 'Otros'], array_keys($materiales));
+        $this->assertSame(['A', 'C'], array_map(static fn ($m) => $m->descripcion, $materiales['Cables']));
+
+        $trabajos = (new CondicionPreviaService())->agrupar($proyecto);
+        $this->assertSame(['Tipo test agrupar'], array_keys($trabajos));
+    }
+
     public function testElImpresoDeLaListaLlevaLasSeccionesSoloSiTienenFilas(): void
     {
         $proyecto = $this->proyecto();
@@ -163,6 +184,8 @@ class ListaMaterialesTest extends Unit
             'grupos' => $this->lista->agrupar(Proyecto::findOne($proyecto->id)),
             'documento' => $this->lista->documento(Proyecto::findOne($proyecto->id)),
             'configuracion' => ConfiguracionPresupuesto::obtener(),
+            'materiales' => (new MaterialDticService())->agrupar(Proyecto::findOne($proyecto->id)),
+            'trabajos' => (new CondicionPreviaService())->agrupar(Proyecto::findOne($proyecto->id)),
         ]);
 
         $this->assertStringNotContainsString(ProyectoMaterialDtic::TITULO, $html());

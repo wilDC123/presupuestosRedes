@@ -37,7 +37,8 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $presupuesto
- * @var array $grupos Ver PresupuestoService::agruparPorCategoria()
+ * @var array $grupos Ver PresupuestoService::agruparPorCategoria(), con la mano de obra ya
+ *            ubicada por PresupuestoService::ubicarManoDeObra() (clave 'manoDeObra' de cada grupo)
  * @var float $totalGeneral
  * @var backend\models\ConfiguracionPresupuesto $configuracion nota y firmas (editables)
  * @var string $oficio "DTIC Of. Nº 598/2026" (formato de la configuracion de la carta,
@@ -48,24 +49,6 @@ $proyecto = $presupuesto->proyecto;
 
 $area = $proyecto->areaIntervencionTexto();
 $numero = 0;
-
-// La fila de mano de obra de la DTIC va dentro de la categoria "Mano de
-// obra" si el presupuesto ya tiene una (mano de obra contratada); si no, en
-// una tabla "Mano de obra" propia, al final y con subtotal 0.00.
-$grupoManoDeObra = null;
-
-if ($presupuesto->manoDeObra !== null) {
-    foreach (array_keys($grupos) as $nombreCategoria) {
-        if (mb_strtoupper(trim((string) $nombreCategoria), 'UTF-8') === 'MANO DE OBRA') {
-            $grupoManoDeObra = $nombreCategoria;
-        }
-    }
-
-    if ($grupoManoDeObra === null) {
-        $grupoManoDeObra = 'Mano de obra';
-        $grupos[$grupoManoDeObra] = ['orden' => PHP_INT_MAX, 'lineas' => [], 'subtotal' => 0.0];
-    }
-}
 ?>
 <!DOCTYPE html>
 <html>
@@ -240,7 +223,7 @@ if ($presupuesto->manoDeObra !== null) {
                         <td class="numero" width="12%"><?= Yii::$app->formatter->asDecimal($linea->precioTotal, 2) ?></td>
                     </tr>
                 <?php endforeach; ?>
-                <?php if ($nombreCategoria === $grupoManoDeObra): ?>
+                <?php if ($grupo['manoDeObra']): ?>
                     <tr>
                         <td class="numero" width="5%"><?= ++$numero ?></td>
                         <td width="45%">

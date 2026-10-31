@@ -20,27 +20,13 @@ use yii\helpers\Html;
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $presupuesto
  * @var array $grupos Ver PresupuestoService::agruparPorCategoria()
+ * @var array{totalLineas: int, conSigma: int, partidasDistintas: int} $resumen Ver PresupuestoService::resumenSigma()
  */
 
 $proyecto = $presupuesto->proyecto;
 $formato = Yii::$app->formatter;
 $numero = 0;
-$conSigma = 0;
-$partidasDistintas = 0;
-
-foreach ($grupos as $grupo) {
-    foreach ($grupo['lineas'] as $linea) {
-        $sigma = $linea->subcatalogoItem->catalogoSigma ?? null;
-        if ($sigma !== null) {
-            $conSigma++;
-            if (trim((string) $sigma->IdGasto) !== trim((string) $linea->partida)) {
-                $partidasDistintas++;
-            }
-        }
-    }
-}
-
-$totalLineas = array_sum(array_map(static fn (array $grupo) => count($grupo['lineas']), $grupos));
+['totalLineas' => $totalLineas, 'conSigma' => $conSigma, 'partidasDistintas' => $partidasDistintas] = $resumen;
 ?>
 <!DOCTYPE html>
 <html>
