@@ -53,9 +53,16 @@ class SolicitudFechaEnvioTest extends Unit
         $html = (new \yii\web\View())->renderFile(\Yii::getAlias('@backend/views/solicitud-cotizacion/pdf.php'), [
             'solicitud' => $this->solicitud,
             'configuracion' => \backend\models\ConfiguracionSolicitudCotizacion::obtener(),
-            'configuracionNet' => \backend\models\ConfiguracionEspecificacion::obtener(),
         ]);
         $this->assertStringContainsString('23/10/2026', $html);
+
+        // Solicitud de proforma (2026-10-30, paso 10): lista sencilla y firma del proveedor, sin precios.
+        $this->assertStringContainsString('SOLICITUD DE PROFORMA DE COTIZACIÓN', $html);
+        $this->assertStringContainsString('Firma y sello del proveedor', $html);
+        $this->assertStringContainsString('Nombre / empresa', $html);
+        foreach (['Precio unitario', 'TOTAL Bs.', 'NIT', 'Validez de la oferta'] as $quitado) {
+            $this->assertStringNotContainsString($quitado, $html);
+        }
     }
 
     public function testDejarlaVaciaVuelveALaDelDiaDeImpresion(): void

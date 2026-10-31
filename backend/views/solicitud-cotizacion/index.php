@@ -27,6 +27,7 @@ use yii\web\JqueryAsset;
  * @var backend\models\ProyectoItem[] $sinAsignar items de la lista sin solicitud
  * @var bool $editable Ver SolicitudCotizacionService::puedeEditarse()
  * @var array<int, string> $modelosSugeridos [idProyectoItem => modelo sugerido de su especificacion]
+ * @var array<int, int> $especificacionesPorSolicitud [idSolicitud => formularios de especificación vigentes] (botón "Imprimir con especificaciones")
  */
 
 if ($editable) {
@@ -190,7 +191,18 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                         </div>
                         <div class="rd-acciones">
                             <span class="kicker"><?= count($solicitud->items) ?> ítems</span>
-                            <?= Html::a('Imprimir', ['imprimir', 'id' => $solicitud->id], ['class' => 'btn btn-outline btn-sm', 'target' => '_blank']) ?>
+                            <?= Html::a('Imprimir', ['imprimir', 'id' => $solicitud->id], [
+                                'class' => 'btn btn-outline btn-sm',
+                                'target' => '_blank',
+                                'title' => 'Solo la solicitud de proforma de cotización',
+                            ]) ?>
+                            <?php if (($especificacionesPorSolicitud[$solicitud->id] ?? 0) > 0): ?>
+                                <?= Html::a('Imprimir con especificaciones (' . $especificacionesPorSolicitud[$solicitud->id] . ')', ['imprimir', 'id' => $solicitud->id, 'especificaciones' => 1], [
+                                    'class' => 'btn btn-outline btn-sm',
+                                    'target' => '_blank',
+                                    'title' => 'La solicitud y, al final, el formulario de especificación vigente de cada ítem que lo tiene',
+                                ]) ?>
+                            <?php endif; ?>
                             <?php if ($editable && !$conCotizaciones): ?>
                                 <?= Html::a('Eliminar', ['eliminar', 'id' => $solicitud->id], [
                                     'class' => 'btn btn-danger btn-sm',

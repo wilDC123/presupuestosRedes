@@ -281,7 +281,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   2026-10-21 SÍ cita el NET vigente junto al nombre del ítem y lleva AL FINAL del mismo PDF el
   formulario NET de cada ítem, cada uno en hoja nueva y con su marca de agua
   (`SolicitudCotizacionService::emisionesVigentes()` y `generarPdf()`; el 2026-10-20 se había
-  quitado; se volvió a pedir para que el proveedor reciba todo junto). En `generarVarios()` cada documento
+  quitado; se volvió a pedir para que el proveedor reciba todo junto). Desde el 2026-10-30 (paso 10; la
+  transcripción es ambigua) los formularios van SOLO con el botón "Imprimir con especificaciones (N)" de la lista
+  de solicitudes (`solicitud-cotizacion/imprimir?especificaciones=1`); "Imprimir" da solo la solicitud. En `generarVarios()` cada documento
   después del primero empieza sin la cabecera `@page` del anterior y con la numeración reiniciada.
   Solo se enlazan fichas activas; una en uso o
   emitida no se elimina, se desactiva
@@ -311,6 +313,18 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   "Configuración del documento" (`solicitud-cotizacion/configuracion`). La solicitud NO guarda
   copia: un cambio se ve también al reimprimir las anteriores. Título, columnas y bloque del
   proveedor siguen fijos en `backend/views/solicitud-cotizacion/pdf.php`
+- SOLICITUD DE PROFORMA DE COTIZACIÓN (revisión del 2026-10-29, paso 10, decidido con el desarrollador el 2026-10-30):
+  el PDF de la solicitud es un documento formal para el PROVEEDOR: título "SOLICITUD DE PROFORMA DE COTIZACIÓN",
+  la misma cabecera de hoy (USFX y DTIC, sin código del lineamiento: referencia RD-PI-PT-022 / SC-01, unidad, fecha,
+  página), una lista sencilla N.° | Descripción | Unidad | Cantidad (en la descripción siguen el código ET, la
+  marca / modelo de referencia y la observación) y abajo el espacio para el proveedor: firma y sello, nombre /
+  empresa y fecha. SIN columnas de precio ni marca ofertada, sin TOTAL, NIT, validez ni tiempo de entrega (los trae
+  la proforma que devuelve el proveedor) y SIN firmas de la DTIC. Archivo `solicitud_proforma_…pdf`. Las pantallas
+  siguen diciendo "Solicitud de cotización". La migración `m261030_200322_instrucciones_solicitud_de_proforma`
+  cambió el texto de instrucciones por defecto ("Se solicita enviar su proforma de cotización…") solo si nadie lo
+  había editado. PENDIENTE (Ing. de DTIC): ¿se adjuntan las especificaciones? (hoy, a elección al imprimir); en la
+  reunión también se nombró la solicitud entre los documentos "a normar": hoy no lleva código del lineamiento; la
+  solicitud se despacha con una NOTA que el sistema no genera
 - Fecha de la solicitud de cotización (2026-10-24): `SolicitudCotizacion.fechaEnvio` (date, opcional,
   con calendario en "Cambiar nombre, nota o fecha de envío"; migración
   `m261025_014520_agregar_fecha_envio_a_solicitud_cotizacion`) es la que sale en el PDF
@@ -503,7 +517,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_162507_quitar_pie_de_configuracion_presupuesto`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261030_200322_instrucciones_solicitud_de_proforma`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).

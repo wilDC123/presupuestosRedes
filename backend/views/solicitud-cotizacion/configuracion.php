@@ -47,8 +47,9 @@ $this->params['breadcrumbs'][] = 'Solicitud de cotización';
             <?= $form->field($configuracion, 'textoNotaFinal')->textarea(['rows' => 2, 'maxlength' => 500])
                 ->hint('Opcional. Sale antes de la firma del proveedor.') ?>
             <p class="rd-nota mb-0">
-                El título "SOLICITUD DE COTIZACIÓN", las columnas de la tabla y los datos que llena el proveedor (NIT,
-                validez, tiempo de entrega, firma) son fijos. La nota de cada solicitud se escribe en la propia solicitud.
+                El título "SOLICITUD DE PROFORMA DE COTIZACIÓN", las columnas de la tabla (N.°, descripción, unidad,
+                cantidad) y el espacio para el proveedor (firma y sello, nombre / empresa, fecha) son fijos. La nota de
+                cada solicitud se escribe en la propia solicitud.
             </p>
         </div>
     </div>
