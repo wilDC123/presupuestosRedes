@@ -377,6 +377,23 @@ class SolicitudCotizacionService
     }
 
     /**
+     * Cuantos formularios de especificación vigentes saldrian al imprimir
+     * cada solicitud del proyecto "con especificaciones".
+     *
+     * @return array<int, int> [idSolicitud => cantidad]
+     */
+    public function contarEmisionesVigentes(Proyecto $proyecto): array
+    {
+        $conteo = [];
+
+        foreach ($this->listar($proyecto) as $solicitud) {
+            $conteo[$solicitud->id] = count($this->emisionesVigentes($solicitud));
+        }
+
+        return $conteo;
+    }
+
+    /**
      * Formularios de especificación VIGENTES de los items de la solicitud, en el orden en
      * que salen en el documento. Van al final del PDF para que el proveedor
      * sepa que se le pide. Un item sin especificacion (o con su emision
@@ -417,7 +434,7 @@ class SolicitudCotizacionService
 
         return [
             'contenido' => (new PresupuestoPdfGenerator())->generarVarios($documentos),
-            'nombreArchivo' => 'solicitud_cotizacion_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf',
+            'nombreArchivo' => 'solicitud_proforma_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf',
         ];
     }
 

@@ -73,6 +73,8 @@ class SolicitudCotizacionController extends Controller
             'sinAsignar' => $this->service->sinAsignar($proyecto),
             'editable' => $this->service->puedeEditarse($proyecto),
             'modelosSugeridos' => $this->service->modelosSugeridos($proyecto),
+            // Para el boton "Imprimir con especificaciones (N)": [idSolicitud => N].
+            'especificacionesPorSolicitud' => $this->service->contarEmisionesVigentes($proyecto),
         ]);
     }
 
@@ -252,26 +254,26 @@ class SolicitudCotizacionController extends Controller
     }
 
     /**
-     * Documento de la solicitud en PDF, para imprimir o enviar al proveedor.
-     * Se abre en el navegador ('inline') en vez de descargarse.
+     * "Solicitud de proforma de cotización" en PDF, para imprimir o enviar al
+     * proveedor. Se abre en el navegador ('inline') en vez de descargarse.
      *
      * @param int $id id de la solicitud
+     * @param int $especificaciones 1 = con los formularios de especificación
+     *        vigentes al final (botón "Imprimir con especificaciones"); 0 = solo
+     *        la solicitud. Se elige en cada impresión (2026-10-30, paso 10).
      */
-    public function actionImprimir(int $id): Response
+    public function actionImprimir(int $id, int $especificaciones = 0): Response
     {
         $solicitud = $this->findSolicitud($id);
 
         $html = $this->renderPartial('pdf', [
             'solicitud' => $solicitud,
             'configuracion' => ConfiguracionSolicitudCotizacion::obtener(),
-            // Los plazos (validez de la oferta, tiempo de entrega) son los
-            // mismos del formulario de especificación: se configuran en un solo lugar.
-            'configuracionNet' => ConfiguracionEspecificacion::obtener(),
         ]);
 
-        // Al final, el formulario de especificación de cada item que lo tiene: el proveedor
-        // recibe en un solo archivo lo que se le pide y como se le pide.
-        $formularios = array_map(fn ($emision) => [
+        // Si se pidio, al final el formulario de especificación de cada item que lo tiene: el
+        // proveedor recibe en un solo archivo lo que se le pide y como se le pide.
+        $formularios = $especificaciones !== 1 ? [] : array_map(fn ($emision) => [
             'emision' => $emision,
             'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision]),
         ], $this->service->emisionesVigentes($solicitud));

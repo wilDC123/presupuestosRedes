@@ -5,17 +5,24 @@ declare(strict_types=1);
 use yii\helpers\Html;
 
 /**
- * HTML fuente del documento de una solicitud de cotizacion. Se renderiza con
+ * HTML fuente de la "SOLICITUD DE PROFORMA DE COTIZACIÓN". Se renderiza con
  * renderPartial() (sin el layout del sitio) y se le pasa a mPDF -- ver
  * SolicitudCotizacionController::actionImprimir().
  *
- * Las columnas de precio van EN BLANCO: las llena el proveedor.
+ * Desde el 2026-10-30 (revision del Ing. de DTIC del 2026-10-29, paso 10) es
+ * una lista SENCILLA para el proveedor: N.°, Descripcion, Unidad y Cantidad
+ * de lo que se necesita y, abajo, el espacio para su firma (firma y sello,
+ * nombre / empresa, fecha). Sin columnas de precio ni marca ofertada, sin
+ * NIT, validez ni tiempo de entrega: eso lo trae la proforma que devuelve el
+ * proveedor. Ninguna firma de la DTIC. Mantiene su cabecera (USFX y DTIC),
+ * sin codigo del lineamiento.
  *
  * Al proveedor solo le interesa la unidad que compra (la unidad
  * solicitante): el rubro, el nombre del proyecto y el area de intervencion son datos
  * internos de la DTIC y no salen en el documento. La especificacion tecnica
- * SI: cada item cita el codigo NET de su emision vigente, y los formularios
- * van al final del mismo PDF (SolicitudCotizacionService::generarPdf()).
+ * SI: cada item cita el codigo ET de su emision vigente, y los formularios
+ * van al final del mismo PDF si se imprime "con especificaciones"
+ * (SolicitudCotizacionService::generarPdf()).
  *
  * CSS deliberadamente simple, igual que los otros PDF: mPDF interpreta un
  * subconjunto de CSS pensado para documentos.
@@ -23,7 +30,6 @@ use yii\helpers\Html;
  * @var yii\web\View $this
  * @var backend\models\SolicitudCotizacion $solicitud
  * @var backend\models\ConfiguracionSolicitudCotizacion $configuracion textos fijos editables por el encargado
- * @var backend\models\ConfiguracionEspecificacion $configuracionNet de aqui salen los plazos minimo/maximo
  */
 
 $unidad = $solicitud->proyecto->unidadDependencia;
@@ -74,25 +80,6 @@ $numero = 0;
         font-size: 9pt;
         color: #333;
     }
-    tr.total td {
-        font-weight: bold;
-        text-align: right;
-        background-color: #f2f2f2;
-    }
-    table.proveedor {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 16px;
-    }
-    table.proveedor td {
-        padding: 7px 4px;
-        width: 50%;
-        vertical-align: top;
-    }
-    .indicacion {
-        font-size: 9pt;
-        margin-top: 2px;
-    }
     .nota-final {
         margin-top: 12px;
         font-weight: bold;
@@ -114,7 +101,7 @@ $numero = 0;
 
 <?php // Las dos primeras lineas son las de "Configuración del documento". ?>
 <?= $this->render('//pdf/_cabecera', [
-    'titulo' => 'SOLICITUD DE COTIZACIÓN',
+    'titulo' => 'SOLICITUD DE PROFORMA DE COTIZACIÓN',
     'numero' => 'N.° ' . $solicitud->codigo(),
     'facultad' => $unidad,
     // La fecha de envio; sin ella, la del dia en que se imprime.
@@ -136,13 +123,10 @@ $numero = 0;
     <table class="items">
         <thead>
             <tr>
-                <th width="5%">N.°</th>
+                <th width="6%">N.°</th>
                 <th>Descripción</th>
-                <th width="10%">Unidad</th>
-                <th width="10%">Cantidad</th>
-                <th width="17%">Marca / modelo ofertado</th>
-                <th width="12%">Precio unitario</th>
-                <th width="12%">Precio total</th>
+                <th width="12%">Unidad</th>
+                <th width="12%">Cantidad</th>
             </tr>
         </thead>
         <tbody>
@@ -166,45 +150,21 @@ $numero = 0;
                     </td>
                     <td><?= Html::encode((string) ($item->unidadMedida ?? '')) ?></td>
                     <td class="numero"><?= Yii::$app->formatter->asDecimal($item->cantidad ?? 0, 2) ?></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
-        <tfoot>
-            <tr class="total">
-                <td colspan="6">TOTAL Bs.:</td>
-                <td></td>
-            </tr>
-        </tfoot>
     </table>
 <?php endif; ?>
-
-<table class="proveedor">
-    <tr>
-        <td><strong>Proveedor:</strong> ______________________________</td>
-        <td><strong>NIT:</strong> ______________________________</td>
-    </tr>
-    <tr>
-        <td>
-            <strong>Validez de la oferta:</strong> __________ días
-            <div class="indicacion">(mínimo <?= (int) $configuracionNet->validezOfertaDias ?> días)</div>
-        </td>
-        <td>
-            <strong>Tiempo de entrega:</strong> __________ días
-            <div class="indicacion">(máximo <?= (int) $configuracionNet->tiempoEntregaDias ?> días)</div>
-        </td>
-    </tr>
-</table>
 
 <?php if (!empty($configuracion->textoNotaFinal)): ?>
     <div class="texto nota-final"><?= nl2br(Html::encode($configuracion->textoNotaFinal)) ?></div>
 <?php endif; ?>
 
+<?php // Solo firma el proveedor: ninguna firma de la DTIC, el documento es para el proveedor. ?>
 <div class="firmas">
     <div class="firma-linea"></div>
     <div class="firma-etiqueta">Firma y sello del proveedor</div>
+    <div class="firma-etiqueta">Nombre / empresa: ________________________________</div>
     <div class="firma-etiqueta">Fecha: ________________________________</div>
 </div>
 
