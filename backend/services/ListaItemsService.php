@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\components\UsuarioActual;
 use backend\models\ConfiguracionPresupuesto;
 use backend\models\Especificacion;
 use backend\models\HistorialProyecto;
@@ -394,7 +395,7 @@ class ListaItemsService
             'idProyecto' => $proyecto->id,
             'version' => $ultima + 1,
             'fechaAprobacion' => (new DateTimeImmutable('today'))->format('Y-m-d'),
-            'usuario' => $historial->usuarioActual(),
+            'usuario' => UsuarioActual::nombre(),
         ]);
 
         // COPIA de las firmas: una version aprobada no cambia aunque despues se edite la configuracion.

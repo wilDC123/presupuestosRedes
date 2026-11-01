@@ -18,6 +18,7 @@ declare(strict_types=1);
  * @var yii\web\View $this
  */
 
+use backend\components\UsuarioActual;
 use yii\helpers\Html;
 
 $controladorActual = Yii::$app->controller->id;
@@ -68,7 +69,7 @@ if ($activa === null) {
     }
 }
 
-$usuario = Yii::$app->user->identity?->username;
+$usuario = UsuarioActual::nombre();
 $indice = 0;
 ?>
 <aside class="rd-sidebar">
