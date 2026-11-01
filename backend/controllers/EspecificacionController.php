@@ -8,6 +8,7 @@ use backend\components\ArchivoSubido;
 use backend\models\ConfiguracionEspecificacion;
 use backend\models\Especificacion;
 use backend\models\EspecificacionVersion;
+use backend\models\Proceso;
 use backend\services\CategoriaService;
 use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
@@ -192,6 +193,7 @@ class EspecificacionController extends Controller
 
         $html = $this->renderPartial('formulario-pdf', [
             'emision' => $emision,
+            'proceso' => Proceso::nombreDe($emision->codigoProceso()),
         ]);
         $pdf = $emisiones->generarPdf($emision, $html);
 

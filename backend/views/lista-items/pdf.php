@@ -35,6 +35,8 @@ use yii\helpers\Html;
  * @var backend\models\ConfiguracionPresupuesto $configuracion firmas de hoy (mientras no esta aprobada)
  * @var array<string, backend\models\ProyectoMaterialDtic[]> $materiales [subtitulo => materiales], ver MaterialDticService::agrupar()
  * @var array<string, backend\models\ProyectoCondicionPrevia[]> $trabajos [tipo => trabajos], ver CondicionPreviaService::agrupar()
+ * @var string $proceso nombre del proceso para la cabecera: el codigo es el del proyecto (RD-PI-PT-NNN), que
+ *             siempre lleva PI; lo calcula el controlador
  */
 
 $area = $proyecto->areaIntervencionTexto();
@@ -134,8 +136,7 @@ $firmas = $aprobacion ?? $configuracion;
     'titulo' => backend\models\ListaMaterialesAprobacion::TITULO,
     'codigo' => $proyecto->codigo ?: '—',
     'version' => $documento['version'],
-    // El codigo es el del proyecto (RD-PI-PT-NNN), que siempre lleva PI.
-    'proceso' => backend\models\Proceso::nombreDe(backend\models\CorrelativoDocumento::PROCESO),
+    'proceso' => $proceso,
     // La de CREACION de esta version (la de aprobacion va abajo, en el control de elaboracion).
     'fecha' => $documento['fechaCreacion'] ?: '—',
 ]) ?>

@@ -188,9 +188,20 @@ class EspecificacionEmision extends ActiveRecord
         return CorrelativoDocumento::codigo(
             CorrelativoDocumento::TIPO_ESPECIFICACION,
             (int) $this->numeroNet,
-            $this->proceso ?: CorrelativoDocumento::PROCESO,
+            $this->codigoProceso(),
             (int) $this->anio
         );
+    }
+
+    /**
+     * Codigo del proceso congelado al emitir ("PI", "GD"...); PI si la
+     * emision no lo tiene (las de antes del paso 4). Como
+     * Presupuesto::codigoProceso(): lo usan codigo() y la linea "Proceso:"
+     * de la cabecera del formulario.
+     */
+    public function codigoProceso(): string
+    {
+        return $this->proceso ?: CorrelativoDocumento::PROCESO;
     }
 
     /**
