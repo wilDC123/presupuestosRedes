@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\controllers;
 
+use backend\components\UsuarioActual;
 use backend\models\ConfiguracionEspecificacion;
 use backend\models\ConfiguracionPresupuesto;
 use backend\models\CorrelativoDocumento;
@@ -79,7 +80,7 @@ class ListaItemsController extends Controller
             $condiciones = $peticion->post('condiciones', []);
             $materiales = $peticion->post('materiales', []);
 
-            if ($this->service->guardar($proyecto, $peticion->post('items', []), $errores, $items, $this->usuario(), $condiciones, $materiales)) {
+            if ($this->service->guardar($proyecto, $peticion->post('items', []), $errores, $items, UsuarioActual::nombre(), $condiciones, $materiales)) {
                 if ($peticion->post('accion') !== 'enviar') {
                     Yii::$app->session->setFlash('success', 'Lista guardada.');
                 } elseif ($this->service->enviarACotizacion($proyecto)) {
@@ -230,7 +231,9 @@ class ListaItemsController extends Controller
     {
         $proyecto = $this->findProyecto($id);
         $orden = new OrdenCambio();
-        $usuario = (string) (Yii::$app->user->identity->username ?? 'desconocido');
+        // solicitadoPor no admite vacio en la base. Siempre hay sesion (toda
+        // la aplicacion la exige), asi que en la practica nunca es 'desconocido'.
+        $usuario = UsuarioActual::nombre() ?? 'desconocido';
 
         if ($this->ordenes->solicitarCambioLista($proyecto, $orden, Yii::$app->request->post(), $usuario)) {
             Yii::$app->session->setFlash('success', 'Orden de cambio registrada. La lista volvió a edición.');
@@ -263,7 +266,7 @@ class ListaItemsController extends Controller
             'lugarEntrega' => $peticion->post('lugarEntrega'),
             'validezOfertaDias' => $peticion->post('validezOfertaDias'),
             'tiempoEntregaDias' => $peticion->post('tiempoEntregaDias'),
-        ], $this->usuario());
+        ], UsuarioActual::nombre());
 
         if ($resultado['error'] !== null) {
             Yii::$app->session->setFlash('error', $resultado['error']);
@@ -272,16 +275,6 @@ class ListaItemsController extends Controller
         }
 
         return $this->redirect(['index', 'id' => $proyecto->id]);
-    }
-
-    /**
-     * Quien queda como "elaborado por" en los formularios de especificación.
-     */
-    private function usuario(): ?string
-    {
-        $identidad = Yii::$app->user->identity;
-
-        return $identidad !== null ? (string) $identidad->username : null;
     }
 
     protected function findProyecto(int $id): Proyecto

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\controllers;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\components\UsuarioActual;
 use backend\models\Proyecto;
 use backend\services\HistorialService;
 use backend\services\ListaItemsService;
@@ -102,12 +103,11 @@ class ProyectoController extends Controller
     public function actionFicha(int $id): Response
     {
         $model = $this->findModel($id);
-        $identidad = Yii::$app->user->identity;
 
         $html = $this->renderPartial('ficha-pdf', [
             'model' => $model,
             'datos' => $this->service->datosFicha($model),
-            'usuario' => $identidad !== null ? (string) $identidad->username : null,
+            'usuario' => UsuarioActual::nombre(),
         ]);
 
         return Yii::$app->response->sendContentAsFile(

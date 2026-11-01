@@ -569,7 +569,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   para que se copien a la lista al cargar una plantilla
 - PENDIENTE (DTIC): integrar el ingreso con el sistema de usuarios institucional; mientras
   tanto, usuarios temporales en `redes.Usuario`. Al integrarlo se cambia `identityClass` en
-  `backend/config/main.php`; el resto del módulo solo lee `identity->username`
+  `backend/config/main.php`; el resto del módulo lee el usuario SOLO con
+  `backend\components\UsuarioActual::nombre()` (2026-10-31), que es el único lugar que usa `identity->username`
   `redes.Usuario` NO es la "gestión de usuarios y roles propia" que está fuera de alcance: sin
   roles, sin pantallas, solo para poder ingresar al servidor de prueba. Informarlo al tutor
 - Conexión a la BD en producción no resuelta: Windows Auth funciona en entorno local, pero en

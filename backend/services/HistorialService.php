@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\components\UsuarioActual;
 use backend\models\HistorialProyecto;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
 use backend\models\ProyectoParticipante;
 use DateTimeImmutable;
-use Throwable;
-use Yii;
 
 /**
  * Capa de Servicio del historial del proyecto (revision del 2026-10-29,
@@ -36,7 +35,8 @@ class HistorialService
     {
         $fila = new HistorialProyecto([
             'fecha' => (new DateTimeImmutable('now'))->format('Y-m-d H:i:s'),
-            'usuario' => $this->usuarioActual(),
+            // Sin sesion (consola, tests): el hecho se registra sin usuario.
+            'usuario' => UsuarioActual::nombre(),
             'idProyecto' => $proyecto->id,
             'codigoProyecto' => $proyecto->codigo,
             'accion' => $accion,
@@ -144,19 +144,4 @@ class HistorialService
         return trim($valor) === '' ? '—' : trim($valor);
     }
 
-    /** Nombre del usuario con sesion, o null (consola, tests). Tambien lo usa ListaItemsService. */
-    public function usuarioActual(): ?string
-    {
-        try {
-            if (!Yii::$app->has('user')) {
-                return null;
-            }
-            $identidad = Yii::$app->user->identity;
-        } catch (Throwable) {
-            // Sin sesion (consola, tests): el hecho se registra sin usuario.
-            return null;
-        }
-
-        return $identidad !== null ? (string) $identidad->username : null;
-    }
 }
