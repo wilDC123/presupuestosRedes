@@ -54,7 +54,8 @@ class SolicitudCotizacionService
     {
         return SolicitudCotizacion::find()
             ->andWhere(['idProyecto' => $proyecto->id])
-            ->with(['items.proyectoItem.subcatalogoItem', 'cotizaciones.proveedor', 'cotizaciones.cotizacionDetalles'])
+            // emisionVigente: para contarEmisionesVigentes() sin una consulta por item.
+            ->with(['items.proyectoItem.subcatalogoItem', 'items.proyectoItem.emisionVigente', 'cotizaciones.proveedor', 'cotizaciones.cotizacionDetalles'])
             ->orderBy(['numero' => SORT_ASC])
             ->all();
     }
@@ -394,15 +395,18 @@ class SolicitudCotizacionService
 
     /**
      * Cuantos formularios de especificación vigentes saldrian al imprimir
-     * cada solicitud del proyecto "con especificaciones".
+     * cada solicitud del proyecto "con especificaciones". Recibe las
+     * solicitudes que ya trajo listar() (con sus emisiones cargadas), para
+     * no volver a consultarlas.
      *
+     * @param SolicitudCotizacion[] $solicitudes resultado de listar()
      * @return array<int, int> [idSolicitud => cantidad]
      */
-    public function contarEmisionesVigentes(Proyecto $proyecto): array
+    public function contarEmisionesVigentes(array $solicitudes): array
     {
         $conteo = [];
 
-        foreach ($this->listar($proyecto) as $solicitud) {
+        foreach ($solicitudes as $solicitud) {
             $conteo[$solicitud->id] = count($this->emisionesVigentes($solicitud));
         }
 

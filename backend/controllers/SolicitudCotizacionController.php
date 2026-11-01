@@ -65,16 +65,17 @@ class SolicitudCotizacionController extends Controller
     public function actionIndex(int $id): string
     {
         $proyecto = $this->findProyecto($id);
+        $solicitudes = $this->service->listar($proyecto);
 
         return $this->render('index', [
             'proyecto' => $proyecto,
             'pasos' => (new ProyectoService())->pasos($proyecto),
-            'solicitudes' => $this->service->listar($proyecto),
+            'solicitudes' => $solicitudes,
             'sinAsignar' => $this->service->sinAsignar($proyecto),
             'editable' => $this->service->puedeEditarse($proyecto),
             'modelosSugeridos' => $this->service->modelosSugeridos($proyecto),
             // Para el boton "Imprimir con especificaciones (N)": [idSolicitud => N].
-            'especificacionesPorSolicitud' => $this->service->contarEmisionesVigentes($proyecto),
+            'especificacionesPorSolicitud' => $this->service->contarEmisionesVigentes($solicitudes),
         ]);
     }
 
