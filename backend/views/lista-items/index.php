@@ -283,7 +283,7 @@ $grupoCierra = static fn (int $cantidad): string =>
             (el próximo será el <?= Html::encode($proximoCodigo) ?>). Cambiarla o quitarla anula el anterior.
         </p>
     <?php endif; ?>
-    <div class="alert alert-danger d-none" id="lista-error-cliente">Revise las cantidades marcadas: deben ser números mayores o iguales a 0.</div>
+    <div class="alert alert-danger d-none" id="lista-error-cliente">Revise las cantidades marcadas: en la lista, números mayores o iguales a 0; en los materiales de la DTIC, mayores que 0.</div>
 
     <div class="rd-cols">
 

@@ -6,7 +6,8 @@
  *     copiando la fila modelo (<template>) con un indice nuevo en
  *     items[n][...]. Si la clasificacion aun no tiene grupo, lo crea.
  *  3. Boton "×": quita la fila (y el grupo, si queda vacio).
- *  4. Antes de enviar: las cantidades deben ser numeros >= 0.
+ *  4. Antes de enviar: las cantidades de la lista deben ser numeros >= 0, y
+ *     las de los materiales de la DTIC, mayores que 0 (como el servidor).
  *  5. Avisa que hay cambios sin guardar.
  *  6. Especificacion tecnica por fila (opcional): al elegirla muestra el
  *     enlace "Ver documento" y actualiza el contador; en las filas nuevas
@@ -366,6 +367,25 @@ $(function () {
             var correcto = valor !== '' && !isNaN(Number(valor)) && Number(valor) >= 0;
 
             $(this).toggleClass('is-invalid', !correcto);
+            valido = valido && correcto;
+        });
+
+        // Materiales de la DTIC: la misma regla que MaterialDticService::armar().
+        // Una fila con algo escrito (item, descripcion, unidad o cantidad; la
+        // categoria sola no cuenta) necesita cantidad de al menos 0.01 (el
+        // 'min' => 0.01 de ProyectoMaterialDtic); una fila vacia se ignora.
+        // min="0" se deja en el campo para que las flechitas vayan de 1 en 1,
+        // por eso se revisa aqui.
+        $('#lista-materiales-dtic tr.seccion-fila').each(function () {
+            var $fila = $(this);
+            var $cantidad = $fila.find('.qty');
+            var tieneAlgo = $fila.find('[name$="[idSubcatalogo]"], [name$="[descripcion]"], [name$="[unidadMedida]"], .qty')
+                .filter(function () { return $.trim($(this).val()) !== ''; })
+                .length > 0;
+            var valor = $.trim($cantidad.val());
+            var correcto = !tieneAlgo || (valor !== '' && !isNaN(Number(valor)) && Number(valor) >= 0.01);
+
+            $cantidad.toggleClass('is-invalid', !correcto);
             valido = valido && correcto;
         });
 
