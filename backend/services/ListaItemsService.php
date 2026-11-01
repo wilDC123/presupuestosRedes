@@ -164,7 +164,8 @@ class ListaItemsService
     private function revisarFilas(Proyecto $proyecto, $filas, array &$errores, array &$enviados): array
     {
         /** @var ProyectoItem[] $guardados indexados por id */
-        $guardados = ProyectoItem::find()->andWhere(['idProyecto' => $proyecto->id])->indexBy('id')->all();
+        // subcatalogoItem: el nombre de cada item en los mensajes, sin una consulta por item.
+        $guardados = ProyectoItem::find()->andWhere(['idProyecto' => $proyecto->id])->with('subcatalogoItem')->indexBy('id')->all();
         $conservados = [];
         $numero = 0;
         $especificacionesActivas = (new EspecificacionService())->idsActivas();
