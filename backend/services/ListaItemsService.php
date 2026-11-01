@@ -513,7 +513,7 @@ class ListaItemsService
         $referencia = $proyecto->codigo ?: (string) $proyecto->id;
 
         return [
-            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $borrador ? 'BORRADOR' : null),
+            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $borrador ? PresupuestoPdfGenerator::MARCA_BORRADOR : null),
             'nombreArchivo' => 'lista_materiales_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf',
         ];
     }

@@ -34,6 +34,12 @@ class PresupuestoPdfGenerator
     public const MARCA_AL_PIE = '<!-- al-pie-de-pagina -->';
 
     /**
+     * Marca de agua de un documento que todavia no esta aprobado (el
+     * presupuesto y la lista de materiales): el mismo texto en los dos.
+     */
+    public const MARCA_BORRADOR = 'BORRADOR';
+
+    /**
      * Hoja oficio (8,5 x 13 pulgadas = 216 x 330 mm), la que usa la DTIC para
      * imprimir todo. En mPDF se llama "Folio"; "-L" = horizontal.
      */

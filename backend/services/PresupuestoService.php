@@ -471,7 +471,7 @@ class PresupuestoService
     {
         $marcas = [Presupuesto::ESTADO_APROBADO => null, Presupuesto::ESTADO_CANCELADO => 'CANCELADO'];
 
-        return array_key_exists($presupuesto->estado, $marcas) ? $marcas[$presupuesto->estado] : 'BORRADOR';
+        return array_key_exists($presupuesto->estado, $marcas) ? $marcas[$presupuesto->estado] : PresupuestoPdfGenerator::MARCA_BORRADOR;
     }
 
     /**

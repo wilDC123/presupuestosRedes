@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use backend\services\ElaborarPresupuestoService;
 use yii\helpers\Html;
@@ -57,7 +58,7 @@ $columnas = 5 + count($proveedores);
         </div>
         <div class="rd-acciones">
             <?= Html::a('← Proyecto', ['/proyecto/view', 'id' => $proyecto->id], ['class' => 'btn btn-outline']) ?>
-            <?= Html::a($presupuesto->estado === 'aprobado' ? 'Generar PDF' : 'PDF borrador', ['/presupuesto/pdf', 'id' => $presupuesto->id], ['class' => 'btn btn-outline', 'target' => '_blank']) ?>
+            <?= Html::a($presupuesto->estado === Presupuesto::ESTADO_APROBADO ? 'Generar PDF' : 'PDF borrador', ['/presupuesto/pdf', 'id' => $presupuesto->id], ['class' => 'btn btn-outline', 'target' => '_blank']) ?>
             <?php if ($totalFormularios > 0): ?>
                 <?= Html::a('Especificaciones (' . $totalFormularios . ')', ['/lista-items/imprimir-especificaciones', 'id' => $proyecto->id], [
                     'class' => 'btn btn-outline',
