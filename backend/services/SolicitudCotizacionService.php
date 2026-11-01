@@ -197,6 +197,22 @@ class SolicitudCotizacionService
     }
 
     /**
+     * Los items que se QUITARON de la lista salen tambien de su solicitud
+     * (esa llave foranea no borra en cascada). Sin revisiones: lo llama
+     * ListaItemsService::guardar() dentro de su transaccion.
+     *
+     * @param int[] $idsProyectoItem
+     */
+    public function retirarItems(array $idsProyectoItem): void
+    {
+        if ($idsProyectoItem === []) {
+            return;
+        }
+
+        SolicitudCotizacionItem::deleteAll(['idProyectoItem' => $idsProyectoItem]);
+    }
+
+    /**
      * Devuelve el item a "sin asignar". Devuelve null si se hizo, o el motivo
      * por el que no.
      */

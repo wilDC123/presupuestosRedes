@@ -141,6 +141,44 @@ class Presupuesto extends ActiveRecord
         return $this->estado === self::ESTADO_EN_PROCESO;
     }
 
+    /*
+     * REGLA "las lineas siguen a la lista": mientras el presupuesto es un
+     * borrador, quitar un item de la lista borra su linea, y la cantidad y la
+     * observacion se copian otra vez. El PRECIO no se toca (sigue congelado).
+     * Con el presupuesto en revision o aprobado, un item con linea no se
+     * quita. Lo aplica ListaItemsService::guardar(), dentro de su transaccion;
+     * las escrituras viven aqui, en el presupuesto, que es el dueño de sus
+     * lineas (y no en un servicio, para no crear una dependencia circular:
+     * los servicios del presupuesto ya usan el de la lista).
+     */
+
+    /**
+     * Borra las lineas que nacieron de esos items de la lista (se quitaron
+     * de la lista con el presupuesto en borrador).
+     *
+     * @param int[] $idsProyectoItem
+     */
+    public function quitarLineasDeItems(array $idsProyectoItem): void
+    {
+        if ($idsProyectoItem === []) {
+            return;
+        }
+
+        PresupuestoDetalle::deleteAll(['idPresupuesto' => $this->id, 'idProyectoItem' => $idsProyectoItem]);
+    }
+
+    /**
+     * Copia a su linea la cantidad y la observacion del item de la lista (el
+     * precio no: sigue congelado). Sin linea, no hace nada.
+     */
+    public function copiarDeLaLista(ProyectoItem $item): void
+    {
+        PresupuestoDetalle::updateAll(
+            ['cantidad' => $item->cantidad, 'observacion' => $item->observacion],
+            ['idPresupuesto' => $this->id, 'idProyectoItem' => $item->id]
+        );
+    }
+
     public function rules(): array
     {
         return [
