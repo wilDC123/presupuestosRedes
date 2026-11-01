@@ -86,7 +86,7 @@ class DashboardService
             'montoAprobado' => $montoAprobado,
             'anio' => $anio,
             'itemsSubcatalogo' => (int) SubcatalogoItem::find()->count(),
-            'totalSigma' => (int) CatalogoSigma::find()->andWhere(['CodigoEstado' => CatalogoSigma::ESTADO_VIGENTE])->count(),
+            'totalSigma' => CatalogoSigma::totalVigentes(),
         ];
     }
 

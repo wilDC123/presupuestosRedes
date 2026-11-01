@@ -79,7 +79,7 @@ class SubcatalogoItemService
     {
         return [
             'items' => (int) SubcatalogoItem::find()->count(),
-            'sigma' => (int) CatalogoSigma::find()->andWhere(['CodigoEstado' => CatalogoSigma::ESTADO_VIGENTE])->count(),
+            'sigma' => CatalogoSigma::totalVigentes(),
         ];
     }
 
