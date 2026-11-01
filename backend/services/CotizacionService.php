@@ -182,7 +182,7 @@ class CotizacionService
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            $this->guardarArchivoSubido($cotizacion);
+            $ruta = $this->asignarRutaDelArchivo($cotizacion);
             $cotizacion->save(false);
 
             if ($aBorrar !== []) {
@@ -194,6 +194,7 @@ class CotizacionService
                 $detalle->save(false);
             }
 
+            $this->escribirArchivo($cotizacion, $ruta);
             $transaccion->commit();
         } catch (Throwable $e) {
             $transaccion->rollBack();
@@ -280,9 +281,19 @@ class CotizacionService
             return false;
         }
 
-        $this->guardarArchivoSubido($cotizacion);
+        $transaccion = Yii::$app->db->beginTransaction();
 
-        return $cotizacion->save(false);
+        try {
+            $ruta = $this->asignarRutaDelArchivo($cotizacion);
+            $cotizacion->save(false);
+            $this->escribirArchivo($cotizacion, $ruta);
+            $transaccion->commit();
+        } catch (Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
+        return true;
     }
 
     /**
@@ -357,10 +368,11 @@ class CotizacionService
             return false;
         }
 
-        $this->guardarArchivoSubido($cotizacion);
+        $rutaAnterior = $cotizacion->documentoRuta;
+        $transaccion = Yii::$app->db->beginTransaction();
 
-        $transaction = Yii::$app->db->beginTransaction();
         try {
+            $ruta = $this->asignarRutaDelArchivo($cotizacion);
             $guardado = $cotizacion->save(false);
 
             if ($guardado && !empty($idsBorrados)) {
@@ -378,16 +390,19 @@ class CotizacionService
             }
 
             if ($guardado) {
-                $transaction->commit();
+                $this->escribirArchivo($cotizacion, $ruta);
+                $transaccion->commit();
 
                 return true;
             }
 
-            $transaction->rollBack();
+            $transaccion->rollBack();
+            // No se guardo: la cotizacion vuelve a apuntar a su PDF de antes.
+            $cotizacion->documentoRuta = $rutaAnterior;
 
             return false;
         } catch (Throwable $e) {
-            $transaction->rollBack();
+            $transaccion->rollBack();
             throw $e;
         }
     }
@@ -447,21 +462,41 @@ class CotizacionService
         return is_scalar($valor) ? trim((string) $valor) : '';
     }
 
-    /**
-     * Si el usuario adjuntó un PDF nuevo, lo guarda en backend/uploads/cotizaciones
-     * (fuera de la carpeta pública, ver ArchivoSubido) y actualiza documentoRuta
-     * con la ruta relativa (la que se guarda en la BD). Si no adjuntó nada,
-     * documentoRuta queda tal como estaba.
+    /*
+     * El PDF adjunto se guarda en DOS pasos, como los adjuntos de las
+     * especificaciones (EspecificacionService): primero se le da su ruta (la
+     * que se guarda en la BD) y el archivo se escribe AL FINAL, dentro de la
+     * transaccion y antes del commit(). Asi, si la base falla no queda un PDF
+     * huerfano en backend/uploads/cotizaciones, y si falla escribir el archivo
+     * la base se deshace (ninguna cotizacion apunta a un PDF que no existe).
+     * El PDF anterior no se borra: es lo que el proveedor mando primero.
      */
-    private function guardarArchivoSubido(Cotizacion $cotizacion): void
+
+    /**
+     * Si el usuario adjunto un PDF nuevo, le da su ruta en
+     * backend/uploads/cotizaciones (fuera de la carpeta publica, ver
+     * ArchivoSubido) y la pone en documentoRuta, SIN escribirlo todavia. Si no
+     * adjunto nada, documentoRuta queda como estaba y devuelve null.
+     */
+    private function asignarRutaDelArchivo(Cotizacion $cotizacion): ?string
     {
         if ($cotizacion->documentoFile === null) {
-            return;
+            return null;
         }
 
-        $ruta = ArchivoSubido::rutaNueva(self::CARPETA_DOCUMENTOS, 'cot_', $cotizacion->documentoFile->extension);
-        ArchivoSubido::guardar($cotizacion->documentoFile, $ruta);
+        $cotizacion->documentoRuta = ArchivoSubido::rutaNueva(self::CARPETA_DOCUMENTOS, 'cot_', $cotizacion->documentoFile->extension);
 
-        $cotizacion->documentoRuta = $ruta;
+        return $cotizacion->documentoRuta;
+    }
+
+    /**
+     * Escribe el PDF en la ruta que le dio asignarRutaDelArchivo(). Se llama
+     * al final, dentro de la transaccion (ver arriba).
+     */
+    private function escribirArchivo(Cotizacion $cotizacion, ?string $ruta): void
+    {
+        if ($ruta !== null) {
+            ArchivoSubido::guardar($cotizacion->documentoFile, $ruta);
+        }
     }
 }
