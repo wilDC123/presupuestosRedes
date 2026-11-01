@@ -14,7 +14,6 @@ use backend\models\Plantilla;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
-use backend\models\SolicitudCotizacionItem;
 use backend\models\SubcatalogoItem;
 use DateTimeImmutable;
 use DomainException;
@@ -123,17 +122,53 @@ class ListaItemsService
             return false;
         }
 
+        // 1. Revisar lo enviado, sin tocar nada todavia.
+        $plan = $this->revisarFilas($proyecto, $filas, $errores, $enviados);
+        $plan['lineasABorrar'] = $this->resolverQuitados($proyecto, $plan['quitados'], $errores, $enviados);
+        $plan['materiales'] = $materiales === null ? null : (new MaterialDticService())->armar($proyecto, $materiales, $errores);
+        $plan['condiciones'] = $condiciones === null ? null : (new CondicionPreviaService())->armar($proyecto, $condiciones, $errores);
+
+        if ($errores !== []) {
+            return false;
+        }
+
+        // 2. Guardar todo en UNA transaccion.
+        try {
+            $this->persistir($proyecto, $enviados, $plan, $usuario);
+        } catch (DomainException $e) {
+            // Algo que se reviso antes cambio entre tanto (ej. otra persona
+            // vacio la ficha): no se guardo nada.
+            $errores[] = $e->getMessage();
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Revisa cada fila del formulario de la lista (ver guardar()) y arma los
+     * items a guardar, sin tocar la base: si pertenece a la lista, si existe
+     * en el subcatalogo, cantidad, observacion, especificacion (activa y que
+     * se pueda emitir) y "Recordar como sugerida".
+     *
+     * @param mixed $filas
+     * @param string[] $errores (por referencia) se agregan los de las filas
+     * @param ProyectoItem[] $enviados (por referencia) los items, en el orden del formulario
+     * @return array{quitados: array<int, ProyectoItem>, cambianEspecificacion: array<int, true>, recordar: array<int, int>}
+     *         quitados: los guardados que ya no vinieron [id => item];
+     *         cambianEspecificacion: [spl_object_id => true], por objeto porque los nuevos todavia no tienen id;
+     *         recordar: [idEspecificacion => idSubcatalogo]
+     */
+    private function revisarFilas(Proyecto $proyecto, $filas, array &$errores, array &$enviados): array
+    {
         /** @var ProyectoItem[] $guardados indexados por id */
         $guardados = ProyectoItem::find()->andWhere(['idProyecto' => $proyecto->id])->indexBy('id')->all();
         $conservados = [];
         $numero = 0;
-        $especificaciones = new EspecificacionService();
-        $especificacionesActivas = $especificaciones->idsActivas();
+        $especificacionesActivas = (new EspecificacionService())->idsActivas();
         $emisiones = new EspecificacionEmisionService();
-        // Items cuya especificacion cambia: [spl_object_id => true]. Se
-        // marcan por objeto porque los nuevos todavia no tienen id.
         $cambianEspecificacion = [];
-        // "Recordar como sugerida": [idEspecificacion => idSubcatalogo].
         $recordar = [];
 
         foreach ((array) $filas as $fila) {
@@ -195,13 +230,26 @@ class ListaItemsService
             }
         }
 
-        $quitados = array_diff_key($guardados, $conservados);
+        return [
+            'quitados' => array_diff_key($guardados, $conservados),
+            'cambianEspecificacion' => $cambianEspecificacion,
+            'recordar' => $recordar,
+        ];
+    }
 
-        // Mientras el presupuesto es un borrador ("en proceso"), sus
-        // lineas siguen a la lista: quitar un item borra su linea, y la
-        // cantidad y la observacion se copian otra vez. El PRECIO no se toca
-        // (sigue congelado). Con el presupuesto en revision o aprobado, un
-        // item con linea no se puede quitar.
+    /**
+     * Los items quitados que tienen linea en el presupuesto. Con el
+     * presupuesto en borrador se borrara su linea (ver Presupuesto,
+     * "las lineas siguen a la lista"); si no, no se pueden quitar: error, y
+     * el item vuelve a la pantalla para que no parezca que se quito.
+     *
+     * @param array<int, ProyectoItem> $quitados
+     * @param string[] $errores (por referencia)
+     * @param ProyectoItem[] $enviados (por referencia)
+     * @return int[] ids de los items cuya linea hay que borrar
+     */
+    private function resolverQuitados(Proyecto $proyecto, array $quitados, array &$errores, array &$enviados): array
+    {
         $presupuestoBorrador = $proyecto->presupuesto !== null && $proyecto->presupuesto->esBorrador();
         $lineasABorrar = [];
 
@@ -212,31 +260,37 @@ class ListaItemsService
             }
 
             $errores[] = 'No se puede quitar "' . ($item->subcatalogoItem->descripcion ?? '?') . '": ya tiene una línea en el presupuesto.';
-            // Vuelve a la pantalla, para que no parezca que se quito.
             $enviados[] = $item;
         }
 
-        $materialesDtic = $materiales === null ? null : (new MaterialDticService())->armar($proyecto, $materiales, $errores);
-        $condicionesPrevias = $condiciones === null ? null : (new CondicionPreviaService())->armar($proyecto, $condiciones, $errores);
+        return $lineasABorrar;
+    }
 
-        if ($errores !== []) {
-            return false;
-        }
-
+    /**
+     * Guarda lo que ya se reviso, todo en UNA transaccion (o todo, o nada).
+     * El orden importa: primero lo que se quita (solicitud, linea del
+     * presupuesto, emision, item) y despues lo que queda.
+     *
+     * @param ProyectoItem[] $enviados
+     * @param array $plan lo que arman revisarFilas() y guardar(): quitados, cambianEspecificacion,
+     *        recordar, lineasABorrar, materiales y condiciones (null = no se tocan)
+     * @throws DomainException si algo que se reviso antes cambio entre tanto
+     */
+    private function persistir(Proyecto $proyecto, array $enviados, array $plan, ?string $usuario): void
+    {
+        $emisiones = new EspecificacionEmisionService();
+        $presupuesto = $proyecto->presupuesto;
+        $presupuestoBorrador = $presupuesto !== null && $presupuesto->esBorrador();
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            // Un item que se quita de la lista sale tambien de su solicitud
-            // de cotizacion (esa llave foranea no borra en cascada).
-            if ($quitados !== []) {
-                SolicitudCotizacionItem::deleteAll(['idProyectoItem' => array_keys($quitados)]);
+            (new SolicitudCotizacionService())->retirarItems(array_keys($plan['quitados']));
+
+            if ($plan['lineasABorrar'] !== []) {
+                $presupuesto->quitarLineasDeItems($plan['lineasABorrar']);
             }
 
-            if ($lineasABorrar !== []) {
-                PresupuestoDetalle::deleteAll(['idPresupuesto' => $proyecto->presupuesto->id, 'idProyectoItem' => $lineasABorrar]);
-            }
-
-            foreach ($quitados as $item) {
+            foreach ($plan['quitados'] as $item) {
                 // El formulario de especificación firmado no se borra: queda anulado y sin
                 // item (la llave foranea lo pone en NULL).
                 $emisiones->anularVigente($item->id, 'Se quitó el ítem de la lista.');
@@ -247,7 +301,7 @@ class ListaItemsService
                 $item->orden = $posicion + 1;
                 $item->save(false);
 
-                if (isset($cambianEspecificacion[spl_object_id($item)])) {
+                if (isset($plan['cambianEspecificacion'][spl_object_id($item)])) {
                     $emisiones->anularVigente($item->id, $item->idEspecificacion === null
                         ? 'Se quitó la especificación del ítem.'
                         : 'Se cambió la especificación del ítem.');
@@ -258,42 +312,30 @@ class ListaItemsService
                 }
 
                 if ($presupuestoBorrador) {
-                    PresupuestoDetalle::updateAll(
-                        ['cantidad' => $item->cantidad, 'observacion' => $item->observacion],
-                        ['idPresupuesto' => $proyecto->presupuesto->id, 'idProyectoItem' => $item->id]
-                    );
+                    $presupuesto->copiarDeLaLista($item);
                 }
             }
 
-            foreach ($recordar as $idEspecificacion => $idSubcatalogo) {
-                $especificaciones->recordarItemDeReferencia($idEspecificacion, $idSubcatalogo);
+            foreach ($plan['recordar'] as $idEspecificacion => $idSubcatalogo) {
+                (new EspecificacionService())->recordarItemDeReferencia($idEspecificacion, $idSubcatalogo);
             }
 
-            if ($materialesDtic !== null) {
-                (new MaterialDticService())->reemplazar($proyecto, $materialesDtic);
+            if ($plan['materiales'] !== null) {
+                (new MaterialDticService())->reemplazar($proyecto, $plan['materiales']);
             }
 
-            if ($condicionesPrevias !== null) {
-                (new CondicionPreviaService())->reemplazar($proyecto, $condicionesPrevias);
+            if ($plan['condiciones'] !== null) {
+                (new CondicionPreviaService())->reemplazar($proyecto, $plan['condiciones']);
             }
 
             // Editar la lista a mano tambien resuelve el paso "Plantilla".
             $proyecto->updateAttributes(['listaIniciada' => true]);
 
             $transaccion->commit();
-        } catch (DomainException $e) {
-            // Algo que se reviso antes cambio entre tanto (ej. otra persona
-            // vacio la ficha): no se guarda nada.
-            $transaccion->rollBack();
-            $errores[] = $e->getMessage();
-
-            return false;
         } catch (Throwable $e) {
             $transaccion->rollBack();
             throw $e;
         }
-
-        return true;
     }
 
     /**
