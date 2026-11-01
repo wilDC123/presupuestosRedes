@@ -180,26 +180,46 @@ class ProyectoService
     }
 
     /**
-     * Devuelve false si el proyecto no se puede borrar porque ya tiene
-     * presupuesto u otra fase que depende de el (las
-     * llaves foraneas lo impiden).
+     * Devuelve null si se elimino, o el motivo por el que no.
+     *
+     * REGLA DE NEGOCIO: un proyecto con presupuesto, con una fase siguiente
+     * que depende de el o con especificaciones emitidas (documentos firmados)
+     * no se elimina. Se cuentan antes, para decir exactamente que lo impide.
+     * Si la base lo impide por otra causa, queda en el log.
      */
-    public function eliminar(Proyecto $proyecto): bool
+    public function eliminar(Proyecto $proyecto): ?string
     {
+        $usos = array_filter([
+            'presupuesto' => Presupuesto::find()->andWhere(['idProyecto' => $proyecto->id])->exists() ? 1 : 0,
+            'fase(s) siguiente(s)' => (int) Proyecto::find()->andWhere(['idProyectoAnterior' => $proyecto->id])->count(),
+            'especificación(es) emitida(s)' => (int) EspecificacionEmision::find()->andWhere(['idProyecto' => $proyecto->id])->count(),
+        ]);
+
+        if ($usos !== []) {
+            $partes = array_map(
+                static fn (string $rotulo, int $cantidad): string => $rotulo === 'presupuesto' ? 'presupuesto' : "$cantidad $rotulo",
+                array_keys($usos),
+                $usos
+            );
+
+            return 'No se puede eliminar el proyecto: tiene ' . implode(', ', $partes) . '.';
+        }
+
         // El historial queda (no tiene llave foranea): se anota la eliminacion
         // en la misma transaccion, por si el DELETE falla.
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
             $this->historial->registrar($proyecto, HistorialProyecto::ACCION_PROYECTO_ELIMINADO, $proyecto->nombre);
-            $borrado = $proyecto->delete() !== false;
-            $borrado ? $transaccion->commit() : $transaccion->rollBack();
+            $proyecto->delete();
+            $transaccion->commit();
 
-            return $borrado;
+            return null;
         } catch (IntegrityException $e) {
             $transaccion->rollBack();
+            Yii::error($e->getMessage(), __METHOD__);
 
-            return false;
+            return 'No se pudo eliminar el proyecto: otra parte del sistema lo usa.';
         } catch (Throwable $e) {
             $transaccion->rollBack();
             throw $e;

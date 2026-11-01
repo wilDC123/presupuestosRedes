@@ -7,6 +7,7 @@ namespace backend\services;
 use backend\models\Cotizacion;
 use backend\models\CotizacionDetalle;
 use backend\models\Proveedor;
+use Yii;
 use yii\db\IntegrityException;
 
 /**
@@ -130,16 +131,28 @@ class ProveedorService
     }
 
     /**
-     * Devuelve false si el proveedor no se puede borrar porque tiene
-     * cotizaciones (la llave foranea de redes.Cotizacion lo impide). En ese
-     * caso lo correcto es desactivarlo, no borrarlo.
+     * Devuelve null si se elimino, o el motivo por el que no.
+     *
+     * REGLA DE NEGOCIO: un proveedor con cotizaciones no se elimina, se
+     * desactiva. Si la base lo impide por otra causa, queda en el log.
      */
-    public function eliminar(Proveedor $proveedor): bool
+    public function eliminar(Proveedor $proveedor): ?string
     {
-        try {
-            return $proveedor->delete() !== false;
-        } catch (IntegrityException $e) {
-            return false;
+        $cotizaciones = (int) Cotizacion::find()->andWhere(['idProveedor' => $proveedor->id])->count();
+
+        if ($cotizaciones > 0) {
+            return 'No se puede eliminar "' . $proveedor->razonSocial . '": tiene ' . $cotizaciones
+                . ' cotización(es) registrada(s). Puede marcarlo como inactivo desde "Editar datos".';
         }
+
+        try {
+            $proveedor->delete();
+        } catch (IntegrityException $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+
+            return 'No se pudo eliminar "' . $proveedor->razonSocial . '": otra parte del sistema lo usa.';
+        }
+
+        return null;
     }
 }

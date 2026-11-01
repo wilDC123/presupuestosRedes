@@ -101,8 +101,10 @@ class ProveedorController extends Controller
     {
         $model = $this->findModel($id);
 
-        if (!$this->service->eliminar($model)) {
-            Yii::$app->session->setFlash('error', 'No se puede eliminar "' . $model->razonSocial . '" porque tiene cotizaciones registradas. Puede marcarlo como inactivo desde "Editar datos".');
+        $error = $this->service->eliminar($model);
+
+        if ($error !== null) {
+            Yii::$app->session->setFlash('error', $error);
 
             return $this->redirect(['index', 'id' => $model->id]);
         }

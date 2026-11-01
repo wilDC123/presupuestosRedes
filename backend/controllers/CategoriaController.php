@@ -90,10 +90,10 @@ class CategoriaController extends Controller
 
     public function actionDelete(int $id)
     {
-        $model = $this->findModel($id);
+        $error = $this->service->eliminar($this->findModel($id));
 
-        if (!$this->service->eliminar($model)) {
-            Yii::$app->session->setFlash('error', 'No se puede eliminar "' . $model->nombre . '" porque tiene ítems del subcatálogo. Mueva esos ítems a otra categoría primero.');
+        if ($error !== null) {
+            Yii::$app->session->setFlash('error', $error);
         }
 
         return $this->redirect(['index']);
