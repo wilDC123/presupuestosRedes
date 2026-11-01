@@ -58,6 +58,17 @@ class CatalogoSigma extends ActiveRecord
     public const ESTADO_VIGENTE = 'V';
 
     /**
+     * Cuantos items vigentes tiene el catalogo (indicador del inicio y
+     * contador del subcatalogo). Sin cache: tarda unos milisegundos, y la
+     * tabla la actualiza la institucion, no este sistema. Si con el catalogo
+     * completo se volviera lento, la cache va aqui.
+     */
+    public static function totalVigentes(): int
+    {
+        return (int) self::find()->andWhere(['CodigoEstado' => self::ESTADO_VIGENTE])->count();
+    }
+
+    /**
      * Busca por texto libre entre los items vigentes. El texto se separa en
      * palabras y se exige que aparezcan TODAS (AND), cada una en Clase,
      * Descripcion o RamaComercial (OR), en cualquier orden. Asi "jack cat 6"
