@@ -70,10 +70,10 @@ class PlantillaController extends Controller
 
     public function actionDelete(int $id)
     {
-        $model = $this->findModel($id);
+        $error = $this->service->eliminar($this->findModel($id));
 
-        if (!$this->service->eliminar($model)) {
-            Yii::$app->session->setFlash('error', 'No se puede eliminar "' . $model->nombre . '" porque ya fue usada en algún proyecto. Puede desactivarla para que no se ofrezca en proyectos nuevos.');
+        if ($error !== null) {
+            Yii::$app->session->setFlash('error', $error);
         }
 
         return $this->redirect(['index']);

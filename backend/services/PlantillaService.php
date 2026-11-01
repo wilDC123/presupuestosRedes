@@ -8,6 +8,7 @@ use backend\models\Categoria;
 use backend\models\Plantilla;
 use backend\models\PlantillaCategoria;
 use backend\models\PlantillaItem;
+use backend\models\Proyecto;
 use backend\models\SubcatalogoItem;
 use Throwable;
 use Yii;
@@ -162,16 +163,30 @@ class PlantillaService
     }
 
     /**
-     * Devuelve false si la plantilla no se puede borrar porque algun
-     * proyecto la tiene como plantilla de origen. En ese caso se desactiva.
+     * Devuelve null si se elimino, o el motivo por el que no.
+     *
+     * REGLA DE NEGOCIO: una plantilla que algun proyecto tiene como plantilla
+     * de origen no se elimina, se desactiva. Si la base lo impide por otra
+     * causa, queda en el log.
      */
-    public function eliminar(Plantilla $plantilla): bool
+    public function eliminar(Plantilla $plantilla): ?string
     {
-        try {
-            return $plantilla->delete() !== false;
-        } catch (IntegrityException $e) {
-            return false;
+        $proyectos = (int) Proyecto::find()->andWhere(['idPlantillaOrigen' => $plantilla->id])->count();
+
+        if ($proyectos > 0) {
+            return 'No se puede eliminar "' . $plantilla->nombre . '": la usaron ' . $proyectos
+                . ' proyecto(s). Puede desactivarla para que no se ofrezca en proyectos nuevos.';
         }
+
+        try {
+            $plantilla->delete();
+        } catch (IntegrityException $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+
+            return 'No se pudo eliminar "' . $plantilla->nombre . '": otra parte del sistema la usa.';
+        }
+
+        return null;
     }
 
     public function cambiarActivo(Plantilla $plantilla, bool $activo): void

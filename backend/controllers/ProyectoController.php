@@ -260,8 +260,10 @@ class ProyectoController extends Controller
     {
         $model = $this->findModel($id);
 
-        if (!$this->service->eliminar($model)) {
-            Yii::$app->session->setFlash('error', 'No se puede eliminar el proyecto porque ya tiene presupuesto o una fase siguiente que depende de él.');
+        $error = $this->service->eliminar($model);
+
+        if ($error !== null) {
+            Yii::$app->session->setFlash('error', $error);
 
             return $this->redirect(['view', 'id' => $model->id]);
         }

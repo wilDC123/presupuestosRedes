@@ -115,7 +115,7 @@ class HistorialProyectoTest extends Unit
         $this->assertTrue($this->proyectos->crear($proyecto, $this->datos([])), json_encode($proyecto->errors));
         $id = $proyecto->id;
 
-        $this->assertTrue($this->proyectos->eliminar($proyecto));
+        $this->assertNull($this->proyectos->eliminar($proyecto));
 
         $this->assertNull(Proyecto::findOne($id));
         $this->assertSame([HistorialProyecto::ACCION_PROYECTO_ELIMINADO, HistorialProyecto::ACCION_PROYECTO_CREADO], array_map(static fn ($h) => $h->accion, $this->historial->delProyecto($id)));

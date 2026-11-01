@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\models\Categoria;
+use backend\models\Especificacion;
+use backend\models\PlantillaCategoria;
+use backend\models\PlantillaItem;
+use backend\models\ProyectoItem;
 use backend\models\SubcatalogoItem;
+use Yii;
 use yii\data\ActiveDataProvider;
 use yii\db\IntegrityException;
 
@@ -105,15 +110,49 @@ class CategoriaService
     }
 
     /**
-     * Devuelve false si la categoria no se puede borrar porque todavia tiene
-     * items del subcatalogo (la llave foranea lo impide).
+     * Devuelve null si se elimino, o el motivo por el que no.
+     *
+     * REGLA DE NEGOCIO: una categoria en uso no se elimina. La usan los items
+     * del subcatalogo, las listas de los proyectos, las plantillas y las
+     * especificaciones; se cuentan antes, para decir exactamente cuales. Si
+     * la base lo impide por otra causa, queda en el log.
      */
-    public function eliminar(Categoria $categoria): bool
+    public function eliminar(Categoria $categoria): ?string
     {
-        try {
-            return $categoria->delete() !== false;
-        } catch (IntegrityException $e) {
-            return false;
+        $plantillas = array_unique(array_merge(
+            PlantillaItem::find()->select('idPlantilla')->andWhere(['idCategoria' => $categoria->id])->column(),
+            PlantillaCategoria::find()->select('idPlantilla')->andWhere(['idCategoria' => $categoria->id])->column()
+        ));
+        $usos = array_filter([
+            'ítem(s) del subcatálogo' => (int) SubcatalogoItem::find()->andWhere(['idCategoria' => $categoria->id])->count(),
+            'ítem(s) en listas de proyectos' => (int) ProyectoItem::find()->andWhere(['idCategoria' => $categoria->id])->count(),
+            'plantilla(s)' => count($plantillas),
+            'especificación(es)' => (int) Especificacion::find()->andWhere(['idCategoria' => $categoria->id])->count(),
+        ]);
+
+        if ($usos !== []) {
+            return 'No se puede eliminar "' . $categoria->nombre . '": la usan ' . $this->enumerar($usos)
+                . '. Mueva esos registros a otra categoría primero.';
         }
+
+        try {
+            $categoria->delete();
+        } catch (IntegrityException $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+
+            return 'No se pudo eliminar "' . $categoria->nombre . '": otra parte del sistema la usa.';
+        }
+
+        return null;
+    }
+
+    /**
+     * "12 ítem(s) del subcatálogo, 2 especificación(es)".
+     *
+     * @param array<string, int> $usos [rotulo => cantidad]
+     */
+    private function enumerar(array $usos): string
+    {
+        return implode(', ', array_map(static fn (string $rotulo, int $cantidad): string => "$cantidad $rotulo", array_keys($usos), $usos));
     }
 }
