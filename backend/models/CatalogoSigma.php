@@ -9,13 +9,20 @@ use yii\db\ActiveRecord;
 
 /**
  * Modelo de SOLO LECTURA para "dbo.CatalogoSigma": el catálogo nacional del
- * gobierno (~72,000 ítems, actualmente solo 509 accesibles en desarrollo).
+ * gobierno (~72,000 ítems; la copia local de desarrollo tiene 51,636).
  * Es una tabla institucional externa al esquema `redes` -- NUNCA se hace
  * INSERT, UPDATE ni DELETE sobre ella desde este sistema.
  *
- * insert()/update()/delete() estan sobreescritos para lanzar una excepcion
- * si algo llega a llamarlos por error, como segunda barrera ademas de no
- * exponer ningun formulario de escritura contra esta tabla.
+ * insert()/update()/delete() (una fila) y updateAll()/updateAllCounters()/
+ * deleteAll() (muchas filas de una vez) estan sobreescritos para lanzar una
+ * excepcion si algo llega a llamarlos por error, como segunda barrera ademas
+ * de no exponer ningun formulario de escritura contra esta tabla.
+ *
+ * Lo que esta barrera NO cubre: SQL escrito a mano
+ * (Yii::$app->db->createCommand()->delete('dbo.CatalogoSigma', ...)) no pasa
+ * por el modelo. Contra eso protegen los PERMISOS de la base: en el servidor
+ * de la DTIC el usuario del sistema solo tiene SELECT sobre esta tabla. En
+ * desarrollo (Windows Authentication, con todos los permisos) no hay esa red.
  *
  * La tabla no tiene una primary key definida en la base de datos (es
  * institucional, no la administramos nosotros), por eso primaryKey() se
@@ -140,5 +147,29 @@ class CatalogoSigma extends ActiveRecord
     public function delete(): int|false
     {
         throw new NotSupportedException('dbo.CatalogoSigma es de solo lectura: no se permite delete().');
+    }
+
+    /**
+     * @throws NotSupportedException siempre -- ver comentario de clase.
+     */
+    public static function updateAll($attributes, $condition = '', $params = [])
+    {
+        throw new NotSupportedException('dbo.CatalogoSigma es de solo lectura: no se permite updateAll().');
+    }
+
+    /**
+     * @throws NotSupportedException siempre -- ver comentario de clase.
+     */
+    public static function updateAllCounters($counters, $condition = '', $params = [])
+    {
+        throw new NotSupportedException('dbo.CatalogoSigma es de solo lectura: no se permite updateAllCounters().');
+    }
+
+    /**
+     * @throws NotSupportedException siempre -- ver comentario de clase.
+     */
+    public static function deleteAll($condition = null, $params = [])
+    {
+        throw new NotSupportedException('dbo.CatalogoSigma es de solo lectura: no se permite deleteAll().');
     }
 }
