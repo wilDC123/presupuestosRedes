@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /** @var yii\web\View $this */
 /** @var yii\bootstrap5\ActiveForm $form */
-/** @var ackend\models\LoginForm $model */
+/** @var backend\models\LoginForm $model */
 
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;

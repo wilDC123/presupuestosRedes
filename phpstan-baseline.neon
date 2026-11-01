@@ -1,0 +1,805 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Strict comparison using \=\=\= between int and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/controllers/SubcatalogoItemController.php
+
+		-
+			message: '#^Property backend\\models\\CartaPresupuesto\:\:\$fechaModificacion \(string\|null\) does not accept yii\\db\\Expression\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: backend/models/CartaPresupuesto.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/models/Cotizacion.php
+
+		-
+			message: '#^Method backend\\models\\CotizacionDetalle\:\:createMultiple\(\) should return array\<static\(backend\\models\\CotizacionDetalle\)\> but returns list\<object\>\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/models/CotizacionDetalle.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\|null and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/models/CotizacionDetalle.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\|null and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/models/Especificacion.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\|null and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/models/PresupuestoDetalle.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>modeloSugerido" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/models/ProyectoItem.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>version" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/models/ProyectoItem.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\|null and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/models/SubcatalogoItem.php
+
+		-
+			message: '#^Result of \|\| is always false\.$#'
+			identifier: booleanOr.alwaysFalse
+			count: 1
+			path: backend/services/CategoriaService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/services/CategoriaService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/services/CategoriaService.php
+
+		-
+			message: '#^Cannot access property \$cotizacionDetalles on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/CotizacionService.php
+
+		-
+			message: '#^Cannot access property \$id on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/CotizacionService.php
+
+		-
+			message: '#^Cannot access property \$proyectoItem on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: backend/services/CotizacionService.php
+
+		-
+			message: '#^Method backend\\services\\CotizacionService\:\:comparativo\(\) should return array\{cotizaciones\: array\<backend\\models\\Cotizacion\>, filas\: array\<int, array\{item\: backend\\models\\ProyectoItem, precios\: array\<int, float\>, menor\: int\|null\}\>\} but returns array\{cotizaciones\: array\<array\<mixed\>\|yii\\db\\ActiveRecord\>, filas\: list\<array\{item\: mixed, precios\: array\<float\>, menor\: int\|string\|false\|null\}\>\}\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/services/CotizacionService.php
+
+		-
+			message: '#^Cannot access property \$id on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 3
+			path: backend/services/ElaborarPresupuestoService.php
+
+		-
+			message: '#^Cannot access property \$precioTotal on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/ElaborarPresupuestoService.php
+
+		-
+			message: '#^Method backend\\services\\ElaborarPresupuestoService\:\:tabla\(\) should return array\{proveedores\: array\<int, string\>, grupos\: array\<int, array\{nombre\: string, subtotal\: float, filas\: array\<int, array\{item\: backend\\models\\ProyectoItem, celdas\: array\<int, backend\\models\\CotizacionDetalle\>, menor\: int\|null, linea\: backend\\models\\PresupuestoDetalle\|null, sigma\: float\|null\}\>\}\>, conSigmaSinPrecio\: int, total\: float, conPrecio\: int, totalFilas\: int\} but returns array\{proveedores\: array\<int, string\>, grupos\: array\<int, array\{nombre\: string, subtotal\: float, filas\: list\<array\{item\: backend\\models\\ProyectoItem, celdas\: array\<int, backend\\models\\CotizacionDetalle\>, menor\: int\|null, linea\: array\<mixed\>\|yii\\db\\ActiveRecord\|null, sigma\: float\|null\}\>\}\>, total\: float, conPrecio\: int\<0, max\>, conSigmaSinPrecio\: int\<0, max\>, totalFilas\: int\<0, max\>\}\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/services/ElaborarPresupuestoService.php
+
+		-
+			message: '#^Parameter \#1 \$items of method backend\\services\\ElaborarPresupuestoService\:\:opcionesPorItem\(\) expects array\<backend\\models\\ProyectoItem\>, array\<array\<mixed\>\|yii\\db\\ActiveRecord\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: backend/services/ElaborarPresupuestoService.php
+
+		-
+			message: '#^Parameter \#2 \$item of method backend\\services\\ElaborarPresupuestoService\:\:reemplazarLinea\(\) expects backend\\models\\ProyectoItem, array\<mixed\>\|yii\\db\\ActiveRecord given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/ElaborarPresupuestoService.php
+
+		-
+			message: '#^Parameter \#2 \$items of method backend\\services\\ListaItemsService\:\:agrupar\(\) expects array\<backend\\models\\ProyectoItem\>\|null, array\<array\<mixed\>\|yii\\db\\ActiveRecord\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/ElaborarPresupuestoService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between backend\\models\\Cotizacion and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/services/ElaborarPresupuestoService.php
+
+		-
+			message: '#^Cannot access property \$id on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/EspecificacionEmisionService.php
+
+		-
+			message: '#^Parameter \#1 \$items of static method backend\\models\\ProyectoItem\:\:agruparPorCategoria\(\) expects array\<backend\\models\\ProyectoItem\>, array\<array\<mixed\>\|yii\\db\\ActiveRecord\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/EspecificacionEmisionService.php
+
+		-
+			message: '#^Parameter \#4 \$corrige of method backend\\services\\EspecificacionEmisionService\:\:emitir\(\) expects backend\\models\\EspecificacionEmision\|null, array\<mixed\>\|yii\\db\\ActiveRecord\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/EspecificacionEmisionService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between int and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: backend/services/EspecificacionEmisionService.php
+
+		-
+			message: '#^Offset string on array\{\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: backend/services/EspecificacionImportacionService.php
+
+		-
+			message: '#^Offset string\|false does not exist on array\{\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: backend/services/EspecificacionImportacionService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: backend/services/EspecificacionImportacionService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between 0 and 1 will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/services/EspecificacionImportacionService.php
+
+		-
+			message: '#^Access to an undefined property yii\\db\\ActiveRecord\:\:\$notaCambio\.$#'
+			identifier: property.notFound
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Cannot access property \$adjuntoRuta on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Cannot access property \$garantia on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Cannot access property \$id on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Cannot access property \$modeloSugerido on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Cannot access property \$notaCambio on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Cannot access property \$numero on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Cannot call method estaBloqueada\(\) on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Cannot call method getEmisiones\(\) on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Method backend\\services\\EspecificacionService\:\:formulario\(\) should return array\{version\: backend\\models\\EspecificacionVersion, filas\: array\<int, array\{nombre\: string\|null, valor\: string\}\>, emisiones\: int\} but returns array\{version\: yii\\db\\ActiveRecord, filas\: array\<int, array\{nombre\: string\|null, valor\: string\}\>, emisiones\: int\}\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Method backend\\services\\EspecificacionService\:\:guardarVersion\(\) should return array\{version\: backend\\models\\EspecificacionVersion\|null, nueva\: bool, errores\: array\<string\>\} but returns array\{version\: array\<mixed\>\|yii\\db\\ActiveRecord, nueva\: bool, errores\: array\{\}\}\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Method backend\\services\\EspecificacionService\:\:guardarVersion\(\) should return array\{version\: backend\\models\\EspecificacionVersion\|null, nueva\: bool, errores\: array\<string\>\} but returns array\{version\: array\<mixed\>\|yii\\db\\ActiveRecord, nueva\: false, errores\: array\{\}\}\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Method backend\\services\\EspecificacionService\:\:usos\(\) should return array\{proyectoItems\: array\<backend\\models\\ProyectoItem\>, cotizacionDetalles\: array\<backend\\models\\CotizacionDetalle\>\} but returns array\{proyectoItems\: array\<array\<mixed\>\|yii\\db\\ActiveRecord\>, cotizacionDetalles\: array\<array\<mixed\>\|yii\\db\\ActiveRecord\>\}\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Parameter \#1 \$actual of method backend\\services\\EspecificacionService\:\:mismoContenido\(\) expects backend\\models\\EspecificacionVersion, array\<mixed\>\|yii\\db\\ActiveRecord given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(array\<mixed\>\|yii\\db\\ActiveRecord\)\: mixed\)\|null, Closure\(backend\\models\\EspecificacionCaracteristica\)\: array\{nombre\: string\|null, valor\: string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(array\<mixed\>\|yii\\db\\ActiveRecord\)\: mixed\)\|null, Closure\(backend\\models\\EspecificacionVersion\)\: array\{version\: backend\\models\\EspecificacionVersion, emisiones\: int\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(array\<mixed\>\|yii\\db\\ActiveRecord\)\: mixed\)\|null, Closure\(backend\\models\\EspecificacionVersion\)\: int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Parameter \#1 \$version of method backend\\services\\EspecificacionService\:\:filasDe\(\) expects backend\\models\\EspecificacionVersion, array\<mixed\>\|yii\\db\\ActiveRecord given\.$#'
+			identifier: argument.type
+			count: 2
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Property backend\\models\\Especificacion\:\:\$id \(int\) does not accept null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between int and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: backend/services/EspecificacionService.php
+
+		-
+			message: '#^Cannot access property \$idCategoria on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/ListaItemsService.php
+
+		-
+			message: '#^Cannot access property \$idSubcatalogo on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: backend/services/ListaItemsService.php
+
+		-
+			message: '#^Cannot access property \$observacion on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/ListaItemsService.php
+
+		-
+			message: '#^Cannot access property \$subcatalogoItem on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/ListaItemsService.php
+
+		-
+			message: '#^Method backend\\services\\ListaItemsService\:\:pendientesDePresupuestar\(\) should return array\<backend\\models\\ProyectoItem\> but returns array\<array\<mixed\>\|yii\\db\\ActiveRecord\>\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/services/ListaItemsService.php
+
+		-
+			message: '#^Parameter \#1 \$items of static method backend\\models\\ProyectoItem\:\:agruparPorCategoria\(\) expects array\<backend\\models\\ProyectoItem\>, array\<array\<mixed\>\|yii\\db\\ActiveRecord\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/ListaItemsService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>version" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/services/ListaItemsService.php
+
+		-
+			message: '#^Property backend\\models\\PlantillaItem\:\:\$idCategoria \(int\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: backend/services/PlantillaService.php
+
+		-
+			message: '#^Property backend\\models\\PlantillaItem\:\:\$idSubcatalogo \(int\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: backend/services/PlantillaService.php
+
+		-
+			message: '#^Cannot access property \$partida on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/PresupuestoService.php
+
+		-
+			message: '#^Cannot access property \$precioTotal on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: backend/services/PresupuestoService.php
+
+		-
+			message: '#^Method backend\\services\\PresupuestoService\:\:lineasConCotizacionVencida\(\) should return array\<backend\\models\\PresupuestoDetalle\> but returns list\<array\<mixed\>\|yii\\db\\ActiveRecord\>\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/services/PresupuestoService.php
+
+		-
+			message: '#^Parameter \#2 \$callback of function array_filter expects \(callable\(array\<mixed\>\|yii\\db\\ActiveRecord\)\: bool\)\|null, Closure\(backend\\models\\PresupuestoDetalle\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/services/PresupuestoService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type backend\\models\\SubcatalogoItem\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/services/PresupuestoService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, string\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: backend/services/ProyectoService.php
+
+		-
+			message: '#^Property backend\\models\\Proyecto\:\:\$areas \(array\<int, array\<string, string\>\>\|string\) does not accept array\<array\<string, bool\|int\|string\|null\>\>\.$#'
+			identifier: assign.propertyType
+			count: 2
+			path: backend/services/ProyectoService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\|null and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/services/ProyectoService.php
+
+		-
+			message: '#^Cannot access property \$id on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/SolicitudCotizacionService.php
+
+		-
+			message: '#^Cannot access property \$idProyectoItem on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/SolicitudCotizacionService.php
+
+		-
+			message: '#^Cannot access property \$marcaModeloReferencia on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/services/SolicitudCotizacionService.php
+
+		-
+			message: '#^Method backend\\services\\SolicitudCotizacionService\:\:sinAsignar\(\) should return array\<backend\\models\\ProyectoItem\> but returns array\<array\<mixed\>\|yii\\db\\ActiveRecord\>\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/services/SolicitudCotizacionService.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type backend\\models\\ProyectoItem\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/services/SolicitudCotizacionService.php
+
+		-
+			message: '#^Access to an undefined property backend\\services\\contracts\\InfraestructuraProvider\:\:\$vigente\.$#'
+			identifier: property.notFound
+			count: 1
+			path: backend/tests/Unit/AreaIntervencionTest.php
+
+		-
+			message: '#^Method backend\\tests\\Unit\\EspecificacionEmisionTest\:\:unicoItem\(\) should return backend\\models\\ProyectoItem but returns array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: return.type
+			count: 1
+			path: backend/tests/Unit/EspecificacionEmisionTest.php
+
+		-
+			message: '#^Parameter \#2 \$filas of method backend\\tests\\Unit\\EspecificacionEmisionTest\:\:ficha\(\) expects array\<int, array\{nombre\: string, valor\: string\}\>, array\{array\{nombre\: ''Calibre del…'', valor\: ''23 AWG''\}, array\{valor\: ''Cumple ANSI/TIA''\}\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/tests/Unit/EspecificacionEmisionTest.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/tests/Unit/EspecificacionEmisionTest.php
+
+		-
+			message: '#^Cannot access property \$id on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: backend/tests/Unit/EspecificacionFormularioTest.php
+
+		-
+			message: '#^Cannot access property \$modeloSugerido on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/tests/Unit/EspecificacionFormularioTest.php
+
+		-
+			message: '#^Cannot access property \$numero on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/tests/Unit/EspecificacionFormularioTest.php
+
+		-
+			message: '#^Cannot call method getCaracteristicas\(\) on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: backend/tests/Unit/EspecificacionFormularioTest.php
+
+		-
+			message: '#^Cannot access property \$modeloSugerido on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/tests/Unit/EspecificacionImportacionTest.php
+
+		-
+			message: '#^Cannot access property \$notaCambio on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/tests/Unit/EspecificacionImportacionTest.php
+
+		-
+			message: '#^Cannot call method getCaracteristicas\(\) on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: backend/tests/Unit/EspecificacionImportacionTest.php
+
+		-
+			message: '#^Cannot access property \$id on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: backend/tests/Unit/EspecificacionVersionTest.php
+
+		-
+			message: '#^Cannot call method texto\(\) on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: backend/tests/Unit/EspecificacionVersionTest.php
+
+		-
+			message: '#^Property backend\\models\\Proyecto\:\:\$idProceso \(int\|null\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: backend/tests/Unit/ProcesoTest.php
+
+		-
+			message: '#^Property backend\\models\\Proyecto\:\:\$idTipoProyecto \(int\|null\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: backend/tests/Unit/TipoProyectoTest.php
+
+		-
+			message: '#^Variable \$this might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/cotizacion/_detalle-form.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>justificacion" in empty\(\) is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/views/elaborar-presupuesto/index.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between backend\\models\\Proyecto and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/views/especificacion-emision/index.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between int and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: backend/views/especificacion/_form.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>modeloSugerido" in empty\(\) is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/views/especificacion/index.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between backend\\models\\Proyecto and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/views/especificacion/view.php
+
+		-
+			message: '#^Offset ''idTipo'' on array\{idTipo\: string, descripcion\: string, unidadEncargada\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: backend/views/lista-items/_condiciones.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>lugarEntrega" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/views/lista-items/index.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>tiempoEntregaDias" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/views/lista-items/index.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>validezOfertaDias" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/views/lista-items/index.php
+
+		-
+			message: '#^Parameter \#1 \$content of static method yii\\helpers\\BaseHtml\:\:encode\(\) expects string, array\<string\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: backend/views/plantilla/_form.php
+
+		-
+			message: '#^Variable \$categorias might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/create.php
+
+		-
+			message: '#^Variable \$idsCategoria might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/create.php
+
+		-
+			message: '#^Variable \$items might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/create.php
+
+		-
+			message: '#^Variable \$subcatalogo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/create.php
+
+		-
+			message: '#^Variable \$tipos might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/create.php
+
+		-
+			message: '#^Variable \$categorias might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/update.php
+
+		-
+			message: '#^Variable \$idsCategoria might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/update.php
+
+		-
+			message: '#^Variable \$items might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/update.php
+
+		-
+			message: '#^Variable \$subcatalogo might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/update.php
+
+		-
+			message: '#^Variable \$tipos might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/plantilla/update.php
+
+		-
+			message: '#^Offset ''manual'' does not exist on array\{idEdificio\: string, idBloqueArea\: int\|null, numeroNivel\: string\|null, idEspacio\: string\|null, texto\: string, grupo\: string, detalle\: string\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: backend/views/proyecto/_form.php
+
+		-
+			message: '#^Parameter \#1 \$name of static method yii\\helpers\\BaseHtml\:\:dropDownList\(\) expects string, null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: backend/views/proyecto/_form.php
+
+		-
+			message: '#^Parameter \#1 \$name of static method yii\\helpers\\BaseHtml\:\:hiddenInput\(\) expects string, null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: backend/views/proyecto/_form.php
+
+		-
+			message: '#^Parameter \#1 \$name of static method yii\\helpers\\BaseHtml\:\:textInput\(\) expects string, null given\.$#'
+			identifier: argument.type
+			count: 6
+			path: backend/views/proyecto/_form.php
+
+		-
+			message: '#^Variable \$areas might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/create.php
+
+		-
+			message: '#^Variable \$edificios might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/create.php
+
+		-
+			message: '#^Variable \$personal might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/create.php
+
+		-
+			message: '#^Variable \$procesos might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/create.php
+
+		-
+			message: '#^Variable \$proyectosAprobados might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/create.php
+
+		-
+			message: '#^Variable \$roles might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/create.php
+
+		-
+			message: '#^Variable \$sugerenciasUnidad might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/create.php
+
+		-
+			message: '#^Variable \$tipos might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/create.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>nombre" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/views/proyecto/index.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type backend\\models\\SubcatalogoItem\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: backend/views/proyecto/plantilla.php
+
+		-
+			message: '#^Variable \$areas might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/update.php
+
+		-
+			message: '#^Variable \$edificios might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/update.php
+
+		-
+			message: '#^Variable \$personal might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/update.php
+
+		-
+			message: '#^Variable \$procesos might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/update.php
+
+		-
+			message: '#^Variable \$proyectosAprobados might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/update.php
+
+		-
+			message: '#^Variable \$roles might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/update.php
+
+		-
+			message: '#^Variable \$sugerenciasUnidad might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/update.php
+
+		-
+			message: '#^Variable \$tipos might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: backend/views/proyecto/update.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: backend/views/solicitud-cotizacion/cotizar.php
+
+		-
+			message: '#^Property common\\tests\\Unit\\Models\\LoginFormTest\:\:\$tester has unknown class common\\tests\\Support\\UnitTester as its type\.$#'
+			identifier: class.notFound
+			count: 1
+			path: common/tests/Unit/Models/LoginFormTest.php

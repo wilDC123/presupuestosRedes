@@ -505,6 +505,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Tests unitarios: `php vendor/bin/codecept run Unit -c backend`. Usan la base LOCAL de
   desarrollo (`common/config/test-local.php`, no se sube a git); cada test corre en una
   transacción que se deshace al terminar, así que no dejan datos
+- Análisis estático: `composer static` (PHPStan, nivel 5; correrlo antes de cada PR, como los tests;
+  debe terminar en "No errors"). Desde el 2026-10-31 analiza también `backend/services` y
+  `backend/components`, no analiza `frontend/`, y usa una LÍNEA BASE (`phpstan-baseline.neon`) con los
+  avisos que ya existían (casi todos falsas alarmas de tipos, como `->all()` sin `@var Modelo[]`): solo
+  muestra los NUEVOS. Al anotar un tipo y corregir un aviso viejo, regenerar la línea base con
+  `php vendor/bin/phpstan analyse --generate-baseline phpstan-baseline.neon`
 - URL local del backend: http://presupuestos-redes.test:8080
 - Usuario de prueba local: admin / admin123. Desde el 2026-10-25 el ingreso usa
   `redes.Usuario` (usuarios TEMPORALES hasta integrar la autenticación institucional;
