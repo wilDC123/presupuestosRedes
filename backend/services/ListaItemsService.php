@@ -64,7 +64,8 @@ class ListaItemsService
      * categorias: [idCategoria => ['nombre' => string, 'items' => ProyectoItem[]]].
      *
      * Si se pasan $items (los enviados en un formulario que no se pudo
-     * guardar) agrupa esos en vez de los guardados.
+     * guardar) agrupa esos en vez de los guardados. El agrupamiento en si
+     * esta en ProyectoItem::agruparPorCategoria().
      *
      * @param ProyectoItem[]|null $items
      * @return array<int, array{nombre: string, items: ProyectoItem[]}>
@@ -73,23 +74,7 @@ class ListaItemsService
     {
         $items ??= $proyecto->getItems()->with(['subcatalogoItem', 'categoria', 'especificacion.versionActual', 'emisionVigente'])->all();
 
-        $grupos = [];
-        $orden = [];
-
-        foreach ($items as $item) {
-            $idCategoria = (int) $item->idCategoria;
-
-            if (!isset($grupos[$idCategoria])) {
-                $grupos[$idCategoria] = ['nombre' => $item->categoria->nombre ?? 'Sin clasificación', 'items' => []];
-                $orden[$idCategoria] = $item->categoria->orden ?? 999;
-            }
-
-            $grupos[$idCategoria]['items'][] = $item;
-        }
-
-        uksort($grupos, static fn ($a, $b) => $orden[$a] <=> $orden[$b]);
-
-        return $grupos;
+        return ProyectoItem::agruparPorCategoria($items);
     }
 
     /**

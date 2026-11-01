@@ -129,6 +129,40 @@ class ProyectoItem extends ActiveRecord
     }
 
     /**
+     * Agrupa los items por clasificacion, en el orden de las categorias (los
+     * items de cada grupo, en el orden en que llegan): el orden de la lista
+     * en pantalla y en los impresos. Funcion pura: no consulta la base, salvo
+     * la relacion categoria si no viene cargada.
+     *
+     * Vive en el modelo para que la usen ListaItemsService::agrupar() y
+     * EspecificacionEmisionService::vigentesDelProyecto() sin que la emision
+     * dependa del servicio de la lista (que a su vez usa la emision).
+     *
+     * @param ProyectoItem[] $items
+     * @return array<int, array{nombre: string, items: ProyectoItem[]}> [idCategoria => grupo]
+     */
+    public static function agruparPorCategoria(array $items): array
+    {
+        $grupos = [];
+        $orden = [];
+
+        foreach ($items as $item) {
+            $idCategoria = (int) $item->idCategoria;
+
+            if (!isset($grupos[$idCategoria])) {
+                $grupos[$idCategoria] = ['nombre' => $item->categoria->nombre ?? 'Sin clasificación', 'items' => []];
+                $orden[$idCategoria] = $item->categoria->orden ?? 999;
+            }
+
+            $grupos[$idCategoria]['items'][] = $item;
+        }
+
+        uksort($grupos, static fn ($a, $b) => $orden[$a] <=> $orden[$b]);
+
+        return $grupos;
+    }
+
+    /**
      * Linea del presupuesto que nacio de este item (null si aun no se presupuesto).
      */
     public function getPresupuestoDetalle(): ActiveQuery
