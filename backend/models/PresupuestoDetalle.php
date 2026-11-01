@@ -12,7 +12,8 @@ use yii\db\ActiveRecord;
  *
  * REGLA DE NEGOCIO CRITICA: precioUnitario se copia UNA SOLA VEZ desde
  * CotizacionDetalle en el momento de crear la fila (ver
- * PresupuestoService::agregarLinea() / congelarPrecio()). Ni este modelo ni
+ * ElaborarPresupuestoService::reemplazarLinea() y
+ * PresupuestoService::congelarPrecio()). Ni este modelo ni
  * el servicio tienen, ni deben tener nunca, ningun codigo que
  * vuelva a sincronizar precioUnitario con CotizacionDetalle despues de la
  * creacion inicial -- ni un afterFind, ni un job, ni un boton "actualizar
@@ -57,8 +58,9 @@ class PresupuestoDetalle extends ActiveRecord
     {
         return [
             [['idPresupuesto', 'idSubcatalogo', 'cantidad'], 'required'],
-            // idProyectoItem: que sea de la lista de ESTE proyecto y que no
-            // este ya presupuestado lo verifica PresupuestoService::agregarLinea().
+            // idProyectoItem: que sea de la lista de ESTE proyecto lo verifica
+            // ElaborarPresupuestoService::elegir(); que tenga una sola linea,
+            // reemplazarLinea() (borra la anterior) y el indice unico filtrado.
             [['idPresupuesto', 'idSubcatalogo', 'idCotizacionDetalle', 'idProyectoItem'], 'integer'],
             [['cantidad'], 'number', 'min' => 0],
             [['unidadMedida'], 'string', 'max' => 20],
