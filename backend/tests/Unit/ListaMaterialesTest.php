@@ -186,6 +186,7 @@ class ListaMaterialesTest extends Unit
             'configuracion' => ConfiguracionPresupuesto::obtener(),
             'materiales' => (new MaterialDticService())->agrupar(Proyecto::findOne($proyecto->id)),
             'trabajos' => (new CondicionPreviaService())->agrupar(Proyecto::findOne($proyecto->id)),
+            'proceso' => 'Proceso test',
         ]);
 
         $this->assertStringNotContainsString(ProyectoMaterialDtic::TITULO, $html());

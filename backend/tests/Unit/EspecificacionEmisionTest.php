@@ -274,7 +274,7 @@ class EspecificacionEmisionTest extends Unit
 
         $html = (new \yii\web\View())->renderFile(
             \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
-            ['emision' => $emision]
+            ['emision' => $emision, 'proceso' => \backend\models\Proceso::nombreDe($emision->codigoProceso())]
         );
 
         $this->assertStringContainsString('<strong>Versión:</strong> 03', $html);
@@ -312,7 +312,7 @@ class EspecificacionEmisionTest extends Unit
 
         $html = (new \yii\web\View())->renderFile(
             \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
-            ['emision' => $emision]
+            ['emision' => $emision, 'proceso' => \backend\models\Proceso::nombreDe($emision->codigoProceso())]
         );
 
         $this->assertStringContainsString('Versión: 01', $html);
@@ -335,7 +335,7 @@ class EspecificacionEmisionTest extends Unit
 
         $html = (new \yii\web\View())->renderFile(
             \Yii::getAlias('@backend/views/especificacion/formulario-pdf.php'),
-            ['emision' => $emision]
+            ['emision' => $emision, 'proceso' => \backend\models\Proceso::nombreDe($emision->codigoProceso())]
         );
 
         $this->assertStringContainsString($emision->codigo(), $html);
@@ -413,6 +413,13 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame([(int) $emision->id], $ids('7777'));
         $this->assertSame([], $ids('NET:7777/25'));
         $this->assertStringContainsString('NET:7777/26', $this->emisiones->exportarCsv(['buscar' => 'NET:7777/26']));
+    }
+
+    public function testCodigoProcesoUsaPiSiLaEmisionNoTieneProceso(): void
+    {
+        $this->assertSame('GD', (new EspecificacionEmision(['proceso' => 'GD']))->codigoProceso());
+        $this->assertSame(CorrelativoDocumento::PROCESO, (new EspecificacionEmision(['proceso' => null]))->codigoProceso());
+        $this->assertSame(CorrelativoDocumento::PROCESO, (new EspecificacionEmision(['proceso' => '']))->codigoProceso());
     }
 
     public function testLasVigentesDelProyectoSalenEnElOrdenDeLaLista(): void

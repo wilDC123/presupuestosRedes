@@ -9,6 +9,7 @@ use backend\models\ConfiguracionEspecificacion;
 use backend\models\ConfiguracionPresupuesto;
 use backend\models\CorrelativoDocumento;
 use backend\models\OrdenCambio;
+use backend\models\Proceso;
 use backend\models\Proyecto;
 use backend\services\CategoriaService;
 use backend\services\CodificacionService;
@@ -124,6 +125,7 @@ class ListaItemsController extends Controller
         $itemsDeLaLista = array_merge([], ...array_column($grupos, 'items'));
         $emisiones = new EspecificacionEmisionService();
         $especificaciones = new EspecificacionService();
+        $configuracion = ConfiguracionEspecificacion::obtener();
         // Opciones del selector "Especificación técnica": solo si la lista se edita.
         $selector = $editable
             ? $especificaciones->selector($this->service->especificacionesEnlazadas($proyecto))
@@ -138,7 +140,9 @@ class ListaItemsController extends Controller
             'puedeReemitir' => $emisiones->puedeReemitir($proyecto),
             // Para el boton "Imprimir especificaciones (N)".
             'totalFormularios' => count($emisiones->vigentesDelProyecto($proyecto)),
-            'configuracion' => ConfiguracionEspecificacion::obtener(),
+            'configuracion' => $configuracion,
+            // Texto de ejemplo del campo "Lugar de entrega" de la ventana "Reemitir".
+            'lugarEntregaPorDefecto' => EspecificacionEmisionService::lugarEntregaPorDefecto($configuracion),
             'proximoCodigo' => (new CodificacionService())->proximo(
                 CorrelativoDocumento::TIPO_ESPECIFICACION,
                 $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO
@@ -182,6 +186,8 @@ class ListaItemsController extends Controller
             // Secciones sin precio, agrupadas: [subtitulo => materiales] y [tipo => trabajos].
             'materiales' => (new MaterialDticService())->agrupar($proyecto),
             'trabajos' => (new CondicionPreviaService())->agrupar($proyecto),
+            // El codigo es el del proyecto (RD-PI-PT-NNN), que siempre lleva PI.
+            'proceso' => Proceso::nombreDe(CorrelativoDocumento::PROCESO),
         ]);
 
         $pdf = $this->service->generarPdf($proyecto, $html, $documento['borrador']);
@@ -212,7 +218,7 @@ class ListaItemsController extends Controller
 
         $formularios = array_map(fn ($emision) => [
             'emision' => $emision,
-            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision]),
+            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision, 'proceso' => Proceso::nombreDe($emision->codigoProceso())]),
         ], $vigentes);
 
         $pdf = $emisiones->generarPdfDelProyecto($proyecto, $formularios);

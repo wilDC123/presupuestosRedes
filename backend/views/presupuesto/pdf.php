@@ -43,6 +43,8 @@ use yii\helpers\Html;
  * @var backend\models\ConfiguracionPresupuesto $configuracion nota y firmas (editables)
  * @var string $oficio "DTIC Of. Nº 598/2026" (formato de la configuracion de la carta,
  *             CartaService::formatearOficio(); año de la carta o de creacion); vacio si aun no tiene oficio
+ * @var string $proceso nombre del proceso para la cabecera (Proceso::nombreDe($presupuesto->codigoProceso()),
+ *             lo calcula el controlador)
  */
 
 $proyecto = $presupuesto->proyecto;
@@ -151,7 +153,7 @@ $numero = 0;
     'titulo' => 'PRESUPUESTO DE INSTALACIÓN DE REDES',
     'codigo' => $presupuesto->numeroPresupuesto ?: '—',
     'version' => $presupuesto::VERSION_DOCUMENTO,
-    'proceso' => backend\models\Proceso::nombreDe($presupuesto->codigoProceso()),
+    'proceso' => $proceso,
     'fecha' => $presupuesto->fechaFormateada() ?: '—',
 ]) ?>
 

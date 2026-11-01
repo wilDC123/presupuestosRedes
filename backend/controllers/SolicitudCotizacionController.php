@@ -7,6 +7,7 @@ namespace backend\controllers;
 use backend\models\ConfiguracionEspecificacion;
 use backend\models\ConfiguracionSolicitudCotizacion;
 use backend\models\Cotizacion;
+use backend\models\Proceso;
 use backend\models\Proyecto;
 use backend\models\SolicitudCotizacion;
 use backend\services\CotizacionService;
@@ -276,7 +277,7 @@ class SolicitudCotizacionController extends Controller
         // proveedor recibe en un solo archivo lo que se le pide y como se le pide.
         $formularios = $especificaciones !== 1 ? [] : array_map(fn ($emision) => [
             'emision' => $emision,
-            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision]),
+            'html' => $this->renderPartial('/especificacion/formulario-pdf', ['emision' => $emision, 'proceso' => Proceso::nombreDe($emision->codigoProceso())]),
         ], $this->service->emisionesVigentes($solicitud));
 
         $pdf = $this->service->generarPdf($solicitud, $html, $formularios);

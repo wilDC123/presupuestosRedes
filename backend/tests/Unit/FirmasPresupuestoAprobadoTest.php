@@ -96,6 +96,7 @@ class FirmasPresupuestoAprobadoTest extends Unit
             'totalGeneral' => 0.0,
             'configuracion' => $configuracion,
             'oficio' => '',
+            'proceso' => 'Proceso test',
         ]);
     }
 

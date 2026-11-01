@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
-use backend\services\EspecificacionEmisionService;
 use backend\services\ProyectoService;
 use yii\bootstrap5\BootstrapPluginAsset;
 use yii\helpers\Html;
@@ -57,6 +56,7 @@ use yii\web\JqueryAsset;
  * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
  * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
  * @var backend\models\ConfiguracionEspecificacion $configuracion
+ * @var string|null $lugarEntregaPorDefecto texto de ejemplo del "Lugar de entrega" al reemitir (null = no hay)
  * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001/26)
  * @var array<int, array<string, string>> $materiales otros materiales de la DTIC (los guardados o lo enviado)
  * @var string[] $categorias nombres de las categorias, subtitulos de los materiales escritos a mano
@@ -444,7 +444,7 @@ $grupoCierra = static fn (int $cantidad): string =>
                 <div class="row">
                     <div class="col-md-6 form-group mb-2">
                         <label for="reemitir-lugar">Lugar de entrega</label>
-                        <?= Html::textInput('lugarEntrega', '', ['id' => 'reemitir-lugar', 'class' => 'form-control', 'maxlength' => 300, 'placeholder' => (string) EspecificacionEmisionService::lugarEntregaPorDefecto()]) ?>
+                        <?= Html::textInput('lugarEntrega', '', ['id' => 'reemitir-lugar', 'class' => 'form-control', 'maxlength' => 300, 'placeholder' => (string) $lugarEntregaPorDefecto]) ?>
                     </div>
                     <div class="col-md-3 form-group mb-2">
                         <label for="reemitir-validez">Validez de la oferta (días)</label>

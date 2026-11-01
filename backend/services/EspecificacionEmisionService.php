@@ -593,10 +593,13 @@ class EspecificacionEmisionService
      * se arma con la facultad ("Administración de la …"): el proyecto tiene
      * una unidad solicitante en texto libre, que puede ser una oficina o una
      * persona. Se congela al emitir: las emisiones anteriores conservan el suyo.
+     *
+     * $configuracion: la que ya tenga quien llama (asi no se consulta dos veces).
      */
-    public static function lugarEntregaPorDefecto(): ?string
+    public static function lugarEntregaPorDefecto(?ConfiguracionEspecificacion $configuracion = null): ?string
     {
-        $lugar = trim((string) ConfiguracionEspecificacion::obtener()->lugarEntregaPorDefecto);
+        $configuracion ??= ConfiguracionEspecificacion::obtener();
+        $lugar = trim((string) $configuracion->lugarEntregaPorDefecto);
 
         return $lugar === '' ? null : $lugar;
     }

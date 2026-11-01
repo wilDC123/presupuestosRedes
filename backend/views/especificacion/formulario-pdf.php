@@ -30,6 +30,8 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var backend\models\EspecificacionEmision $emision
+ * @var string $proceso nombre del proceso para la cabecera (Proceso::nombreDe($emision->codigoProceso()), lo
+ *             calcula quien dibuja el formulario: asi la vista no consulta la base)
  */
 
 $version = $emision->version;
@@ -125,7 +127,7 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
     'titulo' => 'ESPECIFICACIONES TÉCNICAS DE LOS BIENES OFRECIDOS',
     'codigo' => $emision->codigo(),
     'version' => $numeroVersion,
-    'proceso' => backend\models\Proceso::nombreDe($emision->proceso ?: backend\models\CorrelativoDocumento::PROCESO),
+    'proceso' => $proceso,
     'fecha' => $fecha->format('d/m/Y'),
     'institucion' => $lineasCabecera[0] ?? null,
     'unidad' => $lineasCabecera[1] ?? null,

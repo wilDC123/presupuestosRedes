@@ -78,6 +78,7 @@ class PresupuestoPdfTest extends Unit
                 'totalGeneral' => 0.0,
                 'configuracion' => ConfiguracionPresupuesto::obtener(),
                 'oficio' => '',
+                'proceso' => 'Proceso test',
             ]);
 
             $this->assertSame(1, preg_match_all('/<td width="45%">\s*MANO DE OBRA\s*<br>/', $html), 'La fila de la DTIC sale una vez.');
