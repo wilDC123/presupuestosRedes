@@ -77,6 +77,13 @@ class EspecificacionEmision extends ActiveRecord
     public const ESTADO_ANULADA = 'anulada';
 
     /**
+     * Filtro "Vencidas" del registro. No es un estado guardado: es una
+     * vigente cuya fecha + vigencia ya paso (ver estaVencida()). Lo usan el
+     * desplegable del controlador y EspecificacionEmisionService::registro().
+     */
+    public const FILTRO_VENCIDA = 'vencida';
+
+    /**
      * Serie del codigo. Desde el 2026-10-22 se emite con el codigo del
      * lineamiento de la DTIC RD-GD-LI-001 (RD-PI-ET-001/26, correlativo nuevo
      * desde 1, por año). Las emitidas antes son documentos ya firmados y entregados:

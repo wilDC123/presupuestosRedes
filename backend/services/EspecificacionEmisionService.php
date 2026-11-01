@@ -366,10 +366,10 @@ class EspecificacionEmisionService
         // Vencida = fecha de emision + vigencia ya paso (calculado en SQL Server).
         $vencida = 'DATEADD(day, e.vigenciaDias, e.fechaEmision) < CAST(GETDATE() AS date)';
         switch ((string) ($filtros['estado'] ?? '')) {
-            case 'vigente':
+            case EspecificacionEmision::ESTADO_VIGENTE:
                 $query->andWhere(['e.estado' => EspecificacionEmision::ESTADO_VIGENTE])->andWhere("NOT ($vencida)");
                 break;
-            case 'vencida':
+            case EspecificacionEmision::FILTRO_VENCIDA:
                 $query->andWhere(['e.estado' => EspecificacionEmision::ESTADO_VIGENTE])->andWhere($vencida);
                 break;
             case EspecificacionEmision::ESTADO_REEMPLAZADA:

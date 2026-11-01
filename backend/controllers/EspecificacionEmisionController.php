@@ -38,7 +38,7 @@ class EspecificacionEmisionController extends Controller
             'opciones' => $this->service->opcionesRegistro(),
             'estados' => [
                 EspecificacionEmision::ESTADO_VIGENTE => 'Vigentes',
-                'vencida' => 'Vencidas',
+                EspecificacionEmision::FILTRO_VENCIDA => 'Vencidas',
                 EspecificacionEmision::ESTADO_REEMPLAZADA => 'Reemplazadas',
                 EspecificacionEmision::ESTADO_ANULADA => 'Anuladas',
             ],
