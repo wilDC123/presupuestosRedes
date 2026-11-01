@@ -1,10 +1,26 @@
+# Analisis estatico (PHPStan): composer static  (o php vendor/bin/phpstan analyse)
+#
+# Linea base (hallazgo 16 de la auditoria de code smells, 2026-10-31):
+# phpstan-baseline.neon guarda los avisos que ya existian (casi todos falsas
+# alarmas de tipos, p. ej. ->all() sin "@var Modelo[]"), asi que el analisis
+# solo muestra los NUEVOS. Al corregir un aviso viejo (anotando el tipo cuando
+# se toca el archivo por otro motivo), PHPStan avisa que sobra en la linea
+# base: regenerarla con
+#   php vendor/bin/phpstan analyse --generate-baseline phpstan-baseline.neon
+# No se analiza frontend/ (sitio publico de la plantilla, no se usa).
+
+includes:
+    - phpstan-baseline.neon
+
 parameters:
     level: 5
 
     paths:
         - backend/assets
+        - backend/components
         - backend/controllers
         - backend/models
+        - backend/services
         - backend/views
         - backend/tests/Functional
         - backend/tests/Unit
@@ -14,18 +30,10 @@ parameters:
         - common/tests/Unit
         - console/controllers
         - console/models
-        - frontend/assets
-        - frontend/controllers
-        - frontend/models
-        - frontend/views
-        - frontend/tests/Acceptance
-        - frontend/tests/Functional
-        - frontend/tests/Unit
 
     scanDirectories:
         - backend/tests/Support
         - common/tests/Support
-        - frontend/tests/Support
 
     bootstrapFiles:
         - phpstan-bootstrap.php
