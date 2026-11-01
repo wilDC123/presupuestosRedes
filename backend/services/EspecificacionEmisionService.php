@@ -528,7 +528,9 @@ class EspecificacionEmisionService
     {
         $emisiones = [];
 
-        foreach ((new ListaItemsService())->agrupar($proyecto) as $grupo) {
+        $items = $proyecto->getItems()->with(['categoria', 'emisionVigente'])->all();
+
+        foreach (ProyectoItem::agruparPorCategoria($items) as $grupo) {
             foreach ($grupo['items'] as $item) {
                 if ($item->emisionVigente !== null) {
                     $emisiones[] = $item->emisionVigente;

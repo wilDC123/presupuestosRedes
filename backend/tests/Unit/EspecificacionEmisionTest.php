@@ -415,6 +415,34 @@ class EspecificacionEmisionTest extends Unit
         $this->assertStringContainsString('NET:7777/26', $this->emisiones->exportarCsv(['buscar' => 'NET:7777/26']));
     }
 
+    public function testLasVigentesDelProyectoSalenEnElOrdenDeLaLista(): void
+    {
+        // Dos items de categorias distintas, cargados al reves del orden de las categorias.
+        $porCategoria = [];
+        foreach (SubcatalogoItem::find()->alias('s')->innerJoinWith('categoria c')->andWhere(['s.activo' => true])->orderBy(['c.orden' => SORT_DESC])->all() as $item) {
+            $porCategoria[(int) $item->idCategoria] ??= $item;
+        }
+        if (count($porCategoria) < 2) {
+            $this->markTestSkipped('La base local no tiene ítems activos de 2 categorías.');
+        }
+        [$deCategoriaPosterior, $deCategoriaAnterior] = array_slice(array_values($porCategoria), 0, 2);
+
+        $fila = fn (SubcatalogoItem $item, Especificacion $ficha): array => [
+            'id' => '', 'idSubcatalogo' => (string) $item->id, 'cantidad' => '1', 'observacion' => '', 'idEspecificacion' => (string) $ficha->id,
+        ];
+        $this->guardarLista([
+            $fila($deCategoriaPosterior, $this->ficha('Ficha test posterior', [['nombre' => 'A', 'valor' => '1']])),
+            $fila($deCategoriaAnterior, $this->ficha('Ficha test anterior', [['nombre' => 'B', 'valor' => '2']])),
+        ]);
+
+        $vigentes = $this->emisiones->vigentesDelProyecto(Proyecto::findOne($this->proyecto->id));
+
+        $this->assertSame(
+            [$deCategoriaAnterior->descripcion, $deCategoriaPosterior->descripcion],
+            array_map(static fn (EspecificacionEmision $e) => $e->titulo, $vigentes)
+        );
+    }
+
     /**
      * @param array<int, array{nombre: string, valor: string}> $filas
      */
