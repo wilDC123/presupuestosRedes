@@ -72,6 +72,25 @@ class EspecificacionImportacionTest extends Unit
         );
     }
 
+    public function testUnArchivoQueNoSePuedeLeerGuardaElMotivo(): void
+    {
+        file_put_contents($this->carpeta . '/dañado.docx', 'esto no es un docx');
+
+        $plan = $this->servicio->analizar($this->carpeta);
+        $fila = $this->porArchivo($plan)['dañado.docx'];
+
+        $this->assertSame(EspecificacionImportacionService::ACCION_ERROR, $fila['accion']);
+        $this->assertNotEmpty($fila['motivoError']);
+
+        // Y sale en el CSV, en la ultima columna.
+        $csv = $this->carpeta . '/plan.csv';
+        $this->servicio->escribirCsv($plan, $csv);
+        $lineas = array_map(static fn (string $l) => str_getcsv($l, ';'), file($csv, FILE_IGNORE_NEW_LINES));
+        $this->assertSame('Motivo del error', end($lineas[0]));
+        $deDanado = array_values(array_filter($lineas, static fn (array $l) => ($l[1] ?? '') === 'dañado.docx'))[0];
+        $this->assertSame($fila['motivoError'], end($deDanado));
+    }
+
     public function testUnDocumentoNuevoSinModeloNoReemplazaAOtroConModelo(): void
     {
         // Como en el banco: un NVR quedo titulado "CÁMARA PTZ" (plantilla

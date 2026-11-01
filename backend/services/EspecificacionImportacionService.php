@@ -49,7 +49,7 @@ class EspecificacionImportacionService
      * Lee la carpeta y arma el plan: una fila por archivo, con que se haria
      * con el. No escribe nada en la base.
      *
-     * @return array<int, array{accion: string, archivo: string, titulo: ?string, modeloSugerido: ?string, garantia: ?string, caracteristicas: array<int, array{nombre: ?string, valor: string}>, codigoNet: ?string, fechaEmision: ?string, familia: string, archivosFamilia: int, elegido: ?string}>
+     * @return array<int, array{accion: string, archivo: string, titulo: ?string, modeloSugerido: ?string, garantia: ?string, caracteristicas: array<int, array{nombre: ?string, valor: string}>, codigoNet: ?string, fechaEmision: ?string, familia: string, archivosFamilia: int, elegido: ?string, motivoError: ?string}>
      */
     public function analizar(string $carpeta, ?int $desdeAnio = null): array
     {
@@ -66,7 +66,7 @@ class EspecificacionImportacionService
             $fila = [
                 'accion' => self::ACCION_CREAR, 'archivo' => $archivo, 'titulo' => null, 'modeloSugerido' => null,
                 'garantia' => null, 'caracteristicas' => [], 'codigoNet' => null, 'fechaEmision' => null,
-                'familia' => '', 'archivosFamilia' => 0, 'elegido' => null,
+                'familia' => '', 'archivosFamilia' => 0, 'elegido' => null, 'motivoError' => null,
             ];
 
             // Archivos temporales de Word ("~$archivo.docx").
@@ -82,7 +82,8 @@ class EspecificacionImportacionService
             try {
                 $datos = $extractor->extraerDesdeArchivo($ruta, 'docx');
             } catch (Throwable $e) {
-                $filas[] = ['accion' => self::ACCION_ERROR] + $fila;
+                // El motivo va al CSV, para saber que paso con ese archivo.
+                $filas[] = ['accion' => self::ACCION_ERROR, 'motivoError' => $e->getMessage()] + $fila;
                 continue;
             }
 
@@ -206,7 +207,7 @@ class EspecificacionImportacionService
         }
 
         fwrite($salida, "\xEF\xBB\xBF");
-        fputcsv($salida, ['Acción', 'Archivo', 'Título', 'Modelo sugerido', 'Características', 'Garantía', 'NET', 'Fecha de emisión', 'Archivos de la familia', 'Se usa en su lugar'], ';');
+        fputcsv($salida, ['Acción', 'Archivo', 'Título', 'Modelo sugerido', 'Características', 'Garantía', 'NET', 'Fecha de emisión', 'Archivos de la familia', 'Se usa en su lugar', 'Motivo del error'], ';');
 
         foreach ($plan as $fila) {
             fputcsv($salida, [
@@ -220,6 +221,7 @@ class EspecificacionImportacionService
                 $fila['fechaEmision'],
                 $fila['archivosFamilia'] ?: '',
                 $fila['elegido'],
+                $fila['motivoError'] ?? '',
             ], ';');
         }
 
