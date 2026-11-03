@@ -1,7 +1,7 @@
 # Guía de instalación en el servidor de DTIC
 
 Módulo: Sistema de presupuestos de instalaciones de redes (Unidad de Redes y Telecomunicaciones).
-Para: equipo técnico de DTIC — USFX. Fecha: 18 de octubre de 2026.
+Para: equipo técnico de DTIC — USFX. Fecha: 18 de octubre de 2026 (actualizada el 2 de noviembre de 2026: PHP 8.3).
 
 Esta guía reúne lo que el servidor necesita para instalar el módulo y los puntos que conviene
 acordar antes. El módulo está hecho en PHP con Yii2 Advanced y usa la base SQL Server
@@ -9,7 +9,7 @@ acordar antes. El módulo está hecho en PHP con Yii2 Advanced y usa la base SQL
 
 ## 1. Resumen de lo que hace falta
 
-- Ubuntu Server con Nginx y PHP-FPM 8.2 (como mínimo 8.1).
+- Ubuntu Server con Nginx y PHP-FPM 8.3 (la versión mínima que exige el proyecto).
 - El driver de Microsoft para conectar PHP con SQL Server desde Linux (ODBC 18 + `pdo_sqlsrv`).
 - Un usuario de SQL Server propio para la aplicación (desde Linux no hay autenticación de Windows).
 - Permiso para crear el esquema `redes` y sus tablas en `POAPresupuestos`, y para leer
@@ -24,7 +24,7 @@ acordar antes. El módulo está hecho en PHP con Yii2 Advanced y usa la base SQL
 
 ## 2. Requisitos del servidor
 
-**PHP 8.2** (el código usa características de PHP 8.0 y 8.1) con estas extensiones:
+**PHP 8.3** (versión del servidor de pruebas de la DTIC; `composer.json` exige 8.3 como mínimo) con estas extensiones:
 
 - `pdo_sqlsrv` y `sqlsrv` 5.12 (conexión a SQL Server; se instalan con PECL).
 - `mbstring`, `xml` / `dom`, `zip` (lee los .docx de especificaciones), `gd` (imágenes en los
@@ -46,13 +46,22 @@ de Microsoft para la versión de Ubuntu del servidor.
 - Para la primera instalación, permiso para crear el esquema `redes` (o que el DBA lo cree antes:
   `CREATE SCHEMA redes`).
 
-**Qué crea la instalación:** el esquema `redes` con unas 25 tablas, más `redes.migration`, que
+**Qué crea la instalación:** el esquema `redes` con 40 tablas (detalladas en `docs/modelo-logico-datos.md`), más `redes.migration`, que
 registra qué cambios de estructura ya se aplicaron. En `dbo` no crea nada: solo lee
 `dbo.CatalogoSigma`.
 
 **Cómo se crean las tablas.** El módulo usa migraciones de Yii (`php yii migrate`): son scripts
 versionados que se aplican en orden y se pueden revertir. Si DTIC prefiere que el DBA ejecute el
 SQL a mano en vez de darle ese permiso a la aplicación, hay que acordarlo antes.
+
+**Un respaldo "solo estructura" no alcanza para instalar.** Las migraciones, además de crear las
+tablas, cargan datos que el sistema necesita para funcionar: categorías, unidades de medida, tipos de
+proyecto, procesos, roles del proyecto, tipos de trabajo complementario, las cuatro configuraciones de
+una sola fila (`Configuracion*`), los correlativos (`CorrelativoDocumento`) y el registro
+`redes.migration`. Si se crean las tablas desde un script de estructura, faltan esos datos y
+`php yii migrate` intentaría crear de nuevo las tablas. Además, un respaldo `.bak` de la base de
+desarrollo (SQL Server 2022) no se puede restaurar en SQL Server 2012. La estructura completa está
+documentada en `docs/modelo-logico-datos.md`.
 
 **SQL Server 2012.** Las migraciones y las pruebas automáticas se corrieron desde cero sobre una base
 con nivel de compatibilidad 110 (el de 2012) sin errores, y el código no usa funciones de versiones
@@ -142,7 +151,7 @@ server {
 
     location ~ ^/index\.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
     }
 
     # Ningún otro .php ni archivo oculto se entrega.
@@ -204,7 +213,7 @@ sesiones "recordadas" en otros equipos.
 
 **Para integrar la autenticación institucional** se cambia la clase de identidad
 (`identityClass` en `backend/config/main.php`) por una que use el sistema de la universidad. El
-módulo solo necesita saber quién está conectado (`identity->username`).
+módulo solo necesita saber quién está conectado: lo lee únicamente `backend\components\UsuarioActual::nombre()`.
 
 ## 9. Verificación después de instalar
 
