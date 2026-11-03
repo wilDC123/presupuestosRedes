@@ -6,13 +6,17 @@ instalaciones de redes en la Universidad San Francisco Xavier de Chuquisaca (USF
 para la Unidad de Redes y Telecomunicaciones de DTIC.
 
 ## Stack tecnológico (NO cambiar sin autorización del tutor académico)
-- Backend: PHP 8.2 + Yii2 Advanced (v2.0.55)
+- Backend: PHP 8.3 + Yii2 Advanced (v2.0.55). Desde el 2026-11-02 (la Ing. de DTIC pidió PHP 8.3 para el
+  servidor de pruebas): `composer.json` exige `>=8.3` y PHPStan analiza como 8.3 (`phpVersion: 80300`)
 - Frontend: jQuery, validación en frontend Y backend
 - Base de datos: SQL Server (institución usa 2012; entorno local puede diferir)
 - Servidor web real de la institución: Nginx (confirmado con el equipo técnico)
 - SO del servidor: Ubuntu Server (Linux, case-sensitive)
-- Entorno local de desarrollo: Laragon con PHP 8.2.33, Nginx en puerto 8080
-- Driver SQL Server para PHP: msphpsql v5.12.0 (última compatible con PHP 8.2)
+- Entorno local de desarrollo: Laragon con PHP 8.3.33 (`C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64`, mismo
+  php.ini que el 8.2.33 de antes), Nginx en puerto 8080
+- Driver SQL Server para PHP: msphpsql v5.12.0 (soporta PHP 8.1 a 8.3)
+- Modelo lógico de datos (diagramas ER en Mermaid + diccionario generado de la base): `docs/modelo-logico-datos.md`.
+  Al agregar o cambiar tablas, actualizarlo
 
 ## Estructura del proyecto (Yii2 Advanced)
 - `backend/` → panel administrativo, AQUÍ vive el módulo de redes que se está construyendo
@@ -499,10 +503,11 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 ## Entorno de desarrollo — comandos útiles
 - Levantar consultas de migración: `php yii migrate` (desde la raíz del proyecto)
 - Crear una migración nueva: `php yii migrate/create nombre_descriptivo`
-- El PATH de Windows ya está configurado para que `php` (sin ruta completa) use el
-  de Laragon (8.2.33, con el driver sqlsrv) por defecto. Si alguna terminal nueva
-  muestra una versión distinta, verificar con `php -v` antes de correr comandos.
-- Tests unitarios: `php vendor/bin/codecept run Unit -c backend`. Usan la base LOCAL de
+- El PATH de Windows (del SISTEMA, no del usuario) debe apuntar al PHP 8.3.33 de Laragon (con el driver
+  sqlsrv). Con el 8.2 todo comando se detiene: "Composer detected issues in your platform ... >= 8.3.0".
+  Verificar con `php -v` antes de correr comandos.
+- Tests: `php vendor/bin/codecept run -c backend` (Unit y Functional; la Functional `LoginCest` prueba el
+  ingreso con `redes.Usuario` desde el 2026-11-02). Solo los unitarios: `php vendor/bin/codecept run Unit -c backend`. Usan la base LOCAL de
   desarrollo (`common/config/test-local.php`, no se sube a git); cada test corre en una
   transacción que se deshace al terminar, así que no dejan datos
 - Análisis estático: `composer static` (PHPStan, nivel 5; correrlo antes de cada PR, como los tests;
