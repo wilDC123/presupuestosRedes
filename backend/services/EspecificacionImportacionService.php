@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\EspecificacionMetadataExtractor;
+use backend\components\NumeracionEspecificacion;
 use backend\models\Especificacion;
+use backend\models\EspecificacionCaracteristica;
 use RuntimeException;
 use Throwable;
 use Yii;
@@ -49,7 +51,7 @@ class EspecificacionImportacionService
      * Lee la carpeta y arma el plan: una fila por archivo, con que se haria
      * con el. No escribe nada en la base.
      *
-     * @return array<int, array{accion: string, archivo: string, titulo: ?string, modeloSugerido: ?string, garantia: ?string, caracteristicas: array<int, array{nombre: ?string, valor: string}>, codigoNet: ?string, fechaEmision: ?string, familia: string, archivosFamilia: int, elegido: ?string, motivoError: ?string}>
+     * @return array<int, array{accion: string, archivo: string, titulo: ?string, modeloSugerido: ?string, garantia: ?string, caracteristicas: array<int, array{nombre: ?string, valor: string, esSubtitulo?: bool, nivel?: int}>, codigoNet: ?string, fechaEmision: ?string, familia: string, archivosFamilia: int, elegido: ?string, motivoError: ?string}>
      */
     public function analizar(string $carpeta, ?int $desdeAnio = null): array
     {
@@ -96,6 +98,19 @@ class EspecificacionImportacionService
                 'nombre' => $this->limpiar($c['nombre']),
                 'valor' => (string) $this->limpiar($c['valor']),
             ], $datos['caracteristicas']);
+
+            // Las filas que parecen subtitulo ("Hardware", "ADMINISTRACIÓN") se
+            // marcan como tales, salvo la ultima (no tiene nada que agrupar), y las
+            // filas que les siguen van un nivel adentro (1.4 -> 1.4.1).
+            $ultima = count($fila['caracteristicas']) - 1;
+            foreach ($fila['caracteristicas'] as $n => $c) {
+                $fila['caracteristicas'][$n]['esSubtitulo'] = $n < $ultima
+                    && EspecificacionCaracteristica::pareceSubtitulo($c['nombre'], $c['valor']);
+            }
+            $niveles = NumeracionEspecificacion::nivelesPorSubtitulo(array_column($fila['caracteristicas'], 'esSubtitulo'));
+            foreach ($niveles as $n => $nivel) {
+                $fila['caracteristicas'][$n]['nivel'] = $nivel;
+            }
 
             if ($fila['caracteristicas'] === [] || empty($fila['titulo'])) {
                 $filas[] = ['accion' => self::ACCION_SIN_TABLA] + $fila;

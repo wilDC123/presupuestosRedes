@@ -22,7 +22,7 @@ use yii\widgets\ActiveForm;
  * @var yii\web\View $this
  * @var backend\models\Especificacion $model
  * @var backend\models\EspecificacionVersion $version valores del contenido tecnico
- * @var array<int, array{nombre: ?string, valor: ?string}> $filas caracteristicas
+ * @var array<int, array{nombre: ?string, valor: ?string, esSubtitulo?: mixed, nivel?: mixed}> $filas caracteristicas
  * @var int $emisiones formularios de especificación emitidos con la version actual
  * @var int|null $numeroBloqueado numero de la version actual si ya se emitio
  * @var string[] $errores errores del contenido tecnico (filas, largos)
@@ -35,13 +35,20 @@ $this->registerJsFile('@web/js/especificacion-form.js', ['depends' => [JqueryAss
 
 /**
  * Fila de la tabla de caracteristicas. $n es su indice en Caracteristicas[n][...];
- * el JS usa "__n__" como marcador y renumera las filas antes de enviar.
+ * el JS usa "__n__" como marcador y renumera las filas antes de enviar. La
+ * primera columna muestra el numero que llevara en el formulario de
+ * especificacion: lo escribe el JS (misma regla que NumeracionEspecificacion).
  */
-$fila = static fn (string $n, string $nombre, string $valor): string =>
-    '<tr class="esp-fila">'
+$fila = static fn (string $n, string $nombre, string $valor, bool $esSubtitulo, int $nivel): string =>
+    '<tr class="esp-fila' . ($esSubtitulo ? ' esp-es-subtitulo' : '') . '">'
+    . '<td class="esp-numero mono text-nowrap"></td>'
+    . Html::hiddenInput("Caracteristicas[$n][nivel]", (string) $nivel, ['class' => 'esp-nivel'])
     . '<td>' . Html::textInput("Caracteristicas[$n][nombre]", $nombre, ['class' => 'form-control esp-nombre', 'maxlength' => 200, 'placeholder' => 'Ej. Calibre del conductor', 'aria-label' => 'Característica']) . '</td>'
     . '<td>' . Html::textarea("Caracteristicas[$n][valor]", $valor, ['class' => 'form-control esp-valor', 'rows' => 1, 'placeholder' => 'Ej. 23 AWG', 'aria-label' => 'Valor']) . '</td>'
+    . '<td class="text-center">' . Html::checkbox("Caracteristicas[$n][esSubtitulo]", $esSubtitulo, ['value' => 1, 'class' => 'form-check-input esp-subtitulo', 'aria-label' => 'Subtítulo', 'title' => 'Subtítulo: un solo texto, en negrita (ej. Hardware)']) . '</td>'
     . '<td class="rd-num text-nowrap">'
+    . '<button type="button" class="rd-quitar esp-afuera" aria-label="Sacar un nivel" title="Sacar un nivel (1.4.1 → 1.5)">←</button>'
+    . '<button type="button" class="rd-quitar esp-adentro" aria-label="Meter un nivel" title="Meter un nivel, debajo de la fila de arriba (1.5 → 1.4.1)">→</button>'
     . '<button type="button" class="rd-quitar esp-subir" aria-label="Subir fila" title="Subir">↑</button>'
     . '<button type="button" class="rd-quitar esp-bajar" aria-label="Bajar fila" title="Bajar">↓</button>'
     . '<button type="button" class="rd-quitar esp-quitar" aria-label="Quitar fila" title="Quitar">×</button>'
@@ -121,18 +128,31 @@ $fila = static fn (string $n, string $nombre, string $valor): string =>
             <table class="table" id="esp-tabla">
                 <thead>
                     <tr>
+                        <th style="width: 4.5rem">N.°</th>
                         <th style="width: 30%">Característica</th>
                         <th>Valor</th>
+                        <th class="text-center" style="width: 5.5rem">Subtítulo</th>
                         <th class="rd-num"></th>
                     </tr>
                 </thead>
+                <tbody>
+                    <?php // Las dos que agrega siempre el formulario de especificación: solo para ver la numeración. ?>
+                    <tr class="esp-fila-fija">
+                        <td class="mono">1.1</td>
+                        <td colspan="4" class="rd-nota">Especifique marca y modelo a ofertar (la agrega el formulario)</td>
+                    </tr>
+                    <tr class="esp-fila-fija">
+                        <td class="mono">1.2</td>
+                        <td colspan="4" class="rd-nota">URL del fabricante (la agrega el formulario)</td>
+                    </tr>
+                </tbody>
                 <tbody id="esp-filas">
                     <?php foreach ($filas as $i => $f): ?>
-                        <?= $fila((string) $i, (string) ($f['nombre'] ?? ''), (string) ($f['valor'] ?? '')) ?>
+                        <?= $fila((string) $i, (string) ($f['nombre'] ?? ''), (string) ($f['valor'] ?? ''), !empty($f['esSubtitulo']), (int) ($f['nivel'] ?? 1)) ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
-            <template id="esp-fila-modelo"><?= $fila('__n__', '', '') ?></template>
+            <template id="esp-fila-modelo"><?= $fila('__n__', '', '', false, 1) ?></template>
 
             <div class="rd-acciones mb-2">
                 <button type="button" id="esp-agregar" class="btn btn-outline">+ Agregar fila</button>
@@ -140,8 +160,11 @@ $fila = static fn (string $n, string $nombre, string $valor): string =>
             </div>
             <p class="rd-nota">
                 Las filas de "marca y modelo a ofertar" y "URL del fabricante" las agrega siempre el formulario de especificación: no hace
-                falta escribirlas. Una fila sin característica (solo valor) se imprime como texto suelto; sirve para
-                subtítulos como "Administración".
+                falta escribirlas. Los números (1.3, 1.4…) los pone el sistema según el orden y el nivel: no los escriba.
+                Marque <strong>Subtítulo</strong> en una fila como "Hardware" o "Administración" y meta las filas que van
+                dentro de ella con <strong>→</strong> (1.4 → 1.4.1, 1.4.2…); <strong>←</strong> las saca (vuelven a 1.5).
+                Se puede llegar a un tercer nivel (1.4.1.1). Una fila nueva entra al nivel de la de arriba. Una fila sin
+                característica que no es subtítulo se imprime como texto suelto.
             </p>
 
             <div id="esp-pegar" class="card mb-3 d-none">

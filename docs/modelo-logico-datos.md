@@ -210,6 +210,8 @@ erDiagram
         int idVersion FK
         string nombre
         string valor
+        bool esSubtitulo
+        int nivel "1 a 3"
     }
     EspecificacionEmision {
         int id PK
@@ -696,7 +698,7 @@ Versión de una ficha (v1, v2…). Una versión usada en una emisión ya no se m
 
 #### redes.EspecificacionCaracteristica
 
-Filas nombre / valor de una versión.
+Filas nombre / valor de una versión. El número de cada fila en el formulario (1.4, 1.4.1, 1.4.1.1) no se guarda: lo calcula `NumeracionEspecificacion` con el orden y el nivel.
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
@@ -705,6 +707,8 @@ Filas nombre / valor de una versión.
 | orden | int | no | por defecto `0` |
 | nombre | nvarchar(200) | sí |  |
 | valor | nvarchar(max) | no |  |
+| esSubtitulo | bit | no | por defecto `0`; fila de un solo texto (sin nombre), en negrita |
+| nivel | tinyint | no | por defecto `1`; CHECK entre 1 y 3 |
 
 #### redes.EspecificacionEmision
 
