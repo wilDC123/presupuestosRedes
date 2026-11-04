@@ -7,6 +7,7 @@ namespace backend\services;
 use backend\components\PresupuestoPdfGenerator;
 use backend\models\ConfiguracionSolicitudCotizacion;
 use backend\models\Cotizacion;
+use backend\models\CotizacionDetalle;
 use backend\models\EspecificacionEmision;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
@@ -293,6 +294,18 @@ class SolicitudCotizacionService
     public function tieneCotizaciones(SolicitudCotizacion $solicitud): bool
     {
         return Cotizacion::find()->andWhere(['idSolicitudCotizacion' => $solicitud->id])->exists();
+    }
+
+    /**
+     * true si el item de la lista ya tiene precios de proveedores: una linea
+     * de cotizacion suya, o esta en una solicitud que ya recibio cotizaciones.
+     * Con eso ya no se le cambia el item del subcatalogo (los precios eran de
+     * otro producto): ver ListaItemsService, "Cambiar ítem".
+     */
+    public function itemTieneCotizaciones(int $idProyectoItem): bool
+    {
+        return CotizacionDetalle::find()->andWhere(['idProyectoItem' => $idProyectoItem])->exists()
+            || $this->contarEnSolicitudesCotizadas([$idProyectoItem]) > 0;
     }
 
     /**

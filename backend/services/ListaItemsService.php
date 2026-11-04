@@ -8,6 +8,7 @@ use backend\components\PresupuestoPdfGenerator;
 use backend\components\UsuarioActual;
 use backend\models\ConfiguracionPresupuesto;
 use backend\models\Especificacion;
+use backend\models\EspecificacionEmision;
 use backend\models\HistorialProyecto;
 use backend\models\ListaMaterialesAprobacion;
 use backend\models\OrdenCambio;
@@ -125,7 +126,10 @@ class ListaItemsService
 
         // 1. Revisar lo enviado, sin tocar nada todavia.
         $plan = $this->revisarFilas($proyecto, $filas, $errores, $enviados);
-        $plan['lineasABorrar'] = $this->resolverQuitados($proyecto, $plan['quitados'], $errores, $enviados);
+        $plan['lineasABorrar'] = array_merge(
+            $this->resolverQuitados($proyecto, $plan['quitados'], $errores, $enviados),
+            $this->resolverCambiados($proyecto, $plan['cambianItem'], $errores)
+        );
         $plan['materiales'] = $materiales === null ? null : (new MaterialDticService())->armar($proyecto, $materiales, $errores);
         $plan['condiciones'] = $condiciones === null ? null : (new CondicionPreviaService())->armar($proyecto, $condiciones, $errores);
 
@@ -156,9 +160,11 @@ class ListaItemsService
      * @param mixed $filas
      * @param string[] $errores (por referencia) se agregan los de las filas
      * @param ProyectoItem[] $enviados (por referencia) los items, en el orden del formulario
-     * @return array{quitados: array<int, ProyectoItem>, cambianEspecificacion: array<int, true>, recordar: array<int, int>}
+     * @return array{quitados: array<int, ProyectoItem>, cambianEspecificacion: array<int, true>, cambianItem: array<int, array{item: ProyectoItem, antes: string}>, recordar: array<int, int>}
      *         quitados: los guardados que ya no vinieron [id => item];
      *         cambianEspecificacion: [spl_object_id => true], por objeto porque los nuevos todavia no tienen id;
+     *         cambianItem: filas guardadas con otro item del subcatalogo ("Cambiar ítem"),
+     *         [spl_object_id => [item, "NOMBRE ANTERIOR (unidad)"]];
      *         recordar: [idEspecificacion => idSubcatalogo]
      */
     private function revisarFilas(Proyecto $proyecto, $filas, array &$errores, array &$enviados): array
@@ -171,6 +177,7 @@ class ListaItemsService
         $especificacionesActivas = (new EspecificacionService())->idsActivas();
         $emisiones = new EspecificacionEmisionService();
         $cambianEspecificacion = [];
+        $cambianItem = [];
         $recordar = [];
 
         foreach ((array) $filas as $fila) {
@@ -191,6 +198,19 @@ class ListaItemsService
                 }
 
                 $conservados[$id] = true;
+
+                // "Cambiar ítem": la fila guardada llega con OTRO item del subcatalogo.
+                $idNuevo = $this->texto($fila['idSubcatalogo'] ?? '');
+                if ($idNuevo !== '' && $idNuevo !== (string) $item->idSubcatalogo) {
+                    $antes = $this->nombreConUnidad($item);
+                    $errorCambio = $this->cambiarItem($item, $idNuevo);
+
+                    if ($errorCambio !== null) {
+                        $errores[] = "$antes: $errorCambio";
+                    } else {
+                        $cambianItem[spl_object_id($item)] = ['item' => $item, 'antes' => $antes];
+                    }
+                }
             } else {
                 $item = $this->nuevoItem($proyecto, $this->texto($fila['idSubcatalogo'] ?? ''));
 
@@ -222,6 +242,17 @@ class ListaItemsService
                 }
             }
 
+            // Item cambiado con la MISMA ficha: su formulario se reemitira con el
+            // item nuevo. Se revisa ahora que se pueda, sin haber tocado nada.
+            if ($errorEspecificacion === null && isset($cambianItem[spl_object_id($item)])
+                && !isset($cambianEspecificacion[spl_object_id($item)]) && $item->idEspecificacion !== null
+                && $item->getEmisionVigente()->exists()) {
+                $motivo = $emisiones->motivoParaNoEmitir(Especificacion::findOne($item->idEspecificacion));
+                if ($motivo !== null) {
+                    $errores[] = "$nombre: no se puede reemitir su formulario de especificación: $motivo";
+                }
+            }
+
             if ($errorEspecificacion === null && $item->idEspecificacion !== null
                 && $this->texto($fila['recordarReferencia'] ?? '') === '1') {
                 $recordar[(int) $item->idEspecificacion] = (int) $item->idSubcatalogo;
@@ -235,8 +266,124 @@ class ListaItemsService
         return [
             'quitados' => array_diff_key($guardados, $conservados),
             'cambianEspecificacion' => $cambianEspecificacion,
+            'cambianItem' => $cambianItem,
             'recordar' => $recordar,
         ];
+    }
+
+    /**
+     * "Cambiar ítem" (2026-11-04): pone en la fila otro item del subcatalogo,
+     * con su clasificacion y su unidad, SIN quitar la fila. Asi la fila
+     * conserva su especificacion, su lugar en la solicitud de cotizacion y,
+     * si ya tenia formulario, se reemite con el MISMO codigo y la version
+     * siguiente (es una correccion, no un documento nuevo). Quitar la fila y
+     * agregar otra, en cambio, anula el formulario y gasta otro numero.
+     *
+     * REGLA DE NEGOCIO: solo mientras la fila no tenga cotizaciones: sus
+     * precios eran de otro producto. Con cotizaciones se quita y se agrega.
+     * La linea del presupuesto (precio directo o SIGMA) la resuelve
+     * resolverCambiados().
+     *
+     * Devuelve el error, o null si se cambio (en memoria, sin guardar).
+     */
+    private function cambiarItem(ProyectoItem $item, string $idSubcatalogo): ?string
+    {
+        $origen = $this->subcatalogoActivo($idSubcatalogo);
+
+        if ($origen === null) {
+            return 'el ítem elegido para reemplazarlo no existe en el subcatálogo o está inactivo.';
+        }
+
+        if ((new SolicitudCotizacionService())->itemTieneCotizaciones((int) $item->id)) {
+            return 'no se puede cambiar por otro ítem porque ya tiene cotizaciones registradas (los precios eran de este producto). Quítelo y agregue el correcto.';
+        }
+
+        $item->idSubcatalogo = $origen->id;
+        $item->idCategoria = $origen->idCategoria;
+        $item->unidadMedida = $origen->abreviaturaUnidad();
+        $item->populateRelation('subcatalogoItem', $origen);
+
+        return null;
+    }
+
+    /**
+     * Los items CAMBIADOS (ver cambiarItem()) que tienen linea en el
+     * presupuesto: su precio era del item anterior. Con el presupuesto en
+     * borrador la linea se borra (el item queda sin precio); si no, no se
+     * puede cambiar.
+     *
+     * @param array<int, array{item: ProyectoItem, antes: string}> $cambianItem
+     * @param string[] $errores (por referencia)
+     * @return int[] ids de los items cuya linea hay que borrar
+     */
+    private function resolverCambiados(Proyecto $proyecto, array $cambianItem, array &$errores): array
+    {
+        $items = [];
+        foreach ($cambianItem as $cambio) {
+            $items[$cambio['item']->id] = $cambio['item'];
+        }
+
+        $conLinea = $this->conLineaDePresupuesto($items);
+
+        if ($conLinea === []) {
+            return [];
+        }
+
+        if ($proyecto->presupuesto !== null && $proyecto->presupuesto->esBorrador()) {
+            return array_keys($conLinea);
+        }
+
+        foreach ($cambianItem as $cambio) {
+            if (isset($conLinea[$cambio['item']->id])) {
+                $errores[] = $cambio['antes'] . ': no se puede cambiar por otro ítem porque ya tiene una línea en el presupuesto.';
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * El formulario de especificacion de un item CAMBIADO (misma ficha): se
+     * reemite con el mismo codigo y la version siguiente, con el nombre y la
+     * unidad del item nuevo. Conserva las condiciones de entrega de la
+     * anterior. Sin formulario vigente no hace nada. Devuelve el codigo
+     * nuevo ("RD-PI-ET-033/26 v02"), o null si no habia formulario.
+     *
+     * @throws DomainException si no se pudo reemitir
+     */
+    private function reemitirPorCambio(ProyectoItem $item, string $antes, ?string $usuario): ?string
+    {
+        /** @var EspecificacionEmision|null $anterior */
+        $anterior = $item->getEmisionVigente()->one();
+
+        if ($anterior === null) {
+            return null;
+        }
+
+        // El motivo admite hasta 300 caracteres; los nombres DTIC pueden ser largos.
+        $motivo = mb_substr('Se cambió el ítem: ' . $antes . ' → ' . $this->nombreConUnidad($item) . '.', 0, 300);
+        $resultado = (new EspecificacionEmisionService())->reemitir($item, [
+            'motivo' => $motivo,
+            'lugarEntrega' => $anterior->lugarEntrega,
+            'validezOfertaDias' => $anterior->validezOfertaDias,
+            'tiempoEntregaDias' => $anterior->tiempoEntregaDias,
+        ], $usuario);
+
+        if ($resultado['error'] !== null) {
+            throw new DomainException($antes . ': ' . $resultado['error']);
+        }
+
+        return $resultado['emision']->codigoConVersion();
+    }
+
+    /**
+     * "CABLE UTP (m)": nombre DTIC y unidad del item, para mensajes e historial.
+     */
+    private function nombreConUnidad(ProyectoItem $item): string
+    {
+        $nombre = $item->subcatalogoItem->descripcion ?? 'Ítem #' . $item->idSubcatalogo;
+
+        return $item->unidadMedida ? "$nombre ($item->unidadMedida)" : $nombre;
     }
 
     /**
@@ -275,7 +422,7 @@ class ListaItemsService
      *
      * @param ProyectoItem[] $enviados
      * @param array $plan lo que arman revisarFilas() y guardar(): quitados, cambianEspecificacion,
-     *        recordar, lineasABorrar, materiales y condiciones (null = no se tocan)
+     *        cambianItem, recordar, lineasABorrar, materiales y condiciones (null = no se tocan)
      * @throws DomainException si algo que se reviso antes cambio entre tanto
      */
     private function persistir(Proyecto $proyecto, array $enviados, array $plan, ?string $usuario): void
@@ -283,6 +430,7 @@ class ListaItemsService
         $emisiones = new EspecificacionEmisionService();
         $presupuesto = $proyecto->presupuesto;
         $presupuestoBorrador = $presupuesto !== null && $presupuesto->esBorrador();
+        $cambiosDeItem = [];
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
@@ -313,6 +461,20 @@ class ListaItemsService
                     }
                 }
 
+                $cambioDeItem = $plan['cambianItem'][spl_object_id($item)] ?? null;
+                if ($cambioDeItem !== null) {
+                    $texto = $cambioDeItem['antes'] . ' → ' . $this->nombreConUnidad($item);
+
+                    // Otro item, la MISMA ficha: se corrige el mismo formulario
+                    // (si cambio tambien la ficha, arriba se anulo y se emitio otro).
+                    if (!isset($plan['cambianEspecificacion'][spl_object_id($item)])) {
+                        $codigo = $this->reemitirPorCambio($item, $cambioDeItem['antes'], $usuario);
+                        $texto .= $codigo === null ? '' : " · formulario $codigo";
+                    }
+
+                    $cambiosDeItem[] = $texto;
+                }
+
                 if ($presupuestoBorrador) {
                     $presupuesto->copiarDeLaLista($item);
                 }
@@ -332,6 +494,11 @@ class ListaItemsService
 
             // Editar la lista a mano tambien resuelve el paso "Plantilla".
             $proyecto->updateAttributes(['listaIniciada' => true]);
+
+            // Un solo hecho por guardado, una linea por item cambiado.
+            if ($cambiosDeItem !== []) {
+                (new HistorialService())->registrar($proyecto, HistorialProyecto::ACCION_LISTA_ITEM_CAMBIADO, implode("\n", $cambiosDeItem));
+            }
 
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -599,11 +766,7 @@ class ListaItemsService
      */
     private function nuevoItem(Proyecto $proyecto, string $idSubcatalogo): ?ProyectoItem
     {
-        if (!ctype_digit($idSubcatalogo)) {
-            return null;
-        }
-
-        $origen = SubcatalogoItem::findOne(['id' => (int) $idSubcatalogo, 'activo' => true]);
+        $origen = $this->subcatalogoActivo($idSubcatalogo);
 
         if ($origen === null) {
             return null;
@@ -619,6 +782,19 @@ class ListaItemsService
         $item->populateRelation('subcatalogoItem', $origen);
 
         return $item;
+    }
+
+    /**
+     * El item ACTIVO del subcatalogo con ese id (como llega del formulario),
+     * o null si no existe, esta inactivo o el id no es un numero.
+     */
+    private function subcatalogoActivo(string $idSubcatalogo): ?SubcatalogoItem
+    {
+        if (!ctype_digit($idSubcatalogo)) {
+            return null;
+        }
+
+        return SubcatalogoItem::findOne(['id' => (int) $idSubcatalogo, 'activo' => true]);
     }
 
     /**
