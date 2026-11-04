@@ -246,10 +246,15 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     entrega al proveedor. NUNCA cambia: guarda copias congeladas (título = nombre DTIC del ítem de la lista desde el
     2026-10-21, antes el de la ficha; cantidad, unidad,
     dependencia = unidad / dependencia del proyecto desde el 2026-10-29 (del 28 al 29 la solicitante, antes la facultad), garantía, textos,
-    condiciones de entrega; el lugar de entrega por defecto es desde el 2026-10-28 el texto
-    `ConfiguracionEspecificacion.lugarEntregaPorDefecto` de la configuración del formulario (vacío = no sale;
-    del 2026-10-26 al 28 fue "Administración de la <facultad>"),
-    `EspecificacionEmisionService::lugarEntregaPorDefecto()`, las anteriores conservan el suyo) y apunta a una
+    condiciones de entrega; el LUGAR DE ENTREGA es desde el 2026-11-03 el del PROYECTO (`Proyecto.lugarEntrega`, texto
+    libre en el formulario del proyecto; migración `m261104_020312_agregar_lugar_entrega_a_proyecto`, que puso
+    "Administración de la <unidad>" a los proyectos cuya unidad / dependencia empieza con "Facultad"; el formulario lo
+    SUGIERE igual, `Proyecto::lugarEntregaSugerido()` y `proyecto-form.js`, mientras el usuario no escriba otro; la fase
+    siguiente lo hereda; va al historial y a la ficha técnica) y, si el proyecto no tiene, el texto
+    `ConfiguracionEspecificacion.lugarEntregaPorDefecto` (vacío = no sale) (`EspecificacionEmisionService::lugarEntregaDe()`;
+    pedido del Ing. el 2026-10-26: "Administración de la … facultad", pero no todo se entrega en una facultad; del
+    2026-10-26 al 28 se armaba solo con la facultad, del 28 al 3-11 era solo el de la configuración). Al reemitir, lo
+    escrito en la ventana manda (vacío = el del proyecto); las anteriores conservan el suyo) y apunta a una
     versión que ya no cambia. Estados: vigente, reemplazada, anulada; "vencida" se calcula
     (fecha + vigencia). Reglas en `EspecificacionEmisionService`.
   Se ENLAZA a los ítems de la lista con `redes.ProyectoItem.idEspecificacion` (como máximo una por
@@ -557,7 +562,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_200322_instrucciones_solicitud_de_proforma`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261104_020312_agregar_lugar_entrega_a_proyecto`, aplicada el 2026-11-03), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -670,8 +675,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   y una copia del código para sobrevivir a la eliminación; usuario {copia}); caso de uso "Consultar historial del
   proyecto"; las secuencias que cambian datos, precios o estados terminan registrando el hecho
 - PENDIENTE (Ing. de DTIC / Desarrollo): ¿seguir leyendo las tablas de UsfxGEO o usar vistas? ¿qué son
-  los estados E, C, D, R? Confirmar el texto del lugar de entrega por defecto (hoy vacío: llenarlo en la
-  configuración del formulario) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
+  los estados E, C, D, R? Confirmar el lugar de entrega habitual de los proyectos que no son de una facultad
+  (Rectorado, Canal, DTIC) para el texto por defecto de la configuración del formulario (hoy vacío) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
+- PENDIENTE (tutor): agregar `Proyecto.lugarEntrega` (2026-11-03) al diagrama de clases
 - PENDIENTE (tutor): agregar la clase `Proceso` (2026-10-29; catálogo, asociación 1 proceso → 0..* proyectos)
   al diagrama de clases y el caso de uso "Gestionar procesos"
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a

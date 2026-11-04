@@ -73,6 +73,7 @@ erDiagram
         int idPlantillaOrigen FK
         string unidadSolicitante
         string unidadDependencia
+        string lugarEntrega
         string estadoLista "edicion, en_cotizacion, cerrada"
         datetime fechaCreacion
     }
@@ -378,6 +379,7 @@ Proyecto de instalación de redes. Código RD-PI-PT-NNN. Puede ser la fase sigui
 | idTipoProyecto | int | sí | FK → TipoProyecto.id |
 | unidadSolicitante | nvarchar(250) | sí |  |
 | unidadDependencia | nvarchar(250) | sí |  |
+| lugarEntrega | nvarchar(300) | sí | lo copian los formularios de especificación al emitirse; vacío = el de la configuración |
 | idProceso | int | sí | FK → Proceso.id |
 
 Único: (codigo) donde ([codigo] IS NOT NULL)

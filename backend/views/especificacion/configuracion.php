@@ -66,7 +66,7 @@ $this->params['breadcrumbs'][] = 'Formulario de especificación';
                 </div>
             </div>
             <?= $form->field($configuracion, 'lugarEntregaPorDefecto')->textInput(['maxlength' => 300])
-                ->hint('Se copia a cada formulario que se emita; vacío = el formulario no lleva lugar de entrega. Se puede cambiar al reemitir.') ?>
+                ->hint('Para los proyectos que no tienen su propio lugar de entrega (se escribe en los datos del proyecto). Se copia al emitir; vacío = el formulario no lleva lugar de entrega. Se puede cambiar al reemitir.') ?>
             <p class="rd-nota mb-0">La validez de la oferta y el tiempo de entrega también salen en la solicitud de cotización, como
                 "(mínimo N días)" y "(máximo N días)".</p>
         </div>

@@ -124,6 +124,7 @@ foreach ($model->areasIntervencion as $area) {
 <table class="datos">
     <tr><th>Unidad / dependencia (beneficiaria)</th><td><?= $texto($model->unidadDependencia) ?></td></tr>
     <tr><th>Unidad solicitante</th><td><?= $texto($model->unidadSolicitante) ?></td></tr>
+    <tr><th>Lugar de entrega</th><td><?= $texto($model->lugarEntrega) ?></td></tr>
 </table>
 
 <h2>3. Área de intervención</h2>

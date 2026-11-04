@@ -26,6 +26,9 @@ use yii\db\ActiveRecord;
  *                                         Es la que sale en los documentos ("Dependencia").
  * @property string|null $unidadSolicitante Quien pide, en texto libre tal como dice la nota. Puede
  *                                         ser otra (el Rector pide para el Canal Universitario).
+ * @property string|null $lugarEntrega Donde se entregan los bienes (texto libre, 2026-11-03). Lo copian los
+ *                                    formularios de especificacion al emitirse; vacio = el de la
+ *                                    configuracion del formulario. Ver lugarEntregaSugerido().
  * @property string|null $codigoFacultad Ubicacion ANTERIOR al 2026-10-28 (ya no se escribe).
  * @property string|null $facultad       Idem: los proyectos nuevos usan las unidades
  * @property string|null $codigoEdificio y las areas de intervencion.
@@ -118,6 +121,9 @@ class Proyecto extends ActiveRecord
             [['unidadDependencia', 'unidadSolicitante'], 'trim'],
             [['unidadDependencia', 'unidadSolicitante'], 'required'],
             [['unidadDependencia', 'unidadSolicitante'], 'string', 'max' => 250],
+            [['lugarEntrega'], 'trim'],
+            [['lugarEntrega'], 'default', 'value' => null],
+            [['lugarEntrega'], 'string', 'max' => 300],
             [['idProyectoAnterior'], 'integer'],
             [['idProyectoAnterior'], 'exist', 'skipOnError' => true, 'targetClass' => self::class, 'targetAttribute' => ['idProyectoAnterior' => 'id']],
             // 'safe': las areas las revisa ProyectoService una por una contra la
@@ -140,6 +146,7 @@ class Proyecto extends ActiveRecord
             'idProceso' => 'Proceso',
             'unidadDependencia' => 'Unidad / dependencia',
             'unidadSolicitante' => 'Unidad solicitante',
+            'lugarEntrega' => 'Lugar de entrega',
             'areas' => 'Área de intervención',
             'codigoFacultad' => 'Facultad',
             'facultad' => 'Facultad',
@@ -321,5 +328,20 @@ class Proyecto extends ActiveRecord
     public function etiqueta(): string
     {
         return ($this->codigo ? $this->codigo . ' — ' : '') . $this->nombre;
+    }
+
+    /**
+     * Lugar de entrega que se sugiere para una unidad / dependencia: si es una
+     * facultad, "Administración de la Facultad de …" (pedido del Ing. de DTIC,
+     * 2026-10-26); si no (Rectorado, Canal Universitario, la DTIC), null: el
+     * encargado lo escribe o queda el de la configuracion del formulario. Es
+     * solo una sugerencia: el campo acepta cualquier texto. La misma regla
+     * esta en web/js/proyecto-form.js y en la migracion m261104_020312.
+     */
+    public static function lugarEntregaSugerido(?string $unidadDependencia): ?string
+    {
+        $unidad = trim((string) $unidadDependencia);
+
+        return preg_match('/^facultad(\s|$)/iu', $unidad) === 1 ? 'Administración de la ' . $unidad : null;
     }
 }
