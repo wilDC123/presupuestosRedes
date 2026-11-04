@@ -1,7 +1,8 @@
 # Guía de instalación en el servidor de DTIC
 
 Módulo: Sistema de presupuestos de instalaciones de redes (Unidad de Redes y Telecomunicaciones).
-Para: equipo técnico de DTIC — USFX. Fecha: 18 de octubre de 2026 (actualizada el 2 de noviembre de 2026: PHP 8.3).
+Para: equipo técnico de DTIC — USFX. Fecha: 18 de octubre de 2026 (actualizada el 2 de noviembre de 2026: PHP 8.3;
+y el 3 de noviembre de 2026: scripts SQL para 2012, datos del entorno de pruebas y pasos antes del primer documento).
 
 Esta guía reúne lo que el servidor necesita para instalar el módulo y los puntos que conviene
 acordar antes. El módulo está hecho en PHP con Yii2 Advanced y usa la base SQL Server
@@ -46,22 +47,31 @@ de Microsoft para la versión de Ubuntu del servidor.
 - Para la primera instalación, permiso para crear el esquema `redes` (o que el DBA lo cree antes:
   `CREATE SCHEMA redes`).
 
-**Qué crea la instalación:** el esquema `redes` con 40 tablas (detalladas en `docs/modelo-logico-datos.md`), más `redes.migration`, que
+**Qué crea la instalación:** el esquema `redes` con 39 tablas (detalladas en `docs/modelo-logico-datos.md`), más `redes.migration`, que
 registra qué cambios de estructura ya se aplicaron. En `dbo` no crea nada: solo lee
 `dbo.CatalogoSigma`.
 
-**Cómo se crean las tablas.** El módulo usa migraciones de Yii (`php yii migrate`): son scripts
-versionados que se aplican en orden y se pueden revertir. Si DTIC prefiere que el DBA ejecute el
-SQL a mano en vez de darle ese permiso a la aplicación, hay que acordarlo antes.
+**Cómo se crean las tablas: dos caminos, con el mismo resultado.**
 
-**Un respaldo "solo estructura" no alcanza para instalar.** Las migraciones, además de crear las
-tablas, cargan datos que el sistema necesita para funcionar: categorías, unidades de medida, tipos de
-proyecto, procesos, roles del proyecto, tipos de trabajo complementario, las cuatro configuraciones de
-una sola fila (`Configuracion*`), los correlativos (`CorrelativoDocumento`) y el registro
-`redes.migration`. Si se crean las tablas desde un script de estructura, faltan esos datos y
-`php yii migrate` intentaría crear de nuevo las tablas. Además, un respaldo `.bak` de la base de
-desarrollo (SQL Server 2022) no se puede restaurar en SQL Server 2012. La estructura completa está
-documentada en `docs/modelo-logico-datos.md`.
+- **A. Migraciones de Yii** (`php yii migrate`, recomendado): scripts versionados que se aplican en
+  orden y se pueden revertir. El usuario de la aplicación necesita permiso para crear tablas en `redes`.
+- **B. Scripts SQL para el DBA**, si DTIC prefiere no darle ese permiso a la aplicación. Se entregan
+  aparte, generados para SQL Server 2012:
+  - `01-estructura-y-catalogos.sql`: el esquema `redes`, sus tablas, índices, llaves y restricciones,
+    y los datos sin los que el sistema no funciona (categorías, unidades de medida, tipos de proyecto,
+    procesos, roles, tipos de trabajo complementario, las cuatro configuraciones `Configuracion*`, los
+    correlativos `CorrelativoDocumento` y el registro `redes.migration` con las 61 migraciones).
+  - `02-datos-de-entorno-de-pruebas.sql` (opcional): datos para probar el sistema (ver el punto 4.8).
+
+  Se comprobó que una base armada con los dos scripts es idéntica, columna por columna y fila por fila,
+  a una armada con `php yii migrate` y los mismos datos, y que después `php yii migrate` responde
+  "No new migrations found". Por eso, si más adelante hay migraciones nuevas, se aplican con
+  `php yii migrate` sin problema.
+
+**Por qué no un respaldo "solo estructura" de la base de desarrollo.** Sin los datos mínimos del script
+01, el sistema no arranca (no tiene catálogos ni configuraciones) y `php yii migrate` intentaría crear de
+nuevo las tablas. Además, un respaldo `.bak` de la base de desarrollo (SQL Server 2022) no se puede
+restaurar en SQL Server 2012.
 
 **SQL Server 2012.** Las migraciones y las pruebas automáticas se corrieron desde cero sobre una base
 con nivel de compatibilidad 110 (el de 2012) sin errores, y el código no usa funciones de versiones
@@ -101,11 +111,15 @@ búsquedas.
    (`POAPresupuestos`) y `dbGeo` (`UsfxGEO`, solo lectura, para el área de intervención). Si
    Desarrollo entrega después vistas o un servicio web en vez de las tablas, se cambia solo la
    clase `UsfxGeoInfraestructuraProvider` (definida en `backend/config/main.php`).
-5. Crear las tablas:
+5. Crear las tablas, por uno de los dos caminos del punto 3:
 
    ```
    php yii migrate
    ```
+
+   o, el DBA, ejecutando `01-estructura-y-catalogos.sql` sobre `POAPresupuestos` (por ejemplo con
+   `sqlcmd -S servidor -d POAPresupuestos -I -b -f 65001 -i 01-estructura-y-catalogos.sql`; `-I` activa
+   QUOTED_IDENTIFIER, que exigen los índices filtrados, y `-f 65001` lee el archivo como UTF-8).
 
    En producción no se crea la tabla de usuarios de prueba (`dbo.user`) de la plantilla de Yii.
    Sí se crea `redes.Usuario`, vacía.
@@ -116,6 +130,9 @@ búsquedas.
    ```
    php yii usuario/crear encargado.redes
    ```
+
+   Si se cargó el script 02, ya existe el usuario de pruebas `pruebas.redes` (su contraseña se entrega
+   aparte); conviene cambiarla con `php yii usuario/clave pruebas.redes`.
 7. Dar permisos de escritura al usuario de PHP-FPM (normalmente `www-data`):
 
    ```
@@ -123,13 +140,33 @@ búsquedas.
    chmod -R 775 backend/runtime backend/web/assets backend/uploads console/runtime
    ```
 
-8. Opcional: cargar la librería de especificaciones desde el banco de documentos de DTIC. Primero
-   sin `--confirmar`, que solo genera un CSV para revisar (`/ruta/banco` es la carpeta con los .docx):
+8. Datos para el entorno de pruebas. Dos formas:
 
-   ```
-   php yii especificacion/importar /ruta/banco --desde=2025
-   php yii especificacion/importar /ruta/banco --desde=2025 --confirmar
-   ```
+   - **Con el script `02-datos-de-entorno-de-pruebas.sql`** (después del 01, sobre una base sin uso):
+     carga el subcatálogo de ítems de redes (34), la librería de especificaciones técnicas ya revisada y
+     ordenada (172 fichas, 175 versiones, 3.450 características), 1 plantilla, 2 proveedores de prueba,
+     el personal del proyecto, los textos y firmas de los documentos y el usuario `pruebas.redes`. No
+     trae proyectos, presupuestos ni cotizaciones: los códigos empiezan en RD-PI-PT-001.
+     Siete especificaciones tienen un documento adjunto: copiar la carpeta entregada
+     `uploads/especificaciones` dentro de `backend/uploads/` (queda
+     `backend/uploads/especificaciones/esp_….docx`) y darle los permisos del paso 7.
+   - **Desde el banco de documentos de DTIC** (si no se usa el script 02). Primero sin `--confirmar`,
+     que solo genera un CSV para revisar (`/ruta/banco` es la carpeta con los .docx); después se ordena
+     la librería con el plan revisado que viene en el proyecto:
+
+     ```
+     php yii especificacion/importar /ruta/banco --desde=2025
+     php yii especificacion/importar /ruta/banco --desde=2025 --confirmar
+     php yii especificacion/ordenar console/data/orden-especificaciones-2026-11-03.json --confirmar
+     ```
+
+9. Antes de crear el primer documento, desde el sistema (menú Configuración):
+
+   - **Codificación de documentos:** si la DTIC ya usó números en su registro (por ejemplo, en Google
+     Drive), fijar desde qué número siguen proyectos (PT), presupuestos (PR) y especificaciones (ET). Solo
+     se puede subir el número, nunca bajarlo, así que conviene hacerlo antes de empezar.
+   - **Formulario de especificación → Lugar de entrega por defecto:** el texto que se usa en los
+     proyectos que no tienen su propio lugar de entrega (hoy vacío = no se imprime).
 
 ## 5. Configuración de Nginx
 
@@ -220,7 +257,7 @@ módulo solo necesita saber quién está conectado: lo lee únicamente `backend\
 - La pantalla de ingreso carga; sin sesión, cualquier otra dirección lleva al ingreso.
 - Se puede ingresar con el usuario creado en el paso 6.
 - `php yii migrate/history` muestra las migraciones aplicadas.
-- Se puede abrir el PDF de una lista de ítems y el de un formulario NET.
+- Se puede abrir el PDF de una lista de ítems y el de un formulario de especificación.
 - Se puede subir un PDF de unos 5 MB en una cotización y un .docx en una especificación (el .docx
   confirma que `fileinfo` lo reconoce bien).
 - Una fecha emitida después de las 20:00 sale con la fecha del día (zona horaria).
@@ -239,3 +276,6 @@ módulo solo necesita saber quién está conectado: lo lee únicamente `backend\
 8. ¿Cómo se respalda la carpeta `backend/uploads`?
 9. ¿El área de intervención se sigue leyendo de las tablas de `UsfxGEO` o Desarrollo prefiere
    publicar vistas? ¿Qué significan los estados E, C, D y R? (hoy se ofrece solo lo vigente, `V`)
+10. ¿Cuál es la dirección del GitLab institucional y en qué proyecto o rama se sube el módulo?
+11. Para "datos de entorno de pruebas": ¿alcanza con el script 02, o hace falta además algún dato de
+    configuración del entorno (nombre del servidor, base, URL)?
