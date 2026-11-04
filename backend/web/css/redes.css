@@ -372,6 +372,11 @@ body.rd {
 .rd-celda-doble { display: flex; align-items: center; gap: 12px; }
 .rd-celda-titulo { font-weight: 600; }
 .rd-celda-sub { font-size: 11.5px; color: var(--rd-texto-suave); }
+/* Caracteristicas de una especificacion: subtitulo (1.4 Hardware) y sangria por nivel (1.4.1, 1.4.1.1). */
+.esp-es-subtitulo .esp-valor, tr.esp-subtitulo-fila td { font-weight: 600; }
+.esp-numero { color: var(--rd-texto-suave); }
+td.esp-nivel-2 { padding-left: 1.75rem; }
+td.esp-nivel-3 { padding-left: 3.25rem; }
 .rd-item-borde { padding: 10px; border: 1px solid var(--rd-borde); border-radius: 6px; }
 .rd-pila { display: flex; flex-direction: column; gap: 10px; }
 .rd-dato { font-size: 12.5px; color: var(--rd-etiqueta); margin-bottom: 6px; }

@@ -246,10 +246,15 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     entrega al proveedor. NUNCA cambia: guarda copias congeladas (título = nombre DTIC del ítem de la lista desde el
     2026-10-21, antes el de la ficha; cantidad, unidad,
     dependencia = unidad / dependencia del proyecto desde el 2026-10-29 (del 28 al 29 la solicitante, antes la facultad), garantía, textos,
-    condiciones de entrega; el lugar de entrega por defecto es desde el 2026-10-28 el texto
-    `ConfiguracionEspecificacion.lugarEntregaPorDefecto` de la configuración del formulario (vacío = no sale;
-    del 2026-10-26 al 28 fue "Administración de la <facultad>"),
-    `EspecificacionEmisionService::lugarEntregaPorDefecto()`, las anteriores conservan el suyo) y apunta a una
+    condiciones de entrega; el LUGAR DE ENTREGA es desde el 2026-11-03 el del PROYECTO (`Proyecto.lugarEntrega`, texto
+    libre en el formulario del proyecto; migración `m261104_020312_agregar_lugar_entrega_a_proyecto`, que puso
+    "Administración de la <unidad>" a los proyectos cuya unidad / dependencia empieza con "Facultad"; el formulario lo
+    SUGIERE igual, `Proyecto::lugarEntregaSugerido()` y `proyecto-form.js`, mientras el usuario no escriba otro; la fase
+    siguiente lo hereda; va al historial y a la ficha técnica) y, si el proyecto no tiene, el texto
+    `ConfiguracionEspecificacion.lugarEntregaPorDefecto` (vacío = no sale) (`EspecificacionEmisionService::lugarEntregaDe()`;
+    pedido del Ing. el 2026-10-26: "Administración de la … facultad", pero no todo se entrega en una facultad; del
+    2026-10-26 al 28 se armaba solo con la facultad, del 28 al 3-11 era solo el de la configuración). Al reemitir, lo
+    escrito en la ventana manda (vacío = el del proyecto); las anteriores conservan el suyo) y apunta a una
     versión que ya no cambia. Estados: vigente, reemplazada, anulada; "vencida" se calcula
     (fecha + vigencia). Reglas en `EspecificacionEmisionService`.
   Se ENLAZA a los ítems de la lista con `redes.ProyectoItem.idEspecificacion` (como máximo una por
@@ -294,7 +299,23 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Formulario de especificación en PDF (`especificacion/formulario`; en pantallas ya no se llama
   "formulario NET") con la cabecera del lineamiento (código, versión = la de la ficha emitida, fecha,
   página) y el formato institucional (tabla
-  Especificación | Propuesta | Cumple | No cumple, secciones I, II y III); marca de agua
+  Especificación | Propuesta | Cumple | No cumple, secciones I, II y III). NUMERACIÓN (2026-11-03): cada fila
+  lleva su número, CALCULADO y nunca guardado (`backend\components\NumeracionEspecificacion`, el único lugar que
+  lo decide; `EspecificacionVersion::caracteristicasNumeradas()`): I = 1.1 marca y modelo, 1.2 URL, 1.3… las
+  características. Cada fila tiene su NIVEL (`EspecificacionCaracteristica.nivel`, 1 a 3, flechas ← → en la ficha;
+  migración `m261103_190000_nivel_en_caracteristicas_de_especificacion`), como un índice: nivel 2 va debajo de la
+  última de nivel 1 (1.4 → 1.4.1), nivel 3 debajo de la de nivel 2 (1.4.1.1) y una de nivel 1 cierra el grupo (1.5);
+  un nivel que se salta uno se corrige al numerar y al guardar (`NumeracionEspecificacion::niveles()`). Un SUBTÍTULO
+  (`esSubtitulo`, casilla "Subtítulo"; un solo texto en `valor`, sin nombre) solo es la fila en negrita: el nivel no
+  depende de él (antes del nivel, todo lo que seguía a un subtítulo quedaba dentro hasta el siguiente; la migración
+  dejó así los niveles, sin cambiar ningún número, y lo atrapado se corrige a mano); II = garantía, una fila por línea (2.1…); la última = condiciones, una fila por dato
+  (3.1 validez, 3.2 tiempo, 3.3 lugar; 2.x si no hay garantía). Se quita el número escrito a mano del Word
+  ("II. MEDIO AMBIENTE", "1.Garantías"; `sinNumeral()`). Los mismos números se ven en la ficha, en "Ver detalle"
+  (`views/especificacion/_caracteristicas.php`) y en el formulario de edición (JS, misma regla). La migración
+  `m261103_141729_subtitulos_en_caracteristicas_de_especificacion` marcó 259 subtítulos seguros (sin nombre, una
+  línea, ≤ 40 caracteres, sin punto final, con filas después; `EspecificacionCaracteristica::pareceSubtitulo()`
+  para el importador), también en versiones emitidas: al reimprimirlas salen numeradas (decidido el 2026-11-03);
+  marca de agua
   REEMPLAZADO / ANULADO / VENCIDO. Al fondo de la última página, el "control de elaboración" del
   lineamiento, como el del presupuesto (2026-10-22, vista compartida `views/pdf/_control-elaboracion.php`):
   dos firmas SIN tabla (raya, nombre, cargo, "ELABORADO POR" / "APROBADO POR") y la línea "Versión: 02
@@ -309,6 +330,16 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Carga inicial desde el banco de .docx de DTIC: `php yii especificacion/importar "<carpeta>"`
   (sin `--confirmar` solo escribe un CSV; `--desde=AAAA`). Agrupa por título + modelo sugerido y
   toma la emisión más reciente de cada familia. No importa emisiones antiguas
+- ORDEN DE LA LIBRERÍA (2026-11-03): `php yii especificacion/ordenar console/data/orden-especificaciones-2026-11-03.json`
+  (sin `--confirmar` solo muestra; `EspecificacionOrdenService`). El plan, revisado y aprobado por el desarrollador, deja
+  114 fichas con niveles, subtítulos y arreglos de forma (sin cambiar el orden de las filas ni los valores técnicos).
+  Cada ficha se reconoce por TÍTULO + HUELLA del contenido (nombre y valor de sus filas), no por id: sirve también en el
+  servidor de la DTIC; una ficha editada después del plan, ya ordenada o con la versión actual emitida se salta. Todo en
+  una transacción; se puede volver a correr. Aplicado en la base local el 2026-11-03 (las 172 fichas: ese día se borraron
+  los 9 proyectos de PRUEBA que tenían formularios ET, para liberar las 8 fichas emitidas; copia previa de la base en
+  `POAPresupuestos-antes-de-borrar-proyectos-2026-11-03.bak`, carpeta Backup de SQL Server). Las siglas en subtítulos
+  (VLAN, MIMO) quedan en mayúsculas. PENDIENTE: correrlo en el servidor de la DTIC y llevar al Ing. las 44 dudas (título "UN disco" con DOS discos,
+  FACE PLATE 4 TOMAS con "2 posiciones", fichas vacías, datos repetidos, restos del Word)
 - Cotizaciones de proveedores (relación N:N con ítems/especificaciones). Una línea que viene de
   una solicitud guarda contra qué NET cotizó (`CotizacionDetalle.idEspecificacionEmision`, no
   cambia si el NET se reemite); una cotización suelta solo elige la ficha (`idEspecificacion`)
@@ -345,7 +376,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   (nunca se recalcula retroactivamente si cambia el precio de una cotización nueva)
 - Tamaño de hoja de TODOS los impresos: OFICIO, 8,5 x 13 pulgadas = 216 x 330 mm (2026-10-21; antes
   A4), la que usa la DTIC. En mPDF se llama "Folio": `PresupuestoPdfGenerator::HOJA_OFICIO` (por
-  defecto) y `HOJA_OFICIO_HORIZONTAL` (reporte de relación con SIGMA)
+  defecto) y `HOJA_OFICIO_HORIZONTAL` (reporte de relación con SIGMA). Desde el 2026-11-03 todos los
+  impresos van en ESCALA DE GRISES (fondos #e0e0e0 títulos, #d0d0d0 categorías, #f2f2f2 subtotales), como el
+  formulario de especificación y la lista de materiales; el presupuesto tenía azules. Solo los logos y el
+  membrete de la carta conservan su color
 - Cabecera de página de los impresos (2026-10-21, `backend/views/pdf/_cabecera.php`, etiqueta
   `<htmlpageheader>` de mPDF): recuadro con escudo USFX | títulos + fila de datos | logo DTIC
   (`backend/web/img/logo-usfx.png`, `logo-dtic.png`, reducidos), repetida en cada página, a 5 mm del
@@ -528,7 +562,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_200322_instrucciones_solicitud_de_proforma`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261104_020312_agregar_lugar_entrega_a_proyecto`, aplicada el 2026-11-03), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -641,8 +675,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   y una copia del código para sobrevivir a la eliminación; usuario {copia}); caso de uso "Consultar historial del
   proyecto"; las secuencias que cambian datos, precios o estados terminan registrando el hecho
 - PENDIENTE (Ing. de DTIC / Desarrollo): ¿seguir leyendo las tablas de UsfxGEO o usar vistas? ¿qué son
-  los estados E, C, D, R? Confirmar el texto del lugar de entrega por defecto (hoy vacío: llenarlo en la
-  configuración del formulario) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
+  los estados E, C, D, R? Confirmar el lugar de entrega habitual de los proyectos que no son de una facultad
+  (Rectorado, Canal, DTIC) para el texto por defecto de la configuración del formulario (hoy vacío) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
+- PENDIENTE (tutor): agregar `Proyecto.lugarEntrega` (2026-11-03) al diagrama de clases
 - PENDIENTE (tutor): agregar la clase `Proceso` (2026-10-29; catálogo, asociación 1 proceso → 0..* proyectos)
   al diagrama de clases y el caso de uso "Gestionar procesos"
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a

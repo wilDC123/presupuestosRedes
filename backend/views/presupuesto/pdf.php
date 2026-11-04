@@ -90,12 +90,11 @@ $numero = 0;
         padding: 4px 4px;
         font-size: 10pt;
     }
-    /* Mismos colores que las secciones sin precio (2026-10-23): titulos de
-       columna en azul oscuro, categorias en celeste, subtotales y total en
-       azul claro. */
+    /* Escala de grises, como la lista de materiales y el formulario de
+       especificacion (2026-11-03; antes azules): titulos de columna y total
+       en gris medio, categorias en gris, subtotales en gris claro. */
     table.items th {
-        background-color: #1f3864;
-        color: #fff;
+        background-color: #e0e0e0;
         font-weight: bold;
         text-align: center;
     }
@@ -111,7 +110,7 @@ $numero = 0;
        margen y usa los mismos bordes que las celdas. Sin borde arriba (ya
        esta el de la tabla anterior), salvo el de la primera categoria. */
     .categoria-titulo {
-        background-color: #ddebf7;
+        background-color: #d0d0d0;
         font-style: italic;
         font-weight: bold;
         padding: 4px;
@@ -124,7 +123,7 @@ $numero = 0;
     tr.subtotal td {
         font-weight: bold;
         text-align: right;
-        background-color: #eef3fa;
+        background-color: #f2f2f2;
     }
     /* Fila de total pegada a la ultima categoria, con los mismos bordes. */
     table.total-general {
@@ -134,7 +133,7 @@ $numero = 0;
     table.total-general td {
         border: 1px solid #666;
         border-top: none;
-        background-color: #dbe5f1;
+        background-color: #e0e0e0;
         font-size: 11pt;
         font-weight: bold;
         text-align: right;

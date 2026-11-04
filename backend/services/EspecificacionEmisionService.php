@@ -70,8 +70,8 @@ class EspecificacionEmisionService
      * documento, con su mismo codigo; no se toma numero del correlativo.
      *
      * $condiciones puede traer lugarEntrega, validezOfertaDias y
-     * tiempoEntregaDias; lo que no venga sale de la configuracion (tambien el
-     * lugar: ver lugarEntregaPorDefecto()).
+     * tiempoEntregaDias; lo que no venga sale de la configuracion. El lugar,
+     * si no viene, es el del proyecto (ver lugarEntregaDe()).
      *
      * Lanza DomainException con un mensaje para el usuario si no se puede.
      * Usa su propia transaccion; dentro de otra (la de guardar la lista) se
@@ -109,7 +109,7 @@ class EspecificacionEmisionService
             'unidad' => $item->unidadMedida,
             // La unidad / dependencia (la beneficiaria), tal como se escribio en el proyecto.
             'dependencia' => $this->textoONull($proyecto->unidadDependencia),
-            'lugarEntrega' => $this->textoONull($condiciones['lugarEntrega'] ?? null) ?? self::lugarEntregaPorDefecto(),
+            'lugarEntrega' => $this->textoONull($condiciones['lugarEntrega'] ?? null) ?? self::lugarEntregaDe($proyecto, $configuracion),
             'validezOfertaDias' => $this->textoONull($condiciones['validezOfertaDias'] ?? null) ?? $configuracion->validezOfertaDias,
             'tiempoEntregaDias' => $this->textoONull($condiciones['tiempoEntregaDias'] ?? null) ?? $configuracion->tiempoEntregaDias,
             'elaboradoPor' => $this->textoONull($usuario),
@@ -588,11 +588,26 @@ class EspecificacionEmisionService
     }
 
     /**
-     * Lugar de entrega cuando no se escribe otro: el texto de la
-     * configuracion del formulario (null = no sale). Desde el 2026-10-28 ya no
-     * se arma con la facultad ("Administración de la …"): el proyecto tiene
-     * una unidad solicitante en texto libre, que puede ser una oficina o una
-     * persona. Se congela al emitir: las emisiones anteriores conservan el suyo.
+     * Lugar de entrega de los formularios de un proyecto cuando no se escribe
+     * otro al emitir: el del PROYECTO (Proyecto.lugarEntrega, 2026-11-03: no
+     * todo se entrega en la administracion de una facultad) y, si el proyecto
+     * no tiene, el de la configuracion del formulario (null = no sale). Se
+     * congela al emitir: las emisiones anteriores conservan el suyo.
+     *
+     * $configuracion: la que ya tenga quien llama (asi no se consulta dos veces).
+     */
+    public static function lugarEntregaDe(Proyecto $proyecto, ?ConfiguracionEspecificacion $configuracion = null): ?string
+    {
+        $lugar = trim((string) $proyecto->lugarEntrega);
+
+        return $lugar !== '' ? $lugar : self::lugarEntregaPorDefecto($configuracion);
+    }
+
+    /**
+     * El texto de la configuracion del formulario, para los proyectos sin
+     * lugar de entrega (null = no sale). Del 2026-10-26 al 28 se armaba con la
+     * facultad; ahora la sugerencia "Administración de la …" la hace el
+     * formulario del proyecto (Proyecto::lugarEntregaSugerido()).
      *
      * $configuracion: la que ya tenga quien llama (asi no se consulta dos veces).
      */

@@ -118,31 +118,7 @@ $urlAdjunto = $version?->urlAdjunto();
                 ],
             ]) ?>
 
-            <?php $caracteristicas = $version->caracteristicas; ?>
-            <?php if ($caracteristicas === []): ?>
-                <div class="rd-vacio">Sin características cargadas.</div>
-            <?php else: ?>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th style="width: 30%">Característica</th>
-                            <th>Valor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($caracteristicas as $caracteristica): ?>
-                            <tr>
-                                <?php if ($caracteristica->nombre === null): ?>
-                                    <td colspan="2"><?= nl2br(Html::encode($caracteristica->valor)) ?></td>
-                                <?php else: ?>
-                                    <td class="rd-celda-titulo"><?= Html::encode($caracteristica->nombre) ?></td>
-                                    <td><?= nl2br(Html::encode($caracteristica->valor)) ?></td>
-                                <?php endif; ?>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
+            <?= $this->render('_caracteristicas', ['version' => $version, 'clase' => 'table']) ?>
         <?php endif; ?>
     </div>
 

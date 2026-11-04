@@ -85,6 +85,24 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame(sprintf('RD-PI-ET-%03d/%s', $siguiente, date('y')), $item->referenciaEspecificacion());
     }
 
+    public function testElLugarDeEntregaEsElDelProyectoYSinoElDeLaConfiguracion(): void
+    {
+        $ficha = $this->ficha('Cable test lugar', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        ConfiguracionEspecificacion::updateAll(['lugarEntregaPorDefecto' => 'Almacenes test USFX'], ['id' => ConfiguracionEspecificacion::obtener()->id]);
+        Proyecto::updateAll(['lugarEntrega' => 'Administración de la Facultad test de Agrarias'], ['id' => $this->proyecto->id]);
+
+        $this->guardarLista([$this->fila(null, 2, $ficha)], 'encargado');
+        $this->assertSame('Administración de la Facultad test de Agrarias', $this->unicoItem()->emisionVigente->lugarEntrega);
+
+        // Al reemitir, lo que se escribe manda; vacio = el del proyecto (aunque haya cambiado).
+        $escrito = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'otro lugar', 'lugarEntrega' => 'Bloque test B'], 'encargado');
+        $this->assertSame('Bloque test B', $escrito['emision']->lugarEntrega);
+
+        Proyecto::updateAll(['lugarEntrega' => null], ['id' => $this->proyecto->id]);
+        $vacio = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'sin lugar', 'lugarEntrega' => ' '], 'encargado');
+        $this->assertSame('Almacenes test USFX', $vacio['emision']->lugarEntrega);
+    }
+
     public function testElNumeroEtPuedeCoincidirConElDeUnNetViejo(): void
     {
         // La serie ET empezo en 1 despues de los NET: el mismo numero en las

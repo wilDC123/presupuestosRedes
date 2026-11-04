@@ -112,6 +112,7 @@ class HistorialService
             $proyecto->getAttributeLabel('idProceso') => (string) ($proyecto->proceso->codigo ?? ''),
             $proyecto->getAttributeLabel('unidadDependencia') => (string) $proyecto->unidadDependencia,
             $proyecto->getAttributeLabel('unidadSolicitante') => (string) $proyecto->unidadSolicitante,
+            $proyecto->getAttributeLabel('lugarEntrega') => (string) $proyecto->lugarEntrega,
             $proyecto->getAttributeLabel('areas') => $proyecto->areaIntervencionTexto(),
             $proyecto->getAttributeLabel('equipo') => implode('; ', $equipo),
             'Fase anterior' => (string) ($proyecto->proyectoAnterior->codigo ?? ''),

@@ -25,6 +25,9 @@
  *     fila, o se quita la responsable, se marca la primera como responsable.
  *  3. Al elegir el proyecto de fase anterior se muestra su resumen y el
  *     numero de fase que le correspondera a este proyecto.
+ *  4. Lugar de entrega: al escribir la unidad / dependencia se sugiere
+ *     "Administración de la Facultad de …" si es una facultad, mientras el
+ *     usuario no haya escrito otro lugar.
  *
  * Esto es solo comodidad para el usuario: el servidor vuelve a validar todo
  * en ProyectoService (que el area exista y este vigente en UsfxGEO, etc.).
@@ -637,5 +640,35 @@ $(function () {
         }
 
         $('#proyecto-fase').text(fase);
+    });
+
+    // ---- Lugar de entrega sugerido ----
+
+    var $unidad = $('#proyecto-unidaddependencia');
+    var $lugar = $('#proyecto-lugarentrega');
+
+    /**
+     * Misma regla que Proyecto::lugarEntregaSugerido(): si la unidad /
+     * dependencia es una facultad, "Administración de la Facultad de …";
+     * si no, nada (lo escribe el encargado o queda el de la configuracion).
+     */
+    function lugarSugerido(unidad) {
+        unidad = $.trim(unidad);
+        return /^facultad(\s|$)/i.test(unidad) ? 'Administración de la ' + unidad : '';
+    }
+
+    // Lo que se sugirio por ultima vez: mientras el campo siga vacio o con esa
+    // sugerencia, se actualiza al cambiar la unidad; si el usuario escribio
+    // otro lugar, no se toca.
+    var ultimaSugerencia = lugarSugerido($unidad.val() || '');
+
+    $unidad.on('input change', function () {
+        var actual = $.trim($lugar.val());
+        var nueva = lugarSugerido($unidad.val());
+
+        if (actual === '' || actual === ultimaSugerencia) {
+            $lugar.val(nueva);
+        }
+        ultimaSugerencia = nueva;
     });
 });

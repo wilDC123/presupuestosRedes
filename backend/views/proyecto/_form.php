@@ -134,6 +134,13 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
             <?php endforeach; ?>
         </datalist>
 
+        <?php // web/js/proyecto-form.js lo llena con "Administración de la <unidad>" si la unidad / dependencia es una
+        // facultad, mientras el usuario no lo haya cambiado (misma regla que Proyecto::lugarEntregaSugerido()). ?>
+        <?= $form->field($model, 'lugarEntrega')->textInput([
+            'maxlength' => 300,
+            'placeholder' => 'Dónde se entregan los bienes. Ej. Administración de la Facultad de Ciencias Agrarias',
+        ])->hint('Sale en los formularios de especificación que se emitan desde ahora (los ya emitidos conservan el suyo; se cambia al reemitir). Si la unidad / dependencia es una facultad, se sugiere su administración. Vacío = el de la configuración del formulario de especificación.') ?>
+
         <div class="form-group<?= $model->hasErrors('areas') ? ' has-error' : '' ?>">
             <label for="proyecto-buscar-ambiente"><?= Html::encode($model->getAttributeLabel('areas')) ?></label>
             <?php // Campo vacio previo: si se quitan todas las areas, igual llega "areas" (vacio) y se borran las guardadas. ?>

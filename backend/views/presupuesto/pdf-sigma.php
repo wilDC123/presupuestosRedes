@@ -101,7 +101,7 @@ $numero = 0;
     }
     .marca {
         font-weight: bold;
-        background-color: #fde2c4;
+        background-color: #bfbfbf;
     }
     .sin-sigma {
         font-style: italic;

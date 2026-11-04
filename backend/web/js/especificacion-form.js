@@ -3,9 +3,13 @@
  * (views/especificacion/_form.php).
  *
  *  1. Tabla de caracteristicas: agregar (copiando la fila modelo del
- *     <template>), quitar, subir y bajar filas. Antes de enviar se renumeran
+ *     <template>), quitar, subir y bajar filas, y meterlas o sacarlas un
+ *     nivel con las flechas → ← (1.4 -> 1.4.1). Antes de enviar se renumeran
  *     los nombres Caracteristicas[n][...] en el orden en que se ven, que es
- *     el orden en que se imprimen.
+ *     el orden en que se imprimen. La columna "N.°" muestra el numero que
+ *     llevara cada fila en el formulario de especificacion (1.3, 1.4,
+ *     1.4.1, 1.4.1.1...), con la MISMA regla que NumeracionEspecificacion (PHP), que
+ *     es la que manda en el PDF y en la ficha.
  *  2. "Pegar varias filas": convierte lineas "Nombre: valor" en filas.
  *  3. "Extraer datos": manda el archivo al servidor y llena titulo, modelo
  *     sugerido, garantia y la tabla con lo que encuentre.
@@ -24,17 +28,88 @@ $(function () {
 
     // --- 1. Tabla de caracteristicas ---
 
-    function agregarFila(nombre, valor) {
+    // Las 2 primeras filas (marca y modelo, URL) las agrega el formulario.
+    var FILAS_FIJAS = 2;
+    // Niveles: 1 = 1.4, 2 = 1.4.1, 3 = 1.4.1.1 (NumeracionEspecificacion::NIVEL_MAXIMO).
+    var NIVEL_MAXIMO = 3;
+
+    function tieneContenido($fila) {
+        return $.trim($fila.find('.esp-nombre').val()) !== '' || $.trim($fila.find('.esp-valor').val()) !== '';
+    }
+
+    /** El nivel pedido de la fila (el campo oculto .esp-nivel). */
+    function nivelPedido($fila) {
+        return parseInt($fila.find('.esp-nivel').val(), 10) || 1;
+    }
+
+    /**
+     * Pone el numero de cada fila. Igual que NumeracionEspecificacion::caracteristicas()
+     * y niveles(): cada fila va en su nivel, sin saltarse ninguno (una de nivel
+     * 3 sin una de nivel 2 arriba se toma como 2), y una de nivel 1 cierra el
+     * grupo. El servidor hace la misma correccion al guardar, asi que lo que
+     * se ve es lo que se guarda. Las filas vacias no se guardan: no llevan
+     * numero ni cuentan.
+     */
+    function numerar() {
+        var contadores = [FILAS_FIJAS];
+        var anterior = 0;
+
+        $filas.find('tr.esp-fila').each(function () {
+            var $fila = $(this);
+            var esSubtitulo = $fila.find('.esp-subtitulo').prop('checked');
+            var conContenido = tieneContenido($fila);
+            // Lo mas adentro que puede ir: un nivel mas que la fila de arriba.
+            var maximo = Math.min(anterior + 1, NIVEL_MAXIMO);
+            var nivel = Math.max(1, Math.min(nivelPedido($fila), maximo));
+            var numero = '';
+
+            $fila.toggleClass('esp-es-subtitulo', esSubtitulo);
+            // Un subtitulo es un solo texto: se escribe en "Valor" (si tambien
+            // tiene "Característica", el servidor avisa al guardar).
+            $fila.find('.esp-valor').attr('placeholder', esSubtitulo ? 'Ej. Hardware' : 'Ej. 23 AWG');
+
+            if (conContenido) {
+                contadores.length = nivel;
+                contadores[nivel - 1] = (contadores[nivel - 1] || 0) + 1;
+                numero = '1.' + contadores.join('.');
+                anterior = nivel;
+            }
+
+            $fila.data('nivel', nivel);
+            $fila.find('.esp-numero').text(numero);
+            $fila.find('td').eq(1)
+                .toggleClass('esp-nivel-2', nivel === 2)
+                .toggleClass('esp-nivel-3', nivel === 3);
+            $fila.find('.esp-afuera').prop('disabled', nivel === 1);
+            $fila.find('.esp-adentro').prop('disabled', nivel >= maximo);
+        });
+    }
+
+    /**
+     * Agrega una fila al final. Sin nivel, toma el de la ultima fila con
+     * contenido, o uno mas si esa es un subtitulo (lo que se escribe debajo de
+     * "Hardware" suele ir dentro de el).
+     */
+    function agregarFila(nombre, valor, nivel) {
         var $fila = $(filaModelo);
+
+        if (nivel === undefined) {
+            var $ultima = filasConContenido().last();
+            nivel = $ultima.length === 0 ? 1
+                : ($ultima.data('nivel') || 1) + ($ultima.find('.esp-subtitulo').prop('checked') ? 1 : 0);
+        }
+
         $fila.find('.esp-nombre').val(nombre || '');
         $fila.find('.esp-valor').val(valor || '');
+        $fila.find('.esp-nivel').val(Math.min(nivel, NIVEL_MAXIMO));
         $filas.append($fila);
+        numerar();
         return $fila;
     }
 
     function filasConContenido() {
         return $filas.find('tr.esp-fila').filter(function () {
-            return $.trim($(this).find('.esp-nombre').val()) !== '' || $.trim($(this).find('.esp-valor').val()) !== '';
+            return tieneContenido($(this));
         });
     }
 
@@ -42,6 +117,22 @@ $(function () {
     if ($filas.find('tr.esp-fila').length === 0) {
         agregarFila();
     }
+    numerar();
+
+    $filas.on('change', '.esp-subtitulo', function () {
+        var $fila = $(this).closest('tr');
+        var $nombre = $fila.find('.esp-nombre');
+        var $valor = $fila.find('.esp-valor');
+
+        // Si el texto se habia escrito como "Característica", pasa a "Valor".
+        if (this.checked && $.trim($nombre.val()) !== '' && $.trim($valor.val()) === '') {
+            $valor.val($nombre.val());
+            $nombre.val('');
+        }
+        numerar();
+    });
+
+    $filas.on('input', '.esp-nombre, .esp-valor', numerar);
 
     $('#esp-agregar').on('click', function () {
         agregarFila().find('.esp-nombre').trigger('focus');
@@ -52,22 +143,36 @@ $(function () {
         if ($filas.find('tr.esp-fila').length === 0) {
             agregarFila();
         }
+        numerar();
+    });
+
+    // Flechas de nivel: → mete la fila un nivel (queda debajo de la fila de arriba: 1.5 -> 1.4.1), ← la saca.
+    $filas.on('click', '.esp-adentro, .esp-afuera', function () {
+        var $fila = $(this).closest('tr');
+        var cambio = $(this).hasClass('esp-adentro') ? 1 : -1;
+
+        $fila.find('.esp-nivel').val(Math.max(1, ($fila.data('nivel') || 1) + cambio));
+        numerar();
     });
 
     $filas.on('click', '.esp-subir', function () {
         var $fila = $(this).closest('tr');
         $fila.prev('tr.esp-fila').before($fila);
+        numerar();
     });
 
     $filas.on('click', '.esp-bajar', function () {
         var $fila = $(this).closest('tr');
         $fila.next('tr.esp-fila').after($fila);
+        numerar();
     });
 
     $form.on('submit', function () {
         $filas.find('tr.esp-fila').each(function (i) {
             $(this).find('.esp-nombre').attr('name', 'Caracteristicas[' + i + '][nombre]');
             $(this).find('.esp-valor').attr('name', 'Caracteristicas[' + i + '][valor]');
+            $(this).find('.esp-subtitulo').attr('name', 'Caracteristicas[' + i + '][esSubtitulo]');
+            $(this).find('.esp-nivel').attr('name', 'Caracteristicas[' + i + '][nivel]');
         });
     });
 

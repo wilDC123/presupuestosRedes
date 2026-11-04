@@ -74,6 +74,7 @@ $formato = Yii::$app->formatter;
             <div class="rd-dato"><strong>Proceso:</strong> <?= Html::encode($model->proceso?->etiqueta() ?? '—') ?></div>
             <div class="rd-dato"><strong>Unidad / dependencia:</strong> <?= Html::encode($model->unidadDependencia ?: '—') ?></div>
             <div class="rd-dato"><strong>Unidad solicitante:</strong> <?= Html::encode($model->unidadSolicitante ?: '—') ?></div>
+            <div class="rd-dato"><strong>Lugar de entrega:</strong> <?= Html::encode($model->lugarEntrega ?: '— (el de la configuración del formulario)') ?></div>
             <div class="rd-dato">
                 <strong>Área de intervención:</strong>
                 <?php if ($model->areasIntervencion !== []): ?>

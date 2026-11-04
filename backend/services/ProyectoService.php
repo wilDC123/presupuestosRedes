@@ -103,6 +103,7 @@ class ProyectoService
             $proyecto->idProceso = $anterior->idProceso ?? $proyecto->idProceso;
             $proyecto->unidadDependencia = $anterior->unidadDependencia;
             $proyecto->unidadSolicitante = $anterior->unidadSolicitante;
+            $proyecto->lugarEntrega = $anterior->lugarEntrega;
             $proyecto->areas = array_map(static fn (ProyectoAreaIntervencion $area) => $area->claves(), $anterior->areasIntervencion);
             $this->copiarEquipo($anterior, $proyecto);
         } else {
