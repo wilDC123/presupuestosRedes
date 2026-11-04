@@ -191,7 +191,16 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
         . '<td>'
         . Html::hiddenInput("items[$n][id]", $id)
         . Html::hiddenInput("items[$n][idSubcatalogo]", $idSubcatalogo, ['class' => 'lista-item-subcatalogo'])
+        . '<div class="d-flex align-items-baseline gap-2">'
         . '<div class="lista-item-nombre">' . Html::encode($nombre) . '</div>'
+        // "Cambiar ítem" (solo filas ya guardadas): otro item del subcatalogo en la MISMA fila,
+        // para corregir un error sin anular su formulario de especificacion (lista-items.js).
+        . ($id !== '' ? Html::button('Cambiar ítem', [
+            'class' => 'btn btn-link btn-sm p-0 text-nowrap lista-item-cambiar',
+            'title' => 'Elegir otro ítem del subcatálogo para esta fila (ej. el mismo cable en cajas en vez de metros). Su formulario de especificación se corrige con el mismo código.',
+        ]) : '')
+        . '</div>'
+        . '<div class="rd-celda-sub text-warning-emphasis lista-item-cambio d-none"></div>'
         . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
         . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
         . $emision
@@ -293,6 +302,11 @@ $grupoCierra = static fn (int $cantidad): string =>
                     <div class="rd-card-titulo mb-2">Subcatálogo de redes</div>
                     <input type="text" class="form-control" id="lista-buscar" placeholder="Buscar ítem...">
                     <div class="kicker mt-2"><?= count($subcatalogo) ?> ítems activos en el subcatálogo</div>
+                    <?php // Aviso de "Cambiar ítem": mientras se ve, el "+" reemplaza el item de esa fila en vez de agregar uno. ?>
+                    <div class="notice mt-2 mb-0 d-none" id="lista-cambiando">
+                        Elija con <strong>+</strong> el ítem que reemplaza a <strong id="lista-cambiando-nombre"></strong>.
+                        <button type="button" class="btn btn-link btn-sm p-0" id="lista-cambiando-cancelar">Cancelar</button>
+                    </div>
                 </div>
                 <div class="rd-lista-scroll" id="lista-subcatalogo">
                     <?php if ($subcatalogo === []): ?>

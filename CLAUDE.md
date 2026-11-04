@@ -278,7 +278,14 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `m261025_000938_version_del_documento_en_emision`). La casilla "Versión" del formulario es la del
   DOCUMENTO, no la de la ficha (`versionTexto()`); `codigo()` no lleva versión (lo citan carta,
   solicitud y presupuesto) y `codigoConVersion()` ("RD-PI-ET-015 v02") se usa en pantallas, registro
-  y CSV. Cambiar la ficha por otra sí da código nuevo (es otro documento). Reemitir se permite mientras el presupuesto no
+  y CSV. Cambiar la ficha por otra sí da código nuevo (es otro documento). "CAMBIAR ÍTEM" (2026-11-04): en una fila
+  ya guardada de la lista se elige otro ítem del subcatálogo SIN quitar la fila (ej. el cable en metros por el de
+  cajas); con la misma ficha su formulario se REEMITE (mismo código, versión + 1, motivo "Se cambió el ítem: A → B",
+  conserva las condiciones de entrega) en vez de anularse y gastar otro número (`ListaItemsService::cambiarItem()`,
+  `reemitirPorCambio()`; JS en `lista-items.js`). No se permite si la fila ya tiene cotizaciones
+  (`SolicitudCotizacionService::itemTieneCotizaciones()`: precios de otro producto, se quita y se agrega); con el
+  presupuesto en borrador borra su línea (precio directo o SIGMA del ítem anterior); se anota en el historial
+  (`HistorialProyecto::ACCION_LISTA_ITEM_CAMBIADO`). Reemitir se permite mientras el presupuesto no
   esté aprobado ni cancelado. Correlativo: el ET de `redes.CorrelativoDocumento` (antes
   `ConfiguracionEspecificacion.siguienteNet`, eliminado el 2026-10-22; esa tabla sigue con los textos fijos
   del formulario), sube de 1 en 1, vuelve a 001 cada 1 de enero (2026-10-29) y nunca se reutiliza. Avisos que
