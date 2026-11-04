@@ -108,8 +108,9 @@ class SubcatalogoItemService
     {
         return SubcatalogoItem::find()
             ->andWhere(['activo' => true])
-            // with(): trae categorias y unidades en una consulta extra cada una.
-            ->with(['categoria', 'unidad'])
+            // with(): trae categorias, unidades y el item SIGMA (el panel de la
+            // lista muestra su nombre) en una consulta extra cada uno.
+            ->with(['categoria', 'unidad', 'catalogoSigma'])
             ->orderBy(['descripcion' => SORT_ASC])
             ->all();
     }
