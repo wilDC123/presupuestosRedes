@@ -345,7 +345,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   (nunca se recalcula retroactivamente si cambia el precio de una cotización nueva)
 - Tamaño de hoja de TODOS los impresos: OFICIO, 8,5 x 13 pulgadas = 216 x 330 mm (2026-10-21; antes
   A4), la que usa la DTIC. En mPDF se llama "Folio": `PresupuestoPdfGenerator::HOJA_OFICIO` (por
-  defecto) y `HOJA_OFICIO_HORIZONTAL` (reporte de relación con SIGMA)
+  defecto) y `HOJA_OFICIO_HORIZONTAL` (reporte de relación con SIGMA). Desde el 2026-11-03 todos los
+  impresos van en ESCALA DE GRISES (fondos #e0e0e0 títulos, #d0d0d0 categorías, #f2f2f2 subtotales), como el
+  formulario de especificación y la lista de materiales; el presupuesto tenía azules. Solo los logos y el
+  membrete de la carta conservan su color
 - Cabecera de página de los impresos (2026-10-21, `backend/views/pdf/_cabecera.php`, etiqueta
   `<htmlpageheader>` de mPDF): recuadro con escudo USFX | títulos + fila de datos | logo DTIC
   (`backend/web/img/logo-usfx.png`, `logo-dtic.png`, reducidos), repetida en cada página, a 5 mm del
