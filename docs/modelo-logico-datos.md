@@ -7,7 +7,7 @@ Actualizado: 2 de noviembre de 2026, a partir de la base de desarrollo con todas
 ## 1. Alcance y convenciones
 
 - Base de datos: SQL Server, base `POAPresupuestos`. Todas las tablas propias del módulo están en el
-  esquema **`redes`** (40 tablas, más `redes.migration`, que solo registra qué migraciones se aplicaron).
+  esquema **`redes`** (39 tablas, más `redes.migration`, que solo registra qué migraciones se aplicaron).
   En `dbo` el módulo **no crea nada**.
 - Las tablas se crean y modifican **solo con migraciones de Yii2** (`php yii migrate`), que además cargan
   los datos iniciales que el sistema necesita (catálogos, configuraciones de una sola fila y correlativos).
