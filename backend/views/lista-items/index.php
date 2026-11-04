@@ -322,12 +322,24 @@ $grupoCierra = static fn (int $cantidad): string =>
                              data-unidad="<?= Html::encode((string) $itemSubcatalogo->abreviaturaUnidad()) ?>"
                              data-categoria="<?= $itemSubcatalogo->idCategoria ?>"
                              data-categoria-nombre="<?= Html::encode($itemSubcatalogo->categoria->nombre ?? 'Sin clasificación') ?>">
-                            <div>
+                            <?php
+                            // Linea SIGMA: a que item generico de SIGMA apunta y su partida, para
+                            // elegir sin ir al subcatalogo. Solo se muestra: el buscador sigue
+                            // buscando por el nombre DTIC. Nombre largo = recortado con "…" (CSS),
+                            // completo en el title.
+                            $sigma = $itemSubcatalogo->catalogoSigma;
+                            $lineaSigma = $sigma !== null ? 'SIGMA: ' . $sigma->Descripcion : 'Sin ítem SIGMA';
+                            if ($itemSubcatalogo->partida) {
+                                $lineaSigma .= ' · Partida ' . $itemSubcatalogo->partida;
+                            }
+                            ?>
+                            <div class="rd-row-item-texto">
                                 <div class="rd-celda-titulo"><?= Html::encode($itemSubcatalogo->descripcion) ?></div>
                                 <div class="rd-celda-sub">
                                     <?= Html::encode($itemSubcatalogo->categoria->nombre ?? '') ?>
                                     <?= $itemSubcatalogo->unidad ? ' · Unidad: ' . Html::encode($itemSubcatalogo->unidad->abreviatura) : '' ?>
                                 </div>
+                                <div class="rd-celda-sub rd-linea-sigma" title="<?= Html::encode($lineaSigma) ?>"><?= Html::encode($lineaSigma) ?></div>
                             </div>
                             <button type="button" class="addbtn" aria-label="Agregar a la lista">+</button>
                         </div>

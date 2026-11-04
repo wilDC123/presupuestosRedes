@@ -491,6 +491,10 @@ td.esp-nivel-3 { padding-left: 3.25rem; }
 .rd .row-item:hover { background: #f5f9fd; }
 /* Fila de la lista que espera su item nuevo ("Cambiar ítem"). */
 .rd tr.lista-item-cambiando > td { background: #fff8e1; }
+/* min-width: 0 deja que el texto se achique dentro del flex (si no, el "…" no aparece). */
+.rd .rd-row-item-texto { min-width: 0; }
+/* Linea "SIGMA: … · Partida …" del panel de la lista: un renglon, lo que no entra va con "…". */
+.rd .rd-linea-sigma { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rd .addbtn {
     width: 26px;
     height: 26px;
