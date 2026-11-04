@@ -325,6 +325,16 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Carga inicial desde el banco de .docx de DTIC: `php yii especificacion/importar "<carpeta>"`
   (sin `--confirmar` solo escribe un CSV; `--desde=AAAA`). Agrupa por título + modelo sugerido y
   toma la emisión más reciente de cada familia. No importa emisiones antiguas
+- ORDEN DE LA LIBRERÍA (2026-11-03): `php yii especificacion/ordenar console/data/orden-especificaciones-2026-11-03.json`
+  (sin `--confirmar` solo muestra; `EspecificacionOrdenService`). El plan, revisado y aprobado por el desarrollador, deja
+  114 fichas con niveles, subtítulos y arreglos de forma (sin cambiar el orden de las filas ni los valores técnicos).
+  Cada ficha se reconoce por TÍTULO + HUELLA del contenido (nombre y valor de sus filas), no por id: sirve también en el
+  servidor de la DTIC; una ficha editada después del plan, ya ordenada o con la versión actual emitida se salta. Todo en
+  una transacción; se puede volver a correr. Aplicado en la base local el 2026-11-03 (las 172 fichas: ese día se borraron
+  los 9 proyectos de PRUEBA que tenían formularios ET, para liberar las 8 fichas emitidas; copia previa de la base en
+  `POAPresupuestos-antes-de-borrar-proyectos-2026-11-03.bak`, carpeta Backup de SQL Server). Las siglas en subtítulos
+  (VLAN, MIMO) quedan en mayúsculas. PENDIENTE: correrlo en el servidor de la DTIC y llevar al Ing. las 44 dudas (título "UN disco" con DOS discos,
+  FACE PLATE 4 TOMAS con "2 posiciones", fichas vacías, datos repetidos, restos del Word)
 - Cotizaciones de proveedores (relación N:N con ítems/especificaciones). Una línea que viene de
   una solicitud guarda contra qué NET cotizó (`CotizacionDetalle.idEspecificacionEmision`, no
   cambia si el NET se reemite); una cotización suelta solo elige la ficha (`idEspecificacion`)
