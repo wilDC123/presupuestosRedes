@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use yii\helpers\Html;
+use yii\web\JqueryAsset;
 use yii\widgets\ActiveForm;
 
 /**
@@ -19,6 +20,23 @@ use yii\widgets\ActiveForm;
 $this->title = 'Configuración de la carta de entrega';
 $this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/configuracion/index']];
 $this->params['breadcrumbs'][] = 'Carta de entrega';
+
+// Agregar, quitar y ordenar las filas de "Tratamientos".
+$this->registerJsFile('@web/js/carta-configuracion.js', ['depends' => [JqueryAsset::class]]);
+
+$nombreTratamientos = Html::getInputName($configuracion, 'tratamientos');
+$tratamientos = is_array($configuracion->tratamientos) ? $configuracion->tratamientos : [];
+$filaTratamiento = static function ($clave, string $nombre, bool $femenino) use ($nombreTratamientos): string {
+    return '<tr>'
+        . '<td>' . Html::textInput($nombreTratamientos . "[$clave][nombre]", $nombre, ['class' => 'form-control', 'maxlength' => 20, 'aria-label' => 'Tratamiento', 'placeholder' => 'ej. Señora']) . '</td>'
+        . '<td class="rd-equipo-responsable">' . Html::checkbox($nombreTratamientos . "[$clave][femenino]", $femenino, ['value' => 1, 'aria-label' => 'Cargo en femenino']) . '</td>'
+        . '<td class="text-nowrap">'
+        . '<button type="button" class="btn btn-link btn-sm rd-tratamiento-subir" title="Subir" aria-label="Subir">↑</button>'
+        . '<button type="button" class="btn btn-link btn-sm rd-tratamiento-bajar" title="Bajar" aria-label="Bajar">↓</button>'
+        . '<button type="button" class="btn btn-link btn-sm rd-tratamiento-quitar">Quitar</button>'
+        . '</td>'
+        . '</tr>';
+};
 
 $volver = $proyecto !== null
     ? Html::a('← Carta del proyecto', ['index', 'idProyecto' => $proyecto], ['class' => 'btn btn-outline'])
@@ -50,6 +68,36 @@ $volver = $proyecto !== null
                     <?= $form->field($configuracion, 'formatoOficio')->textInput(['maxlength' => 100])
                         ->hint('{oficio} = número de oficio DTIC del presupuesto; {anio} = año de la carta. Se aplica también al reimprimir.') ?>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="rd-card-head"><div class="rd-card-titulo">Tratamientos</div></div>
+        <div class="rd-card-pad">
+            <div class="form-group<?= $configuracion->hasErrors('tratamientos') ? ' has-error' : '' ?>">
+                <?php // Sin filas, "tratamientos" igual llega (vacio) y el servidor avisa que falta uno. ?>
+                <?= Html::hiddenInput($nombreTratamientos, '') ?>
+                <table class="table rd-equipo mb-2" id="carta-tratamientos" data-siguiente="<?= count($tratamientos) ?>" style="max-width: 560px">
+                    <thead>
+                        <tr>
+                            <th>Tratamiento</th>
+                            <th class="rd-equipo-responsable">Cargo en femenino</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach (array_values($tratamientos) as $i => $fila): ?>
+                            <?= $filaTratamiento($i, (string) ($fila['nombre'] ?? ''), !empty($fila['femenino'])) ?>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <template id="carta-tratamiento-fila-modelo"><?= $filaTratamiento('__n__', '', false) ?></template>
+                <button type="button" class="btn btn-outline btn-sm" id="carta-agregar-tratamiento">+ Agregar tratamiento</button>
+                <div class="hint">Cómo se encabeza al destinatario ("Señora:"). La lista de la carta sale en este orden y una carta
+                    nueva empieza con el primero. "Cargo en femenino": el cargo sugerido dice DECANA en vez de DECANO. Las
+                    cartas ya guardadas conservan el suyo aunque se quite de aquí.</div>
+                <div class="help-block"><?= Html::encode($configuracion->getFirstError('tratamientos')) ?></div>
             </div>
         </div>
     </div>

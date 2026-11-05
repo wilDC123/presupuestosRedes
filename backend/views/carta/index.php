@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use backend\models\CartaPresupuesto;
+use backend\models\TratamientoCarta;
 use yii\helpers\Html;
 use yii\web\JqueryAsset;
 use yii\widgets\ActiveForm;
@@ -28,6 +28,17 @@ $this->params['breadcrumbs'][] = 'Carta de entrega';
 
 // Cambia DECANO <-> DECANA en el cargo al elegir otro tratamiento.
 $this->registerJsFile('@web/js/carta.js', ['depends' => [JqueryAsset::class]]);
+
+// Tratamientos de "Configuración de la carta" (mas el que la carta ya
+// tenia, si se quito de la lista). Cada opcion dice si el cargo va en
+// femenino (data-femenino), para web/js/carta.js.
+$femeninos = TratamientoCarta::opciones();
+$opcionesTratamiento = [];
+$atributosTratamiento = [];
+foreach ($carta->tratamientosElegibles() as $nombre) {
+    $opcionesTratamiento[$nombre] = $nombre;
+    $atributosTratamiento[$nombre] = ['data-femenino' => !empty($femeninos[$nombre]) ? '1' : '0'];
+}
 
 $marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los del presupuesto, y {especificaciones} con los códigos de las especificaciones técnicas vigentes del proyecto, separados por comas (ej. RD-PI-ET-001/26, RD-PI-ET-002/26).';
 ?>
@@ -74,8 +85,8 @@ $marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los
                     <?= $form->field($carta, 'fecha')->input('date') ?>
                 </div>
                 <div class="col-md-3">
-                    <?= $form->field($carta, 'tratamiento')->dropDownList(array_combine(CartaPresupuesto::TRATAMIENTOS, CartaPresupuesto::TRATAMIENTOS), ['id' => 'carta-tratamiento'])
-                        ->hint('Sale como "Señora:" sobre el nombre.') ?>
+                    <?= $form->field($carta, 'tratamiento')->dropDownList($opcionesTratamiento, ['id' => 'carta-tratamiento', 'options' => $atributosTratamiento])
+                        ->hint('Sale como "Señora:" sobre el nombre. La lista se cambia en ' . Html::a('Configuración de la carta', ['configuracion', 'proyecto' => $proyecto->id]) . '.') ?>
                 </div>
                 <div class="col-md-6">
                     <?= $form->field($carta, 'destinatarioNombre')->textInput(['maxlength' => 150, 'placeholder' => 'ej. Msc. María Esther Santos Parraga'])

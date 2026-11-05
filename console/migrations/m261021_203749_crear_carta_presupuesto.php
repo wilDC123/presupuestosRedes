@@ -80,7 +80,7 @@ class m261021_203749_crear_carta_presupuesto extends Migration
             'id' => $this->primaryKey(),
             'idPresupuesto' => $this->integer()->notNull(),
             'fecha' => $this->date()->notNull(),
-            // Señor, Señora, Señores, Señoras (ver CartaPresupuesto::TRATAMIENTOS).
+            // Señor, Señora… (desde el 2026-11-04, copia de redes.TratamientoCarta).
             'tratamiento' => $this->string(20)->notNull(),
             'destinatarioNombre' => $this->string(150)->notNull(),
             'destinatarioCargo' => $this->string(200)->notNull(),

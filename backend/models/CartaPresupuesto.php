@@ -22,7 +22,7 @@ use yii\db\Expression;
  * @property int $id
  * @property int $idPresupuesto
  * @property string $fecha aaaa-mm-dd en la base; el formulario usa dd/mm/aaaa
- * @property string $tratamiento Ver TRATAMIENTOS.
+ * @property string $tratamiento COPIA de uno de redes.TratamientoCarta ("Señora").
  * @property string $destinatarioNombre Con su grado, ej. "Msc. María Esther Santos Parraga".
  * @property string $destinatarioCargo En mayusculas.
  * @property string $referencia En mayusculas, sin el "Ref." (lo pone el PDF).
@@ -48,12 +48,6 @@ use yii\db\Expression;
 class CartaPresupuesto extends ActiveRecord
 {
     use FirmasDeCarta;
-
-    /**
-     * Como se encabeza el destinatario ("Señora:"). El cargo sugerido
-     * cambia con el: DECANO / DECANA (ver CartaService::cargoSugerido()).
-     */
-    public const TRATAMIENTOS = ['Señor', 'Señora', 'Señores', 'Señoras'];
 
     /**
      * Marcadores que la carta reemplaza (ver CartaService), escritos como se
@@ -98,7 +92,9 @@ class CartaPresupuesto extends ActiveRecord
             [['saludo', 'despedida', 'copia', 'adjunto'], 'default', 'value' => null],
             [['fecha', 'tratamiento', 'destinatarioNombre', 'destinatarioCargo', 'referencia', 'cuerpo'], 'required'],
             [['fecha'], 'date', 'format' => 'php:Y-m-d', 'message' => 'La fecha de la carta no es válida.'],
-            [['tratamiento'], 'in', 'range' => self::TRATAMIENTOS],
+            [['tratamiento'], 'in', 'range' => fn () => $this->tratamientosElegibles(),
+                'message' => 'Elija un tratamiento de la lista.'],
+            [['tratamiento'], 'string', 'max' => 20],
             [['destinatarioCargo', 'referencia'], 'filter', 'filter' => [self::class, 'mayusculas']],
             [['destinatarioNombre'], 'string', 'max' => 150],
             [['destinatarioCargo'], 'string', 'max' => 200],
@@ -124,6 +120,25 @@ class CartaPresupuesto extends ActiveRecord
             'copia' => 'Copia',
             'adjunto' => 'Adjunto',
         ] + self::etiquetasFirmas();
+    }
+
+    /**
+     * Los tratamientos que se pueden elegir: los de "Configuración de la
+     * carta" (redes.TratamientoCarta), en su orden, mas el que la carta ya
+     * tenia guardado aunque despues se haya quitado de la lista.
+     *
+     * @return string[]
+     */
+    public function tratamientosElegibles(): array
+    {
+        $nombres = array_keys(TratamientoCarta::opciones());
+        $guardado = (string) $this->getOldAttribute('tratamiento');
+
+        if ($guardado !== '' && !in_array($guardado, $nombres, true)) {
+            $nombres[] = $guardado;
+        }
+
+        return $nombres;
     }
 
     public function getPresupuesto(): ActiveQuery

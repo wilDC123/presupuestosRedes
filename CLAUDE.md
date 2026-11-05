@@ -506,7 +506,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   sin ninguno, el marcador desaparece). El
   adjunto por defecto es "…Nro: {numeroPresupuesto}, especificaciones técnicas {especificaciones} y
   cotización.".
-  Cargo sugerido "DECANO/DECANA DE LA <FACULTAD>" según el tratamiento (`web/js/carta.js`). PDF
+  Cargo sugerido "DECANO/DECANA DE LA <FACULTAD>" según el tratamiento (`web/js/carta.js`). TRATAMIENTOS
+  (2026-11-04; antes 4 fijos en `CartaPresupuesto::TRATAMIENTOS`): lista `redes.TratamientoCarta` (nombre único,
+  "cargo en femenino" = DECANA, orden; migración `m261104_233000_crear_tratamiento_carta`) editada en la tabla
+  "Tratamientos" de "Configuración de la carta" (`ConfiguracionCarta::$tratamientos`, se reemplaza entera en
+  `CartaService::guardarConfiguracion()`, al menos uno, sin repetidos). Una carta nueva toma el primero; la carta
+  guarda COPIA del texto y conserva uno ya quitado de la lista (`CartaPresupuesto::tratamientosElegibles()`). PDF
   oficio con el membrete `backend/web/img/fondo-carta.png` de fondo (@page background) y márgenes
   4,75 / 4,5 / 3 / 3 cm. El PDF del presupuesto muestra el oficio con el MISMO formato que la carta
   ("DTIC Of. Nº 602/2026"; el año es el de la fecha de la carta si ya existe, si no el de creación del presupuesto,
@@ -569,7 +574,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261104_020312_agregar_lugar_entrega_a_proyecto`, aplicada el 2026-11-03), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261104_233000_crear_tratamiento_carta`, aplicada el 2026-11-04), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -685,6 +690,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   los estados E, C, D, R? Confirmar el lugar de entrega habitual de los proyectos que no son de una facultad
   (Rectorado, Canal, DTIC) para el texto por defecto de la configuración del formulario (hoy vacío) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
 - PENDIENTE (tutor): agregar `Proyecto.lugarEntrega` (2026-11-03) al diagrama de clases
+- PENDIENTE (tutor): agregar `TratamientoCarta` (2026-11-04; catálogo sin asociación: la carta copia el nombre) al
+  diagrama de clases; "Configurar carta de entrega" incluye la lista de tratamientos
 - PENDIENTE (tutor): agregar la clase `Proceso` (2026-10-29; catálogo, asociación 1 proceso → 0..* proyectos)
   al diagrama de clases y el caso de uso "Gestionar procesos"
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a

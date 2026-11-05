@@ -295,6 +295,8 @@ erDiagram
 ### 2.5 Configuración, codificación y usuarios
 
 Tablas sin relaciones con las demás. Las cuatro de configuración tienen **una sola fila** (CHECK `id = 1`).
+`TratamientoCarta` es la lista de tratamientos de la carta, editada en la misma pantalla que `ConfiguracionCarta`
+(la carta guarda una copia del texto, sin FK).
 
 ```mermaid
 erDiagram
@@ -307,6 +309,12 @@ erDiagram
     ConfiguracionCarta {
         int id PK "siempre 1"
         string plantillaCuerpo
+    }
+    TratamientoCarta {
+        int id PK
+        string nombre UK
+        bool femenino
+        int orden
     }
     ConfiguracionEspecificacion {
         int id PK "siempre 1"
@@ -893,7 +901,7 @@ Carta de entrega del presupuesto (0..1 por presupuesto), con su texto y 3 firmas
 | id | int | no | PK |
 | idPresupuesto | int | no | FK → Presupuesto.id (borrado en cascada) |
 | fecha | date | no |  |
-| tratamiento | nvarchar(20) | no |  |
+| tratamiento | nvarchar(20) | no | COPIA de un TratamientoCarta.nombre (sin FK) |
 | destinatarioNombre | nvarchar(150) | no |  |
 | destinatarioCargo | nvarchar(200) | no |  |
 | referencia | nvarchar(500) | no |  |
@@ -961,6 +969,20 @@ Una sola fila: textos por defecto y firmas de la carta de entrega.
 | firma3Cargo | nvarchar(200) | sí |  |
 
 CHECK: `([id]=(1))`
+
+#### redes.TratamientoCarta
+
+Tratamientos de la carta de entrega ("Señor", "Señora"…), administrados en "Configuración de la carta"
+(desde el 2026-11-04; antes eran 4 fijos en el código). Se reemplaza la lista entera al guardar.
+
+| Columna | Tipo | Nulo | Clave / regla |
+|---|---|---|---|
+| id | int | no | PK |
+| nombre | nvarchar(20) | no |  |
+| femenino | bit | no | por defecto 0; el cargo sugerido dice DECANA |
+| orden | int | no | por defecto 0; el primero es el de una carta nueva |
+
+Único: (nombre)
 
 #### redes.ConfiguracionEspecificacion
 
