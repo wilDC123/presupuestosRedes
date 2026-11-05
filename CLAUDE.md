@@ -396,7 +396,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   Al juntar varios documentos en un PDF cada uno sale con su cabecera
   (`PresupuestoPdfGenerator::empezarDocumento()`)
 - Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
-  aprobado. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
+  aprobado. Datos generales (2026-11-05): "Proyecto: RD-PI-PT-028 — Nombre" en UNA línea (`Proyecto::etiqueta()`;
+  antes "Código de proyecto" y "Proyecto" por separado) con el oficio a la derecha; "(Fase N)" SOLO desde la fase 2.
+  Solo en el presupuesto: la lista de materiales y la relación con SIGMA siguen como estaban. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
   usan los mismos anchos, 2026-10-21) y "TOTAL GENERAL Bs." al final; N.° corrido
   entre categorías y en cada línea el nombre DTIC con su observación (columnas como la solicitud
   de cotización, más Partida). Desde el 2026-10-21 el nombre DTIC lleva al lado, entre paréntesis, el código NET de la emisión

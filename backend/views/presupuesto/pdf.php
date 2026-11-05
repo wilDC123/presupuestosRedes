@@ -156,15 +156,17 @@ $numero = 0;
     'fecha' => $presupuesto->fechaFormateada() ?: '—',
 ]) ?>
 
-<?php // Código, versión y fecha ya van en la cabecera. ?>
+<?php // Código, versión y fecha ya van en la cabecera. El proyecto, en una
+// sola línea con su código ("RD-PI-PT-028 — Nombre"); la fase solo en una
+// ampliación (2 o más): en la fase 1 no aporta (2026-11-05). ?>
 <table class="datos-generales">
     <tr>
-        <td><strong>Código de proyecto:</strong> <?= Html::encode($proyecto->codigo ?: '—') ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
-        <td><strong><?= Html::encode($oficio !== '' ? $oficio : 'Oficio DTIC: —') ?></strong></td>
+        <?php // El nombre del proyecto suele ser largo: mas ancho que el oficio. ?>
+        <td style="width: 72%"><strong>Proyecto:</strong> <?= Html::encode($proyecto->etiqueta() ?: '—') ?><?= (int) $proyecto->numeroFase > 1 ? ' (Fase ' . (int) $proyecto->numeroFase . ')' : '' ?></td>
+        <td style="width: 28%; text-align: right"><strong><?= Html::encode($oficio !== '' ? $oficio : 'Oficio DTIC: —') ?></strong></td>
     </tr>
     <tr>
-        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre ?? '—') ?></td>
-        <td><strong>Unidad / dependencia:</strong> <?= Html::encode($proyecto->unidadDependencia ?: '—') ?></td>
+        <td colspan="2"><strong>Unidad / dependencia:</strong> <?= Html::encode($proyecto->unidadDependencia ?: '—') ?></td>
     </tr>
     <?php // A todo el ancho: varias areas pueden ocupar mas de una linea. ?>
     <tr>
