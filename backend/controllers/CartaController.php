@@ -91,8 +91,8 @@ class CartaController extends Controller
     }
 
     /**
-     * Textos por defecto de la carta. Solo se usan al llenar una carta
-     * nueva: las ya escritas guardan su propio texto.
+     * Textos por defecto de la carta y la lista de tratamientos. Solo se
+     * usan al llenar una carta nueva: las ya escritas guardan su propio texto.
      *
      * @param int|null $proyecto id del proyecto desde el que se entro, solo
      *                           para el boton "volver"
@@ -105,6 +105,12 @@ class CartaController extends Controller
             Yii::$app->session->setFlash('success', 'Configuración de la carta guardada.');
 
             return $this->redirect(['configuracion', 'proyecto' => $proyecto]);
+        }
+
+        // Sin POST (o si no llegaron), las filas guardadas; con un error,
+        // quedan las que se escribieron.
+        if ($configuracion->tratamientos === null) {
+            $configuracion->cargarTratamientos();
         }
 
         return $this->render('configuracion', [
