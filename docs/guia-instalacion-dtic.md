@@ -2,7 +2,8 @@
 
 Módulo: Sistema de presupuestos de instalaciones de redes (Unidad de Redes y Telecomunicaciones).
 Para: equipo técnico de DTIC — USFX. Fecha: 18 de octubre de 2026 (actualizada el 2 de noviembre de 2026: PHP 8.3;
-y el 3 de noviembre de 2026: scripts SQL para 2012, datos del entorno de pruebas y pasos antes del primer documento).
+el 3 de noviembre de 2026: scripts SQL para 2012, datos del entorno de pruebas y pasos antes del primer documento;
+y el 5 de noviembre de 2026: tratamientos de la carta configurables, 40 tablas y 62 migraciones).
 
 Esta guía reúne lo que el servidor necesita para instalar el módulo y los puntos que conviene
 acordar antes. El módulo está hecho en PHP con Yii2 Advanced y usa la base SQL Server
@@ -47,7 +48,7 @@ de Microsoft para la versión de Ubuntu del servidor.
 - Para la primera instalación, permiso para crear el esquema `redes` (o que el DBA lo cree antes:
   `CREATE SCHEMA redes`).
 
-**Qué crea la instalación:** el esquema `redes` con 39 tablas (detalladas en `docs/modelo-logico-datos.md`), más `redes.migration`, que
+**Qué crea la instalación:** el esquema `redes` con 40 tablas (detalladas en `docs/modelo-logico-datos.md`), más `redes.migration`, que
 registra qué cambios de estructura ya se aplicaron. En `dbo` no crea nada: solo lee
 `dbo.CatalogoSigma`.
 
@@ -60,7 +61,7 @@ registra qué cambios de estructura ya se aplicaron. En `dbo` no crea nada: solo
   - `01-estructura-y-catalogos.sql`: el esquema `redes`, sus tablas, índices, llaves y restricciones,
     y los datos sin los que el sistema no funciona (categorías, unidades de medida, tipos de proyecto,
     procesos, roles, tipos de trabajo complementario, las cuatro configuraciones `Configuracion*`, los
-    correlativos `CorrelativoDocumento` y el registro `redes.migration` con las 61 migraciones).
+    correlativos `CorrelativoDocumento` y el registro `redes.migration` con las 62 migraciones).
   - `02-datos-de-entorno-de-pruebas.sql` (opcional): datos para probar el sistema (ver el punto 4.8).
 
   Se comprobó que una base armada con los dos scripts es idéntica, columna por columna y fila por fila,
