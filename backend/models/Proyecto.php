@@ -37,6 +37,8 @@ use yii\db\ActiveRecord;
  * @property string|null $edificio
  * @property int|null $idProyectoAnterior
  * @property int $numeroFase
+ * @property int|null $numeroProyecto Numero del proyecto (revision del 2026-11-05): lo comparten TODAS sus
+ *           fases (cada fila de esta tabla es una fase). Lo pone ProyectoService al crear; ver numeroTexto().
  * @property int|null $idPlantillaOrigen Plantilla de la que partio la lista (solo informativo).
  * @property bool $listaIniciada true si el paso "Plantilla" ya se resolvio (se uso una o se omitio).
  * @property string $estadoLista Estado de la lista de items: ver las constantes LISTA_*.
@@ -159,6 +161,7 @@ class Proyecto extends ActiveRecord
             'equipo' => 'Equipo del proyecto',
             'idProyectoAnterior' => 'Proyecto de fase anterior (opcional)',
             'numeroFase' => 'Fase',
+            'numeroProyecto' => 'N.° de proyecto',
             'fechaCreacion' => 'Fecha de creación',
         ];
     }
@@ -327,11 +330,56 @@ class Proyecto extends ActiveRecord
     }
 
     /**
-     * "RD-PI-PT-05 — Nombre" para listas desplegables y enlaces.
+     * "001 — Nombre" para listas desplegables, enlaces y la linea del
+     * proyecto de los documentos (sin la fase: la agrega quien la necesita).
+     * Antes del 2026-11-06, "RD-PI-PT-028 — Nombre": ese codigo es de la ficha.
      */
     public function etiqueta(): string
     {
-        return ($this->codigo ? $this->codigo . ' — ' : '') . $this->nombre;
+        return ($this->numeroProyecto !== null ? $this->numeroTexto() . ' — ' : '') . $this->nombre;
+    }
+
+    /**
+     * El numero del proyecto como se escribe: "001" (3 cifras, decidido con
+     * el desarrollador el 2026-11-06 mientras el Ing. de DTIC confirma el
+     * formato; es el UNICO lugar que lo decide). '—' si no tiene.
+     */
+    public function numeroTexto(): string
+    {
+        return $this->numeroProyecto === null ? '—' : CorrelativoDocumento::numeroTexto((int) $this->numeroProyecto);
+    }
+
+    /** @var bool|null cache de tieneVariasFases() */
+    private ?bool $variasFases = null;
+
+    /**
+     * true si el proyecto tiene mas de una fase (esta es la 2 o siguiente, u
+     * otra fila tiene su mismo numero). Con fase unica no se muestra "Fase"
+     * (revision del 2026-11-05, punto 3: "no poner Fase 1, porque da a
+     * entender que hay fase 2").
+     */
+    public function tieneVariasFases(): bool
+    {
+        if ($this->variasFases === null) {
+            $this->variasFases = (int) $this->numeroFase > 1
+                || ($this->numeroProyecto !== null && self::find()
+                    ->andWhere(['numeroProyecto' => $this->numeroProyecto])
+                    ->andWhere(['<>', 'id', (int) $this->id])
+                    ->exists());
+        }
+
+        return $this->variasFases;
+    }
+
+    /**
+     * "Proyecto 001", o "Proyecto 001 · Fase 2" si tiene varias fases: el
+     * rotulo corto de migas de pan, titulos y avisos.
+     */
+    public function identificador(): string
+    {
+        $texto = $this->numeroProyecto !== null ? 'Proyecto ' . $this->numeroTexto() : 'Proyecto #' . $this->id;
+
+        return $this->tieneVariasFases() ? $texto . ' · Fase ' . (int) $this->numeroFase : $texto;
     }
 
     /**

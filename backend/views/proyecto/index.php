@@ -29,10 +29,11 @@ $this->params['breadcrumbs'][] = $this->title;
         'emptyText' => 'Todavía no hay proyectos registrados.',
         'columns' => [
             [
-                'attribute' => 'codigo',
-                'label' => 'Código',
+                // El numero del proyecto (lo comparten sus fases); el codigo PT es de la ficha (2026-11-06).
+                'attribute' => 'numeroProyecto',
+                'label' => 'N.°',
                 'contentOptions' => ['class' => 'mono'],
-                'value' => static fn ($model) => $model->codigo ?: '—',
+                'value' => static fn ($model) => $model->numeroTexto(),
             ],
             [
                 'attribute' => 'nombre',

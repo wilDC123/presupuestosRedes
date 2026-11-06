@@ -89,10 +89,10 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
 
         <div class="rd-fila-2">
             <div class="field">
-                <label>Código de proyecto</label>
+                <label>N.° de proyecto</label>
                 <input type="text" class="form-control" disabled
-                       value="<?= Html::encode($model->codigo ?: 'Se genera al guardar') ?>">
-                <div class="hint">Generado automáticamente al guardar. No se puede cambiar.</div>
+                       value="<?= Html::encode($model->numeroProyecto !== null ? $model->numeroTexto() : 'Se asigna al guardar') ?>">
+                <div class="hint">Lo asigna el sistema al guardar; una fase siguiente lleva el mismo número que la anterior.</div>
             </div>
 
             <?= $form->field($model, 'idTipoProyecto')->dropDownList($tipos, ['prompt' => 'Seleccione el tipo', 'class' => 'form-select']) ?>

@@ -129,7 +129,7 @@ $numero = 0;
 <table class="datos-generales">
     <tr>
         <td><strong>Presupuesto:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?></td>
-        <td><strong>Código de proyecto:</strong> <?= Html::encode($proyecto->codigo ?: '—') ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
+        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->numeroTexto()) ?><?= $proyecto->tieneVariasFases() ? ' (Fase ' . (int) $proyecto->numeroFase . ')' : '' ?></td>
         <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre ?? '—') ?></td>
         <td><strong>Emitido:</strong> <?= date('d/m/Y') ?></td>
     </tr>

@@ -24,7 +24,7 @@ use yii\helpers\Html;
 
 $this->title = $model->nombre;
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = $model->codigo ?: '#' . $model->id;
+$this->params['breadcrumbs'][] = $model->identificador();
 
 $presupuesto = $model->presupuesto;
 $formato = Yii::$app->formatter;
@@ -37,7 +37,8 @@ $formato = Yii::$app->formatter;
                 <?= Html::encode($this->title) ?>
                 <span class="pill-fase">Fase <?= (int) $model->numeroFase ?></span>
             </h1>
-            <div class="rd-pagehead-sub mono"><?= Html::encode($model->codigo ?: 'Sin código') ?></div>
+            <?php // El numero es del proyecto; el codigo RD-PI-PT-NNN, de su ficha tecnica (2026-11-06). ?>
+            <div class="rd-pagehead-sub"><strong><?= Html::encode($model->identificador()) ?></strong><?= $model->codigo ? ' · ficha técnica <span class="mono">' . Html::encode($model->codigo) . '</span>' : '' ?></div>
         </div>
         <div class="rd-acciones">
             <?php if ($puedeEditarse): ?>
@@ -49,7 +50,7 @@ $formato = Yii::$app->formatter;
             <?= Html::a('Eliminar', ['delete', 'id' => $model->id], [
                 'class' => 'btn btn-danger',
                 'data' => [
-                    'confirm' => '¿Eliminar el proyecto ' . ($model->codigo ?: $model->nombre) . '?',
+                    'confirm' => '¿Eliminar el ' . $model->identificador() . ' (' . $model->nombre . ')?',
                     'method' => 'post',
                 ],
             ]) ?>

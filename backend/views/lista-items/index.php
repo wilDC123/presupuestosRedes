@@ -77,7 +77,7 @@ $this->registerJsFile('@web/js/especificacion-emision.js', ['depends' => [Jquery
 
 $this->title = 'Lista de ítems del proyecto';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
-$this->params['breadcrumbs'][] = ['label' => $proyecto->codigo ?: '#' . $proyecto->id, 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
+$this->params['breadcrumbs'][] = ['label' => $proyecto->identificador(), 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
 $this->params['breadcrumbs'][] = 'Lista de ítems';
 
 $formato = Yii::$app->formatter;
@@ -363,7 +363,7 @@ $grupoCierra = static fn (int $cantidad): string =>
 
         <div class="card rd-col-2">
             <div class="rd-card-head">
-                <div class="rd-card-titulo">Ítems del proyecto — <?= Html::encode($proyecto->codigo ?: '#' . $proyecto->id) ?></div>
+                <div class="rd-card-titulo">Ítems del proyecto — <?= Html::encode($proyecto->identificador()) ?></div>
                 <div class="kicker">
                     <span id="lista-total"><?= $totalItems ?></span> ítems en
                     <span id="lista-total-grupos"><?= count($grupos) ?></span> clasificaciones ·

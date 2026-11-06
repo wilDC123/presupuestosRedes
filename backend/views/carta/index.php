@@ -22,7 +22,7 @@ use yii\widgets\ActiveForm;
 
 $this->title = 'Carta de entrega';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
-$this->params['breadcrumbs'][] = ['label' => $proyecto->codigo ?: $proyecto->nombre, 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
+$this->params['breadcrumbs'][] = ['label' => $proyecto->identificador(), 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
 $this->params['breadcrumbs'][] = ['label' => 'Presupuesto', 'url' => ['/elaborar-presupuesto/index', 'idProyecto' => $proyecto->id]];
 $this->params['breadcrumbs'][] = 'Carta de entrega';
 

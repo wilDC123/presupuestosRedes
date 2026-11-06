@@ -305,8 +305,7 @@ class ProyectoService
             'fechaAprobacion' => $aprobada ? $presupuesto->fechaAprobacionFormateada() : '',
             'elaborado' => $presupuesto !== null ? $presupuesto->firmaDeControl(1, $configuracion) : $configuracion->firma(1),
             'aprobado' => $presupuesto !== null ? $presupuesto->firmaDeControl(2, $configuracion) : $configuracion->firma(2),
-            'variasFases' => (int) $proyecto->numeroFase > 1
-                || Proyecto::find()->andWhere(['idProyectoAnterior' => $proyecto->id])->exists(),
+            'variasFases' => $proyecto->tieneVariasFases(),
         ];
     }
 
@@ -470,7 +469,7 @@ class ProyectoService
             ->innerJoin(['pr' => Presupuesto::tableName()], 'pr.idProyecto = p.id')
             ->andWhere(['pr.estado' => Presupuesto::ESTADO_APROBADO])
             ->andFilterWhere(['<>', 'p.id', $excluirId])
-            ->orderBy(['p.codigo' => SORT_ASC])
+            ->orderBy(['p.numeroProyecto' => SORT_ASC, 'p.numeroFase' => SORT_ASC])
             ->all();
 
         $opciones = [];
@@ -480,7 +479,7 @@ class ProyectoService
 
             $opciones[$proyecto->id] = [
                 'etiqueta' => $proyecto->etiqueta() . " (Fase {$proyecto->numeroFase}, aprobado)",
-                'codigo' => (string) $proyecto->codigo,
+                'codigo' => 'Proyecto ' . $proyecto->numeroTexto(),
                 'resumen' => "Fase {$proyecto->numeroFase} — Aprobado — Bs. $monto",
             ];
         }
@@ -593,6 +592,10 @@ class ProyectoService
             if ($proyecto->isNewRecord) {
                 $this->insertarConCodigo($proyecto);
             } else {
+                // Se cambio (o quito) la fase anterior: el numero sigue a la cadena de fases.
+                if ((string) $proyecto->getOldAttribute('idProyectoAnterior') !== (string) $proyecto->idProyectoAnterior) {
+                    $this->asignarNumero($proyecto, new CodificacionService());
+                }
                 $proyecto->save(false);
                 $this->ajustarProcesoDeLaLista($proyecto);
             }
@@ -787,6 +790,16 @@ class ProyectoService
         }
 
         $proyecto->numeroFase = $anterior->numeroFase + 1;
+
+        // Una fase no se repite dentro del proyecto (la base tambien lo impide).
+        $ocupada = $anterior->numeroProyecto !== null && Proyecto::find()
+            ->andWhere(['numeroProyecto' => $anterior->numeroProyecto, 'numeroFase' => $proyecto->numeroFase])
+            ->andFilterWhere(['<>', 'id', $proyecto->id])
+            ->exists();
+
+        if ($ocupada) {
+            $proyecto->addError('idProyectoAnterior', $anterior->identificador() . ' ya tiene una fase ' . $proyecto->numeroFase . '.');
+        }
     }
 
     /**
@@ -800,7 +813,7 @@ class ProyectoService
     {
         if ($antes === null) {
             $detalle = $proyecto->nombre
-                . ($proyecto->idProyectoAnterior === null ? '' : "\nFase " . (int) $proyecto->numeroFase . ' de ' . ($proyecto->proyectoAnterior->codigo ?? ''));
+                . ($proyecto->idProyectoAnterior === null ? '' : "\nFase " . (int) $proyecto->numeroFase . ' del proyecto ' . $proyecto->numeroTexto());
             $this->historial->registrar($proyecto, HistorialProyecto::ACCION_PROYECTO_CREADO, $detalle);
 
             return;
@@ -914,6 +927,8 @@ class ProyectoService
     private function insertarConCodigo(Proyecto $proyecto): void
     {
         $codificacion = new CodificacionService();
+        // Una fase siguiente lleva el MISMO numero de proyecto que la anterior; un proyecto nuevo, el siguiente.
+        $this->asignarNumero($proyecto, $codificacion);
         $proyecto->codigo = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, $codificacion->tomar(CorrelativoDocumento::TIPO_PROYECTO));
         $proyecto->codigoLista = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_LISTA, $codificacion->tomar(CorrelativoDocumento::TIPO_LISTA), $this->codigoProceso($proyecto));
         $proyecto->save(false);
@@ -935,6 +950,18 @@ class ProyectoService
         }
 
         $proyecto->updateAttributes(['codigoLista' => CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_LISTA, $partes['numero'], $proceso)]);
+    }
+
+    /**
+     * Numero de proyecto (revision del 2026-11-05): el de la fase anterior si
+     * es una fase siguiente; si no, el siguiente del correlativo NP. Se llama
+     * dentro de la transaccion de guardar().
+     */
+    private function asignarNumero(Proyecto $proyecto, CodificacionService $codificacion): void
+    {
+        $anterior = $proyecto->idProyectoAnterior === null ? null : Proyecto::findOne((int) $proyecto->idProyectoAnterior);
+
+        $proyecto->numeroProyecto = $anterior->numeroProyecto ?? $codificacion->tomar(CorrelativoDocumento::TIPO_NUMERO_PROYECTO);
     }
 
     /** Codigo de 2 letras del proceso del proyecto (PI si no tiene). */
