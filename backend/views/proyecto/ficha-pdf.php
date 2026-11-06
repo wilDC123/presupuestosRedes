@@ -21,8 +21,10 @@ use yii\helpers\Html;
  * (PT). Antes (desde el 2026-10-29) era un reporte de control sin codigo.
  *  - Cabecera del lineamiento: codigo, version, fecha (la de creacion del
  *    proyecto: "arriba va la fecha de creacion del documento") y pagina. El
- *    codigo es por ahora el del proyecto (RD-PI-PT-NNN); cuando el proyecto
- *    pase a tener solo un numero (parte 5), ese codigo queda para la ficha.
+ *    codigo RD-PI-PT-NNN ES DE LA FICHA (el lineamiento cambiara "Proyecto
+ *    tecnico" por "Ficha de proyecto tecnico"); hoy esta en Proyecto.codigo
+ *    porque cada proyecto tiene una sola ficha. Cuando el proyecto tenga su
+ *    propio numero (parte 5), la fila "Codigo" de los datos pasara a ese numero.
  *  - Orden: primero lo del proyecto (1 datos, 2 unidades, 3 fechas), despues
  *    lo de la fase (4 area de intervencion, 5 equipo, 6 documentos de la
  *    carpeta economica). Sin "Lugar de entrega" (va en cada especificacion).

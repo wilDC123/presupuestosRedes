@@ -208,6 +208,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   proyecto). Uno ya emitido con otro lugar se REEMITE al guardar (mismo código, versión + 1, motivo "Se cambió el lugar de
   entrega: A → B"; junto con "Cambiar ítem" es una sola reemisión, `ListaItemsService::reemitirPorCambio()`); vacío no
   cambia nada. `Proyecto.lugarEntrega` queda como "Lugar de entrega por defecto" y SALE de la ficha técnica
+- EL CÓDIGO PT ES DE LA FICHA TÉCNICA, no del proyecto (aclarado por el desarrollador el 2026-11-05: el lineamiento cambiará
+  "Proyecto técnico" por "Ficha de proyecto técnico"; en "Codificación de documentos" el tipo PT ya se llama así). Hoy se
+  guarda en `Proyecto.codigo` porque cada proyecto tiene una sola ficha; el proyecto tendrá su propio número en la parte 5
 - REVISIÓN DEL 2026-11-05, PARTE 4 (punto 2): la FICHA TÉCNICA es un DOCUMENTO normado (antes "reporte de control"):
   cabecera del lineamiento (código = el del proyecto RD-PI-PT-NNN hasta la parte 5, versión 1.0, fecha = creación del
   proyecto), orden 1 datos, 2 unidades, 3 fechas, 4 área, 5 equipo, 6 documentos (especificaciones en subtabla Código | Ítem
