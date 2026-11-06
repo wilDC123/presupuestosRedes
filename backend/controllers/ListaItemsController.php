@@ -186,8 +186,8 @@ class ListaItemsController extends Controller
             // Secciones sin precio, agrupadas: [subtitulo => materiales] y [tipo => trabajos].
             'materiales' => (new MaterialDticService())->agrupar($proyecto),
             'trabajos' => (new CondicionPreviaService())->agrupar($proyecto),
-            // El codigo es el del proyecto (RD-PI-PT-NNN), que siempre lleva PI.
-            'proceso' => Proceso::nombreDe(CorrelativoDocumento::PROCESO),
+            // El del codigo de la lista (RD-GR-LM-005 -> GR); PI si no tiene.
+            'proceso' => Proceso::nombreDe(CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_LISTA, $proyecto->codigoLista)['proceso'] ?? CorrelativoDocumento::PROCESO),
         ]);
 
         $pdf = $this->service->generarPdf($proyecto, $html, $documento['borrador']);

@@ -34,7 +34,8 @@ guardan **copias** en vez de (o además de) una clave foránea:
 
 - `PresupuestoDetalle`: precio unitario, partida y unidad se copian al crear la línea y no se recalculan.
 - `EspecificacionEmision`: título, cantidad, unidad, dependencia, textos, firmas, proceso y año.
-- `Presupuesto`, `ListaMaterialesAprobacion`: firmas del control de elaboración, copiadas al aprobar.
+- `Presupuesto`, `ListaMaterialesAprobacion`: firmas del control de elaboración, copiadas al aprobar el presupuesto o al
+  enviar la lista a cotización (la lista no se aprueba desde el 2026-11-05).
 - `ProyectoParticipante.nombre`, `ProyectoMaterialDtic.grupo`, `HistorialProyecto.usuario` y
   `codigoProyecto`, `ProyectoItem.unidadMedida`: copias del texto, sin clave foránea.
 
@@ -58,13 +59,14 @@ erDiagram
     RolProyecto ||--o{ ProyectoParticipante : "rol"
     Personal |o..o{ ProyectoParticipante : "copia del nombre"
     Proyecto ||--o{ OrdenCambio : "reaperturas"
-    Proyecto ||--o{ ListaMaterialesAprobacion : "versiones aprobadas"
+    Proyecto ||--o{ ListaMaterialesAprobacion : "versiones emitidas"
     Proyecto ||..o{ HistorialProyecto : "bitacora"
     UsfxGEO_Espacios |o..o{ ProyectoAreaIntervencion : "referencia logica"
 
     Proyecto {
         int id PK
         string codigo UK "RD-PI-PT-NNN"
+        string codigoLista UK "RD-PI-LM-NNN"
         string nombre
         int idTipoProyecto FK
         int idProceso FK
@@ -326,7 +328,7 @@ erDiagram
         string textoInstrucciones
     }
     CorrelativoDocumento {
-        string tipo PK "PT, PR, ET"
+        string tipo PK "PT, LM, PR, ET"
         int siguiente
         int anio "solo ET"
     }
@@ -388,6 +390,7 @@ Proyecto de instalación de redes. Código RD-PI-PT-NNN. Puede ser la fase sigui
 | unidadSolicitante | nvarchar(250) | sí |  |
 | unidadDependencia | nvarchar(250) | sí |  |
 | lugarEntrega | nvarchar(300) | sí | lo copian los formularios de especificación al emitirse; vacío = el de la configuración |
+| codigoLista | nvarchar(20) | sí | único (filtrado); código de la lista de materiales, RD-<proceso>-LM-NNN, puesto al crear el proyecto |
 | idProceso | int | sí | FK → Proceso.id |
 
 Único: (codigo) donde ([codigo] IS NOT NULL)
@@ -505,7 +508,8 @@ Registro de por qué se reabrió algo bloqueado. `alcance`: lista | presupuesto;
 
 #### redes.ListaMaterialesAprobacion
 
-Una fila por versión aprobada de la lista de materiales (01, 02…), con copia de las firmas. No se modifica.
+Una fila por versión EMITIDA (enviada a cotización) de la lista de materiales (1.0, 1.1…), con copia de las firmas. No se
+modifica. Desde el 2026-11-05 la lista no se aprueba: `fechaAprobacion` es la fecha del envío.
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
@@ -1023,7 +1027,7 @@ CHECK: `([id]=(1))`
 
 #### redes.CorrelativoDocumento
 
-Siguiente número de cada tipo de documento: PT, PR, ET. `anio` solo para ET (vuelve a 001 cada año).
+Siguiente número de cada tipo de documento: PT, LM, PR, ET. `anio` solo para ET (vuelve a 001 cada año).
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|

@@ -174,10 +174,10 @@ $areas = ProyectoAreaIntervencion::lineasPorEdificio($model->areasIntervencion);
     <tr>
         <th>Lista de materiales y condiciones previas</th>
         <td>
-            <?= $texto($model->codigo) ?> versión <?= Html::encode($lista['version']) ?>
+            <?= $texto($model->codigoLista) ?> versión <?= Html::encode($lista['version']) ?>
             · <?= $lista['borrador']
-                ? 'Borrador (se aprueba al enviar a cotización)'
-                : 'Aprobada' . ($lista['aprobacion']->fechaAprobacion !== null ? ' el ' . Html::encode($lista['aprobacion']->fechaAprobacionFormateada()) : '') ?>
+                ? 'Borrador (se emite al enviar a cotización)'
+                : 'Enviada a cotización' . ($lista['aprobacion']->fechaAprobacion !== null ? ' el ' . Html::encode($lista['aprobacion']->fechaAprobacionFormateada()) : '') ?>
         </td>
     </tr>
     <tr>

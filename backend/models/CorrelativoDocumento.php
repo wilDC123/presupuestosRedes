@@ -17,11 +17,12 @@ use yii\db\ActiveRecord;
  *     RD - GR - ET - 015 /26
  *     |    |    |    |    +-- año: solo las especificaciones (vuelven a 001 cada 1 de enero)
  *     |    |    |    +------- correlativo de 3 cifras (desde 001)
- *     |    |    +------------ tipo: PT proyecto, PR presupuesto, ET especificacion
+ *     |    |    +------------ tipo: PT proyecto, LM lista de materiales, PR presupuesto, ET especificacion
  *     |    +----------------- proceso del proyecto (redes.Proceso); el PT siempre PI
  *     +---------------------- unidad: Redes y Telecomunicaciones
  *
- * Desde la revision del 2026-10-29 (paso 4) el proceso de PR y ET es el del
+ * Desde la revision del 2026-10-29 (paso 4) el proceso de PR y ET (y desde
+ * el 2026-11-05 el de LM) es el del
  * proyecto, pero el numero es UNO SOLO para todos los procesos: nunca hay un
  * RD-PI-PR-016 y un RD-GR-PR-016. Las ET llevan el año porque son las que
  * pueden pasar de 999 en un año.
@@ -31,11 +32,13 @@ use yii\db\ActiveRecord;
  * @property string $tipo Ver las constantes TIPO_*.
  * @property int $siguiente El numero que recibira el proximo documento.
  * @property int|null $anio Dos digitos del año al que pertenece "siguiente" (solo ET): si
- *           el año ya cambio, el proximo es el 001 del año nuevo. NULL en PT y PR.
+ *           el año ya cambio, el proximo es el 001 del año nuevo. NULL en PT, LM y PR.
  */
 class CorrelativoDocumento extends ActiveRecord
 {
     public const TIPO_PROYECTO = 'PT';
+    /** Lista de materiales y condiciones previas (revision del 2026-11-05, punto 7; no esta en el lineamiento). */
+    public const TIPO_LISTA = 'LM';
     public const TIPO_PRESUPUESTO = 'PR';
     public const TIPO_ESPECIFICACION = 'ET';
 
@@ -60,8 +63,9 @@ class CorrelativoDocumento extends ActiveRecord
     }
 
     /**
-     * Los tres tipos, en el orden en que se muestran, con su nombre segun la
-     * tabla de codigos del lineamiento.
+     * Los tipos, en el orden en que se muestran, con su nombre segun la
+     * tabla de codigos del lineamiento (LM no esta en ella: es la propuesta de
+     * la revision del 2026-11-05).
      *
      * @return array<string, string>
      */
@@ -69,6 +73,7 @@ class CorrelativoDocumento extends ActiveRecord
     {
         return [
             self::TIPO_PROYECTO => 'Proyectos técnicos',
+            self::TIPO_LISTA => 'Listas de materiales',
             self::TIPO_PRESUPUESTO => 'Presupuestos',
             self::TIPO_ESPECIFICACION => 'Especificaciones técnicas',
         ];
@@ -101,7 +106,7 @@ class CorrelativoDocumento extends ActiveRecord
 
     /**
      * "RD-PI-PR-007" o, con año, "RD-GR-ET-007/26". Tres cifras como minimo;
-     * si en un año (ET) o en total (PT, PR) se pasa del 999 sigue con 1000 (el
+     * si en un año (ET) o en total (PT, LM, PR) se pasa del 999 sigue con 1000 (el
      * lineamiento no dice que hacer y asi nunca se repite uno).
      */
     public static function codigo(string $tipo, int $numero, string $proceso = self::PROCESO, ?int $anio = null): string

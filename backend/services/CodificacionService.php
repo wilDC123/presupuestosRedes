@@ -85,7 +85,7 @@ class CodificacionService
     }
 
     /**
-     * Los tres correlativos, en el orden de CorrelativoDocumento::tipos().
+     * Los correlativos, en el orden de CorrelativoDocumento::tipos().
      *
      * @return CorrelativoDocumento[] indexados por tipo
      */
@@ -131,6 +131,7 @@ class CodificacionService
 
         $codigos = match ($tipo) {
             CorrelativoDocumento::TIPO_PROYECTO => Proyecto::find()->select('codigo')->column(),
+            CorrelativoDocumento::TIPO_LISTA => Proyecto::find()->select('codigoLista')->column(),
             CorrelativoDocumento::TIPO_PRESUPUESTO => Presupuesto::find()->select('numeroPresupuesto')->column(),
             default => [],
         };
@@ -141,7 +142,7 @@ class CodificacionService
     }
 
     /**
-     * Guarda los tres "siguiente numero" del formulario
+     * Guarda los "siguiente numero" del formulario
      * (CorrelativoDocumento[PT][siguiente], ...).
      *
      * REGLA DE NEGOCIO: cada uno tiene que ser MAYOR que el ultimo usado de

@@ -232,15 +232,15 @@ $grupoCierra = static fn (int $cantidad): string =>
                 <span class="<?= $proyecto->estadoListaBadgeClass() ?>"><?= Html::encode($proyecto->estadoListaLabel()) ?></span>
             </h1>
             <div class="rd-pagehead-sub"><?= Html::encode($proyecto->etiqueta()) ?></div>
-            <?php // El documento impreso lleva el codigo del proyecto y su version (paso 8b, 2026-10-30). ?>
+            <?php // El documento impreso lleva su codigo (RD-PI-LM-NNN) y su version; no se aprueba (2026-11-05). ?>
             <div class="rd-nota mt-1">
-                Lista de materiales <?= Html::encode($proyecto->codigo ?: '') ?> versión <?= Html::encode($documento['version']) ?>:
+                Lista de materiales <?= Html::encode($proyecto->codigoLista ?: '') ?> versión <?= Html::encode($documento['version']) ?>:
                 <?php if ($documento['borrador']): ?>
-                    borrador; se aprueba al enviar a cotización.
+                    borrador; se emite al enviar a cotización.
                 <?php elseif ($documento['aprobacion']->fechaAprobacion !== null): ?>
-                    aprobada el <?= Html::encode($documento['aprobacion']->fechaAprobacionFormateada()) ?><?= $documento['aprobacion']->usuario ? ' por ' . Html::encode($documento['aprobacion']->usuario) : '' ?>.
+                    enviada a cotización el <?= Html::encode($documento['aprobacion']->fechaAprobacionFormateada()) ?><?= $documento['aprobacion']->usuario ? ' por ' . Html::encode($documento['aprobacion']->usuario) : '' ?>.
                 <?php else: ?>
-                    aprobada (antes de que el sistema registrara la fecha).
+                    enviada a cotización (antes de que el sistema registrara la fecha).
                 <?php endif; ?>
             </div>
         </div>

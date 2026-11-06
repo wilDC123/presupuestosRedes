@@ -9,6 +9,7 @@ use backend\models\EspecificacionEmision;
 use backend\models\HistorialProyecto;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
+use backend\models\Proceso;
 use backend\models\Proyecto;
 use backend\models\ProyectoAreaIntervencion;
 use backend\models\ProyectoParticipante;
@@ -566,6 +567,7 @@ class ProyectoService
                 $this->insertarConCodigo($proyecto);
             } else {
                 $proyecto->save(false);
+                $this->ajustarProcesoDeLaLista($proyecto);
             }
 
             $this->reemplazarAreas($proyecto, $areas);
@@ -875,16 +877,45 @@ class ProyectoService
 
     /**
      * Inserta el proyecto con el siguiente codigo del correlativo PT
-     * (RD-PI-PT-005, ver CorrelativoDocumento::codigo()). Se llama dentro de la
-     * transaccion de guardar(): si el INSERT falla, el numero tomado vuelve
-     * atras con todo lo demas. El indice unico de la base impide igual
-     * cualquier codigo repetido.
+     * (RD-PI-PT-005, ver CorrelativoDocumento::codigo()) y el de su lista de
+     * materiales (RD-<proceso>-LM-005, revision del 2026-11-05: cada proyecto
+     * tiene una sola lista, que conserva su codigo en todas sus versiones). Se
+     * llama dentro de la transaccion de guardar(): si el INSERT falla, los
+     * numeros tomados vuelven atras con todo lo demas. Los indices unicos de
+     * la base impiden igual cualquier codigo repetido.
      */
     private function insertarConCodigo(Proyecto $proyecto): void
     {
-        $numero = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_PROYECTO);
-        $proyecto->codigo = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, $numero);
+        $codificacion = new CodificacionService();
+        $proyecto->codigo = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, $codificacion->tomar(CorrelativoDocumento::TIPO_PROYECTO));
+        $proyecto->codigoLista = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_LISTA, $codificacion->tomar(CorrelativoDocumento::TIPO_LISTA), $this->codigoProceso($proyecto));
         $proyecto->save(false);
+    }
+
+    /**
+     * Si se cambio el proceso del proyecto y su lista todavia no se envio a
+     * cotizacion (ninguna version emitida), el codigo de la lista cambia a ese
+     * proceso con el MISMO numero (RD-PI-LM-005 -> RD-GR-LM-005). Una lista ya
+     * enviada conserva su codigo, como el presupuesto.
+     */
+    private function ajustarProcesoDeLaLista(Proyecto $proyecto): void
+    {
+        $partes = CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_LISTA, $proyecto->codigoLista);
+        $proceso = $this->codigoProceso($proyecto);
+
+        if ($partes === null || $partes['proceso'] === $proceso || $proyecto->ultimaAprobacionLista() !== null) {
+            return;
+        }
+
+        $proyecto->updateAttributes(['codigoLista' => CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_LISTA, $partes['numero'], $proceso)]);
+    }
+
+    /** Codigo de 2 letras del proceso del proyecto (PI si no tiene). */
+    private function codigoProceso(Proyecto $proyecto): string
+    {
+        $codigo = $proyecto->idProceso === null ? null : Proceso::find()->select('codigo')->where(['id' => (int) $proyecto->idProceso])->scalar();
+
+        return is_string($codigo) && $codigo !== '' ? $codigo : CorrelativoDocumento::PROCESO;
     }
 
     /**
