@@ -57,7 +57,8 @@ $this->params['breadcrumbs'][] = $this->title;
                 'attribute' => 'numeroFase',
                 'label' => 'Fase',
                 'format' => 'raw',
-                'value' => static fn ($model) => '<span class="pill-fase">Fase ' . (int) $model->numeroFase . '</span>',
+                // Solo si el proyecto tiene mas de una fase (con fase unica no se muestra "Fase").
+                'value' => static fn ($model) => $model->tieneVariasFases() ? '<span class="pill-fase">Fase ' . (int) $model->numeroFase . '</span>' : '',
             ],
             [
                 // En el listado, la beneficiaria (la misma que sale en los documentos).

@@ -12,9 +12,12 @@ use yii\helpers\Html;
  * @var backend\models\Proyecto $model
  */
 
-$this->title = 'Nuevo proyecto';
+// "Agregar fase" abre este mismo formulario ya preparado como la fase siguiente.
+$this->title = $model->idProyectoAnterior !== null
+    ? 'Agregar fase ' . (int) $model->numeroFase . ' al proyecto ' . $model->numeroTexto()
+    : 'Nuevo proyecto';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = 'Nuevo';
+$this->params['breadcrumbs'][] = $model->idProyectoAnterior !== null ? 'Agregar fase' : 'Nuevo';
 ?>
 <div class="proyecto-create">
 
@@ -35,7 +38,6 @@ $this->params['breadcrumbs'][] = 'Nuevo';
         'areas' => $areas,
         'personal' => $personal,
         'roles' => $roles,
-        'proyectosAprobados' => $proyectosAprobados,
     ]) ?>
 
 </div>
