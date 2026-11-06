@@ -51,6 +51,7 @@ use yii\db\ActiveRecord;
  * @property-read ProyectoParticipante[] $participantes Equipo del proyecto, en orden.
  * @property-read Proyecto|null $proyectoAnterior
  * @property-read Proyecto[] $fasesSiguientes
+ * @property-read Proyecto[] $fases Todas las fases del proyecto (mismo numeroProyecto), en orden.
  * @property-read Presupuesto|null $presupuesto
  * @property-read Plantilla|null $plantillaOrigen
  * @property-read ProyectoItem[] $items
@@ -347,6 +348,37 @@ class Proyecto extends ActiveRecord
     public function numeroTexto(): string
     {
         return $this->numeroProyecto === null ? '—' : CorrelativoDocumento::numeroTexto((int) $this->numeroProyecto);
+    }
+
+    /**
+     * Datos del PROYECTO, iguales en todas sus fases (revision del 2026-11-05,
+     * punto 2: "primero lo que es del proyecto y no cambia por fase"). Se
+     * escriben en la fase 1; una fase siguiente los copia y no los cambia
+     * (ProyectoService). Lo demas (area, equipo, lugar de entrega por
+     * defecto, carpeta economica) es de cada fase.
+     */
+    public const ATRIBUTOS_COMUNES = ['nombre', 'descripcion', 'idTipoProyecto', 'idProceso', 'unidadDependencia', 'unidadSolicitante'];
+
+    /**
+     * Todas las fases del proyecto (las filas con su mismo numero), de la 1 en
+     * adelante; incluye esta. Vacio si no tiene numero (filas de prueba).
+     */
+    public function getFases(): ActiveQuery
+    {
+        return $this->hasMany(self::class, ['numeroProyecto' => 'numeroProyecto'])->orderBy(['numeroFase' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /** true si ninguna fase del proyecto viene despues de esta. */
+    public function esUltimaFase(): bool
+    {
+        if ($this->numeroProyecto === null) {
+            return !self::find()->andWhere(['idProyectoAnterior' => $this->id])->exists();
+        }
+
+        return !self::find()
+            ->andWhere(['numeroProyecto' => $this->numeroProyecto])
+            ->andWhere(['>', 'numeroFase', (int) $this->numeroFase])
+            ->exists();
     }
 
     /** @var bool|null cache de tieneVariasFases() */

@@ -36,7 +36,6 @@ $this->params['breadcrumbs'][] = 'Editar';
         'areas' => $areas,
         'personal' => $personal,
         'roles' => $roles,
-        'proyectosAprobados' => $proyectosAprobados,
     ]) ?>
 
 </div>

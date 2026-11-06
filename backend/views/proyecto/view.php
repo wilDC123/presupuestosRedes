@@ -16,6 +16,7 @@ use yii\helpers\Html;
  * @var array $urlPresupuesto Ver ProyectoService::urlPresupuesto()
  * @var bool $puedeEditarse
  * @var bool $estaAprobado
+ * @var bool $puedeAgregarFase la ultima fase del proyecto, ya aprobada: se le puede agregar la siguiente
  * @var int $totalItems items en la lista del proyecto
  * @var bool $listaEditable Ver ListaItemsService::puedeEditarse()
  * @var array{creacion: string|null, revision: string|null, aprobacion: string|null, ultimaModificacion: string|null, ultimoUsuario: string|null} $fechas Ver HistorialService::fechas()
@@ -35,7 +36,10 @@ $formato = Yii::$app->formatter;
         <div>
             <h1>
                 <?= Html::encode($this->title) ?>
-                <span class="pill-fase">Fase <?= (int) $model->numeroFase ?></span>
+                <?php // Con fase unica no se muestra "Fase" (revision del 2026-11-05, punto 3). ?>
+                <?php if ($model->tieneVariasFases()): ?>
+                    <span class="pill-fase">Fase <?= (int) $model->numeroFase ?></span>
+                <?php endif; ?>
             </h1>
             <?php // El numero es del proyecto; el codigo RD-PI-PT-NNN, de su ficha tecnica (2026-11-06). ?>
             <div class="rd-pagehead-sub"><strong><?= Html::encode($model->identificador()) ?></strong><?= $model->codigo ? ' · ficha técnica <span class="mono">' . Html::encode($model->codigo) . '</span>' : '' ?></div>
@@ -44,8 +48,11 @@ $formato = Yii::$app->formatter;
             <?php if ($puedeEditarse): ?>
                 <?= Html::a('Editar datos', ['update', 'id' => $model->id], ['class' => 'btn btn-outline']) ?>
             <?php endif; ?>
-            <?php if ($estaAprobado): ?>
-                <?= Html::a('Crear fase siguiente →', ['create', 'idAnterior' => $model->id], ['class' => 'btn btn-primary']) ?>
+            <?php if ($puedeAgregarFase): ?>
+                <?= Html::a('Agregar fase ' . ((int) $model->numeroFase + 1) . ' →', ['create', 'idAnterior' => $model->id], [
+                    'class' => 'btn btn-primary',
+                    'title' => 'La fase siguiente del mismo proyecto (mismo número), con su propia área, equipo y carpeta económica',
+                ]) ?>
             <?php endif; ?>
             <?= Html::a('Eliminar', ['delete', 'id' => $model->id], [
                 'class' => 'btn btn-danger',
@@ -192,24 +199,20 @@ $formato = Yii::$app->formatter;
                 </div>
             </div>
 
+            <?php // Todas las fases del proyecto (mismo numero), con el estado de su presupuesto. ?>
             <div class="card rd-card-pad">
-                <div class="kicker mb-2">Continuidad de fases</div>
-                <div class="rd-dato">
-                    <strong>Fase anterior:</strong>
-                    <?= $model->proyectoAnterior === null
-                        ? 'ninguna (fase 1)'
-                        : Html::a(Html::encode($model->proyectoAnterior->etiqueta()), ['view', 'id' => $model->proyectoAnterior->id]) ?>
-                </div>
-                <div class="rd-dato">
-                    <strong>Fases siguientes:</strong>
-                    <?php if ($model->fasesSiguientes === []): ?>
-                        ninguna
-                    <?php else: ?>
-                        <?php foreach ($model->fasesSiguientes as $siguiente): ?>
-                            <div><?= Html::a(Html::encode($siguiente->etiqueta()), ['view', 'id' => $siguiente->id]) ?></div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
+                <div class="kicker mb-2">Fases del proyecto <?= Html::encode($model->numeroTexto()) ?></div>
+                <?php $fases = $model->numeroProyecto !== null ? $model->fases : [$model]; ?>
+                <?php foreach ($fases as $fase): ?>
+                    <div class="rd-dato">
+                        <?php $texto = 'Fase ' . (int) $fase->numeroFase; ?>
+                        <?= (int) $fase->id === (int) $model->id ? '<strong>' . Html::encode($texto) . '</strong> (esta)' : Html::a(Html::encode($texto), ['view', 'id' => $fase->id]) ?>
+                        · <?= $fase->presupuesto === null ? 'sin presupuesto' : Html::encode($fase->presupuesto->estadoLabel()) ?>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (count($fases) === 1): ?>
+                    <div class="rd-nota mt-1">Fase única. La siguiente se agrega con "Agregar fase" cuando esta tenga su presupuesto aprobado.</div>
+                <?php endif; ?>
             </div>
         </div>
 

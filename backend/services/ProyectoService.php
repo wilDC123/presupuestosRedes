@@ -70,7 +70,9 @@ class ProyectoService
     public function listar(): ActiveDataProvider
     {
         return new ActiveDataProvider([
-            'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto', 'proceso'])->orderBy(['fechaCreacion' => SORT_DESC, 'id' => SORT_DESC]),
+            // Por proyecto (el mas nuevo arriba) y, dentro, sus fases en orden: cada proyecto con sus fases juntas.
+            'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto', 'proceso'])
+                ->orderBy(['numeroProyecto' => SORT_DESC, 'numeroFase' => SORT_ASC, 'id' => SORT_DESC]),
             'pagination' => [
                 'pageSize' => 20,
             ],
@@ -84,13 +86,15 @@ class ProyectoService
 
     /**
      * Proyecto vacio para el formulario "Nuevo proyecto". Si llega el id de
-     * un proyecto aprobado, se prepara como su FASE SIGUIENTE: queda
-     * enlazado a el y hereda tipo, proceso, unidades, areas de intervencion
-     * y el EQUIPO con su responsable (todo se puede cambiar). No hereda los
-     * items: la lista de la fase nueva empieza vacia. Un proyecto nuevo sin
-     * fase anterior trae marcado el proceso PI (ProcesoService::idPorDefecto())
-     * y una fila de equipo con el rol Proyectista, marcada como responsable,
-     * para elegir a la persona.
+     * la ultima fase APROBADA de un proyecto ("Agregar fase", revision del
+     * 2026-11-05), se prepara como su FASE SIGUIENTE: mismo numero de
+     * proyecto, los datos del proyecto (Proyecto::ATRIBUTOS_COMUNES, que no se
+     * cambian en la fase) y, para empezar, el EQUIPO con su responsable y el
+     * lugar de entrega por defecto (se pueden cambiar). El area de
+     * intervencion y la carpeta economica empiezan vacias: son de cada fase.
+     * Un proyecto nuevo sin fase anterior trae marcado el proceso PI
+     * (ProcesoService::idPorDefecto()) y una fila de equipo con el rol
+     * Proyectista, marcada como responsable, para elegir a la persona.
      */
     public function nuevo(?int $idProyectoAnterior = null): Proyecto
     {
@@ -98,15 +102,12 @@ class ProyectoService
         $proyecto->idProceso = (new ProcesoService())->idPorDefecto();
         $anterior = $idProyectoAnterior === null ? null : $this->obtener($idProyectoAnterior);
 
-        if ($anterior !== null && $this->estaAprobado($anterior)) {
+        if ($anterior !== null && $this->puedeAgregarFase($anterior)) {
             $proyecto->idProyectoAnterior = $anterior->id;
             $proyecto->numeroFase = $anterior->numeroFase + 1;
-            $proyecto->idTipoProyecto = $anterior->idTipoProyecto;
-            $proyecto->idProceso = $anterior->idProceso ?? $proyecto->idProceso;
-            $proyecto->unidadDependencia = $anterior->unidadDependencia;
-            $proyecto->unidadSolicitante = $anterior->unidadSolicitante;
+            $proyecto->numeroProyecto = $anterior->numeroProyecto;
+            $this->copiarDatosComunes($anterior, $proyecto);
             $proyecto->lugarEntrega = $anterior->lugarEntrega;
-            $proyecto->areas = array_map(static fn (ProyectoAreaIntervencion $area) => $area->claves(), $anterior->areasIntervencion);
             $this->copiarEquipo($anterior, $proyecto);
         } else {
             $proyecto->numeroFase = 1;
@@ -244,6 +245,25 @@ class ProyectoService
     public function estaAprobado(Proyecto $proyecto): bool
     {
         return ($proyecto->presupuesto->estado ?? null) === Presupuesto::ESTADO_APROBADO;
+    }
+
+    /**
+     * REGLA DE NEGOCIO (confirmada con el desarrollador el 2026-11-06): una
+     * fase nueva se agrega solo a la ULTIMA fase del proyecto y solo si esta
+     * APROBADA (su presupuesto). Asi una fase aprobada nunca se toca y "reabrir"
+     * un proyecto aprobado es agregarle una fase.
+     */
+    public function puedeAgregarFase(Proyecto $proyecto): bool
+    {
+        return $this->estaAprobado($proyecto) && $proyecto->esUltimaFase();
+    }
+
+    /** Los datos del proyecto (iguales en todas sus fases) de una fase a otra. */
+    private function copiarDatosComunes(Proyecto $desde, Proyecto $hacia): void
+    {
+        foreach (Proyecto::ATRIBUTOS_COMUNES as $atributo) {
+            $hacia->$atributo = $desde->$atributo;
+        }
     }
 
     /**
@@ -454,38 +474,6 @@ class ProyectoService
         ];
     }
 
-    /**
-     * Proyectos que pueden ser "fase anterior" de otro: SOLO los que tienen
-     * presupuesto aprobado. Para cada uno devuelve el texto de la opcion y
-     * el resumen que se muestra en "Proyecto vinculado".
-     *
-     * @param int|null $excluirId el propio proyecto, que no puede ser su fase anterior
-     * @return array<int, array{etiqueta: string, codigo: string, resumen: string}> indexado por id
-     */
-    public function proyectosAprobados(?int $excluirId = null): array
-    {
-        $proyectos = Proyecto::find()
-            ->alias('p')
-            ->innerJoin(['pr' => Presupuesto::tableName()], 'pr.idProyecto = p.id')
-            ->andWhere(['pr.estado' => Presupuesto::ESTADO_APROBADO])
-            ->andFilterWhere(['<>', 'p.id', $excluirId])
-            ->orderBy(['p.numeroProyecto' => SORT_ASC, 'p.numeroFase' => SORT_ASC])
-            ->all();
-
-        $opciones = [];
-
-        foreach ($proyectos as $proyecto) {
-            $monto = Yii::$app->formatter->asDecimal((float) $this->montoPresupuesto($proyecto), 2);
-
-            $opciones[$proyecto->id] = [
-                'etiqueta' => $proyecto->etiqueta() . " (Fase {$proyecto->numeroFase}, aprobado)",
-                'codigo' => 'Proyecto ' . $proyecto->numeroTexto(),
-                'resumen' => "Fase {$proyecto->numeroFase} — Aprobado — Bs. $monto",
-            ];
-        }
-
-        return $opciones;
-    }
 
     /**
      * El paso "Presupuesto" del proyecto: la pantalla unica donde se elabora
@@ -574,6 +562,18 @@ class ProyectoService
             }
         }
 
+        // La fase de un proyecto no se cambia al editarla (se agrega con "Agregar fase").
+        if (!$proyecto->isNewRecord) {
+            $proyecto->idProyectoAnterior = $proyecto->getOldAttribute('idProyectoAnterior');
+        }
+
+        // Una fase siguiente lleva los datos del proyecto tal como estan en la anterior:
+        // lo que llegue del formulario para ellos no cuenta (los campos van deshabilitados).
+        $anteriorDatos = $proyecto->idProyectoAnterior === null ? null : Proyecto::findOne((int) $proyecto->idProyectoAnterior);
+        if ($anteriorDatos !== null) {
+            $this->copiarDatosComunes($anteriorDatos, $proyecto);
+        }
+
         // validate() borra los errores anteriores: por eso va ANTES de las
         // verificaciones propias del servicio, que agregan los suyos.
         $proyecto->validate();
@@ -592,10 +592,6 @@ class ProyectoService
             if ($proyecto->isNewRecord) {
                 $this->insertarConCodigo($proyecto);
             } else {
-                // Se cambio (o quito) la fase anterior: el numero sigue a la cadena de fases.
-                if ((string) $proyecto->getOldAttribute('idProyectoAnterior') !== (string) $proyecto->idProyectoAnterior) {
-                    $this->asignarNumero($proyecto, new CodificacionService());
-                }
                 $proyecto->save(false);
                 $this->ajustarProcesoDeLaLista($proyecto);
             }
@@ -784,7 +780,14 @@ class ProyectoService
         $anterior = $this->obtener((int) $proyecto->idProyectoAnterior);
 
         if ($anterior === null || (!$proyecto->isNewRecord && $anterior->id === $proyecto->id) || !$this->estaAprobado($anterior)) {
-            $proyecto->addError('idProyectoAnterior', 'Solo un proyecto con presupuesto aprobado puede ser la fase anterior.');
+            $proyecto->addError('idProyectoAnterior', 'Solo se agrega una fase a una fase con presupuesto aprobado.');
+
+            return;
+        }
+
+        // Al editar una fase ya creada su anterior no cambia: solo se revisa al crearla.
+        if (!$proyecto->isNewRecord) {
+            $proyecto->numeroFase = $anterior->numeroFase + 1;
 
             return;
         }

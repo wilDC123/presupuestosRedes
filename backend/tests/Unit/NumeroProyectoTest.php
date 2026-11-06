@@ -73,10 +73,55 @@ class NumeroProyectoTest extends Unit
         $this->assertStringContainsString('ya tiene una fase 2', (string) $repetida->getFirstError('idProyectoAnterior'));
     }
 
-    private function crear(string $nombre, ?int $idAnterior = null): Proyecto
+    public function testLaFaseNuevaTraeLosDatosDelProyectoYNoLosCambia(): void
+    {
+        $fase1 = $this->crear('Proyecto test datos comunes', null, ['descripcion' => 'Alcance test', 'areas' => [['manual' => '1', 'edificio' => 'Edificio test fase 1']]]);
+        $this->aprobar($fase1);
+
+        // "Agregar fase": el formulario llega con los datos del proyecto, sin area.
+        $nueva = $this->proyectos->nuevo($fase1->id);
+        $this->assertSame([(int) $fase1->id, 2, (int) $fase1->numeroProyecto], [(int) $nueva->idProyectoAnterior, (int) $nueva->numeroFase, (int) $nueva->numeroProyecto]);
+        $this->assertSame(['Proyecto test datos comunes', 'Alcance test'], [$nueva->nombre, $nueva->descripcion]);
+        $this->assertEmpty($nueva->areas);
+
+        // Lo que llegue del formulario para los datos del proyecto no cuenta.
+        $fase2 = $this->crear('Otro nombre que no debe quedar', $fase1->id, ['unidadSolicitante' => 'Otra unidad test']);
+        $this->assertSame('Proyecto test datos comunes', $fase2->nombre);
+        $this->assertSame('Facultad test', $fase2->unidadSolicitante);
+
+        // Al editar la fase 2 tampoco: ni los datos del proyecto ni su fase anterior.
+        $this->assertTrue($this->proyectos->actualizar($fase2, $this->datos('Nombre editado test', null)), json_encode($fase2->errors));
+        $fase2 = Proyecto::findOne($fase2->id);
+        $this->assertSame('Proyecto test datos comunes', $fase2->nombre);
+        $this->assertSame((int) $fase1->id, (int) $fase2->idProyectoAnterior);
+        $this->assertSame(2, (int) $fase2->numeroFase);
+    }
+
+    public function testSoloSeAgregaFaseALaUltimaFaseAprobada(): void
+    {
+        $fase1 = $this->crear('Proyecto test última fase');
+        // Sin aprobar: no.
+        $this->assertFalse($this->proyectos->puedeAgregarFase($fase1));
+        $this->aprobar($fase1);
+        $this->assertTrue($this->proyectos->puedeAgregarFase(Proyecto::findOne($fase1->id)));
+
+        $this->crear('Proyecto test última fase', $fase1->id);
+        // Ya tiene fase 2: la fase 1 deja de ser la ultima.
+        $this->assertFalse($this->proyectos->puedeAgregarFase(Proyecto::findOne($fase1->id)));
+        $this->assertNull($this->proyectos->nuevo($fase1->id)->idProyectoAnterior);
+    }
+
+    private function aprobar(Proyecto $proyecto): void
+    {
+        (new Presupuesto(['idProyecto' => $proyecto->id, 'estado' => Presupuesto::ESTADO_APROBADO]))->save(false);
+    }
+
+    private function crear(string $nombre, ?int $idAnterior = null, array $mas = []): Proyecto
     {
         $proyecto = new Proyecto();
-        $this->assertTrue($this->proyectos->crear($proyecto, $this->datos($nombre, $idAnterior)), json_encode($proyecto->errors));
+        $datos = $this->datos($nombre, $idAnterior);
+        $datos['Proyecto'] = $mas + $datos['Proyecto'];
+        $this->assertTrue($this->proyectos->crear($proyecto, $datos), json_encode($proyecto->errors));
 
         return Proyecto::findOne($proyecto->id);
     }

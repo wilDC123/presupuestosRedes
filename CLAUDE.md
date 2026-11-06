@@ -217,8 +217,16 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   prefijo). `Proyecto::identificador()` = "Proyecto 001" o "Proyecto 001 · Fase 2" (migas, títulos, avisos);
   `etiqueta()` = "001 — Nombre"; `tieneVariasFases()` (con fase única no se muestra "Fase"). Los existentes: cada cadena de
   fases recibió un número en orden de creación (local: 26 y 27 = proyecto 001 fases 1 y 2, 28 = 002). Una fase siguiente solo
-  se crea con la anterior APROBADA (confirmado el 2026-11-06). Pendiente: 5b agregar fase / datos comunes sincronizados,
-  5c línea "PROYECTO: 001 – NOMBRE (FASE n)", 5d una sola ficha PT por proyecto
+  se crea con la anterior APROBADA (confirmado el 2026-11-06).
+  PARTE 5b ("Agregar fase"): botón en la vista del proyecto y en el paso Presupuesto, solo en la ÚLTIMA fase y con su
+  presupuesto aprobado (`ProyectoService::puedeAgregarFase()`, `Proyecto::esUltimaFase()`); abre `proyecto/create?idAnterior=`
+  ("Agregar fase N al proyecto 001"). La fase nueva copia los DATOS DEL PROYECTO (`Proyecto::ATRIBUTOS_COMUNES`: nombre,
+  descripción, tipo, proceso y las dos unidades), que en una fase 2+ van DESHABILITADOS y el servidor siempre toma de la fase
+  anterior (así nunca hay que sincronizar: la fase 1 solo se edita mientras no está aprobada, y la 2 nace después); trae el
+  equipo y el lugar de entrega por defecto (editables); área y carpeta empiezan VACÍAS. Ya no hay selector "fase anterior"
+  en el formulario (se quitó `proyectosAprobados()`); al editar, la fase anterior no cambia. Vista: "Fases del proyecto 001"
+  (`Proyecto::$fases`) con el estado de cada presupuesto; listado ordenado por número y fase, "Fase" solo si hay varias.
+  Pendiente: 5c línea "PROYECTO: 001 – NOMBRE (FASE n)", 5d una sola ficha PT por proyecto
 - EL CÓDIGO PT ES DE LA FICHA TÉCNICA, no del proyecto (aclarado por el desarrollador el 2026-11-05: el lineamiento cambiará
   "Proyecto técnico" por "Ficha técnica del proyecto"; en "Codificación de documentos" el tipo PT ya se llama así). Hoy se
   guarda en `Proyecto.codigo` porque cada proyecto tiene una sola ficha; el proyecto tendrá su propio número en la parte 5

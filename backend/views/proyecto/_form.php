@@ -33,7 +33,6 @@ use yii\widgets\ActiveForm;
  * @var array<int, array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string, texto: string, grupo: string, detalle: string}> $areas Ver ProyectoService::areasDelFormulario()
  * @var string[] $personal nombres para el desplegable "Persona" (activos y los ya elegidos)
  * @var array<int, string> $roles [id => nombre] para el desplegable "Rol" (activos y los ya elegidos)
- * @var array<int, array{etiqueta: string, codigo: string, resumen: string}> $proyectosAprobados
  */
 
 $this->registerJsFile('@web/js/proyecto-form.js', ['depends' => [JqueryAsset::class]]);
@@ -57,17 +56,11 @@ $filaEquipo = static function ($clave, string $nombre, string $idRol, bool $resp
         . '</tr>';
 };
 
-// Opciones del desplegable de fase anterior; cada <option> lleva como
-// atributos data-* lo que se muestra en "Proyecto vinculado".
-$opcionesFase = [];
-$atributosFase = [];
-
-foreach ($proyectosAprobados as $id => $aprobado) {
-    $opcionesFase[$id] = $aprobado['etiqueta'];
-    $atributosFase[$id] = ['data-codigo' => $aprobado['codigo'], 'data-resumen' => $aprobado['resumen']];
-}
-
-$vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
+// Una fase siguiente (2, 3...) no cambia los datos del proyecto: se muestran
+// deshabilitados (no se envian; ProyectoService los copia de la fase anterior).
+$esFaseSiguiente = $model->idProyectoAnterior !== null;
+$comun = $esFaseSiguiente ? ['disabled' => true] : [];
+$hintComun = 'Dato del proyecto: es el mismo en todas sus fases (se escribió en la fase 1).';
 ?>
 <?php $form = ActiveForm::begin([
     'id' => 'proyecto-form',
@@ -84,7 +77,9 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
     <div class="card rd-col-2 rd-card-pad">
         <div class="rd-card-head-plano">
             <div class="rd-card-titulo">Datos generales</div>
-            <span class="pill-fase">Fase <span id="proyecto-fase"><?= (int) $model->numeroFase ?></span></span>
+            <?php if ($esFaseSiguiente): ?>
+                <span class="pill-fase">Fase <?= (int) $model->numeroFase ?></span>
+            <?php endif; ?>
         </div>
 
         <div class="rd-fila-2">
@@ -95,24 +90,24 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
                 <div class="hint">Lo asigna el sistema al guardar; una fase siguiente lleva el mismo número que la anterior.</div>
             </div>
 
-            <?= $form->field($model, 'idTipoProyecto')->dropDownList($tipos, ['prompt' => 'Seleccione el tipo', 'class' => 'form-select']) ?>
+            <?= $form->field($model, 'idTipoProyecto')->dropDownList($tipos, ['prompt' => 'Seleccione el tipo', 'class' => 'form-select'] + $comun) ?>
         </div>
 
         <?php // A todo el ancho: los nombres de los procesos son largos. ?>
         <?= $form->field($model, 'idProceso')
-            ->dropDownList($procesos, ['prompt' => 'Seleccione el proceso', 'class' => 'form-select'])
-            ->hint('Qué proceso lleva adelante el proyecto. Lo normal es PI; otros procesos (despliegue, gestión de la red…) también registran sus requerimientos como proyecto.') ?>
+            ->dropDownList($procesos, ['prompt' => 'Seleccione el proceso', 'class' => 'form-select'] + $comun)
+            ->hint($esFaseSiguiente ? $hintComun : 'Qué proceso lleva adelante el proyecto. Lo normal es PI; otros procesos (despliegue, gestión de la red…) también registran sus requerimientos como proyecto.') ?>
 
         <?= $form->field($model, 'nombre')->textInput([
             'maxlength' => 300,
             'placeholder' => 'Ej. Ampliación de red — Facultad de Tecnología',
-        ]) ?>
+        ] + $comun)->hint($esFaseSiguiente ? $hintComun : null) ?>
 
         <?= $form->field($model, 'descripcion')->textarea([
             'rows' => 3,
             'maxlength' => 1000,
             'placeholder' => 'Alcance general del proyecto...',
-        ]) ?>
+        ] + $comun) ?>
 
         <?php // Las dos unidades comparten la lista de sugerencias (el <datalist> de abajo). ?>
         <?= $form->field($model, 'unidadDependencia')->textInput([
@@ -120,14 +115,14 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
             'list' => 'proyecto-unidades-sugeridas',
             'autocomplete' => 'off',
             'placeholder' => 'A dónde va el proyecto. Ej. Canal Universitario, Carrera de Psicología',
-        ])->hint('La unidad beneficiada: es la que sale como "Dependencia" en los documentos. Texto libre: facultad, carrera, oficina…') ?>
+        ] + $comun)->hint($esFaseSiguiente ? $hintComun : 'La unidad beneficiada: es la que sale como "Dependencia" en los documentos. Texto libre: facultad, carrera, oficina…') ?>
 
         <?= $form->field($model, 'unidadSolicitante')->textInput([
             'maxlength' => 250,
             'list' => 'proyecto-unidades-sugeridas',
             'autocomplete' => 'off',
             'placeholder' => 'Quién lo pide, tal como dice la nota. Ej. Rectorado, Decanato de Humanidades',
-        ])->hint('Puede ser la misma unidad u otra (ej. el Rector pide cámaras para el Canal Universitario). Al escribir se sugieren las ya usadas.') ?>
+        ] + $comun)->hint($esFaseSiguiente ? $hintComun : 'Puede ser la misma unidad u otra (ej. el Rector pide cámaras para el Canal Universitario). Al escribir se sugieren las ya usadas.') ?>
         <datalist id="proyecto-unidades-sugeridas">
             <?php foreach ($sugerenciasUnidad as $sugerencia): ?>
                 <option value="<?= Html::encode($sugerencia) ?>"></option>
@@ -260,25 +255,24 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
     </div>
 
     <div class="card rd-col-1 rd-card-pad">
-        <div class="rd-card-titulo mb-2">Continuidad de fases</div>
-        <p class="rd-nota">
-            Si este proyecto amplía una intervención ya aprobada, seleccione el proyecto de la fase
-            anterior. Un proyecto aprobado nunca se modifica: la ampliación siempre genera un
-            proyecto nuevo, con su propio código.
-        </p>
-
-        <?= $form->field($model, 'idProyectoAnterior')->dropDownList($opcionesFase, [
-            'prompt' => 'Ninguno — proyecto nuevo',
-            'class' => 'form-select',
-            'id' => 'proyecto-fase-anterior',
-            'options' => $atributosFase,
-        ])->hint($proyectosAprobados === [] ? 'Todavía no hay proyectos con presupuesto aprobado.' : '') ?>
-
-        <div class="rd-vinculado<?= $vinculado === null ? ' d-none' : '' ?>" id="proyecto-vinculado">
-            <div class="kicker">Proyecto vinculado</div>
-            <div class="rd-celda-titulo" id="proyecto-vinculado-codigo"><?= Html::encode($vinculado['codigo'] ?? '') ?></div>
-            <div class="rd-celda-sub" id="proyecto-vinculado-resumen"><?= Html::encode($vinculado['resumen'] ?? '') ?></div>
-        </div>
+        <div class="rd-card-titulo mb-2">Fases</div>
+        <?php if ($esFaseSiguiente): ?>
+            <?php // La fase anterior viaja oculta: la fija "Agregar fase" y no se cambia. ?>
+            <?= Html::activeHiddenInput($model, 'idProyectoAnterior') ?>
+            <div class="rd-vinculado">
+                <div class="kicker">Fase <?= (int) $model->numeroFase ?> del proyecto <?= Html::encode($model->numeroTexto()) ?></div>
+                <div class="rd-celda-sub">
+                    Tiene su propia área de intervención, su equipo y su carpeta económica (lista de materiales,
+                    especificaciones, cotizaciones y presupuesto). El número, el nombre, el tipo, el proceso y las
+                    unidades son los del proyecto.
+                </div>
+            </div>
+        <?php else: ?>
+            <p class="rd-nota">
+                Un proyecto puede tener una o más fases, todas con el mismo número. La fase siguiente se agrega
+                desde el proyecto, con "Agregar fase", cuando la fase anterior tiene su presupuesto aprobado.
+            </p>
+        <?php endif; ?>
     </div>
 
 </div>
