@@ -155,15 +155,15 @@ $numero = 0;
     'fecha' => $presupuesto->fechaFormateada() ?: '—',
 ]) ?>
 
-<?php // Código, versión y fecha ya van en la cabecera. El proyecto, en una
-// sola línea con su código ("RD-PI-PT-028 — Nombre"); la fase solo en una
-// ampliación (2 o más): en la fase 1 no aporta (2026-11-05). Sin unidad ni
-// área de intervención desde el 2026-11-05 (revisión del Ing., puntos 5 y 6:
-// están en la ficha técnica del proyecto). ?>
+<?php // Código, versión y fecha ya van en la cabecera. El proyecto, en su única
+// línea (Proyecto::lineaDocumento(): "PROYECTO: 001 – NOMBRE (FASE n)", sin
+// negrilla; la fase solo si hay varias). Sin unidad ni área de intervención
+// desde el 2026-11-05 (revisión del Ing., puntos 5 y 6: están en la ficha
+// técnica del proyecto). ?>
 <table class="datos-generales">
     <tr>
         <?php // El nombre del proyecto suele ser largo: mas ancho que el oficio. ?>
-        <td style="width: 72%"><strong>Proyecto:</strong> <?= Html::encode($proyecto->etiqueta() ?: '—') ?><?= (int) $proyecto->numeroFase > 1 ? ' (Fase ' . (int) $proyecto->numeroFase . ')' : '' ?></td>
+        <td style="width: 72%"><?= Html::encode($proyecto->lineaDocumento()) ?></td>
         <td style="width: 28%; text-align: right"><strong><?= Html::encode($oficio !== '' ? $oficio : 'Oficio DTIC: —') ?></strong></td>
     </tr>
 </table>

@@ -111,6 +111,23 @@ class NumeroProyectoTest extends Unit
         $this->assertNull($this->proyectos->nuevo($fase1->id)->idProyectoAnterior);
     }
 
+    /**
+     * Revision del 2026-11-05, punto 6: una sola linea, numero, guion largo,
+     * nombre en mayusculas y "(FASE n)" solo si hay varias fases.
+     */
+    public function testLaLineaDelProyectoEnLosDocumentos(): void
+    {
+        $fase1 = $this->crear('Instalación de cámaras de seguridad');
+        $numero = $fase1->numeroTexto();
+        $this->assertSame("PROYECTO: $numero – INSTALACIÓN DE CÁMARAS DE SEGURIDAD", $fase1->lineaDocumento());
+
+        $this->aprobar($fase1);
+        $fase2 = $this->crear('Instalación de cámaras de seguridad', $fase1->id);
+        $this->assertSame("PROYECTO: $numero – INSTALACIÓN DE CÁMARAS DE SEGURIDAD (FASE 2)", $fase2->lineaDocumento());
+        // La fase 1 ahora tambien dice su fase: el proyecto ya tiene dos.
+        $this->assertSame("PROYECTO: $numero – INSTALACIÓN DE CÁMARAS DE SEGURIDAD (FASE 1)", Proyecto::findOne($fase1->id)->lineaDocumento());
+    }
+
     private function aprobar(Proyecto $proyecto): void
     {
         (new Presupuesto(['idProyecto' => $proyecto->id, 'estado' => Presupuesto::ESTADO_APROBADO]))->save(false);

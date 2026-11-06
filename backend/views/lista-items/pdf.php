@@ -138,11 +138,12 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
     'fecha' => $documento['fechaCreacion'] ?: '—',
 ]) ?>
 
-<?php // Codigo, version y fecha ya van en la cabecera. Solo la linea del proyecto: sin unidad ni area
-// de intervencion desde el 2026-11-05 (revision del Ing., puntos 5 y 6: estan en la ficha tecnica). ?>
+<?php // Codigo, version y fecha ya van en la cabecera. Solo la linea del proyecto (Proyecto::lineaDocumento(),
+// "PROYECTO: 001 – NOMBRE (FASE n)", sin negrilla): sin unidad ni area de intervencion desde el 2026-11-05
+// (revision del Ing., puntos 5 y 6: estan en la ficha tecnica). ?>
 <table class="datos-generales">
     <tr>
-        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre) ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
+        <td><?= Html::encode($proyecto->lineaDocumento()) ?></td>
     </tr>
 </table>
 

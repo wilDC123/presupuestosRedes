@@ -226,7 +226,11 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   equipo y el lugar de entrega por defecto (editables); área y carpeta empiezan VACÍAS. Ya no hay selector "fase anterior"
   en el formulario (se quitó `proyectosAprobados()`); al editar, la fase anterior no cambia. Vista: "Fases del proyecto 001"
   (`Proyecto::$fases`) con el estado de cada presupuesto; listado ordenado por número y fase, "Fase" solo si hay varias.
-  Pendiente: 5c línea "PROYECTO: 001 – NOMBRE (FASE n)", 5d una sola ficha PT por proyecto
+  PARTE 5c: la ÚNICA línea del proyecto en los documentos es `Proyecto::lineaDocumento()` = "PROYECTO: 001 – NOMBRE EN
+  MAYÚSCULAS (FASE 2)" (guion largo; "(FASE n)" solo si hay varias fases; SIN negrilla, a confirmar con el Ing.). La usan la
+  lista de materiales, el presupuesto y el reporte de relación con SIGMA. La solicitud de cotización NO la lleva (decidido
+  con el desarrollador); el formulario de especificación sigue con su formato (Dependencia, sin línea de proyecto).
+  Pendiente: 5d una sola ficha PT por proyecto
 - EL CÓDIGO PT ES DE LA FICHA TÉCNICA, no del proyecto (aclarado por el desarrollador el 2026-11-05: el lineamiento cambiará
   "Proyecto técnico" por "Ficha técnica del proyecto"; en "Codificación de documentos" el tipo PT ya se llama así). Hoy se
   guarda en `Proyecto.codigo` porque cada proyecto tiene una sola ficha; el proyecto tendrá su propio número en la parte 5
@@ -447,9 +451,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   Al juntar varios documentos en un PDF cada uno sale con su cabecera
   (`PresupuestoPdfGenerator::empezarDocumento()`)
 - Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
-  aprobado. Datos generales (2026-11-05): "Proyecto: RD-PI-PT-028 — Nombre" en UNA línea (`Proyecto::etiqueta()`;
-  antes "Código de proyecto" y "Proyecto" por separado) con el oficio a la derecha; "(Fase N)" SOLO desde la fase 2.
-  Solo en el presupuesto: la lista de materiales y la relación con SIGMA siguen como estaban. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
+  aprobado. Datos generales: la línea del proyecto (`Proyecto::lineaDocumento()`, ver PARTE 5c; del 2026-11-05 al 06
+  "Proyecto: RD-PI-PT-028 — Nombre") con el oficio a la derecha. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
   usan los mismos anchos, 2026-10-21) y "TOTAL GENERAL Bs." al final; N.° corrido
   entre categorías y en cada línea el nombre DTIC con su observación (columnas como la solicitud
   de cotización, más Partida). Desde el 2026-10-21 el nombre DTIC lleva al lado, entre paréntesis, el código NET de la emisión
