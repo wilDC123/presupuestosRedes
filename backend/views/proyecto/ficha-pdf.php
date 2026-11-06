@@ -22,7 +22,7 @@ use yii\helpers\Html;
  *  - Cabecera del lineamiento: codigo, version, fecha (la de creacion del
  *    proyecto: "arriba va la fecha de creacion del documento") y pagina. El
  *    codigo RD-PI-PT-NNN ES DE LA FICHA (el lineamiento cambiara "Proyecto
- *    tecnico" por "Ficha de proyecto tecnico"); hoy esta en Proyecto.codigo
+ *    tecnico" por "Ficha tecnica del proyecto"); hoy esta en Proyecto.codigo
  *    porque cada proyecto tiene una sola ficha. Cuando el proyecto tenga su
  *    propio numero (parte 5), la fila "Codigo" de los datos pasara a ese numero.
  *  - Orden: primero lo del proyecto (1 datos, 2 unidades, 3 fechas), despues
