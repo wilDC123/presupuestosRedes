@@ -141,7 +141,7 @@ class ListaItemsController extends Controller
             // Para el boton "Imprimir especificaciones (N)".
             'totalFormularios' => count($emisiones->vigentesDelProyecto($proyecto)),
             'configuracion' => $configuracion,
-            // Texto de ejemplo del campo "Lugar de entrega" de la ventana "Reemitir": el que se usa si se deja vacio.
+            // Texto de ejemplo del "Lugar de entrega" de cada fila y de la ventana "Reemitir": el que se usa si se deja vacio.
             'lugarEntregaPorDefecto' => EspecificacionEmisionService::lugarEntregaDe($proyecto, $configuracion),
             'proximoCodigo' => (new CodificacionService())->proximo(
                 CorrelativoDocumento::TIPO_ESPECIFICACION,

@@ -56,7 +56,7 @@ use yii\web\JqueryAsset;
  * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
  * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
  * @var backend\models\ConfiguracionEspecificacion $configuracion
- * @var string|null $lugarEntregaPorDefecto texto de ejemplo del "Lugar de entrega" al reemitir (null = no hay)
+ * @var string|null $lugarEntregaPorDefecto texto de ejemplo del "Lugar de entrega" de cada fila y al reemitir (null = no hay)
  * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001/26)
  * @var array<int, array<string, string>> $materiales otros materiales de la DTIC (los guardados o lo enviado)
  * @var string[] $categorias nombres de las categorias, subtitulos de los materiales escritos a mano
@@ -186,7 +186,7 @@ $selectorEspecificacion = static function (string $n, string $seleccionada, stri
  * Fila editable de un item. $n es su indice en items[n][...]; el JS usa
  * "__n__" como marcador y lo reemplaza por un numero nuevo.
  */
-$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '', string $emision = '') use ($selectorEspecificacion): string {
+$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '', string $emision = '', string $lugar = '') use ($selectorEspecificacion, $lugarEntregaPorDefecto): string {
     return '<tr class="lista-item">'
         . '<td>'
         . Html::hiddenInput("items[$n][id]", $id)
@@ -203,6 +203,19 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
         . '<div class="rd-celda-sub text-warning-emphasis lista-item-cambio d-none"></div>'
         . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
         . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
+        // Lugar de entrega de ESTA especificacion (revision del 2026-11-05: cada una puede tener uno
+        // distinto). Solo con especificacion elegida (lista-items.js). Vacio = el del proyecto; cambiarlo
+        // en un formulario ya emitido lo reemite al guardar (ListaItemsService).
+        . '<div class="d-flex align-items-center gap-2 mt-1 lista-item-lugar' . ($idEspecificacion === '' ? ' d-none' : '') . '">'
+        . '<label class="rd-celda-sub text-nowrap mb-0" for="lista-lugar-' . $n . '">Lugar de entrega</label>'
+        . Html::textInput("items[$n][lugarEntrega]", $lugar, [
+            'id' => 'lista-lugar-' . $n,
+            'class' => 'form-control form-control-sm',
+            'maxlength' => 300,
+            'placeholder' => (string) ($lugarEntregaPorDefecto ?? 'Sin lugar de entrega'),
+            'title' => 'Si se cambia en un formulario ya emitido, al guardar se reemite (mismo código, versión siguiente).',
+        ])
+        . '</div>'
         . $emision
         . '</td>'
         . '<td class="lista-item-unidad">' . Html::encode($unidad) . '</td>'
@@ -382,7 +395,9 @@ $grupoCierra = static fn (int $cantidad): string =>
                                 (string) $item->observacion,
                                 (string) $item->idEspecificacion,
                                 (string) $item->idCategoria,
-                                $infoEmision($item)
+                                $infoEmision($item),
+                                // Lo enviado (si el guardado fallo) o el del formulario vigente.
+                                (string) ($item->lugarEntregaPedido ?? ($emisiones[$item->id]['emision'] ?? null)->lugarEntrega ?? '')
                             ) ?>
                         <?php endforeach; ?>
                         <?= $grupoCierra(count($grupo['items'])) ?>
