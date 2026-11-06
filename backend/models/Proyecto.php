@@ -17,6 +17,8 @@ use yii\db\ActiveRecord;
  *
  * @property int $id
  * @property string|null $codigo Generado por ProyectoService al crear (RD-PI-PT-NN).
+ * @property string|null $codigoLista Codigo de su lista de materiales (RD-PI-LM-NNN, revision del 2026-11-05),
+ *           tambien lo pone ProyectoService al crear; el proceso es el del proyecto.
  * @property string $nombre
  * @property string|null $descripcion
  * @property int|null $idTipoProyecto FK a redes.TipoProyecto.
@@ -140,6 +142,7 @@ class Proyecto extends ActiveRecord
         return [
             'id' => 'ID',
             'codigo' => 'Código de proyecto',
+            'codigoLista' => 'Código de la lista de materiales',
             'nombre' => 'Nombre del proyecto',
             'descripcion' => 'Descripción',
             'idTipoProyecto' => 'Tipo de proyecto',

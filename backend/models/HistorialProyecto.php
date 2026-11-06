@@ -55,7 +55,7 @@ class HistorialProyecto extends ActiveRecord
             self::ACCION_PRESUPUESTO_CREADO => 'Presupuesto creado',
             self::ACCION_PRESUPUESTO_ESTADO => 'Presupuesto: ' . mb_strtolower(Presupuesto::estados()[$this->estado] ?? (string) $this->estado, 'UTF-8'),
             self::ACCION_PRECIOS => 'Precios del presupuesto',
-            self::ACCION_LISTA_APROBADA => 'Lista de materiales aprobada',
+            self::ACCION_LISTA_APROBADA => 'Lista de materiales enviada a cotización',
             self::ACCION_LISTA_ITEM_CAMBIADO => 'Ítem de la lista cambiado',
             default => $this->accion,
         };

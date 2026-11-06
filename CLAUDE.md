@@ -193,6 +193,15 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   con " | " para el historial). El presupuesto y la lista ya NO llevan unidad ni área (van en la ficha técnica); el
   presupuesto ya no pide área al enviarlo a revisión (`Presupuesto.areaIntervencion` queda solo con lo de antes).
   Formulario ET: nada por debajo de 11 pt
+- REVISIÓN DEL 2026-11-05, PARTE 2 (punto 7; migración `m261106_030000_codigo_lista_materiales`): la LISTA DE MATERIALES
+  NO SE APRUEBA (la que se aprueba es el presupuesto) y tiene CÓDIGO PROPIO `RD-<proceso>-LM-NNN`
+  (`Proyecto.codigoLista`, correlativo `CorrelativoDocumento::TIPO_LISTA`, sin año; antes llevaba el del proyecto). Lo pone
+  `ProyectoService` al crear el proyecto (cada fase es su propio proyecto, su propia lista); si se cambia el proceso antes del
+  primer envío a cotización, el código cambia de proceso con el mismo número; después queda fijo. Los proyectos existentes
+  recibieron LM-001… en orden de creación. "Enviar a cotización" EMITE la versión (`ListaItemsService::emitirVersion()`;
+  `ListaMaterialesAprobacion` conserva su nombre: una fila = versión enviada, `fechaAprobacion` = fecha del envío). El PDF
+  lleva solo "ELABORADO POR" y "Versión: x" (`_control-elaboracion` con `soloElaborado`). Lo que se dice abajo de la
+  aprobación de la lista (paso 8b) quedó así reemplazado
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista

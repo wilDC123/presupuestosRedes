@@ -143,10 +143,11 @@ class ProcesoService
     private function enUso(Proceso $proceso): bool
     {
         $codigo = (string) ($proceso->getOldAttribute('codigo') ?? $proceso->codigo);
-        $prefijo = CorrelativoDocumento::UNIDAD . '-' . $codigo . '-' . CorrelativoDocumento::TIPO_PRESUPUESTO . '-';
+        $prefijo = static fn (string $tipo): string => CorrelativoDocumento::UNIDAD . '-' . $codigo . '-' . $tipo . '-%';
 
         return Proyecto::find()->andWhere(['idProceso' => $proceso->id])->exists()
             || EspecificacionEmision::find()->andWhere(['proceso' => $codigo])->exists()
-            || Presupuesto::find()->andWhere(['like', 'numeroPresupuesto', $prefijo . '%', false])->exists();
+            || Presupuesto::find()->andWhere(['like', 'numeroPresupuesto', $prefijo(CorrelativoDocumento::TIPO_PRESUPUESTO), false])->exists()
+            || Proyecto::find()->andWhere(['like', 'codigoLista', $prefijo(CorrelativoDocumento::TIPO_LISTA), false])->exists();
     }
 }

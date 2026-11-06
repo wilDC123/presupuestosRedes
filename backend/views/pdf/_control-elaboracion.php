@@ -27,19 +27,26 @@ use yii\helpers\Html;
  * @var array{prefijo: string, nombre: string, cargo: string}|null $elaborado null = en blanco, para llenarla a mano
  * @var array{prefijo: string, nombre: string, cargo: string}|null $aprobado
  * @var string $fechaAprobacion 'dd/mm/aaaa', o vacia (se deja la raya)
+ * @var bool $soloElaborado true = documento que no se aprueba (la lista de materiales, revision del
+ *           2026-11-05): una sola firma, "ELABORADO POR", centrada, y debajo solo la version
  */
 
-$firmas = [['ELABORADO POR', $elaborado], ['APROBADO POR', $aprobado]];
+$soloElaborado = $soloElaborado ?? false;
+$firmas = $soloElaborado ? [['ELABORADO POR', $elaborado]] : [['ELABORADO POR', $elaborado], ['APROBADO POR', $aprobado]];
 $centro = 'text-align: center; vertical-align: top; font-size: 10pt;';
+// Con una sola firma, las columnas de los costados solo la centran.
+$anchos = $soloElaborado ? ['29%', '42%', '29%'] : ['42%', '16%', '42%'];
+$conRaya = $soloElaborado ? [false, true, false] : [true, false, true];
 ?>
 <table style="width: 100%; border-collapse: collapse; margin-top: 20px; page-break-inside: avoid;">
     <tr>
-        <?php // Espacio para firmar y la raya debajo; la columna del medio solo separa. ?>
-        <td width="42%" style="height: 55px; border-bottom: 1px solid #000;"></td>
-        <td width="16%"></td>
-        <td width="42%" style="height: 55px; border-bottom: 1px solid #000;"></td>
+        <?php // Espacio para firmar y la raya debajo; las columnas sin raya solo separan. ?>
+        <?php foreach ($anchos as $k => $ancho): ?>
+            <td width="<?= $ancho ?>"<?= $conRaya[$k] ? ' style="height: 55px; border-bottom: 1px solid #000;"' : '' ?>></td>
+        <?php endforeach; ?>
     </tr>
     <tr>
+        <?php if ($soloElaborado): ?><td></td><?php endif; ?>
         <?php foreach ($firmas as $i => [$rotulo, $firma]): ?>
             <?php if ($i > 0): ?><td></td><?php endif; ?>
             <td style="<?= $centro ?> padding-top: 3px;">
@@ -52,10 +59,15 @@ $centro = 'text-align: center; vertical-align: top; font-size: 10pt;';
                 <div style="font-size: 9pt; margin-top: 2px;"><?= $rotulo ?></div>
             </td>
         <?php endforeach; ?>
+        <?php if ($soloElaborado): ?><td></td><?php endif; ?>
     </tr>
     <tr>
         <td colspan="3" style="text-align: center; font-size: 9pt; padding-top: 8px;">
-            Versión: <?= Html::encode($version) ?> · Fecha de aprobación: <?= $fechaAprobacion !== '' ? Html::encode($fechaAprobacion) : '____/____/________' ?>
+            <?php if ($soloElaborado): ?>
+                Versión: <?= Html::encode($version) ?>
+            <?php else: ?>
+                Versión: <?= Html::encode($version) ?> · Fecha de aprobación: <?= $fechaAprobacion !== '' ? Html::encode($fechaAprobacion) : '____/____/________' ?>
+            <?php endif; ?>
         </td>
     </tr>
 </table>
