@@ -116,7 +116,7 @@ class ProyectoController extends Controller
 
         return Yii::$app->response->sendContentAsFile(
             (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $datos['aprobada'] ? null : PresupuestoPdfGenerator::MARCA_BORRADOR),
-            'ficha_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $model->codigo ?: (string) $model->id) . '.pdf',
+            'ficha_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $datos['codigo'] ?: (string) $model->id) . '.pdf',
             ['mimeType' => 'application/pdf', 'inline' => true]
         );
     }

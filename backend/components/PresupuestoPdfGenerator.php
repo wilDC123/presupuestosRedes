@@ -228,7 +228,7 @@ class PresupuestoPdfGenerator
     {
         $referencia = CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_PRESUPUESTO, $presupuesto->numeroPresupuesto) !== null
             ? (string) $presupuesto->numeroPresupuesto
-            : ($presupuesto->proyecto->codigo ?? null);
+            : ($presupuesto->proyecto->codigoLista ?? null);
 
         if ($referencia === null || $referencia === '') {
             $referencia = (string) $presupuesto->id;

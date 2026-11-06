@@ -479,7 +479,7 @@ class EspecificacionEmisionService
                 $formato->asDecimal($emision->cantidad, 2),
                 $emision->unidad,
                 $emision->version->modeloSugerido,
-                $emision->proyecto->codigo ?? '',
+                $emision->proyecto->identificador(),
                 $emision->estadoLabel(),
                 $emision->motivo,
                 $emision->reemplazadaPor?->codigoConVersion() ?? '',
@@ -555,7 +555,7 @@ class EspecificacionEmisionService
     {
         return [
             'contenido' => (new PresupuestoPdfGenerator())->generarVarios($this->documentosPdf($formularios)),
-            'nombreArchivo' => 'especificaciones_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $proyecto->codigo ?: (string) $proyecto->id) . '.pdf',
+            'nombreArchivo' => 'especificaciones_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $proyecto->codigoLista ?: (string) $proyecto->id) . '.pdf',
         ];
     }
 

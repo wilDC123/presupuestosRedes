@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\components\VersionDocumento;
 use backend\models\ConfiguracionPresupuesto;
 use backend\models\CorrelativoDocumento;
 use backend\models\EspecificacionEmision;
@@ -281,51 +282,66 @@ class ProyectoService
     }
 
     /**
-     * Lo que imprime la FICHA TECNICA DEL PROYECTO: los datos del proyecto
-     * (van en la vista con el modelo), sus fechas y los documentos de su
-     * carpeta economica.
+     * Lo que imprime la FICHA TECNICA DEL PROYECTO: UNA por proyecto, con
+     * TODAS sus fases (revision del 2026-11-05, punto 2; parte 5d): arriba lo
+     * del proyecto (la vista lo toma del modelo) y despues un bloque por fase
+     * con su area, equipo, fechas y documentos de su carpeta economica. Sale
+     * igual desde cualquier fase.
      *
-     * Desde la revision del 2026-11-05 (punto 2) es un DOCUMENTO normado que
-     * se aprueba: cabecera del lineamiento y control de elaboracion. Hasta que
-     * existan las fases dentro del proyecto (parte 5), queda APROBADA cuando
-     * se aprueba el proyecto, es decir su presupuesto (el punto de control
-     * "Revisar y aprobar diseño"): 'aprobada', su fecha y las firmas copiadas
-     * del presupuesto aprobado (Presupuesto::firmaDeControl()); mientras no,
-     * borrador con las firmas de la configuracion de hoy.
-     *
-     * 'variasFases': el proyecto es fase 2 o siguiente, o ya tiene una fase
-     * siguiente. Con fase unica la ficha no muestra "Fase" (punto 3).
+     * Version y aprobacion se CALCULAN (no hay tabla): cada fase que se aprueba
+     * es una version, 1.0 la fase 1, 1.1 la fase 2... ("reabrir la ficha" es
+     * agregar una fase). Solo la ultima fase puede estar sin aprobar (una fase
+     * se agrega con la anterior aprobada): si lo esta, la ficha es la version
+     * siguiente en BORRADOR; si no, la ultima version, aprobada con la fecha y
+     * las firmas copiadas del presupuesto de esa fase. La fecha de la cabecera
+     * es la de creacion de la version (la de su fase): "arriba va la fecha de
+     * creacion del documento".
      *
      * @return array{
-     *   fechas: array{creacion: string|null, revision: string|null, aprobacion: string|null, ultimaModificacion: string|null, ultimoUsuario: string|null},
-     *   monto: float|null,
-     *   especificaciones: EspecificacionEmision[],
-     *   solicitudes: SolicitudCotizacion[],
-     *   lista: array{version: string, borrador: bool, aprobacion: \backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string},
+     *   codigo: string|null,
+     *   fases: array<int, array{proyecto: Proyecto, fechas: array, monto: float|null, especificaciones: EspecificacionEmision[], solicitudes: SolicitudCotizacion[], lista: array}>,
+     *   variasFases: bool,
+     *   version: string,
+     *   fechaDocumento: string|null,
      *   aprobada: bool,
      *   fechaAprobacion: string,
      *   elaborado: array{prefijo: string, nombre: string, cargo: string}|null,
-     *   aprobado: array{prefijo: string, nombre: string, cargo: string}|null,
-     *   variasFases: bool
+     *   aprobado: array{prefijo: string, nombre: string, cargo: string}|null
      * }
      */
     public function datosFicha(Proyecto $proyecto): array
     {
-        $presupuesto = $proyecto->presupuesto;
+        /** @var Proyecto[] $fases */
+        $fases = $proyecto->numeroProyecto !== null ? $proyecto->fases : [$proyecto];
+        $fases = $fases === [] ? [$proyecto] : $fases;
+        $ultima = end($fases);
+        $aprobadas = count(array_filter($fases, fn (Proyecto $fase) => $this->estaAprobado($fase)));
+        $ultimaAprobada = $this->estaAprobado($ultima);
         $configuracion = ConfiguracionPresupuesto::obtener();
-        $aprobada = $presupuesto !== null && $presupuesto->estado === Presupuesto::ESTADO_APROBADO;
+        $presupuesto = $ultimaAprobada ? $ultima->presupuesto : null;
+
+        $porFase = [];
+        foreach ($fases as $fase) {
+            $porFase[] = [
+                'proyecto' => $fase,
+                'fechas' => $this->historial->fechas($fase),
+                'monto' => $this->montoPresupuesto($fase),
+                'especificaciones' => (new EspecificacionEmisionService())->vigentesDelProyecto($fase),
+                'solicitudes' => (new SolicitudCotizacionService())->listar($fase),
+                'lista' => (new ListaItemsService())->documento($fase),
+            ];
+        }
 
         return [
-            'fechas' => $this->historial->fechas($proyecto),
-            'monto' => $this->montoPresupuesto($proyecto),
-            'especificaciones' => (new EspecificacionEmisionService())->vigentesDelProyecto($proyecto),
-            'solicitudes' => (new SolicitudCotizacionService())->listar($proyecto),
-            'lista' => (new ListaItemsService())->documento($proyecto),
-            'aprobada' => $aprobada,
-            'fechaAprobacion' => $aprobada ? $presupuesto->fechaAprobacionFormateada() : '',
+            'codigo' => $fases[0]->codigo,
+            'fases' => $porFase,
+            'variasFases' => count($fases) > 1,
+            'version' => VersionDocumento::texto(max(1, $ultimaAprobada ? $aprobadas : $aprobadas + 1)),
+            'fechaDocumento' => $ultima->fechaCreacion,
+            'aprobada' => $ultimaAprobada,
+            'fechaAprobacion' => $presupuesto !== null ? $presupuesto->fechaAprobacionFormateada() : '',
             'elaborado' => $presupuesto !== null ? $presupuesto->firmaDeControl(1, $configuracion) : $configuracion->firma(1),
             'aprobado' => $presupuesto !== null ? $presupuesto->firmaDeControl(2, $configuracion) : $configuracion->firma(2),
-            'variasFases' => $proyecto->tieneVariasFases(),
         ];
     }
 
@@ -932,7 +948,11 @@ class ProyectoService
         $codificacion = new CodificacionService();
         // Una fase siguiente lleva el MISMO numero de proyecto que la anterior; un proyecto nuevo, el siguiente.
         $this->asignarNumero($proyecto, $codificacion);
-        $proyecto->codigo = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, $codificacion->tomar(CorrelativoDocumento::TIPO_PROYECTO));
+        // Codigo PT = el de la FICHA TECNICA, UNA por proyecto (parte 5d): solo la fase 1 lo toma; una fase
+        // siguiente usa el de su proyecto (Proyecto::codigoFicha()) y no gasta un numero.
+        $proyecto->codigo = $proyecto->idProyectoAnterior === null
+            ? CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, $codificacion->tomar(CorrelativoDocumento::TIPO_PROYECTO))
+            : null;
         $proyecto->codigoLista = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_LISTA, $codificacion->tomar(CorrelativoDocumento::TIPO_LISTA), $this->codigoProceso($proyecto));
         $proyecto->save(false);
     }

@@ -42,7 +42,7 @@ $formato = Yii::$app->formatter;
                 <?php endif; ?>
             </h1>
             <?php // El numero es del proyecto; el codigo RD-PI-PT-NNN, de su ficha tecnica (2026-11-06). ?>
-            <div class="rd-pagehead-sub"><strong><?= Html::encode($model->identificador()) ?></strong><?= $model->codigo ? ' · ficha técnica <span class="mono">' . Html::encode($model->codigo) . '</span>' : '' ?></div>
+            <div class="rd-pagehead-sub"><strong><?= Html::encode($model->identificador()) ?></strong><?= $model->codigoFicha() ? ' · ficha técnica <span class="mono">' . Html::encode((string) $model->codigoFicha()) . '</span>' : '' ?></div>
         </div>
         <div class="rd-acciones">
             <?php if ($puedeEditarse): ?>

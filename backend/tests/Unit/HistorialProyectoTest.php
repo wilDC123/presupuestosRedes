@@ -58,7 +58,8 @@ class HistorialProyectoTest extends Unit
         $ultimo = $this->historial->delProyecto($proyecto->id)[0];
         $this->assertSame(HistorialProyecto::ACCION_PROYECTO_MODIFICADO, $ultimo->accion);
         $this->assertSame("Descripción: — → Cámaras del canal\nUnidad solicitante: Decanato test → Rectorado test", $ultimo->detalle);
-        $this->assertSame($proyecto->codigo, $ultimo->codigoProyecto);
+        // La copia que reconoce al proyecto aunque se elimine: su numero (desde el 2026-11-06).
+        $this->assertSame(Proyecto::findOne($proyecto->id)->identificador(), $ultimo->codigoProyecto);
         // En los tests no hay sesion.
         $this->assertSame('(antes del historial)', $ultimo->usuarioTexto());
     }

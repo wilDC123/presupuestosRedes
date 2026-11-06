@@ -459,7 +459,7 @@ class SolicitudCotizacionService
      */
     public function generarPdf(SolicitudCotizacion $solicitud, string $html, array $formularios = []): array
     {
-        $referencia = ($solicitud->proyecto->codigo ?: (string) $solicitud->idProyecto) . '_' . $solicitud->codigoCorto();
+        $referencia = ($solicitud->proyecto->numeroProyecto !== null ? 'proyecto_' . $solicitud->proyecto->numeroTexto() . '_fase' . (int) $solicitud->proyecto->numeroFase : (string) $solicitud->idProyecto) . '_' . $solicitud->codigoCorto();
         $documentos = array_merge(
             [['html' => $html, 'marcaDeAgua' => null]],
             (new EspecificacionEmisionService())->documentosPdf($formularios)

@@ -234,6 +234,16 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - EL CÓDIGO PT ES DE LA FICHA TÉCNICA, no del proyecto (aclarado por el desarrollador el 2026-11-05: el lineamiento cambiará
   "Proyecto técnico" por "Ficha técnica del proyecto"; en "Codificación de documentos" el tipo PT ya se llama así). Hoy se
   guarda en `Proyecto.codigo` porque cada proyecto tiene una sola ficha; el proyecto tendrá su propio número en la parte 5
+- UNA SOLA FICHA TÉCNICA POR PROYECTO (PARTE 5d, 2026-11-06; migración `m261106_150000_una_ficha_por_proyecto`): solo la fase
+  1 tiene código PT (`Proyecto.codigo`); una fase siguiente no toma uno (NULL) y usa el de su proyecto
+  (`Proyecto::codigoFicha()`). La migración quitó el PT de las fases 2+ (local: RD-PI-PT-027) y lo anotó en el historial; el
+  número no se reutiliza. La ficha se imprime IGUAL desde cualquier fase (`ProyectoService::datosFicha()`: `fases`, una por
+  fase con sus fechas, lista, presupuesto, ET y SC): 1 datos (con "Fases: N"), 2 unidades, 3 fechas (una columna por fase),
+  y un bloque "4. FASE 1" (4.1 área, 4.2 equipo, 4.3 documentos), "5. FASE 2"…; con fase única, 4 área, 5 equipo, 6
+  documentos. VERSIÓN calculada, sin tabla: cada fase aprobada es una versión (1.0, 1.1…); si la última fase no está
+  aprobada, la siguiente en BORRADOR; aprobada = fecha y firmas del presupuesto de esa fase; fecha de cabecera = creación de
+  la última fase. La solicitud de cotización se identifica con el número: "001 · Fase 2 / SC-01" (`SolicitudCotizacion::codigo()`);
+  el historial copia `identificador()` en `codigoProyecto`
 - REVISIÓN DEL 2026-11-05, PARTE 4 (punto 2): la FICHA TÉCNICA es un DOCUMENTO normado (antes "reporte de control"):
   cabecera del lineamiento (código = el del proyecto RD-PI-PT-NNN hasta la parte 5, versión 1.0, fecha = creación del
   proyecto), orden 1 datos, 2 unidades, 3 fechas, 4 área, 5 equipo, 6 documentos (especificaciones en subtabla Código | Ítem
