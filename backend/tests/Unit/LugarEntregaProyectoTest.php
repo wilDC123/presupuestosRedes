@@ -45,6 +45,6 @@ class LugarEntregaProyectoTest extends Unit
         $antes = $historial->foto($proyecto);
         $proyecto->lugarEntrega = 'Lugar test nuevo';
 
-        $this->assertSame('Lugar de entrega: Lugar test viejo → Lugar test nuevo', $historial->cambios($antes, $historial->foto($proyecto)));
+        $this->assertSame('Lugar de entrega por defecto: Lugar test viejo → Lugar test nuevo', $historial->cambios($antes, $historial->foto($proyecto)));
     }
 }

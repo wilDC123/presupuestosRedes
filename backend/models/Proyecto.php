@@ -149,7 +149,7 @@ class Proyecto extends ActiveRecord
             'idProceso' => 'Proceso',
             'unidadDependencia' => 'Unidad / dependencia',
             'unidadSolicitante' => 'Unidad solicitante',
-            'lugarEntrega' => 'Lugar de entrega',
+            'lugarEntrega' => 'Lugar de entrega por defecto',
             'areas' => 'Área de intervención',
             'codigoFacultad' => 'Facultad',
             'facultad' => 'Facultad',

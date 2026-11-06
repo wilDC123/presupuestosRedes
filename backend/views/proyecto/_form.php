@@ -139,7 +139,7 @@ $vinculado = $proyectosAprobados[(int) $model->idProyectoAnterior] ?? null;
         <?= $form->field($model, 'lugarEntrega')->textInput([
             'maxlength' => 300,
             'placeholder' => 'Dónde se entregan los bienes. Ej. Administración de la Facultad de Ciencias Agrarias',
-        ])->hint('Sale en los formularios de especificación que se emitan desde ahora (los ya emitidos conservan el suyo; se cambia al reemitir). Si la unidad / dependencia es una facultad, se sugiere su administración. Vacío = el de la configuración del formulario de especificación.') ?>
+        ])->hint('Cada especificación técnica tiene su propio lugar de entrega: se escribe en la lista de ítems. Este es el que toma la especificación si allí se deja vacío. Si la unidad / dependencia es una facultad, se sugiere su administración. Vacío = el de la configuración del formulario de especificación.') ?>
 
         <div class="form-group<?= $model->hasErrors('areas') ? ' has-error' : '' ?>">
             <label for="proyecto-buscar-ambiente"><?= Html::encode($model->getAttributeLabel('areas')) ?></label>

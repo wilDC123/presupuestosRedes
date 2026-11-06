@@ -160,11 +160,13 @@ class ListaItemsService
      * @param mixed $filas
      * @param string[] $errores (por referencia) se agregan los de las filas
      * @param ProyectoItem[] $enviados (por referencia) los items, en el orden del formulario
-     * @return array{quitados: array<int, ProyectoItem>, cambianEspecificacion: array<int, true>, cambianItem: array<int, array{item: ProyectoItem, antes: string}>, recordar: array<int, int>}
+     * @return array{quitados: array<int, ProyectoItem>, cambianEspecificacion: array<int, true>, cambianItem: array<int, array{item: ProyectoItem, antes: string}>, cambianLugar: array<int, string>, recordar: array<int, int>}
      *         quitados: los guardados que ya no vinieron [id => item];
      *         cambianEspecificacion: [spl_object_id => true], por objeto porque los nuevos todavia no tienen id;
      *         cambianItem: filas guardadas con otro item del subcatalogo ("Cambiar ítem"),
      *         [spl_object_id => [item, "NOMBRE ANTERIOR (unidad)"]];
+     *         cambianLugar: filas cuyo formulario vigente se reemite con otro lugar de entrega,
+     *         [spl_object_id => lugar anterior];
      *         recordar: [idEspecificacion => idSubcatalogo]
      */
     private function revisarFilas(Proyecto $proyecto, $filas, array &$errores, array &$enviados): array
@@ -178,6 +180,7 @@ class ListaItemsService
         $emisiones = new EspecificacionEmisionService();
         $cambianEspecificacion = [];
         $cambianItem = [];
+        $cambianLugar = [];
         $recordar = [];
 
         foreach ((array) $filas as $fila) {
@@ -253,6 +256,25 @@ class ListaItemsService
                 }
             }
 
+            // Lugar de entrega de la especificacion (revision del 2026-11-05). Uno
+            // distinto del que tiene su formulario vigente lo reemite al guardar;
+            // vacio no cambia nada (el formulario nuevo toma el del proyecto).
+            $item->lugarEntregaPedido = $this->texto($fila['lugarEntrega'] ?? '');
+            if (mb_strlen($item->lugarEntregaPedido) > 300) {
+                $errores[] = "$nombre: el lugar de entrega no puede pasar de 300 caracteres.";
+            } elseif ($errorEspecificacion === null && !isset($cambianEspecificacion[spl_object_id($item)])
+                && $item->idEspecificacion !== null && $item->lugarEntregaPedido !== '') {
+                /** @var EspecificacionEmision|null $vigente */
+                $vigente = $item->isNewRecord ? null : $item->getEmisionVigente()->one();
+                if ($vigente !== null && trim((string) $vigente->lugarEntrega) !== $item->lugarEntregaPedido) {
+                    $cambianLugar[spl_object_id($item)] = (string) $vigente->lugarEntrega;
+                    $motivo = $emisiones->motivoParaNoEmitir(Especificacion::findOne($item->idEspecificacion));
+                    if ($motivo !== null) {
+                        $errores[] = "$nombre: no se puede reemitir su formulario de especificación con el lugar nuevo: $motivo";
+                    }
+                }
+            }
+
             if ($errorEspecificacion === null && $item->idEspecificacion !== null
                 && $this->texto($fila['recordarReferencia'] ?? '') === '1') {
                 $recordar[(int) $item->idEspecificacion] = (int) $item->idSubcatalogo;
@@ -267,6 +289,7 @@ class ListaItemsService
             'quitados' => array_diff_key($guardados, $conservados),
             'cambianEspecificacion' => $cambianEspecificacion,
             'cambianItem' => $cambianItem,
+            'cambianLugar' => $cambianLugar,
             'recordar' => $recordar,
         ];
     }
@@ -343,15 +366,19 @@ class ListaItemsService
     }
 
     /**
-     * El formulario de especificacion de un item CAMBIADO (misma ficha): se
-     * reemite con el mismo codigo y la version siguiente, con el nombre y la
-     * unidad del item nuevo. Conserva las condiciones de entrega de la
-     * anterior. Sin formulario vigente no hace nada. Devuelve el codigo
-     * nuevo ("RD-PI-ET-033/26 v02"), o null si no habia formulario.
+     * El formulario de especificacion de un item CAMBIADO (misma ficha) o
+     * cuyo LUGAR DE ENTREGA se cambio en la lista: se reemite con el mismo
+     * codigo y la version siguiente, con el nombre y la unidad del item de
+     * hoy. Conserva validez y tiempo de entrega de la anterior; el lugar, el
+     * de la anterior salvo que haya cambiado ($lugarAntes = el que tenia; el
+     * nuevo esta en $item->lugarEntregaPedido). $antes = nombre del item
+     * anterior, o null si el item no cambio. Sin formulario vigente no hace
+     * nada. Devuelve el codigo nuevo ("RD-PI-ET-033/26 v1.1"), o null si no
+     * habia formulario.
      *
      * @throws DomainException si no se pudo reemitir
      */
-    private function reemitirPorCambio(ProyectoItem $item, string $antes, ?string $usuario): ?string
+    private function reemitirPorCambio(ProyectoItem $item, ?string $antes, ?string $usuario, ?string $lugarAntes = null): ?string
     {
         /** @var EspecificacionEmision|null $anterior */
         $anterior = $item->getEmisionVigente()->one();
@@ -360,17 +387,25 @@ class ListaItemsService
             return null;
         }
 
+        $cambios = [];
+        if ($antes !== null) {
+            $cambios[] = 'Se cambió el ítem: ' . $antes . ' → ' . $this->nombreConUnidad($item) . '.';
+        }
+        if ($lugarAntes !== null) {
+            $cambios[] = 'Se cambió el lugar de entrega: ' . ($lugarAntes !== '' ? $lugarAntes : '(ninguno)') . ' → ' . $item->lugarEntregaPedido . '.';
+        }
+
         // El motivo admite hasta 300 caracteres; los nombres DTIC pueden ser largos.
-        $motivo = mb_substr('Se cambió el ítem: ' . $antes . ' → ' . $this->nombreConUnidad($item) . '.', 0, 300);
+        $motivo = mb_substr(implode(' ', $cambios), 0, 300);
         $resultado = (new EspecificacionEmisionService())->reemitir($item, [
             'motivo' => $motivo,
-            'lugarEntrega' => $anterior->lugarEntrega,
+            'lugarEntrega' => $lugarAntes !== null ? $item->lugarEntregaPedido : $anterior->lugarEntrega,
             'validezOfertaDias' => $anterior->validezOfertaDias,
             'tiempoEntregaDias' => $anterior->tiempoEntregaDias,
         ], $usuario);
 
         if ($resultado['error'] !== null) {
-            throw new DomainException($antes . ': ' . $resultado['error']);
+            throw new DomainException(($antes ?? $this->nombreConUnidad($item)) . ': ' . $resultado['error']);
         }
 
         return $resultado['emision']->codigoConVersion();
@@ -457,7 +492,8 @@ class ListaItemsService
                         : 'Se cambió la especificación del ítem.');
 
                     if ($item->idEspecificacion !== null) {
-                        $emisiones->emitir($item, $usuario);
+                        // Vacio = el del proyecto (ver EspecificacionEmisionService::emitir()).
+                        $emisiones->emitir($item, $usuario, ['lugarEntrega' => $item->lugarEntregaPedido]);
                     }
                 }
 
@@ -468,11 +504,14 @@ class ListaItemsService
                     // Otro item, la MISMA ficha: se corrige el mismo formulario
                     // (si cambio tambien la ficha, arriba se anulo y se emitio otro).
                     if (!isset($plan['cambianEspecificacion'][spl_object_id($item)])) {
-                        $codigo = $this->reemitirPorCambio($item, $cambioDeItem['antes'], $usuario);
+                        $codigo = $this->reemitirPorCambio($item, $cambioDeItem['antes'], $usuario, $plan['cambianLugar'][spl_object_id($item)] ?? null);
                         $texto .= $codigo === null ? '' : " · formulario $codigo";
                     }
 
                     $cambiosDeItem[] = $texto;
+                } elseif (isset($plan['cambianLugar'][spl_object_id($item)])) {
+                    // Solo cambio el lugar de entrega: el mismo formulario, version siguiente.
+                    $this->reemitirPorCambio($item, null, $usuario, $plan['cambianLugar'][spl_object_id($item)]);
                 }
 
                 if ($presupuestoBorrador) {

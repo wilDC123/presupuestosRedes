@@ -202,6 +202,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `ListaMaterialesAprobacion` conserva su nombre: una fila = versión enviada, `fechaAprobacion` = fecha del envío). El PDF
   lleva solo "ELABORADO POR" y "Versión: x" (`_control-elaboracion` con `soloElaborado`). Lo que se dice abajo de la
   aprobación de la lista (paso 8b) quedó así reemplazado
+- REVISIÓN DEL 2026-11-05, PARTE 3: el LUGAR DE ENTREGA es de CADA especificación (pueden ser distintos). Se escribe en la
+  fila de la lista, debajo del selector de especificación (`items[n][lugarEntrega]`, `ProyectoItem::$lugarEntregaPedido`, no
+  es columna: se guarda en `EspecificacionEmision.lugarEntrega`). Formulario nuevo: toma el de la fila (vacío = el del
+  proyecto). Uno ya emitido con otro lugar se REEMITE al guardar (mismo código, versión + 1, motivo "Se cambió el lugar de
+  entrega: A → B"; junto con "Cambiar ítem" es una sola reemisión, `ListaItemsService::reemitirPorCambio()`); vacío no
+  cambia nada. `Proyecto.lugarEntrega` queda como "Lugar de entrega por defecto" y SALE de la ficha técnica
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista

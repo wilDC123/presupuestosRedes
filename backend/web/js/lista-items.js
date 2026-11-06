@@ -473,6 +473,8 @@ $(function () {
 
     $tabla.on('change', '.lista-item-esp', function () {
         actualizarEnlaceDocumento($(this));
+        // El lugar de entrega es de la especificacion: sin especificacion no se pide.
+        $(this).closest('td').find('.lista-item-lugar').toggleClass('d-none', $(this).val() === '');
         actualizarTotales();
         marcarCambios();
     });
