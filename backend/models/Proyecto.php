@@ -341,6 +341,22 @@ class Proyecto extends ActiveRecord
     }
 
     /**
+     * La UNICA linea del proyecto en los documentos (revision del Ing. de DTIC
+     * del 2026-11-05, punto 6): "PROYECTO: 001 – INSTALACIÓN DE CÁMARAS DE
+     * SEGURIDAD (FASE 2)". Numero, guion largo y el nombre en mayusculas
+     * ("como en las notas"); "(FASE n)" solo si el proyecto tiene mas de una
+     * fase (fase unica: no se pone). Sin negrilla (a confirmar con el Ing.:
+     * la vista decide como la muestra). Antes cada documento armaba la suya.
+     */
+    public function lineaDocumento(): string
+    {
+        $linea = 'PROYECTO: ' . ($this->numeroProyecto !== null ? $this->numeroTexto() . ' – ' : '')
+            . mb_strtoupper(trim((string) $this->nombre), 'UTF-8');
+
+        return $this->tieneVariasFases() ? $linea . ' (FASE ' . (int) $this->numeroFase . ')' : $linea;
+    }
+
+    /**
      * El numero del proyecto como se escribe: "001" (3 cifras, decidido con
      * el desarrollador el 2026-11-06 mientras el Ing. de DTIC confirma el
      * formato; es el UNICO lugar que lo decide). '—' si no tiene.

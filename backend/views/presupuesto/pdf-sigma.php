@@ -129,8 +129,8 @@ $numero = 0;
 <table class="datos-generales">
     <tr>
         <td><strong>Presupuesto:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?></td>
-        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->numeroTexto()) ?><?= $proyecto->tieneVariasFases() ? ' (Fase ' . (int) $proyecto->numeroFase . ')' : '' ?></td>
-        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre ?? '—') ?></td>
+        <?php // La misma linea que el presupuesto (Proyecto::lineaDocumento()). ?>
+        <td colspan="2"><?= Html::encode($proyecto->lineaDocumento()) ?></td>
         <td><strong>Emitido:</strong> <?= date('d/m/Y') ?></td>
     </tr>
 </table>
