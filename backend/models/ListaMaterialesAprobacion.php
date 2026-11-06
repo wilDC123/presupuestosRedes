@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\models;
 
+use backend\components\VersionDocumento;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 
@@ -51,10 +52,10 @@ class ListaMaterialesAprobacion extends ActiveRecord
         return $this->hasOne(Proyecto::class, ['id' => 'idProyecto']);
     }
 
-    /** "01", "02"... como en la casilla "Versión" de la cabecera. */
+    /** "1.0", "1.1"... como en la casilla "Versión" de la cabecera (ver VersionDocumento). */
     public static function versionTexto(int $version): string
     {
-        return str_pad((string) $version, 2, '0', STR_PAD_LEFT);
+        return VersionDocumento::texto($version);
     }
 
     /** dd/mm/aaaa, o '' si no se conoce. */

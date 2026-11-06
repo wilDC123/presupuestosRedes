@@ -218,13 +218,13 @@ class ListaMaterialesTest extends Unit
 
         // En edicion: la version 01, todavia borrador.
         $documento = $this->lista->documento(Proyecto::findOne($proyecto->id));
-        $this->assertSame(['01', true, null], [$documento['version'], $documento['borrador'], $documento['aprobacion']]);
+        $this->assertSame(['1.0', true, null], [$documento['version'], $documento['borrador'], $documento['aprobacion']]);
         // Fecha de la cabecera = creacion de la version: la v01 nace con el proyecto.
         $this->assertSame(date('d/m/Y'), $documento['fechaCreacion']);
 
         $this->assertTrue($this->lista->enviarACotizacion(Proyecto::findOne($proyecto->id)));
         $documento = $this->lista->documento(Proyecto::findOne($proyecto->id));
-        $this->assertSame('01', $documento['version']);
+        $this->assertSame('1.0', $documento['version']);
         $this->assertFalse($documento['borrador']);
         $this->assertSame(date('Y-m-d'), substr((string) $documento['aprobacion']->fechaAprobacion, 0, 10));
         // Las firmas son COPIA de la configuracion del presupuesto.
@@ -234,13 +234,13 @@ class ListaMaterialesTest extends Unit
         // Una orden de cambio la reabre: borrador de la 02; al reenviar queda aprobada la 02.
         $this->assertTrue((new OrdenCambioService())->solicitarCambioLista(Proyecto::findOne($proyecto->id), new OrdenCambio(), ['OrdenCambio' => ['motivo' => 'Falta un ítem']], 'test'));
         $documento = $this->lista->documento(Proyecto::findOne($proyecto->id));
-        $this->assertSame(['02', true], [$documento['version'], $documento['borrador']]);
+        $this->assertSame(['1.1', true], [$documento['version'], $documento['borrador']]);
         // La v02 nace con la orden de cambio.
         $this->assertSame(date('d/m/Y'), $documento['fechaCreacion']);
 
         $this->assertTrue($this->lista->enviarACotizacion(Proyecto::findOne($proyecto->id)));
         $this->assertSame([1, 2], array_map(static fn ($a) => (int) $a->version, Proyecto::findOne($proyecto->id)->aprobacionesLista));
-        $this->assertSame(['02', false], array_values(array_slice($this->lista->documento(Proyecto::findOne($proyecto->id)), 0, 2)));
+        $this->assertSame(['1.1', false], array_values(array_slice($this->lista->documento(Proyecto::findOne($proyecto->id)), 0, 2)));
     }
 
     private function proyecto(): Proyecto

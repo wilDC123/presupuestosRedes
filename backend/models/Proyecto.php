@@ -297,8 +297,9 @@ class Proyecto extends ActiveRecord
     }
 
     /**
-     * Area de intervencion para documentos y pantallas ("Edificio X – Bloque B
-     * – B101, B102"). Un proyecto registrado antes del 2026-10-28 no tiene
+     * Area de intervencion en un solo texto, para el historial: una linea por
+     * edificio (ProyectoAreaIntervencion::lineasPorEdificio()) separadas por
+     * " | ". Un proyecto registrado antes del 2026-10-28 no tiene
      * areas: muestra su ubicacion anterior (edificio y bloques). '' si no hay
      * ninguna de las dos.
      */

@@ -127,32 +127,105 @@ class ProyectoAreaIntervencion extends ActiveRecord
     }
 
     /**
-     * Texto de varias areas para documentos: agrupa por edificio y bloque y
-     * nombra los ambientes una sola vez ("Edificio X · Bloque B: B101, B102;
-     * Edificio Y"). Asi tres laboratorios del mismo bloque ocupan una linea.
+     * Texto de varias areas para documentos y el historial: las lineas de
+     * lineasPorEdificio() separadas por " | " (una por edificio).
      *
      * @param self[] $areas
      */
     public static function resumen(array $areas): string
     {
-        $grupos = [];
+        return implode(' | ', self::lineasPorEdificio($areas));
+    }
+
+    /**
+     * El area de intervencion como se escribe en los documentos (revision del
+     * Ing. de DTIC del 2026-11-05, punto 5): UNA linea por edificio, con su
+     * edificio, bloque, piso y espacio juntos, sin rotulos aparte. Antes el
+     * edificio y el bloque iban en negrita como encabezado de un grupo.
+     *
+     *   "Edificio Facultad de Medicina, Bloque A, Piso 1: Anfiteatro y A-104 Sala"
+     *   "Edificio Trabajo Social, Bloque A y Bloque B"     (los dos bloques enteros)
+     *   "Edificio X, Bloque A, Piso 1: A101; Piso 2: A201 y A202; Bloque B"
+     *   "Edificio Central"                                  (todo el edificio)
+     *
+     * El edificio no se repite: varias areas del mismo edificio van en su
+     * linea; dos edificios son dos lineas. Los nombres van tal como estan en
+     * UsfxGEO (o como se escribieron a mano), en el orden en que se eligieron.
+     *
+     * @param self[] $areas
+     * @return string[]
+     */
+    public static function lineasPorEdificio(array $areas): array
+    {
+        $valor = static fn (?string $parte): string => trim((string) $parte);
+        // edificio => bloque => piso => espacios ('' = no llega a ese nivel)
+        $arbol = [];
 
         foreach ($areas as $area) {
-            $cabeza = $area->grupo();
-            $detalle = $area->ambiente ?: $area->nivel;
-            $grupos[$cabeza] ??= [];
+            $edificio = $valor($area->edificio);
+            $bloque = $valor($area->bloque);
+            $piso = $valor($area->nivel);
+            $espacio = $valor($area->ambiente);
+            $arbol[$edificio][$bloque][$piso] ??= [];
 
-            if ($detalle !== null && $detalle !== '' && !in_array($detalle, $grupos[$cabeza], true)) {
-                $grupos[$cabeza][] = $detalle;
+            if ($espacio !== '' && !in_array($espacio, $arbol[$edificio][$bloque][$piso], true)) {
+                $arbol[$edificio][$bloque][$piso][] = $espacio;
             }
         }
 
-        $partes = [];
+        $lineas = [];
 
-        foreach ($grupos as $cabeza => $detalles) {
-            $partes[] = $detalles === [] ? $cabeza : $cabeza . ': ' . implode(', ', $detalles);
+        foreach ($arbol as $edificio => $bloques) {
+            $partes = [];
+            // Los bloques enteros (sin piso ni espacio) se nombran juntos, donde aparece el primero.
+            $enteros = [];
+            $posicionEnteros = null;
+
+            foreach ($bloques as $bloque => $pisos) {
+                $detalle = [];
+
+                foreach ($pisos as $piso => $espacios) {
+                    $piso = (string) $piso;
+                    if ($piso === '' && $espacios === []) {
+                        continue;
+                    }
+                    $nombres = self::enumerar($espacios);
+                    $detalle[] = $piso === '' ? $nombres : ($nombres === '' ? $piso : $piso . ': ' . $nombres);
+                }
+
+                $bloque = (string) $bloque;
+                if ($bloque === '') {
+                    if ($detalle !== []) {
+                        $partes[] = implode('; ', $detalle);
+                    }
+                } elseif ($detalle === []) {
+                    $enteros[] = $bloque;
+                    $posicionEnteros ??= count($partes);
+                } else {
+                    $partes[] = $bloque . ', ' . implode('; ', $detalle);
+                }
+            }
+
+            if ($enteros !== []) {
+                array_splice($partes, (int) $posicionEnteros, 0, [self::enumerar($enteros)]);
+            }
+
+            $edificio = (string) $edificio;
+            $lineas[] = $partes === [] ? $edificio : $edificio . ', ' . implode('; ', $partes);
         }
 
-        return implode('; ', $partes);
+        return $lineas;
+    }
+
+    /** "A", "A y B", "A, B y C" ('' si no hay ninguno). */
+    private static function enumerar(array $nombres): string
+    {
+        if (count($nombres) < 2) {
+            return (string) ($nombres[0] ?? '');
+        }
+
+        $ultimo = array_pop($nombres);
+
+        return implode(', ', $nombres) . ' y ' . $ultimo;
     }
 }

@@ -217,7 +217,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame($anterior->codigo(), $nueva->codigo());
         $this->assertSame(1, (int) $anterior->versionDocumento);
         $this->assertSame(2, (int) $nueva->versionDocumento);
-        $this->assertSame($anterior->codigo() . ' v02', $nueva->codigoConVersion());
+        $this->assertSame($anterior->codigo() . ' v1.1', $nueva->codigoConVersion());
         $this->assertSame($siguiente, $this->siguienteEt());
         $this->assertSame(7.0, (float) $nueva->cantidad);
         $this->assertSame('Suministros USFX', $nueva->lugarEntrega);
@@ -259,7 +259,7 @@ class EspecificacionEmisionTest extends Unit
 
         $nueva = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'venció'], 'encargado')['emision'];
 
-        $this->assertSame(sprintf('RD-GR-ET-%03d/%02d v02', $emision->numeroNet, (int) date('y') - 1), $nueva->codigoConVersion());
+        $this->assertSame(sprintf('RD-GR-ET-%03d/%02d v1.1', $emision->numeroNet, (int) date('y') - 1), $nueva->codigoConVersion());
         $this->assertSame($siguiente, $this->siguienteEt());
     }
 
@@ -295,10 +295,10 @@ class EspecificacionEmisionTest extends Unit
             ['emision' => $emision, 'proceso' => \backend\models\Proceso::nombreDe($emision->codigoProceso())]
         );
 
-        $this->assertStringContainsString('<strong>Versión:</strong> 03', $html);
-        $this->assertStringContainsString('Versión: 03', $html);
+        $this->assertStringContainsString('<strong>Versión:</strong> 1.2', $html);
+        $this->assertStringContainsString('Versión: 1.2', $html);
         // "RD-PI-ET-015/26" -> "RD-PI-ET-015_26_v03.pdf": la barra no va en un nombre de archivo.
-        $this->assertSame(str_replace('/', '_', $emision->codigo()) . '_v03.pdf', $this->emisiones->generarPdf($emision, $html)['nombreArchivo']);
+        $this->assertSame(str_replace('/', '_', $emision->codigo()) . '_v1_2.pdf', $this->emisiones->generarPdf($emision, $html)['nombreArchivo']);
     }
 
     public function testAvisaVencimientoYVersionNueva(): void
@@ -333,7 +333,7 @@ class EspecificacionEmisionTest extends Unit
             ['emision' => $emision, 'proceso' => \backend\models\Proceso::nombreDe($emision->codigoProceso())]
         );
 
-        $this->assertStringContainsString('Versión: 01', $html);
+        $this->assertStringContainsString('Versión: 1.0', $html);
         $this->assertStringContainsString('Ing. Quien Elabora', $html);
         $this->assertStringContainsString('V°B° Ing. Quien Aprueba', $html);
         $this->assertStringContainsString('RESPONSABLE DE REDES', $html);
@@ -368,7 +368,7 @@ class EspecificacionEmisionTest extends Unit
 
         $pdf = $this->emisiones->generarPdf($emision, $html);
         $this->assertStringStartsWith('%PDF', $pdf['contenido']);
-        $this->assertSame(str_replace([':', '/'], '_', $emision->codigo()) . '_v01.pdf', $pdf['nombreArchivo']);
+        $this->assertSame(str_replace([':', '/'], '_', $emision->codigo()) . '_v1_0.pdf', $pdf['nombreArchivo']);
     }
 
     public function testRegistroFiltraPorEstadoYBuscaPorCodigo(): void
@@ -399,7 +399,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('%d/%s', $numero, date('y'))]));
         $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d/%02d', $numero, (int) date('y') - 1)]));
         $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d', $numero)]));
-        $this->assertSame([$idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d/%s v01', $numero, date('y'))]));
+        $this->assertSame([$idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d/%s v1.0', $numero, date('y'))]));
         $this->assertSame([$idSegunda], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d V02', $numero)]));
         // Es de la serie ET: buscarla como NET no la encuentra.
         $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $numero, date('y'))]));
@@ -413,8 +413,8 @@ class EspecificacionEmisionTest extends Unit
 
         $csv = $this->emisiones->exportarCsv(['buscar' => sprintf('RD-PI-ET-%03d v01', $numero)]);
         $this->assertStringStartsWith("\xEF\xBB\xBF" . 'Código;Versión;"Código anterior";"Fecha de emisión"', $csv);
-        $this->assertStringContainsString(sprintf('RD-PI-ET-%03d/%s;01;', $numero, date('y')), $csv);
-        $this->assertStringContainsString(sprintf('Reemplazada;prueba;"RD-PI-ET-%03d/%s v02"', $numero, date('y')), $csv);
+        $this->assertStringContainsString(sprintf('RD-PI-ET-%03d/%s;1.0;', $numero, date('y')), $csv);
+        $this->assertStringContainsString(sprintf('Reemplazada;prueba;"RD-PI-ET-%03d/%s v1.1"', $numero, date('y')), $csv);
     }
 
     public function testUnaPasadaDeNetAEtSeBuscaPorSuCodigoAnterior(): void
