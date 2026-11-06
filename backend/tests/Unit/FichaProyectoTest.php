@@ -50,5 +50,26 @@ class FichaProyectoTest extends Unit
         ] as $esperado) {
             $this->assertStringContainsString($esperado, $html);
         }
+
+        // Revision del 2026-11-05: documento normado, en el orden nuevo, sin "Fase" ni lugar de entrega.
+        $this->assertFalse($datos['aprobada']);
+        $this->assertFalse($datos['variasFases']);
+        $this->assertStringContainsString('ELABORADO POR', $html);
+        $this->assertStringContainsString('APROBADO POR', $html);
+        $this->assertStringContainsString('Versión: 1.0', $html);
+        $this->assertStringNotContainsString('<th>Fase</th>', $html);
+        $this->assertStringNotContainsString('Lugar de entrega', $html);
+        $this->assertStringNotContainsString('Reporte de control', $html);
+        $orden = array_map(static fn (string $titulo) => strpos($html, $titulo), ['1. Datos', '2. Unidades', '3. Fechas', '4. Área', '5. Equipo', '6. Documentos']);
+        $this->assertNotContains(false, $orden);
+        $ordenado = $orden;
+        sort($ordenado);
+        $this->assertSame($ordenado, $orden);
+
+        // Con una fase siguiente ya muestra "Fase".
+        (new Proyecto(['nombre' => 'Proyecto test ficha fase 2', 'idProyectoAnterior' => $proyecto->id, 'numeroFase' => 2, 'estadoLista' => Proyecto::LISTA_EDICION]))->save(false);
+        $datos = $proyectos->datosFicha($proyecto);
+        $this->assertTrue($datos['variasFases']);
+        $this->assertStringContainsString('<th>Fase</th>', Yii::$app->view->render('@backend/views/proyecto/ficha-pdf.php', ['model' => $proyecto, 'datos' => $datos, 'usuario' => 'encargado']));
     }
 }

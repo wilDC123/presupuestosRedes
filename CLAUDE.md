@@ -176,8 +176,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   no se anotan (se pueden agregar igual: un `registrar()` en su servicio). Vista del proyecto: recuadro "Fechas"
   (`HistorialService::fechas()`: creación = `Proyecto.fechaCreacion`, revisión = último paso a "en revisión",
   aprobación = `Presupuesto.fechaAprobacion`, última modificación = último hecho y quién) y sección "Historial"
-- FICHA TÉCNICA DEL PROYECTO (revisión del 2026-10-29, paso 7; formato PROVISIONAL hasta que el Ing. de DTIC
-  pase el suyo): PDF oficio desde el botón "Imprimir ficha técnica" de la tarjeta "Datos generales" de la vista
+- FICHA TÉCNICA DEL PROYECTO (revisión del 2026-10-29, paso 7; desde el 2026-11-05 documento normado, ver PARTE 4 arriba;
+  lo que sigue es lo de antes): PDF oficio desde el botón "Imprimir ficha técnica" de la tarjeta "Datos generales" de la vista
   del proyecto (`proyecto/ficha`, `ProyectoController::actionFicha()`, vista `proyecto/ficha-pdf.php`, datos de
   `ProyectoService::datosFicha()`), se abre en el navegador para imprimir. Secciones: 1 datos (código, nombre,
   descripción, tipo, proceso, fase), 2 unidades, 3 área de intervención (agrupada), 4 equipo (persona, rol,
@@ -208,6 +208,15 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   proyecto). Uno ya emitido con otro lugar se REEMITE al guardar (mismo código, versión + 1, motivo "Se cambió el lugar de
   entrega: A → B"; junto con "Cambiar ítem" es una sola reemisión, `ListaItemsService::reemitirPorCambio()`); vacío no
   cambia nada. `Proyecto.lugarEntrega` queda como "Lugar de entrega por defecto" y SALE de la ficha técnica
+- EL CÓDIGO PT ES DE LA FICHA TÉCNICA, no del proyecto (aclarado por el desarrollador el 2026-11-05: el lineamiento cambiará
+  "Proyecto técnico" por "Ficha técnica del proyecto"; en "Codificación de documentos" el tipo PT ya se llama así). Hoy se
+  guarda en `Proyecto.codigo` porque cada proyecto tiene una sola ficha; el proyecto tendrá su propio número en la parte 5
+- REVISIÓN DEL 2026-11-05, PARTE 4 (punto 2): la FICHA TÉCNICA es un DOCUMENTO normado (antes "reporte de control"):
+  cabecera del lineamiento (código = el del proyecto RD-PI-PT-NNN hasta la parte 5, versión 1.0, fecha = creación del
+  proyecto), orden 1 datos, 2 unidades, 3 fechas, 4 área, 5 equipo, 6 documentos (especificaciones en subtabla Código | Ítem
+  | Versión), "Fase" solo si hay más de una (`datosFicha()['variasFases']`), sin lugar de entrega, letra 11, control de
+  elaboración (elaborado y aprobado) al pie. Hasta las fases (parte 5) queda APROBADA con el presupuesto (punto de control
+  "Revisar y aprobar diseño"): fecha y firmas del presupuesto aprobado; antes, marca BORRADOR. Proformas: pendiente de decidir
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista

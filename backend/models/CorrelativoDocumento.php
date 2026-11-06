@@ -17,7 +17,7 @@ use yii\db\ActiveRecord;
  *     RD - GR - ET - 015 /26
  *     |    |    |    |    +-- año: solo las especificaciones (vuelven a 001 cada 1 de enero)
  *     |    |    |    +------- correlativo de 3 cifras (desde 001)
- *     |    |    +------------ tipo: PT proyecto, LM lista de materiales, PR presupuesto, ET especificacion
+ *     |    |    +------------ tipo: PT ficha tecnica del proyecto, LM lista de materiales, PR presupuesto, ET especificacion
  *     |    +----------------- proceso del proyecto (redes.Proceso); el PT siempre PI
  *     +---------------------- unidad: Redes y Telecomunicaciones
  *
@@ -72,7 +72,9 @@ class CorrelativoDocumento extends ActiveRecord
     public static function tipos(): array
     {
         return [
-            self::TIPO_PROYECTO => 'Proyectos técnicos',
+            // El PT es de la FICHA, no del proyecto: el lineamiento cambiara "Proyecto tecnico" por
+            // "Ficha tecnica del proyecto" (aclarado por el desarrollador el 2026-11-05).
+            self::TIPO_PROYECTO => 'Fichas técnicas del proyecto',
             self::TIPO_LISTA => 'Listas de materiales',
             self::TIPO_PRESUPUESTO => 'Presupuestos',
             self::TIPO_ESPECIFICACION => 'Especificaciones técnicas',

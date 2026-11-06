@@ -97,21 +97,23 @@ class ProyectoController extends Controller
 
     /**
      * Ficha tecnica del proyecto en PDF (boton en "Datos generales" de la
-     * vista). Se abre en el navegador ('inline') para imprimirla. Formato
-     * provisional: ver ProyectoService::datosFicha().
+     * vista). Se abre en el navegador ('inline') para imprimirla. Mientras no
+     * esta aprobada lleva la marca de agua BORRADOR, como el presupuesto (ver
+     * ProyectoService::datosFicha()).
      */
     public function actionFicha(int $id): Response
     {
         $model = $this->findModel($id);
+        $datos = $this->service->datosFicha($model);
 
         $html = $this->renderPartial('ficha-pdf', [
             'model' => $model,
-            'datos' => $this->service->datosFicha($model),
+            'datos' => $datos,
             'usuario' => UsuarioActual::nombre(),
         ]);
 
         return Yii::$app->response->sendContentAsFile(
-            (new PresupuestoPdfGenerator())->generarDesdeHtml($html),
+            (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $datos['aprobada'] ? null : PresupuestoPdfGenerator::MARCA_BORRADOR),
             'ficha_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $model->codigo ?: (string) $model->id) . '.pdf',
             ['mimeType' => 'application/pdf', 'inline' => true]
         );

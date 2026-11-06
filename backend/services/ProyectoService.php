@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\models\ConfiguracionPresupuesto;
 use backend\models\CorrelativoDocumento;
 use backend\models\EspecificacionEmision;
 use backend\models\HistorialProyecto;
@@ -260,26 +261,52 @@ class ProyectoService
     }
 
     /**
-     * Lo que imprime la ficha tecnica del proyecto (revision del 2026-10-29,
-     * paso 7; formato PROVISIONAL hasta que el Ing. de DTIC pase el suyo):
-     * los datos del proyecto (van en la vista con el modelo), sus fechas y
-     * los documentos de su carpeta economica.
+     * Lo que imprime la FICHA TECNICA DEL PROYECTO: los datos del proyecto
+     * (van en la vista con el modelo), sus fechas y los documentos de su
+     * carpeta economica.
+     *
+     * Desde la revision del 2026-11-05 (punto 2) es un DOCUMENTO normado que
+     * se aprueba: cabecera del lineamiento y control de elaboracion. Hasta que
+     * existan las fases dentro del proyecto (parte 5), queda APROBADA cuando
+     * se aprueba el proyecto, es decir su presupuesto (el punto de control
+     * "Revisar y aprobar diseño"): 'aprobada', su fecha y las firmas copiadas
+     * del presupuesto aprobado (Presupuesto::firmaDeControl()); mientras no,
+     * borrador con las firmas de la configuracion de hoy.
+     *
+     * 'variasFases': el proyecto es fase 2 o siguiente, o ya tiene una fase
+     * siguiente. Con fase unica la ficha no muestra "Fase" (punto 3).
      *
      * @return array{
      *   fechas: array{creacion: string|null, revision: string|null, aprobacion: string|null, ultimaModificacion: string|null, ultimoUsuario: string|null},
      *   monto: float|null,
      *   especificaciones: EspecificacionEmision[],
-     *   solicitudes: SolicitudCotizacion[]
+     *   solicitudes: SolicitudCotizacion[],
+     *   lista: array{version: string, borrador: bool, aprobacion: \backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string},
+     *   aprobada: bool,
+     *   fechaAprobacion: string,
+     *   elaborado: array{prefijo: string, nombre: string, cargo: string}|null,
+     *   aprobado: array{prefijo: string, nombre: string, cargo: string}|null,
+     *   variasFases: bool
      * }
      */
     public function datosFicha(Proyecto $proyecto): array
     {
+        $presupuesto = $proyecto->presupuesto;
+        $configuracion = ConfiguracionPresupuesto::obtener();
+        $aprobada = $presupuesto !== null && $presupuesto->estado === Presupuesto::ESTADO_APROBADO;
+
         return [
             'fechas' => $this->historial->fechas($proyecto),
             'monto' => $this->montoPresupuesto($proyecto),
             'especificaciones' => (new EspecificacionEmisionService())->vigentesDelProyecto($proyecto),
             'solicitudes' => (new SolicitudCotizacionService())->listar($proyecto),
             'lista' => (new ListaItemsService())->documento($proyecto),
+            'aprobada' => $aprobada,
+            'fechaAprobacion' => $aprobada ? $presupuesto->fechaAprobacionFormateada() : '',
+            'elaborado' => $presupuesto !== null ? $presupuesto->firmaDeControl(1, $configuracion) : $configuracion->firma(1),
+            'aprobado' => $presupuesto !== null ? $presupuesto->firmaDeControl(2, $configuracion) : $configuracion->firma(2),
+            'variasFases' => (int) $proyecto->numeroFase > 1
+                || Proyecto::find()->andWhere(['idProyectoAnterior' => $proyecto->id])->exists(),
         ];
     }
 
