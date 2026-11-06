@@ -109,7 +109,7 @@ $hayFiltros = implode('', $filtros) !== '';
                 'format' => 'raw',
                 'value' => static fn (EspecificacionEmision $e) => $e->proyecto === null
                     ? '—'
-                    : Html::a(Html::encode($e->proyecto->codigo ?: '#' . $e->idProyecto), ['/lista-items/index', 'id' => $e->idProyecto])
+                    : Html::a(Html::encode($e->proyecto->identificador()), ['/lista-items/index', 'id' => $e->idProyecto])
                         . ($e->proyectoItem !== null
                             ? '<div class="rd-celda-sub">' . Html::encode($e->proyectoItem->subcatalogoItem->descripcion ?? '') . '</div>'
                             : '<div class="rd-celda-sub">Ítem quitado de la lista</div>'),

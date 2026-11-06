@@ -128,7 +128,7 @@ class ProyectoController extends Controller
         $model = $this->service->nuevo($idAnterior);
 
         if ($this->service->crear($model, Yii::$app->request->post())) {
-            Yii::$app->session->setFlash('success', 'Proyecto ' . $model->codigo . ' creado. Ahora puede cargar una plantilla de ítems o empezar en blanco.');
+            Yii::$app->session->setFlash('success', $model->identificador() . ' creado. Ahora puede cargar una plantilla de ítems o empezar en blanco.');
 
             // "Guardar y continuar": el paso siguiente es la plantilla.
             return $this->redirect(['plantilla', 'id' => $model->id]);

@@ -14,7 +14,7 @@ use yii\helpers\Html;
 
 $this->title = 'Editar proyecto';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = ['label' => $model->codigo ?: '#' . $model->id, 'url' => ['view', 'id' => $model->id]];
+$this->params['breadcrumbs'][] = ['label' => $model->identificador(), 'url' => ['view', 'id' => $model->id]];
 $this->params['breadcrumbs'][] = 'Editar';
 ?>
 <div class="proyecto-update">

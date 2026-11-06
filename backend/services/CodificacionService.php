@@ -129,6 +129,12 @@ class CodificacionService
             return $maximo === null ? null : (int) $maximo;
         }
 
+        if ($tipo === CorrelativoDocumento::TIPO_NUMERO_PROYECTO) {
+            $maximo = Proyecto::find()->max('numeroProyecto');
+
+            return $maximo === null ? null : (int) $maximo;
+        }
+
         $codigos = match ($tipo) {
             CorrelativoDocumento::TIPO_PROYECTO => Proyecto::find()->select('codigo')->column(),
             CorrelativoDocumento::TIPO_LISTA => Proyecto::find()->select('codigoLista')->column(),

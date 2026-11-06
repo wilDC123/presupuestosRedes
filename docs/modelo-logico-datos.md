@@ -67,6 +67,7 @@ erDiagram
         int id PK
         string codigo UK "RD-PI-PT-NNN"
         string codigoLista UK "RD-PI-LM-NNN"
+        int numeroProyecto "comun a sus fases"
         string nombre
         int idTipoProyecto FK
         int idProceso FK
@@ -328,7 +329,7 @@ erDiagram
         string textoInstrucciones
     }
     CorrelativoDocumento {
-        string tipo PK "PT, LM, PR, ET"
+        string tipo PK "NP, PT, LM, PR, ET"
         int siguiente
         int anio "solo ET"
     }
@@ -390,6 +391,7 @@ Proyecto de instalación de redes. Código RD-PI-PT-NNN. Puede ser la fase sigui
 | unidadSolicitante | nvarchar(250) | sí |  |
 | unidadDependencia | nvarchar(250) | sí |  |
 | lugarEntrega | nvarchar(300) | sí | lo copian los formularios de especificación al emitirse; vacío = el de la configuración |
+| numeroProyecto | int | sí | número del proyecto, el MISMO en todas sus fases (cada fila es una fase); único con numeroFase |
 | codigoLista | nvarchar(20) | sí | único (filtrado); código de la lista de materiales, RD-<proceso>-LM-NNN, puesto al crear el proyecto |
 | idProceso | int | sí | FK → Proceso.id |
 
@@ -1027,7 +1029,7 @@ CHECK: `([id]=(1))`
 
 #### redes.CorrelativoDocumento
 
-Siguiente número de cada tipo de documento: PT, LM, PR, ET. `anio` solo para ET (vuelve a 001 cada año).
+Siguiente número de cada tipo de documento: PT, LM, PR, ET, y el número de proyecto (NP). `anio` solo para ET (vuelve a 001 cada año).
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|

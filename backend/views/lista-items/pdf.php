@@ -171,7 +171,7 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
                             <?php endif; ?>
                             <?php if ($item->especificacion !== null): ?>
                                 <br><span class="observacion">
-                                    Según especificación técnica <?= Html::encode($item->referenciaEspecificacion()) ?><?= $proyecto->codigo ? ' — proyecto ' . Html::encode($proyecto->codigo) : '' ?>
+                                    Según especificación técnica <?= Html::encode($item->referenciaEspecificacion()) ?><?= $proyecto->numeroProyecto !== null ? ' — proyecto ' . Html::encode($proyecto->numeroTexto()) : '' ?>
                                 </span>
                             <?php endif; ?>
                         </td>

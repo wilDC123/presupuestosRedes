@@ -23,8 +23,8 @@ use yii\helpers\Html;
  *    proyecto: "arriba va la fecha de creacion del documento") y pagina. El
  *    codigo RD-PI-PT-NNN ES DE LA FICHA (el lineamiento cambiara "Proyecto
  *    tecnico" por "Ficha tecnica del proyecto"); hoy esta en Proyecto.codigo
- *    porque cada proyecto tiene una sola ficha. Cuando el proyecto tenga su
- *    propio numero (parte 5), la fila "Codigo" de los datos pasara a ese numero.
+ *    porque cada proyecto tiene una sola ficha. Los datos llevan el NUMERO
+ *    del proyecto (Proyecto.numeroProyecto, 2026-11-06).
  *  - Orden: primero lo del proyecto (1 datos, 2 unidades, 3 fechas), despues
  *    lo de la fase (4 area de intervencion, 5 equipo, 6 documentos de la
  *    carpeta economica). Sin "Lugar de entrega" (va en cada especificacion).
@@ -125,7 +125,8 @@ $areas = ProyectoAreaIntervencion::lineasPorEdificio($model->areasIntervencion);
 
 <h2>1. Datos del proyecto</h2>
 <table class="datos">
-    <tr><th>Código</th><td><strong><?= $texto($model->codigo) ?></strong></td></tr>
+    <?php // El numero es del proyecto; el codigo RD-PI-PT-NNN va en la cabecera: es el de esta ficha. ?>
+    <tr><th>N.° de proyecto</th><td><strong><?= Html::encode($model->numeroTexto()) ?></strong></td></tr>
     <tr><th>Nombre del proyecto</th><td><?= $texto($model->nombre) ?></td></tr>
     <tr><th>Descripción</th><td><?= $model->descripcion ? nl2br(Html::encode($model->descripcion)) : '—' ?></td></tr>
     <tr><th>Tipo de proyecto</th><td><?= $texto($model->tipoProyecto->nombre ?? null) ?></td></tr>

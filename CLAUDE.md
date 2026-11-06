@@ -208,6 +208,17 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   proyecto). Uno ya emitido con otro lugar se REEMITE al guardar (mismo código, versión + 1, motivo "Se cambió el lugar de
   entrega: A → B"; junto con "Cambiar ítem" es una sola reemisión, `ListaItemsService::reemitirPorCambio()`); vacío no
   cambia nada. `Proyecto.lugarEntrega` queda como "Lugar de entrega por defecto" y SALE de la ficha técnica
+- NÚMERO DE PROYECTO (revisión del 2026-11-05 puntos 1 y 3; PARTE 5a, migración `m261106_120000_numero_de_proyecto`;
+  decidido con el desarrollador el 2026-11-06: OPCIÓN 1, sin tabla nueva). Cada fila de `redes.Proyecto` es una FASE (con
+  su área, equipo y carpeta económica); `Proyecto.numeroProyecto` (correlativo `CorrelativoDocumento::TIPO_NUMERO_PROYECTO`
+  = 'NP') lo COMPARTEN todas las fases y `numeroFase` las ordena (índice único numeroProyecto + numeroFase). Un proyecto
+  nuevo toma el siguiente NP; una fase siguiente, el de la anterior (`ProyectoService::asignarNumero()`), y no se repite una
+  fase. Se escribe "001" (`Proyecto::numeroTexto()`, ÚNICO lugar del formato, 3 cifras hasta que el Ing. confirme dígitos o
+  prefijo). `Proyecto::identificador()` = "Proyecto 001" o "Proyecto 001 · Fase 2" (migas, títulos, avisos);
+  `etiqueta()` = "001 — Nombre"; `tieneVariasFases()` (con fase única no se muestra "Fase"). Los existentes: cada cadena de
+  fases recibió un número en orden de creación (local: 26 y 27 = proyecto 001 fases 1 y 2, 28 = 002). Una fase siguiente solo
+  se crea con la anterior APROBADA (confirmado el 2026-11-06). Pendiente: 5b agregar fase / datos comunes sincronizados,
+  5c línea "PROYECTO: 001 – NOMBRE (FASE n)", 5d una sola ficha PT por proyecto
 - EL CÓDIGO PT ES DE LA FICHA TÉCNICA, no del proyecto (aclarado por el desarrollador el 2026-11-05: el lineamiento cambiará
   "Proyecto técnico" por "Ficha técnica del proyecto"; en "Codificación de documentos" el tipo PT ya se llama así). Hoy se
   guarda en `Proyecto.codigo` porque cada proyecto tiene una sola ficha; el proyecto tendrá su propio número en la parte 5

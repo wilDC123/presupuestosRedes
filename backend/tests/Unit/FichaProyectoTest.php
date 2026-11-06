@@ -67,7 +67,9 @@ class FichaProyectoTest extends Unit
         $this->assertSame($ordenado, $orden);
 
         // Con una fase siguiente ya muestra "Fase".
-        (new Proyecto(['nombre' => 'Proyecto test ficha fase 2', 'idProyectoAnterior' => $proyecto->id, 'numeroFase' => 2, 'estadoLista' => Proyecto::LISTA_EDICION]))->save(false);
+        // (misma regla que el sistema: la fase 2 lleva el mismo numero de proyecto)
+        (new Proyecto(['nombre' => 'Proyecto test ficha fase 2', 'idProyectoAnterior' => $proyecto->id, 'numeroProyecto' => $proyecto->numeroProyecto, 'numeroFase' => 2, 'estadoLista' => Proyecto::LISTA_EDICION]))->save(false);
+        $proyecto = Proyecto::findOne($proyecto->id);
         $datos = $proyectos->datosFicha($proyecto);
         $this->assertTrue($datos['variasFases']);
         $this->assertStringContainsString('<th>Fase</th>', Yii::$app->view->render('@backend/views/proyecto/ficha-pdf.php', ['model' => $proyecto, 'datos' => $datos, 'usuario' => 'encargado']));

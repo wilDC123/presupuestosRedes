@@ -40,7 +40,7 @@ $formato = Yii::$app->formatter;
             [
                 'label' => 'Código',
                 'contentOptions' => ['class' => 'mono'],
-                'value' => static fn ($model) => $model->proyecto->codigo ?? '—',
+                'value' => static fn ($model) => $model->proyecto?->identificador() ?? '—',
             ],
             [
                 'label' => 'Proyecto',

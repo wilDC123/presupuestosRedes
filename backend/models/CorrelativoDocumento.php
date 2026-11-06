@@ -36,6 +36,12 @@ use yii\db\ActiveRecord;
  */
 class CorrelativoDocumento extends ActiveRecord
 {
+    /**
+     * Numero de proyecto (revision del 2026-11-05): no es un documento ni lleva
+     * codigo del lineamiento, solo el numero ("001"), que comparten todas las
+     * fases del proyecto. Se reparte con el mismo correlativo que los codigos.
+     */
+    public const TIPO_NUMERO_PROYECTO = 'NP';
     public const TIPO_PROYECTO = 'PT';
     /** Lista de materiales y condiciones previas (revision del 2026-11-05, punto 7; no esta en el lineamiento). */
     public const TIPO_LISTA = 'LM';
@@ -72,6 +78,7 @@ class CorrelativoDocumento extends ActiveRecord
     public static function tipos(): array
     {
         return [
+            self::TIPO_NUMERO_PROYECTO => 'Número de proyecto (no es un documento)',
             // El PT es de la FICHA, no del proyecto: el lineamiento cambiara "Proyecto tecnico" por
             // "Ficha tecnica del proyecto" (aclarado por el desarrollador el 2026-11-05).
             self::TIPO_PROYECTO => 'Fichas técnicas del proyecto',
@@ -113,6 +120,11 @@ class CorrelativoDocumento extends ActiveRecord
      */
     public static function codigo(string $tipo, int $numero, string $proceso = self::PROCESO, ?int $anio = null): string
     {
+        // El numero de proyecto no es un codigo del lineamiento: solo "001".
+        if ($tipo === self::TIPO_NUMERO_PROYECTO) {
+            return self::numeroTexto($numero);
+        }
+
         $codigo = sprintf('%s-%s-%s-%03d', self::UNIDAD, $proceso, $tipo, $numero);
 
         return $anio === null ? $codigo : $codigo . sprintf('/%02d', $anio % 100);
