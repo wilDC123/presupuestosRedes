@@ -16,7 +16,8 @@ use yii\db\ActiveRecord;
  * aprobado nunca se modifica.
  *
  * @property int $id
- * @property string|null $codigo Generado por ProyectoService al crear (RD-PI-PT-NN).
+ * @property string|null $codigo Codigo de la FICHA TECNICA (RD-PI-PT-NNN): solo la fase 1 lo tiene (una ficha por
+ *           proyecto, desde el 2026-11-06); NULL en las fases siguientes. Ver codigoFicha().
  * @property string|null $codigoLista Codigo de su lista de materiales (RD-PI-LM-NNN, revision del 2026-11-05),
  *           tambien lo pone ProyectoService al crear; el proceso es el del proyecto.
  * @property string $nombre
@@ -366,6 +367,26 @@ class Proyecto extends ActiveRecord
     public function getFases(): ActiveQuery
     {
         return $this->hasMany(self::class, ['numeroProyecto' => 'numeroProyecto'])->orderBy(['numeroFase' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /**
+     * Codigo de la FICHA TECNICA del proyecto (RD-PI-PT-NNN): UNA por proyecto,
+     * la que se codifico con su fase 1 (parte 5d). Las fases siguientes no
+     * tienen codigo propio (Proyecto.codigo NULL). null si no tiene.
+     */
+    public function codigoFicha(): ?string
+    {
+        if ((int) $this->numeroFase <= 1 || $this->numeroProyecto === null) {
+            return $this->codigo;
+        }
+
+        $codigo = self::find()->select('codigo')
+            ->andWhere(['numeroProyecto' => $this->numeroProyecto])
+            ->andWhere(['not', ['codigo' => null]])
+            ->orderBy(['numeroFase' => SORT_ASC])
+            ->scalar();
+
+        return is_string($codigo) ? $codigo : $this->codigo;
     }
 
     /** true si ninguna fase del proyecto viene despues de esta. */

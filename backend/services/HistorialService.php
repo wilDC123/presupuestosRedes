@@ -38,7 +38,8 @@ class HistorialService
             // Sin sesion (consola, tests): el hecho se registra sin usuario.
             'usuario' => UsuarioActual::nombre(),
             'idProyecto' => $proyecto->id,
-            'codigoProyecto' => $proyecto->codigo,
+            // Copia para reconocer el proyecto aunque se elimine: su numero (y la fase si hay varias).
+            'codigoProyecto' => $proyecto->identificador(),
             'accion' => $accion,
             'estado' => $estado,
             'detalle' => $detalle === null || trim($detalle) === '' ? null : $detalle,
@@ -115,7 +116,7 @@ class HistorialService
             $proyecto->getAttributeLabel('lugarEntrega') => (string) $proyecto->lugarEntrega,
             $proyecto->getAttributeLabel('areas') => $proyecto->areaIntervencionTexto(),
             $proyecto->getAttributeLabel('equipo') => implode('; ', $equipo),
-            'Fase anterior' => (string) ($proyecto->proyectoAnterior->codigo ?? ''),
+            'Fase anterior' => (string) ($proyecto->proyectoAnterior?->identificador() ?? ''),
         ];
     }
 

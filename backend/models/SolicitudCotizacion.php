@@ -82,11 +82,16 @@ class SolicitudCotizacion extends ActiveRecord
     }
 
     /**
-     * "RD-PI-PT-01 / SC-02": identifica la solicitud en el documento impreso.
+     * "001 / SC-02", o "001 · Fase 2 / SC-02" si el proyecto tiene varias
+     * fases: identifica la solicitud en el documento impreso con el NUMERO del
+     * proyecto (desde el 2026-11-06; antes el codigo RD-PI-PT, que es de la ficha).
      */
     public function codigo(): string
     {
-        return ($this->proyecto->codigo ?: '#' . $this->idProyecto) . ' / ' . $this->codigoCorto();
+        $proyecto = $this->proyecto;
+        $numero = $proyecto->numeroProyecto !== null ? $proyecto->numeroTexto() : '#' . $this->idProyecto;
+
+        return $numero . ($proyecto->tieneVariasFases() ? ' · Fase ' . (int) $proyecto->numeroFase : '') . ' / ' . $this->codigoCorto();
     }
 
     /**

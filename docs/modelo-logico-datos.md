@@ -65,7 +65,7 @@ erDiagram
 
     Proyecto {
         int id PK
-        string codigo UK "RD-PI-PT-NNN"
+        string codigo UK "RD-PI-PT-NNN ficha, solo fase 1"
         string codigoLista UK "RD-PI-LM-NNN"
         int numeroProyecto "comun a sus fases"
         string nombre
