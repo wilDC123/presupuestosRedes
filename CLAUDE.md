@@ -756,6 +756,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   los estados E, C, D, R? Confirmar el lugar de entrega habitual de los proyectos que no son de una facultad
   (Rectorado, Canal, DTIC) para el texto por defecto de la configuración del formulario (hoy vacío) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
 - PENDIENTE (tutor): agregar `Proyecto.lugarEntrega` (2026-11-03) al diagrama de clases
+- PENDIENTE (tutor): revisión del 2026-11-05 (partes 1 a 5d): `Proyecto.numeroProyecto` (común a las fases; cada fila es
+  una fase, asociación "fases" por el número), `Proyecto.codigoLista`, `Proyecto.codigo` = código de la ficha (solo fase 1),
+  `ListaMaterialesAprobacion` = versión emitida (no aprobada), tipos NP y LM del correlativo; caso de uso "Agregar fase"
+  (reemplaza "Crear fase siguiente"); secuencias y actividades. Resumen en `docs/cambios-revision-2026-11-05.md`
 - PENDIENTE (tutor): agregar `TratamientoCarta` (2026-11-04; catálogo sin asociación: la carta copia el nombre) al
   diagrama de clases; "Configurar carta de entrega" incluye la lista de tratamientos
 - PENDIENTE (tutor): agregar la clase `Proceso` (2026-10-29; catálogo, asociación 1 proceso → 0..* proyectos)
