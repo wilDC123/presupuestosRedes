@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\models;
 
+use backend\components\VersionDocumento;
 use DateTimeImmutable;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
@@ -205,16 +206,16 @@ class EspecificacionEmision extends ActiveRecord
     }
 
     /**
-     * "02": como sale en la casilla "Versión" de la cabecera y en el control
-     * de elaboracion del formulario.
+     * "1.1": como sale en la casilla "Versión" de la cabecera y en el control
+     * de elaboracion del formulario (la versionDocumento 2; ver VersionDocumento).
      */
     public function versionTexto(): string
     {
-        return sprintf('%02d', (int) ($this->versionDocumento ?? 1));
+        return VersionDocumento::texto((int) ($this->versionDocumento ?? 1));
     }
 
     /**
-     * "RD-PI-ET-015/26 v02": para las pantallas y el registro, donde se ven
+     * "RD-PI-ET-015/26 v1.1": para las pantallas y el registro, donde se ven
      * juntas las versiones de un mismo documento.
      */
     public function codigoConVersion(): string

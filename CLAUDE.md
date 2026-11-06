@@ -185,6 +185,14 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   con estado y total, especificaciones vigentes, solicitudes de cotización); al pie, cuándo y quién la imprimió.
   "Es un reporte de control, no de la gestión documental": cabecera SIN código del lineamiento (la de la
   solicitud: código del proyecto | unidad / dependencia | fecha de impresión | página), sin firmas ni marca de agua
+- REVISIÓN DEL 2026-11-05, PARTE 1 (acta `Desktoprchivos guia\A1cuerdos_revision_ficha_proyecto.md`): VERSIÓN
+  "1.0" en todos los documentos (`backend\components\VersionDocumento`: la versión 1 se escribe "1.0", la 2 "1.1"…;
+  en la base sigue el número corrido; el buscador del registro entiende "v1.1" y "v02"; antes "01", "02").
+  ÁREA DE INTERVENCIÓN en documentos = UNA línea por edificio, sin repetirlo, con bloque, piso y espacio juntos
+  (`ProyectoAreaIntervencion::lineasPorEdificio()`; bloques enteros juntos: "Bloque A y Bloque B"; `resumen()` las une
+  con " | " para el historial). El presupuesto y la lista ya NO llevan unidad ni área (van en la ficha técnica); el
+  presupuesto ya no pide área al enviarlo a revisión (`Presupuesto.areaIntervencion` queda solo con lo de antes).
+  Formulario ET: nada por debajo de 11 pt
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista

@@ -32,8 +32,8 @@ use yii\helpers\Html;
  * aprobación va abajo, en el control de elaboración.
  * Un presupuesto APROBADO usa las firmas copiadas al aprobarlo (Presupuesto::firmaDeControl()).
  * Cabecera y fuente (Carlito = medidas de Calibri) también según el lineamiento. No lleva proveedor por línea, resumen por partida, anexo
- * comparativo, área de intervención ni estado: se ven en la pantalla del
- * paso Presupuesto.
+ * comparativo, unidad, área de intervención ni estado (la unidad y el área van en la ficha técnica
+ * del proyecto desde el 2026-11-05).
  *
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $presupuesto
@@ -49,7 +49,6 @@ use yii\helpers\Html;
 
 $proyecto = $presupuesto->proyecto;
 
-$area = $proyecto->areaIntervencionTexto();
 $numero = 0;
 ?>
 <!DOCTYPE html>
@@ -158,19 +157,14 @@ $numero = 0;
 
 <?php // Código, versión y fecha ya van en la cabecera. El proyecto, en una
 // sola línea con su código ("RD-PI-PT-028 — Nombre"); la fase solo en una
-// ampliación (2 o más): en la fase 1 no aporta (2026-11-05). ?>
+// ampliación (2 o más): en la fase 1 no aporta (2026-11-05). Sin unidad ni
+// área de intervención desde el 2026-11-05 (revisión del Ing., puntos 5 y 6:
+// están en la ficha técnica del proyecto). ?>
 <table class="datos-generales">
     <tr>
         <?php // El nombre del proyecto suele ser largo: mas ancho que el oficio. ?>
         <td style="width: 72%"><strong>Proyecto:</strong> <?= Html::encode($proyecto->etiqueta() ?: '—') ?><?= (int) $proyecto->numeroFase > 1 ? ' (Fase ' . (int) $proyecto->numeroFase . ')' : '' ?></td>
         <td style="width: 28%; text-align: right"><strong><?= Html::encode($oficio !== '' ? $oficio : 'Oficio DTIC: —') ?></strong></td>
-    </tr>
-    <tr>
-        <td colspan="2"><strong>Unidad / dependencia:</strong> <?= Html::encode($proyecto->unidadDependencia ?: '—') ?></td>
-    </tr>
-    <?php // A todo el ancho: varias areas pueden ocupar mas de una linea. ?>
-    <tr>
-        <td colspan="2"><strong>Área de intervención:</strong> <?= Html::encode($area !== '' ? $area : '—') ?></td>
     </tr>
 </table>
 

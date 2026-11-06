@@ -90,9 +90,11 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
         margin-header: 5mm;
         margin-top: 37mm;
     }
+    /* Nada por debajo de 11 (revision del Ing. de DTIC del 2026-11-05: "las
+       letras estan muy pequenas"; antes instrucciones y tabla en 10 y 9). */
     .instrucciones {
         text-align: justify;
-        font-size: 10pt;
+        font-size: 11pt;
         margin-bottom: 8px;
     }
     .bien {
@@ -115,11 +117,11 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
         vertical-align: top;
     }
     table.especificaciones td {
-        font-size: 10pt;
+        font-size: 11pt;
     }
     table.especificaciones th {
         background-color: #d9d9d9;
-        font-size: 9pt;
+        font-size: 11pt;
         text-align: center;
         vertical-align: middle;
     }

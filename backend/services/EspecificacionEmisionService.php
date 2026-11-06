@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\components\VersionDocumento;
 use backend\models\ConfiguracionEspecificacion;
 use backend\models\CorrelativoDocumento;
 use backend\models\Especificacion;
@@ -384,11 +385,12 @@ class EspecificacionEmisionService
         }
 
         $buscar = trim((string) ($filtros['buscar'] ?? ''));
-        // "RD-PI-ET-007/26 v02", como lo muestran las pantallas.
-        if (preg_match('/^(.+?)\s+v(\d+)$/i', $buscar, $conVersion) === 1
+        // "RD-PI-ET-007/26 v1.1", como lo muestran las pantallas (o "v02", como se escribia antes).
+        if (preg_match('/^(.+?)\s+v([\d.]+)$/i', $buscar, $conVersion) === 1
+            && ($numeroVersion = VersionDocumento::numeroDe($conVersion[2])) !== null
             && CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($conVersion[1])) !== null) {
             $buscar = $conVersion[1];
-            $query->andWhere(['e.versionDocumento' => (int) $conVersion[2]]);
+            $query->andWhere(['e.versionDocumento' => $numeroVersion]);
         }
         // Con cualquier proceso (el numero no se repite entre procesos) y, si
         // no trae el año, de cualquier año.
@@ -512,7 +514,7 @@ class EspecificacionEmisionService
     {
         return [
             'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $this->marcaDeAgua($emision)),
-            // "RD-PI-ET-007_26_v02.pdf" (o "NET_880_26_v01.pdf"): codigo + version es unico.
+            // "RD-PI-ET-007_26_v1_1.pdf" (o "NET_880_26_v1_0.pdf"): codigo + version es unico.
             'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigoConVersion()) . '.pdf',
         ];
     }

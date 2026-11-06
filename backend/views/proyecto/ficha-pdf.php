@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use backend\models\EspecificacionEmision;
+use backend\models\ProyectoAreaIntervencion;
 use yii\helpers\Html;
 
 /**
@@ -33,11 +34,9 @@ $texto = static fn (?string $valor) => $valor === null || trim($valor) === '' ? 
 $fechas = $datos['fechas'];
 $presupuesto = $model->presupuesto;
 
-// Areas agrupadas por edificio y bloque, como en la vista del proyecto.
-$grupos = [];
-foreach ($model->areasIntervencion as $area) {
-    $grupos[$area->grupo()][] = $area->detalle();
-}
+// Una casilla por edificio, con su bloque, piso y espacio en el mismo texto
+// (revision del 2026-11-05; antes edificio y bloque en negrita aparte).
+$areas = ProyectoAreaIntervencion::lineasPorEdificio($model->areasIntervencion);
 ?>
 <!DOCTYPE html>
 <html>
@@ -83,9 +82,6 @@ foreach ($model->areasIntervencion as $area) {
         width: auto;
         background-color: #f2f2f2;
     }
-    .grupo {
-        font-weight: bold;
-    }
     .nota {
         font-size: 8.5pt;
         color: #444;
@@ -129,12 +125,9 @@ foreach ($model->areasIntervencion as $area) {
 
 <h2>3. Área de intervención</h2>
 <table class="datos">
-    <?php if ($grupos !== []): ?>
-        <?php foreach ($grupos as $grupo => $detalles): ?>
-            <tr>
-                <th class="grupo"><?= Html::encode($grupo) ?></th>
-                <td><?= implode('<br>', array_map(static fn (string $d) => Html::encode($d), $detalles)) ?></td>
-            </tr>
+    <?php if ($areas !== []): ?>
+        <?php foreach ($areas as $linea): ?>
+            <tr><td><?= Html::encode($linea) ?></td></tr>
         <?php endforeach; ?>
     <?php else: ?>
         <?php // Proyectos de antes del 2026-10-28: la ubicacion que tenian. ?>

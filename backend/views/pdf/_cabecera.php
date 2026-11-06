@@ -34,7 +34,7 @@ use yii\helpers\Html;
  * @var string $titulo titulo del documento (ej. "PRESUPUESTO DE INSTALACIÓN DE REDES")
  * @var string $fecha dd/mm/aaaa
  * @var string|null $codigo codigo del lineamiento (ej. "RD-PI-PR-015"); activa la cabecera del lineamiento
- * @var string|null $version version del documento (ej. "01")
+ * @var string|null $version version del documento (ej. "1.0", VersionDocumento::texto())
  * @var string|null $proceso proceso al que pertenece el documento
  * @var string|null $numero sin $codigo: ya con su etiqueta (ej. "N.° RD-PI-PT-004 / SC-01")
  * @var string|null $facultad sin $codigo: la unidad / dependencia (beneficiaria) del proyecto
@@ -54,7 +54,7 @@ $logos = Yii::getAlias('@backend/web/img');
 $datos = $lineamiento
     ? [
         ['<strong>Código:</strong> ' . Html::encode($codigo), 19],
-        ['<strong>Versión:</strong> ' . Html::encode($version ?? '01'), 11],
+        ['<strong>Versión:</strong> ' . Html::encode($version ?? '1.0'), 11],
         ['<strong>Fecha:</strong> ' . Html::encode($fecha), 15],
         ['<strong>Página:</strong> {PAGENO} de {nbpg}', 15],
     ]

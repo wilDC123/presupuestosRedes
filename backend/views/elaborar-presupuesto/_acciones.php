@@ -63,16 +63,6 @@ $botones = [
                             <?= Html::activeLabel($presupuesto, 'oficioDtic', ['class' => 'form-label']) ?>
                             <?= Html::activeTextInput($presupuesto, 'oficioDtic', ['class' => 'form-control', 'maxlength' => 100, 'required' => true]) ?>
                         </div>
-                        <div class="col-md-8">
-                            <?= Html::activeLabel($presupuesto, 'areaIntervencion', ['class' => 'form-label']) ?>
-                            <?php // Si aun no se escribio, se sugiere el area de intervencion del proyecto (se puede cambiar). ?>
-                            <?= Html::activeTextInput($presupuesto, 'areaIntervencion', [
-                                'class' => 'form-control',
-                                'value' => $presupuesto->areaIntervencion ?: mb_substr($proyecto->areaIntervencionTexto(), 0, 300, 'UTF-8'),
-                                'maxlength' => 300,
-                                'required' => true,
-                            ]) ?>
-                        </div>
                     </div>
                     <div class="mt-3">
                         <?= Html::submitButton('Enviar a revisión', ['class' => 'btn btn-primary']) ?>
@@ -85,7 +75,6 @@ $botones = [
         <div class="rd-dato">
             <strong>Código:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?><?= $presupuesto->numeroAnterior !== null ? ' (antes ' . Html::encode($presupuesto->numeroAnterior) . ')' : '' ?> ·
             <strong>Oficio DTIC:</strong> <?= Html::encode($presupuesto->oficioDtic ?: '—') ?> ·
-            <strong>Área:</strong> <?= Html::encode($presupuesto->areaIntervencion ?: '—') ?> ·
             <strong>Fecha de creación:</strong> <?= Html::encode($presupuesto->fechaFormateada() ?: '—') ?>
         </div>
 

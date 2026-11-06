@@ -39,7 +39,6 @@ use yii\helpers\Html;
  *             siempre lleva PI; lo calcula el controlador
  */
 
-$area = $proyecto->areaIntervencionTexto();
 $totalItems = array_sum(array_map(static fn ($grupo) => count($grupo['items']), $grupos));
 $numero = 0;
 
@@ -73,7 +72,6 @@ $firmas = $aprobacion ?? $configuracion;
     table.datos-generales td {
         padding: 3px 4px;
         vertical-align: top;
-        width: 50%;
     }
     table.items {
         width: 100%;
@@ -141,15 +139,11 @@ $firmas = $aprobacion ?? $configuracion;
     'fecha' => $documento['fechaCreacion'] ?: '—',
 ]) ?>
 
-<?php // Codigo, version y fecha ya van en la cabecera. ?>
+<?php // Codigo, version y fecha ya van en la cabecera. Solo la linea del proyecto: sin unidad ni area
+// de intervencion desde el 2026-11-05 (revision del Ing., puntos 5 y 6: estan en la ficha tecnica). ?>
 <table class="datos-generales">
     <tr>
         <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre) ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
-        <td><strong>Unidad / dependencia:</strong> <?= Html::encode($proyecto->unidadDependencia ?: '—') ?></td>
-    </tr>
-    <?php // A todo el ancho: varias areas pueden ocupar mas de una linea. ?>
-    <tr>
-        <td colspan="2"><strong>Área de intervención:</strong> <?= Html::encode($area !== '' ? $area : '—') ?></td>
     </tr>
 </table>
 

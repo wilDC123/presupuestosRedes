@@ -23,7 +23,7 @@ use yii\helpers\Html;
  * page-break-inside: mPDF no la corta entre dos paginas.
  *
  * @var yii\web\View $this
- * @var string $version '01'
+ * @var string $version '1.0' (VersionDocumento::texto())
  * @var array{prefijo: string, nombre: string, cargo: string}|null $elaborado null = en blanco, para llenarla a mano
  * @var array{prefijo: string, nombre: string, cargo: string}|null $aprobado
  * @var string $fechaAprobacion 'dd/mm/aaaa', o vacia (se deja la raya)
