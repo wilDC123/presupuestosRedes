@@ -74,7 +74,8 @@ $carpeta = static function (array $c) use ($fila, $texto, $monto, $fecha, $guion
 
     // Lista de materiales: la version que corresponde (la siguiente en borrador mientras esta en edicion).
     $html .= $fila(
-        'Lista de materiales y condiciones previas',
+        // "BoM" (bill of materials), pedido del desarrollador el 2026-11-10.
+        'Lista de materiales y condiciones previas (BoM)',
         $texto($p->codigoLista),
         'Elaborada el ' . $guiones($lista['fechaCreacion']) . ($lista['borrador'] ? ' <em>· borrador: se emite al enviar a cotización</em>' : ''),
         Html::encode($lista['version'])

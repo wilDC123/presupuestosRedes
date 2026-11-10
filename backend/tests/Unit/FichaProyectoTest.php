@@ -63,7 +63,7 @@ class FichaProyectoTest extends Unit
         $this->assertStringNotContainsString('FASE 1', $html);
         $this->assertStringNotContainsString('Lugar de entrega', $html);
         $this->assertStringNotContainsString('Reporte de control', $html);
-        $this->assertEnOrden($html, ['1. Información general', 'Costo total del proyecto', 'Fecha de creación', '2. Unidades', '3. Área', '4. Equipo', '5. Carpeta económica', 'Lista de materiales y condiciones previas']);
+        $this->assertEnOrden($html, ['1. Información general', 'Costo total del proyecto', 'Fecha de creación', '2. Unidades', '3. Área', '4. Equipo', '5. Carpeta económica', 'Lista de materiales y condiciones previas (BoM)']);
     }
 
     /**

@@ -247,7 +247,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   cuadro: con fase única filas "Fecha de creación / revisión / aprobación / última modificación", con varias un subcuadro
   "Fechas | Fase 1 | Fase 2"), 2. UNIDADES, y después con fase única 3 área, 4 equipo, 5 CARPETA ECONÓMICA; con varias "3. FASE
   1" (3.1 área, 3.2 equipo, 3.3 carpeta), "4. FASE 2"… CARPETA = tabla Documento | Código | Detalle | Versión
-  (`ProyectoService::carpeta()`): lista de materiales ("Elaborada el …"), presupuesto ("Aprobado el … · Total Bs." o su estado),
+  (`ProyectoService::carpeta()`): lista de materiales (rótulo "Lista de materiales y condiciones previas (BoM)" desde el 2026-11-10; "Elaborada el …"), presupuesto ("Aprobado el … · Total Bs." o su estado),
   especificaciones vigentes (con "Reemitida el …: motivo" si se reemitieron; el motivo está en la emisión reemplazada), solicitudes
   de proforma (rubro · fecha) y PROFORMAS RECIBIDAS (una fila por cotización: proveedor · fecha; solo si hay). Las ÓRDENES DE
   CAMBIO de la fase van dentro de su carpeta: barra gris "Orden de cambio N.° 1 · solicitada el … · aprobada el …" + "Motivo: …"
