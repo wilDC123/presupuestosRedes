@@ -338,7 +338,9 @@ class EspecificacionEmisionTest extends Unit
         $this->assertStringContainsString('Ing. Quien Elabora', $html);
         $this->assertStringContainsString('V°B° Ing. Quien Aprueba', $html);
         $this->assertStringContainsString('RESPONSABLE DE REDES', $html);
-        $this->assertStringContainsString('Fecha de aprobación: ' .(new DateTimeImmutable($emision->fechaEmision))->format('d/m/Y'), $html);
+        // En tabla y con la fecha dd-mm-aaaa, como el Word (2026-11-09).
+        $this->assertStringContainsString('Fecha de aprobación: ' . (new DateTimeImmutable($emision->fechaEmision))->format('d-m-Y'), $html);
+        $this->assertStringContainsString('>Firma:</td>', $html);
         $this->assertStringNotContainsString('Ing. Otra Persona', $html);
     }
 
