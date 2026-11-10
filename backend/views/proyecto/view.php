@@ -18,6 +18,7 @@ use yii\helpers\Html;
  * @var bool $puedeEditarse
  * @var bool $estaAprobado
  * @var bool $puedeAgregarFase la ultima fase del proyecto (aprobada o no): se le puede agregar la siguiente
+ * @var array<int, array<int, array{id: int, texto: string, presupuesto: ?backend\models\Presupuesto, monto: ?float, actual: bool}>> $franjaFases Ver ProyectoService::franjaFases()
  * @var bool $puedeRegistrarOrden una fase con su presupuesto aprobado: se le puede registrar una orden de cambio (parte 6)
  * @var int $totalItems items en la lista del proyecto
  * @var bool $listaEditable Ver ListaItemsService::puedeEditarse()
@@ -59,7 +60,8 @@ $formato = Yii::$app->formatter;
                     'title' => 'Un presupuesto adicional de esta fase aprobada, solo con lo que se agrega (formato RD-GD-FR-006)',
                 ]) ?>
             <?php endif; ?>
-            <?php if ($puedeAgregarFase): ?>
+            <?php // Con varias fases (o con ordenes de cambio) "Agregar fase" va en la franja FASES, no aqui. ?>
+            <?php if ($puedeAgregarFase && $franjaFases === []): ?>
                 <?= Html::a('Agregar fase ' . ((int) $model->numeroFase + 1) . ' →', ['create', 'idAnterior' => $model->id], [
                     'class' => 'btn btn-primary',
                     'title' => 'La fase siguiente del mismo proyecto (mismo número), con su propia área, equipo y carpeta económica',
@@ -79,6 +81,10 @@ $formato = Yii::$app->formatter;
             <?php endif; ?>
         </div>
     </div>
+
+    <?php if ($franjaFases !== []): ?>
+        <?= $this->render('_franja-fases', ['model' => $model, 'grupos' => $franjaFases, 'puedeAgregarFase' => $puedeAgregarFase]) ?>
+    <?php endif; ?>
 
     <?= $this->render('_pasos', ['pasos' => $pasos]) ?>
 

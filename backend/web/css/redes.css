@@ -599,3 +599,14 @@ td.esp-nivel-3 { padding-left: 3.25rem; }
     letter-spacing: .04em; text-transform: uppercase; color: var(--rd-texto-tenue);
 }
 .rd-resultados-ambiente li.grupo:hover { background: none; }
+
+/* Franja "FASES" de la vista del proyecto, encima de la barra de pasos (2026-11-10). */
+.rd-franja-fases { display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px; row-gap: 6px; margin-bottom: 12px; }
+.rd-franja-fases > .kicker { margin: 0; }
+.rd-franja-grupo { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rd-franja-sep { color: var(--rd-texto-tenue); }
+.rd .rd-franja-pastilla { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border: 1px solid var(--rd-borde-fuerte); border-radius: 6px; background: #fff; font-size: 12.5px; color: var(--rd-texto); text-decoration: none; }
+.rd a.rd-franja-pastilla:hover { border-color: var(--rd-azul); }
+.rd .rd-franja-pastilla.es-actual { border: 2px solid var(--rd-azul); background: var(--rd-azul-claro); font-weight: 700; padding: 0 9px; }
+.rd .rd-franja-viendo { font-weight: 400; color: var(--rd-texto-suave); }
+.rd .rd-franja-pastilla.rd-franja-agregar { border-style: dashed; color: var(--rd-azul); }

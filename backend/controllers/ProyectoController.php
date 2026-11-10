@@ -98,6 +98,8 @@ class ProyectoController extends Controller
             'estaAprobado' => $this->service->estaAprobado($model),
             // "Agregar fase": en la ultima fase, aprobada o no (varias fases a la vez, 2026-11-09).
             'puedeAgregarFase' => $this->service->puedeAgregarFase($model),
+            // Franja "FASES" encima de los pasos (vacia con fase unica y sin ordenes de cambio).
+            'franjaFases' => $this->service->franjaFases($model),
             // "Registrar orden de cambio": en una fase con su presupuesto aprobado (parte 6).
             'puedeRegistrarOrden' => (new OrdenCambioFaseService())->puedeRegistrar($model),
         ]);
