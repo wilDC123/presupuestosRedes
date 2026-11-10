@@ -311,7 +311,7 @@ $grupoCierra = static fn (int $cantidad): string =>
     <?php // Lugar de entrega por defecto (2026-11-10: aqui y no al crear el proyecto). Cada fila puede poner otro. ?>
     <div class="card rd-card-pad mb-3">
         <?php if ($editable): ?>
-            <label for="lista-lugar-entrega"><strong>Lugar de entrega</strong> <span class="rd-nota">(para las especificaciones que no digan otro)</span></label>
+            <label for="lista-lugar-entrega"><strong>Lugar de entrega de los materiales</strong> <span class="rd-nota">— se usa en todas las especificaciones; si alguna se entrega en otro lugar, escríbalo en su fila.</span></label>
             <?= Html::textInput('lugarEntregaProyecto', $lugarEntregaProyecto, [
                 'id' => 'lista-lugar-entrega',
                 'class' => 'form-control',
@@ -320,15 +320,14 @@ $grupoCierra = static fn (int $cantidad): string =>
                 'data-configuracion' => (string) ($lugarEntregaConfiguracion ?? ''),
             ]) ?>
             <div class="rd-nota mt-1">
-                Si los materiales se entregan en lugares distintos, escriba el de cada especificación en su fila, debajo
-                del selector. Cambiar este lugar no cambia los formularios ya emitidos.
+                Cambiar este lugar no cambia los formularios ya emitidos.
                 <?php if ($proyecto->lugarEntrega === null && $lugarEntregaProyecto !== ''): ?>
                     Sugerido por la unidad / dependencia: se guarda al guardar la lista.
                 <?php endif; ?>
             </div>
         <?php else: ?>
-            <strong>Lugar de entrega:</strong> <?= Html::encode($proyecto->lugarEntrega ?: ($lugarEntregaConfiguracion ?? '—')) ?>
-            <span class="rd-nota">(el de las especificaciones que no dicen otro)</span>
+            <strong>Lugar de entrega de los materiales:</strong> <?= Html::encode($proyecto->lugarEntrega ?: ($lugarEntregaConfiguracion ?? '—')) ?>
+            <span class="rd-nota">(salvo las especificaciones que dicen otro en su fila)</span>
         <?php endif; ?>
     </div>
     <div class="alert alert-danger d-none" id="lista-error-cliente">Revise las cantidades marcadas: en la lista, números mayores o iguales a 0; en los materiales de la DTIC, mayores que 0.</div>

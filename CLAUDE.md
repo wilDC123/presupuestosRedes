@@ -266,8 +266,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   proyecto). Uno ya emitido con otro lugar se REEMITE al guardar (mismo código, versión + 1, motivo "Se cambió el lugar de
   entrega: A → B"; junto con "Cambiar ítem" es una sola reemisión, `ListaItemsService::reemitirPorCambio()`); vacío no
   cambia nada. `Proyecto.lugarEntrega` queda como "Lugar de entrega por defecto" y SALE de la ficha técnica. DESDE EL 2026-11-10 ("no quieren que esté en crear un proyecto") ese lugar por defecto ya NO
-  se pide en el formulario del proyecto ni sale en su vista: se escribe ARRIBA DE LA LISTA DE ÍTEMS ("Lugar de entrega (para
-  las especificaciones que no digan otro)", `lugarEntregaProyecto`), se guarda con el mismo botón, ANTES de emitir y en la
+  se pide en el formulario del proyecto ni sale en su vista: se escribe ARRIBA DE LA LISTA DE ÍTEMS ("Lugar de entrega de los
+  materiales", `lugarEntregaProyecto`), se guarda con el mismo botón, ANTES de emitir y en la
   misma transacción (`ListaItemsService::guardar(..., $lugarEntrega)`, null = no se toca, '' = se borra; queda en el
   historial); si el proyecto no tiene, el campo trae la sugerencia `Proyecto::lugarEntregaSugerido()` y se guarda al guardar la
   lista. Cada fila sigue pudiendo poner otro; al escribir arriba se actualiza el texto de ejemplo de las filas (`lista-items.js`).
