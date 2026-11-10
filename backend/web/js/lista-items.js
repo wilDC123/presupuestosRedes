@@ -473,8 +473,13 @@ $(function () {
 
     $tabla.on('change', '.lista-item-esp', function () {
         actualizarEnlaceDocumento($(this));
-        // El lugar de entrega es de la especificacion: sin especificacion no se pide.
-        $(this).closest('td').find('.lista-item-lugar').toggleClass('d-none', $(this).val() === '');
+        // El lugar de entrega es de la especificacion: sin especificacion no se pide (ni su campo, si estaba abierto).
+        var $celda = $(this).closest('td');
+        var sinEspecificacion = $(this).val() === '';
+        $celda.find('.lista-item-lugar').toggleClass('d-none', sinEspecificacion);
+        if (sinEspecificacion) {
+            $celda.find('.lista-lugar-campo').addClass('d-none');
+        }
         actualizarTotales();
         marcarCambios();
     });
@@ -548,9 +553,9 @@ $(function () {
 
     // Fila plegada: "Otro lugar de entrega" / "Cambiar" muestra el campo (2026-11-10).
     $tabla.on('click', '.lista-lugar-abrir', function () {
-        var $lugar = $(this).closest('.lista-item-lugar');
-        $lugar.find('.lista-lugar-resumen').addClass('d-none');
-        $lugar.find('.lista-lugar-campo').removeClass('d-none').find('input').trigger('focus');
+        var $celda = $(this).closest('td');
+        $celda.find('.lista-lugar-resumen').addClass('d-none');
+        $celda.find('.lista-lugar-campo').removeClass('d-none').find('input').trigger('focus');
     });
 
     $lugarProyecto.on('input', function () {

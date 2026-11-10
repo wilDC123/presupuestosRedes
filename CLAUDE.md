@@ -271,8 +271,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   misma transacción (`ListaItemsService::guardar(..., $lugarEntrega)`, null = no se toca, '' = se borra; queda en el
   historial); si el proyecto no tiene, el campo trae la sugerencia `Proyecto::lugarEntregaSugerido()` y se guarda al guardar la
   lista. Cada fila sigue pudiendo poner otro; al escribir arriba se actualiza el texto de ejemplo de las filas (`lista-items.js`).
-  La fila va PLEGADA (ocupaba mucho): si su lugar es el de arriba (o no tiene), solo el enlace "Otro lugar de entrega"; si es
-  otro, una línea "Entrega: … · Cambiar"; el campo aparece al hacer clic. Uno igual al de arriba se envía vacío (en un
+  La fila va PLEGADA (ocupaba mucho), en la MISMA LÍNEA que "Cambiar ítem": si su lugar es el de arriba (o no tiene), solo
+  el enlace "Otro lugar de entrega"; si es otro, "· Entrega: … Cambiar"; el campo aparece debajo de esa línea al hacer clic. Uno igual al de arriba se envía vacío (en un
   formulario ya emitido, vacío no reemite; para volver al de arriba hay que escribirlo).
   `Proyecto` ya no tiene regla para `lugarEntrega` (el formulario del proyecto no lo cambia); la fase siguiente y la orden de
   cambio lo siguen copiando

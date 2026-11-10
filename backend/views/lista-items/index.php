@@ -204,28 +204,24 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
             'class' => 'btn btn-link btn-sm p-0 text-nowrap lista-item-cambiar',
             'title' => 'Elegir otro ítem del subcatálogo para esta fila (ej. el mismo cable en cajas en vez de metros). Su formulario de especificación se corrige con el mismo código.',
         ]) : '')
-        . '</div>'
-        . '<div class="rd-celda-sub text-warning-emphasis lista-item-cambio d-none"></div>'
-        . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
-        . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
         // Lugar de entrega de ESTA especificacion (revision del 2026-11-05: cada una puede tener uno
-        // distinto). Solo con especificacion elegida (lista-items.js). Vacio = el de arriba de la lista;
-        // cambiarlo en un formulario ya emitido lo reemite al guardar (ListaItemsService).
-        // PLEGADO (2026-11-10, ocupaba mucho en cada fila): si es el mismo que el de arriba (o no tiene),
-        // solo el enlace "Otro lugar de entrega"; si es otro, una linea "Entrega: ... · Cambiar". El campo
-        // aparece al hacer clic. Uno igual al de arriba se envia vacio: en un formulario ya emitido vacio
-        // no cambia nada (no se reemite), en uno nuevo toma el de arriba.
-        . '<div class="mt-1 lista-item-lugar' . ($idEspecificacion === '' ? ' d-none' : '') . '">'
-        . '<div class="rd-celda-sub lista-lugar-resumen">'
+        // distinto), PLEGADO en la misma linea que "Cambiar ítem" (2026-11-10, ocupaba mucho en cada
+        // fila): si es el mismo que el de arriba de la lista (o no tiene), solo el enlace "Otro lugar de
+        // entrega"; si es otro, "Entrega: ... · Cambiar". El campo aparece debajo al hacer clic. Solo con
+        // especificacion elegida (lista-items.js). Uno igual al de arriba se envia vacio: en un formulario
+        // ya emitido vacio no cambia nada (no se reemite), en uno nuevo toma el de arriba; cambiarlo en uno
+        // ya emitido lo reemite al guardar (ListaItemsService).
+        . '<span class="rd-celda-sub text-nowrap lista-item-lugar lista-lugar-resumen' . ($idEspecificacion === '' ? ' d-none' : '') . '">'
         . ($propio !== ''
-            ? 'Entrega: <strong>' . Html::encode($propio) . '</strong> · '
+            ? '· Entrega: <strong>' . Html::encode($propio) . '</strong> '
                 . Html::button('Cambiar', ['class' => 'btn btn-link btn-sm p-0 align-baseline lista-lugar-abrir'])
             : Html::button('Otro lugar de entrega', [
                 'class' => 'btn btn-link btn-sm p-0 align-baseline lista-lugar-abrir',
                 'title' => 'Solo si esta especificación se entrega en un lugar distinto al de arriba de la lista',
             ]))
+        . '</span>'
         . '</div>'
-        . '<div class="d-flex align-items-center gap-2 lista-lugar-campo d-none">'
+        . '<div class="d-flex align-items-center gap-2 mt-1 lista-lugar-campo d-none">'
         . '<label class="rd-celda-sub text-nowrap mb-0" for="lista-lugar-' . $n . '">Lugar de entrega</label>'
         . Html::textInput("items[$n][lugarEntrega]", $propio, [
             'id' => 'lista-lugar-' . $n,
@@ -235,7 +231,9 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
             'title' => 'Si se cambia en un formulario ya emitido, al guardar se reemite (mismo código, versión siguiente).',
         ])
         . '</div>'
-        . '</div>'
+        . '<div class="rd-celda-sub text-warning-emphasis lista-item-cambio d-none"></div>'
+        . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
+        . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
         . $emision
         . '</td>'
         . '<td class="lista-item-unidad">' . Html::encode($unidad) . '</td>'
