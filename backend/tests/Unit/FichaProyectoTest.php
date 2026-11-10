@@ -63,7 +63,7 @@ class FichaProyectoTest extends Unit
         $this->assertStringNotContainsString('FASE 1', $html);
         $this->assertStringNotContainsString('Lugar de entrega', $html);
         $this->assertStringNotContainsString('Reporte de control', $html);
-        $this->assertEnOrden($html, ['1. Información general', 'Costo total del proyecto', 'Fecha de creación', '2. Unidades', '3. Área', '4. Equipo', '5. Carpeta económica', 'Lista de materiales y condiciones previas']);
+        $this->assertEnOrden($html, ['1. Información general', 'Costo total del proyecto', 'Fecha de creación', '2. Unidades / Dependencia', '3. Área', '4. Equipo', '5. Carpeta económica', 'Lista de materiales y condiciones previas (BoM)']);
     }
 
     /**
@@ -88,7 +88,7 @@ class FichaProyectoTest extends Unit
             $datos = $this->proyectos->datosFicha(Proyecto::findOne($id));
             $this->assertSame([$fase1->codigo, '1.1', false, ''], [$datos['codigo'], $datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
             $html = $this->html(Proyecto::findOne($id), $datos);
-            $this->assertEnOrden($html, ['1. Información general', 'Fechas', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. Unidades', '3. FASE 1', '3.1 Área', 'Edificio test fase 1', '3.3 Carpeta económica', '4. FASE 2', '4.1 Área', 'Edificio test fase 2']);
+            $this->assertEnOrden($html, ['1. Información general', 'Fechas', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. Unidades / Dependencia', '3. FASE 1', '3.1 Área', 'Edificio test fase 1', '3.3 Carpeta económica', '4. FASE 2', '4.1 Área', 'Edificio test fase 2']);
             $this->assertStringNotContainsString('5. Carpeta', $html);
         }
 
