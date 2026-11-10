@@ -12,7 +12,7 @@ use yii\db\ActiveRecord;
  * (PI, DS, GR...). Cada proyecto dice de que proceso es (Proyecto.idProceso).
  *
  * El codigo (dos letras) es parte del codigo de los presupuestos y las
- * especificaciones del proyecto (RD-GR-PR-016, RD-GR-ET-001/27): por eso es
+ * especificaciones del proyecto (RD-GR-PR-016, RD-GR-ET-001): por eso es
  * unico y, una vez que un proyecto o un documento lo usa, ya no se cambia
  * (ProcesoService::actualizar()).
  *

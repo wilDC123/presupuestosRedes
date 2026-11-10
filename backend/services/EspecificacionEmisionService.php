@@ -27,8 +27,9 @@ use yii\data\ActiveDataProvider;
  *  - enlazar una especificacion a un item de la lista ES emitir: se le asigna
  *    el siguiente numero del correlativo ET (CodificacionService),
  *  - el correlativo lo fija el encargado (Codificación de documentos), sube
- *    de 1 en 1 y vuelve a 001 cada 1 de enero (el codigo lleva el año:
- *    RD-PI-ET-001/27); un codigo nunca se reutiliza,
+ *    de 1 en 1 y no se reinicia: el codigo NO lleva el año (2026-11-10; del
+ *    29-10 al 10-11 era RD-PI-ET-001/26 y volvia a 001 cada 1 de enero); un
+ *    codigo nunca se reutiliza,
  *  - una emision no cambia nunca: guarda copias de todo lo que imprime y
  *    apunta a una version que ya no se puede modificar,
  *  - un error se corrige REEMITIENDO: el MISMO codigo con la version del
@@ -96,7 +97,7 @@ class EspecificacionEmisionService
         $hoy = new DateTimeImmutable('today');
 
         $emision = new EspecificacionEmision([
-            // Año y proceso forman parte del codigo: RD-GR-ET-001/27.
+            // El proceso forma parte del codigo (RD-GR-ET-001); el año ya no (2026-11-10), queda como dato.
             'anio' => (int) $hoy->format('y'),
             'proceso' => $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO,
             'idVersion' => $version->id,
@@ -130,9 +131,9 @@ class EspecificacionEmisionService
 
         if ($corrige !== null) {
             // Mismo documento: mismo codigo y la version siguiente. Conserva
-            // su año y su proceso, que son parte del codigo, aunque se
-            // reemita en enero o el proyecto haya cambiado de proceso
-            // (RD-PI-ET-850/26 v01 -> RD-PI-ET-850/26 v02).
+            // su proceso, que es parte del codigo, aunque el proyecto haya
+            // cambiado de proceso (RD-PI-ET-850 v1.0 -> RD-PI-ET-850 v1.1), y
+            // su año de emision.
             $emision->serie = $corrige->serie;
             $emision->numeroNet = $corrige->numeroNet;
             $emision->versionDocumento = (int) $corrige->versionDocumento + 1;
@@ -154,11 +155,10 @@ class EspecificacionEmisionService
 
         try {
             if ($corrige === null) {
-                // El del año de la emision: el primero del 1 de enero es el 001.
-                $emision->numeroNet = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION, (int) $emision->anio);
+                $emision->numeroNet = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION);
             }
             // Si otro usuario reemitio el mismo documento al mismo tiempo, el
-            // indice unico (serie, anio, numeroNet, versionDocumento) lo rechaza.
+            // indice unico (numeroNet, versionDocumento de las ET) lo rechaza.
             $emision->save(false);
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -339,12 +339,13 @@ class EspecificacionEmisionService
      *    guarda: es una vigente cuya fecha + vigencia ya paso, y "vigente"
      *    aqui son solo las que todavia no vencieron,
      *  - dependencia: texto exacto,
-     *  - buscar: "RD-PI-ET-007/26" o "NET:880/26" busca ese codigo, todas sus
-     *    versiones ("RD-PI-ET-007/26 v02": solo esa version) (el NET
-     *    tambien en el codigo anterior de las que se pasaron a ET); sin el
-     *    año ("RD-PI-ET-007"), la 007 de todos los años; un numero solo ("7",
-     *    "880", "7/26") lo busca en los dos; cualquier otro texto busca en el
-     *    titulo y en el codigo del proyecto.
+     *  - buscar: "RD-PI-ET-007" o "NET:880/26" busca ese codigo, todas sus
+     *    versiones ("RD-PI-ET-007 v1.1": solo esa version) (el NET
+     *    tambien en el codigo anterior de las que se pasaron a ET). Tambien
+     *    entiende el año de los formularios impresos del 29-10 al 10-11
+     *    ("RD-PI-ET-007/26"); un numero solo ("7", "880", "7/26") lo busca en
+     *    los dos; cualquier otro texto busca en el titulo y en el codigo del
+     *    proyecto.
      *
      * @param array{anio?: string, estado?: string, dependencia?: string, buscar?: string} $filtros
      * @param int|false $porPagina false = todas (para exportar)
@@ -385,15 +386,15 @@ class EspecificacionEmisionService
         }
 
         $buscar = trim((string) ($filtros['buscar'] ?? ''));
-        // "RD-PI-ET-007/26 v1.1", como lo muestran las pantallas (o "v02", como se escribia antes).
+        // "RD-PI-ET-007 v1.1", como lo muestran las pantallas (o "v02", como se escribia antes).
         if (preg_match('/^(.+?)\s+v([\d.]+)$/i', $buscar, $conVersion) === 1
             && ($numeroVersion = VersionDocumento::numeroDe($conVersion[2])) !== null
             && CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($conVersion[1])) !== null) {
             $buscar = $conVersion[1];
             $query->andWhere(['e.versionDocumento' => $numeroVersion]);
         }
-        // Con cualquier proceso (el numero no se repite entre procesos) y, si
-        // no trae el año, de cualquier año.
+        // Con cualquier proceso (el numero no se repite entre procesos). El
+        // año, solo si lo trae (los impresos del 29-10 al 10-11).
         $et = CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($buscar));
         if ($et !== null) {
             $query->andWhere(['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $et['numero']]);

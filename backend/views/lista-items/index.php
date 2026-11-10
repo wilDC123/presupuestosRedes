@@ -59,7 +59,7 @@ use yii\web\JqueryAsset;
  * @var string|null $lugarEntregaPorDefecto texto de ejemplo del "Lugar de entrega" de cada fila y al reemitir (null = no hay)
  * @var string $lugarEntregaProyecto valor del campo "Lugar de entrega" de arriba de la lista (2026-11-10)
  * @var string|null $lugarEntregaConfiguracion el de la configuracion del formulario (si el de arriba queda vacio)
- * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001/26)
+ * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001)
  * @var array<int, array<string, string>> $materiales otros materiales de la DTIC (los guardados o lo enviado)
  * @var string[] $categorias nombres de las categorias, subtitulos de los materiales escritos a mano
  * @var array<string, string> $unidades [abreviatura => "Metro (m)"]

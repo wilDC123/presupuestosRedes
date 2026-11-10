@@ -34,7 +34,7 @@ $this->params['breadcrumbs'][] = 'Formulario de especificación';
     <?php $form = ActiveForm::begin(); ?>
 
     <p class="rd-nota">
-        El código de cada formulario (RD-PI-ET-001/26, RD-PI-ET-002/26…) se fija en
+        El código de cada formulario (RD-PI-ET-001, RD-PI-ET-002…) se fija en
         <?= Html::a('Codificación de documentos', ['/codificacion/index']) ?>.
     </p>
 
