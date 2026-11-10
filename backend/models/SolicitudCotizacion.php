@@ -13,12 +13,14 @@ use yii\db\ActiveRecord;
  * Modelo para la tabla "redes.SolicitudCotizacion": un grupo de items de la
  * lista del proyecto que se manda a cotizar a un rubro de proveedores.
  *
- * Solo "nombre", "nota" y "fechaEnvio" llegan del formulario. El proyecto y el numero los
- * pone SolicitudCotizacionService: por eso no tienen regla.
+ * Solo "nombre", "nota" y "fechaEnvio" llegan del formulario. El proyecto, el numero y el
+ * codigo los pone SolicitudCotizacionService: por eso no tienen regla.
  *
  * @property int $id
  * @property int $idProyecto
- * @property int $numero Correlativo dentro del proyecto.
+ * @property int $numero Correlativo dentro del proyecto (SC-01, SC-02...: para las pantallas).
+ * @property string|null $codigoDocumento Codigo del lineamiento RD-<proceso>-SC-NNN (2026-11-09):
+ *           lo pone el sistema al crear la solicitud y ya no cambia; sale en la cabecera del PDF.
  * @property string $nombre Rubro al que se envia ("Ferreteria y ducteo").
  * @property string|null $nota Texto libre para el proveedor.
  * @property string $fecha Fecha y hora de CREACION (la pone la base). No sale en el documento.
@@ -92,6 +94,21 @@ class SolicitudCotizacion extends ActiveRecord
         $numero = $proyecto->numeroProyecto !== null ? $proyecto->numeroTexto() : '#' . $this->idProyecto;
 
         return $numero . ($proyecto->tieneVariasFases() ? ' · Fase ' . (int) $proyecto->numeroFase : '') . ' / ' . $this->codigoCorto();
+    }
+
+    /**
+     * Version del documento: la solicitud no se reemite (se corrige mientras
+     * no tenga cotizaciones), asi que siempre es la 1.0.
+     */
+    public const VERSION_DOCUMENTO = '1.0';
+
+    /**
+     * Codigo de 2 letras del proceso de su codigo (RD-GR-SC-004 -> GR), para
+     * la linea "PROCESO:" de la cabecera; PI si no tiene codigo.
+     */
+    public function codigoProceso(): string
+    {
+        return CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_SOLICITUD, $this->codigoDocumento)['proceso'] ?? CorrelativoDocumento::PROCESO;
     }
 
     /**

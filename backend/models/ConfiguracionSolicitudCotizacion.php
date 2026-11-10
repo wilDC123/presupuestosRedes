@@ -17,7 +17,7 @@ use yii\db\ActiveRecord;
  * reimprimir solicitudes anteriores.
  *
  * @property int $id
- * @property string $textoCabecera Una linea por renglon; la primera sale en negrita.
+ * @property string $textoCabecera Ya no se usa (2026-11-09): la cabecera del PDF es la de todos los documentos.
  * @property string $textoInstrucciones
  * @property string|null $textoNotaFinal
  */
@@ -43,24 +43,15 @@ class ConfiguracionSolicitudCotizacion extends ActiveRecord
         return $configuracion;
     }
 
-    /**
-     * Los renglones de la cabecera, sin lineas vacias.
-     *
-     * @return string[]
-     */
-    public function lineasCabecera(): array
-    {
-        return array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $this->textoCabecera)), static fn (string $linea) => $linea !== ''));
-    }
-
     public function rules(): array
     {
         return [
             [['textoCabecera', 'textoInstrucciones', 'textoNotaFinal'], 'trim'],
             [['textoNotaFinal'], 'default', 'value' => null],
-            // Cabecera e instrucciones son obligatorias: el documento nunca
-            // sale sin ellas.
-            [['textoCabecera', 'textoInstrucciones'], 'required'],
+            // Las instrucciones son obligatorias: el documento nunca sale sin
+            // ellas. textoCabecera ya no sale en el PDF (2026-11-09: la cabecera
+            // es la de todos los documentos).
+            [['textoInstrucciones'], 'required'],
             [['textoCabecera', 'textoNotaFinal'], 'string', 'max' => 500],
             [['textoInstrucciones'], 'string', 'max' => 1000],
         ];

@@ -41,8 +41,6 @@ $this->params['breadcrumbs'][] = 'Formulario de especificación';
     <div class="card mb-3">
         <div class="rd-card-head"><div class="rd-card-titulo">Textos del formulario</div></div>
         <div class="rd-card-pad">
-            <?= $form->field($configuracion, 'textoCabecera')->textarea(['rows' => 2, 'maxlength' => 500])
-                ->hint('Una línea por renglón (ej. el nombre de la universidad y "D.T.I.C.").') ?>
             <?= $form->field($configuracion, 'textoInstrucciones')->textarea(['rows' => 4, 'maxlength' => 1000]) ?>
             <?= $form->field($configuracion, 'garantiaPorDefecto')->textarea(['rows' => 2, 'maxlength' => 500])
                 ->hint('Se usa en las fichas que no tienen una garantía propia.') ?>

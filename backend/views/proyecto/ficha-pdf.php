@@ -119,7 +119,7 @@ $bloque = static function (array $fase, array $numeros) use ($texto, $formato): 
         . ($fase['solicitudes'] === []
             ? 'Ninguna.'
             : implode('<br>', array_map(
-                static fn ($s) => Html::encode($s->codigoCorto() . ' – ' . $s->nombre . ' (' . count($s->cotizaciones) . ' cotizaciones)'),
+                static fn ($s) => Html::encode(($s->codigoDocumento ?? $s->codigoCorto()) . ' – ' . $s->nombre . ' (' . count($s->cotizaciones) . ' cotizaciones)'),
                 $fase['solicitudes']
             )))
         . '</td></tr></table>';

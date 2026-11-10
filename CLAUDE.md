@@ -50,8 +50,12 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
   `Proceso::nombreDe()` con ese código. Las ET emitidas antes (021–024, todas de 2026) pasaron a /26. Los números los da
   el sistema desde `redes.CorrelativoDocumento` (una fila por tipo, `CodificacionService::tomar()` con
   UPDLOCK); el encargado fija desde cuál siguen en el menú "Codificación de documentos" (solo mayor que
-  el último usado). El formato está en `CorrelativoDocumento::codigo()`. La solicitud de cotización NO
-  lleva código del lineamiento (FR no aplica). Letra Carlito (= medidas de Calibri, OFL,
+  el último usado). El formato está en `CorrelativoDocumento::codigo()`. Desde el 2026-11-09 (formatos
+  corregidos v3) la SOLICITUD DE PROFORMA lleva código `RD-<proceso>-SC-NNN` (`SolicitudCotizacion.codigoDocumento`,
+  correlativo `CorrelativoDocumento::TIPO_SOLICITUD`, sin año, un número para todos los procesos; lo pone
+  `SolicitudCotizacionService` al crearla y no cambia; versión fija 1.0; migración
+  `m261110_010000_codigo_solicitud_cotizacion`, que numeró las existentes en orden de creación). "SC-01" (`codigoCorto()`)
+  y "001 · Fase 2 / SC-01" (`codigo()`) siguen solo en las pantallas. Letra Carlito (= medidas de Calibri, OFL,
   `backend/fonts/carlito`) en todos los impresos menos la carta
 - Gestión de proyectos (`redes.Proyecto`; código RD-PI-PT-NNN del correlativo PT al crearlo, los
   existentes se renumeraron a 3 cifras)
@@ -242,7 +246,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   y un bloque "4. FASE 1" (4.1 área, 4.2 equipo, 4.3 documentos), "5. FASE 2"…; con fase única, 4 área, 5 equipo, 6
   documentos. VERSIÓN calculada, sin tabla: cada fase aprobada es una versión (1.0, 1.1…); si la última fase no está
   aprobada, la siguiente en BORRADOR; aprobada = fecha y firmas del presupuesto de esa fase; fecha de cabecera = creación de
-  la última fase. La solicitud de cotización se identifica con el número: "001 · Fase 2 / SC-01" (`SolicitudCotizacion::codigo()`);
+  la última fase. En pantallas la solicitud de cotización se identifica con el número: "001 · Fase 2 / SC-01" (`SolicitudCotizacion::codigo()`;
+  en el PDF y la ficha, su código RD-PI-SC-NNN);
   el historial copia `identificador()` en `codigoProyecto`
 - REVISIÓN DEL 2026-11-05, PARTE 4 (punto 2): la FICHA TÉCNICA es un DOCUMENTO normado (antes "reporte de control"):
   cabecera del lineamiento (código = el del proyecto RD-PI-PT-NNN hasta la parte 5, versión 1.0, fecha = creación del
@@ -415,22 +420,23 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Cotizaciones de proveedores (relación N:N con ítems/especificaciones). Una línea que viene de
   una solicitud guarda contra qué NET cotizó (`CotizacionDetalle.idEspecificacionEmision`, no
   cambia si el NET se reemite); una cotización suelta solo elige la ficha (`idEspecificacion`)
-- Textos fijos del PDF de la solicitud de cotización (cabecera, instrucciones, nota final) en
+- Textos fijos del PDF de la solicitud de cotización (instrucciones, nota final; la "cabecera" ya no sale desde el
+  2026-11-09 y se quitó de la pantalla) en
   `redes.ConfiguracionSolicitudCotizacion` (una sola fila, igual que la del NET), editables en
   "Configuración del documento" (`solicitud-cotizacion/configuracion`). La solicitud NO guarda
   copia: un cambio se ve también al reimprimir las anteriores. Título, columnas y bloque del
   proveedor siguen fijos en `backend/views/solicitud-cotizacion/pdf.php`
 - SOLICITUD DE PROFORMA DE COTIZACIÓN (revisión del 2026-10-29, paso 10, decidido con el desarrollador el 2026-10-30):
   el PDF de la solicitud es un documento formal para el PROVEEDOR: título "SOLICITUD DE PROFORMA DE COTIZACIÓN",
-  la misma cabecera de hoy (USFX y DTIC, sin código del lineamiento: referencia RD-PI-PT-022 / SC-01, unidad, fecha,
-  página), una lista sencilla N.° | Descripción | Unidad | Cantidad (en la descripción siguen el código ET, la
+  la cabecera de todos los documentos (desde el 2026-11-09, con su código RD-PI-SC-NNN; antes una propia con la
+  referencia, la unidad, la fecha y la página), una lista sencilla N.° | Descripción | Unidad | Cantidad (en la descripción siguen el código ET, la
   marca / modelo de referencia y la observación) y abajo el espacio para el proveedor: firma y sello, nombre /
   empresa y fecha. SIN columnas de precio ni marca ofertada, sin TOTAL, NIT, validez ni tiempo de entrega (los trae
   la proforma que devuelve el proveedor) y SIN firmas de la DTIC. Archivo `solicitud_proforma_…pdf`. Las pantallas
   siguen diciendo "Solicitud de cotización". La migración `m261030_200322_instrucciones_solicitud_de_proforma`
   cambió el texto de instrucciones por defecto ("Se solicita enviar su proforma de cotización…") solo si nadie lo
   había editado. PENDIENTE (Ing. de DTIC): ¿se adjuntan las especificaciones? (hoy, a elección al imprimir); en la
-  reunión también se nombró la solicitud entre los documentos "a normar": hoy no lleva código del lineamiento; la
+  reunión también se nombró la solicitud entre los documentos "a normar" (desde el 2026-11-09 lleva código SC); la
   solicitud se despacha con una NOTA que el sistema no genera
 - Fecha de la solicitud de cotización (2026-10-24): `SolicitudCotizacion.fechaEnvio` (date, opcional,
   con calendario en "Cambiar nombre, nota o fecha de envío"; migración
@@ -452,13 +458,15 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   impresos van en ESCALA DE GRISES (fondos #e0e0e0 títulos, #d0d0d0 categorías, #f2f2f2 subtotales), como el
   formulario de especificación y la lista de materiales; el presupuesto tenía azules. Solo los logos y el
   membrete de la carta conservan su color
-- Cabecera de página de los impresos (2026-10-21, `backend/views/pdf/_cabecera.php`, etiqueta
-  `<htmlpageheader>` de mPDF): recuadro con escudo USFX | títulos + fila de datos | logo DTIC
-  (`backend/web/img/logo-usfx.png`, `logo-dtic.png`, reducidos), repetida en cada página, a 5 mm del
-  borde. Con `codigo` (presupuesto y formulario de especificación, 2026-10-22): "Proceso: …", título y
-  fila Código | Versión | Fecha | Página (lineamiento 8.8.2). Sin `codigo` (solicitud de cotización):
-  fila N.° / facultad / fecha / pág., y las 2 primeras líneas salen de "Configuración del documento".
-  Al juntar varios documentos en un PDF cada uno sale con su cabecera
+- Cabecera de página de los impresos (`backend/views/pdf/_cabecera.php`, etiqueta `<htmlpageheader>` de mPDF),
+  repetida en cada página, a 5 mm del borde (contenido desde 37 mm). Desde el 2026-11-09 es UNA SOLA para todos los
+  documentos (ficha técnica, lista, ET, solicitud, presupuesto), copiada de los Word de "FORMATOS CORREGIDOS v3":
+  tabla de 5 columnas con los anchos del Word; izquierda (2 filas) logo DTIC USFX + "DIVISION DE TECNOLOGIAS DE
+  INFORMACION Y COMUNICACION U.M.R.P.S.F.X.CH." en 6 pt; centro "PROCESO: <NOMBRE EN MAYÚSCULAS>" (10 pt) y el título
+  (12 pt), en negrita; derecha logo RedUSFX + "Redes y Telecomunicaciones"; abajo Código | Versión | Fecha | Página en
+  10 pt sin negrita, fecha dd-mm-aaaa (lineamiento 8.8.2). Logos `backend/web/img/logo-dtic-usfx.png` y
+  `logo-redusfx.png`, sacados de los Word (se borraron `logo-usfx.png` y `logo-dtic.png`). Los textos de "Cabecera" de
+  la configuración de la solicitud y del formulario ET ya no se usan (columnas quedan). Al juntar varios documentos en un PDF cada uno sale con su cabecera
   (`PresupuestoPdfGenerator::empezarDocumento()`)
 - Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
   aprobado. Datos generales: la línea del proyecto (`Proyecto::lineaDocumento()`, ver PARTE 5c; del 2026-11-05 al 06
@@ -760,6 +768,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   una fase, asociación "fases" por el número), `Proyecto.codigoLista`, `Proyecto.codigo` = código de la ficha (solo fase 1),
   `ListaMaterialesAprobacion` = versión emitida (no aprobada), tipos NP y LM del correlativo; caso de uso "Agregar fase"
   (reemplaza "Crear fase siguiente"); secuencias y actividades. Resumen en `docs/cambios-revision-2026-11-05.md`
+- PENDIENTE (tutor): `SolicitudCotizacion.codigoDocumento` y el tipo SC del correlativo (2026-11-09) en el diagrama de
+  clases; informar al Ing. que la solicitud tomó código propio RD-PI-SC-NNN como en los formatos corregidos v3
 - PENDIENTE (tutor): agregar `TratamientoCarta` (2026-11-04; catálogo sin asociación: la carta copia el nombre) al
   diagrama de clases; "Configurar carta de entrega" incluye la lista de tratamientos
 - PENDIENTE (tutor): agregar la clase `Proceso` (2026-10-29; catálogo, asociación 1 proceso → 0..* proyectos)

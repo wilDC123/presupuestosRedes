@@ -8,6 +8,7 @@ use backend\models\CorrelativoDocumento;
 use backend\models\EspecificacionEmision;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
+use backend\models\SolicitudCotizacion;
 use DateTimeImmutable;
 use DomainException;
 use RuntimeException;
@@ -138,6 +139,7 @@ class CodificacionService
         $codigos = match ($tipo) {
             CorrelativoDocumento::TIPO_PROYECTO => Proyecto::find()->select('codigo')->column(),
             CorrelativoDocumento::TIPO_LISTA => Proyecto::find()->select('codigoLista')->column(),
+            CorrelativoDocumento::TIPO_SOLICITUD => SolicitudCotizacion::find()->select('codigoDocumento')->column(),
             CorrelativoDocumento::TIPO_PRESUPUESTO => Presupuesto::find()->select('numeroPresupuesto')->column(),
             default => [],
         };
