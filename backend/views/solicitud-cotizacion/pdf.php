@@ -14,12 +14,13 @@ use yii\helpers\Html;
  * de lo que se necesita y, abajo, el espacio para su firma (firma y sello,
  * nombre / empresa, fecha). Sin columnas de precio ni marca ofertada, sin
  * NIT, validez ni tiempo de entrega: eso lo trae la proforma que devuelve el
- * proveedor. Ninguna firma de la DTIC. Mantiene su cabecera (USFX y DTIC),
- * sin codigo del lineamiento.
+ * proveedor. Ninguna firma de la DTIC. Desde el 2026-11-09 lleva la cabecera
+ * de todos los documentos (views/pdf/_cabecera.php) con su codigo
+ * RD-<proceso>-SC-NNN y version 1.0, como en los formatos corregidos v3;
+ * antes, una cabecera propia con "N.° 001 / SC-01" y la unidad.
  *
- * Al proveedor solo le interesa la unidad que compra (la unidad
- * solicitante): el rubro, el nombre del proyecto y el area de intervencion son datos
- * internos de la DTIC y no salen en el documento. La especificacion tecnica
+ * El rubro, el nombre del proyecto, la unidad y el area de intervencion son
+ * datos internos de la DTIC y no salen en el documento. La especificacion tecnica
  * SI: cada item cita el codigo ET de su emision vigente, y los formularios
  * van al final del mismo PDF si se imprime "con especificaciones"
  * (SolicitudCotizacionService::generarPdf()).
@@ -32,8 +33,6 @@ use yii\helpers\Html;
  * @var backend\models\ConfiguracionSolicitudCotizacion $configuracion textos fijos editables por el encargado
  */
 
-$unidad = $solicitud->proyecto->unidadDependencia;
-$cabecera = $configuracion->lineasCabecera();
 $numero = 0;
 ?>
 <!DOCTYPE html>
@@ -51,7 +50,7 @@ $numero = 0;
     @page {
         header: html_cabecera;
         margin-header: 5mm;
-        margin-top: 32mm;
+        margin-top: 37mm;
     }
     .texto {
         margin-bottom: 10px;
@@ -99,15 +98,14 @@ $numero = 0;
 </head>
 <body>
 
-<?php // Las dos primeras lineas son las de "Configuración del documento". ?>
 <?= $this->render('//pdf/_cabecera', [
     'titulo' => 'SOLICITUD DE PROFORMA DE COTIZACIÓN',
-    'numero' => 'N.° ' . $solicitud->codigo(),
-    'facultad' => $unidad,
+    // Una solicitud sin codigo (no deberia haber: la migracion se los dio a todas), su referencia de antes.
+    'codigo' => $solicitud->codigoDocumento ?? $solicitud->codigo(),
+    'version' => $solicitud::VERSION_DOCUMENTO,
+    'proceso' => backend\models\Proceso::nombreDe($solicitud->codigoProceso()),
     // La fecha de envio; sin ella, la del dia en que se imprime.
     'fecha' => $solicitud->fechaDelDocumento(),
-    'institucion' => $cabecera[0] ?? null,
-    'unidad' => $cabecera[1] ?? null,
 ]) ?>
 
 <div class="texto">

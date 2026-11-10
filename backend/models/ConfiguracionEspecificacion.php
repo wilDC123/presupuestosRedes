@@ -17,7 +17,7 @@ use yii\db\ActiveRecord;
  * documentos ya emitidos.
  *
  * @property int $id
- * @property string|null $textoCabecera
+ * @property string|null $textoCabecera Ya no sale en el formulario (2026-11-09: cabecera comun, views/pdf/_cabecera.php).
  * @property string|null $textoInstrucciones
  * @property string|null $garantiaPorDefecto
  * @property string|null $textoNotaFinal

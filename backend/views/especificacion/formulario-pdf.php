@@ -69,9 +69,6 @@ $condiciones = array_values(array_filter([
     !empty($emision->lugarEntrega) ? '<strong>Lugar de entrega:</strong> ' . Html::encode($emision->lugarEntrega) . '.' : null,
 ]));
 
-// Las dos primeras lineas de la cabecera: la copia congelada del texto de
-// cabecera de la emision ("Universidad..." / "D.T.I.C."); sin texto, las de siempre.
-$lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $emision->textoCabecera)), static fn (string $l) => $l !== ''));
 ?>
 <!DOCTYPE html>
 <html>
@@ -152,8 +149,6 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
     'version' => $numeroVersion,
     'proceso' => $proceso,
     'fecha' => $fecha->format('d/m/Y'),
-    'institucion' => $lineasCabecera[0] ?? null,
-    'unidad' => $lineasCabecera[1] ?? null,
 ]) ?>
 
 <?php if (!empty($emision->textoInstrucciones)): ?>

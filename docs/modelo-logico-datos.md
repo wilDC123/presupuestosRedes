@@ -329,7 +329,7 @@ erDiagram
         string textoInstrucciones
     }
     CorrelativoDocumento {
-        string tipo PK "NP, PT, LM, PR, ET"
+        string tipo PK "NP, PT, LM, SC, PR, ET"
         int siguiente
         int anio "solo ET"
     }
@@ -792,7 +792,8 @@ Proveedores que cotizan.
 
 #### redes.SolicitudCotizacion
 
-Solicitud de proforma de cotización de un proyecto (número correlativo por proyecto).
+Solicitud de proforma de cotización de un proyecto (número correlativo por proyecto, SC-01, SC-02… en pantallas, y
+desde el 2026-11-09 su código del lineamiento RD-<proceso>-SC-NNN, que sale en el PDF).
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
@@ -803,6 +804,7 @@ Solicitud de proforma de cotización de un proyecto (número correlativo por pro
 | nota | nvarchar(500) | sí |  |
 | fecha | datetime | no | por defecto `GETDATE()` |
 | fechaEnvio | date | sí |  |
+| codigoDocumento | nvarchar(20) | sí | único (filtrado); RD-<proceso>-SC-NNN, puesto al crear la solicitud |
 
 Único: (idProyecto,numero)
 
@@ -1021,7 +1023,7 @@ Una sola fila: textos fijos del PDF de la solicitud de proforma.
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
 | id | int | no | PK |
-| textoCabecera | nvarchar(500) | no |  |
+| textoCabecera | nvarchar(500) | no | ya no se usa (2026-11-09: la cabecera es la de todos los documentos) |
 | textoInstrucciones | nvarchar(1000) | no |  |
 | textoNotaFinal | nvarchar(500) | sí |  |
 
@@ -1029,7 +1031,7 @@ CHECK: `([id]=(1))`
 
 #### redes.CorrelativoDocumento
 
-Siguiente número de cada tipo de documento: PT, LM, PR, ET, y el número de proyecto (NP). `anio` solo para ET (vuelve a 001 cada año).
+Siguiente número de cada tipo de documento: PT, LM, SC, PR, ET, y el número de proyecto (NP). `anio` solo para ET (vuelve a 001 cada año).
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
@@ -1037,7 +1039,7 @@ Siguiente número de cada tipo de documento: PT, LM, PR, ET, y el número de pro
 | siguiente | int | no |  |
 | anio | smallint | sí |  |
 
-CHECK: `([tipo]='ET' OR [tipo]='PR' OR [tipo]='PT')`  
+CHECK: `([tipo]='ET' OR [tipo]='PR' OR [tipo]='SC' OR [tipo]='LM' OR [tipo]='PT' OR [tipo]='NP')`  
 CHECK: `([siguiente]>=(1))`
 
 #### redes.Usuario

@@ -54,7 +54,8 @@ class SolicitudFechaEnvioTest extends Unit
             'solicitud' => $this->solicitud,
             'configuracion' => \backend\models\ConfiguracionSolicitudCotizacion::obtener(),
         ]);
-        $this->assertStringContainsString('23/10/2026', $html);
+        // En la cabecera, con guiones como en el Word (2026-11-09).
+        $this->assertStringContainsString('Fecha: 23-10-2026', $html);
 
         // Solicitud de proforma (2026-10-30, paso 10): lista sencilla y firma del proveedor, sin precios.
         $this->assertStringContainsString('SOLICITUD DE PROFORMA DE COTIZACIÓN', $html);

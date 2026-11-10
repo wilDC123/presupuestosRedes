@@ -17,7 +17,8 @@ use yii\db\ActiveRecord;
  *     RD - GR - ET - 015 /26
  *     |    |    |    |    +-- año: solo las especificaciones (vuelven a 001 cada 1 de enero)
  *     |    |    |    +------- correlativo de 3 cifras (desde 001)
- *     |    |    +------------ tipo: PT ficha tecnica del proyecto, LM lista de materiales, PR presupuesto, ET especificacion
+ *     |    |    +------------ tipo: PT ficha tecnica del proyecto, LM lista de materiales, SC solicitud de proforma,
+ *     |    |                         PR presupuesto, ET especificacion
  *     |    +----------------- proceso del proyecto (redes.Proceso); el PT siempre PI
  *     +---------------------- unidad: Redes y Telecomunicaciones
  *
@@ -32,7 +33,7 @@ use yii\db\ActiveRecord;
  * @property string $tipo Ver las constantes TIPO_*.
  * @property int $siguiente El numero que recibira el proximo documento.
  * @property int|null $anio Dos digitos del año al que pertenece "siguiente" (solo ET): si
- *           el año ya cambio, el proximo es el 001 del año nuevo. NULL en PT, LM y PR.
+ *           el año ya cambio, el proximo es el 001 del año nuevo. NULL en PT, LM, SC y PR.
  */
 class CorrelativoDocumento extends ActiveRecord
 {
@@ -45,6 +46,8 @@ class CorrelativoDocumento extends ActiveRecord
     public const TIPO_PROYECTO = 'PT';
     /** Lista de materiales y condiciones previas (revision del 2026-11-05, punto 7; no esta en el lineamiento). */
     public const TIPO_LISTA = 'LM';
+    /** Solicitud de proforma de cotizacion (formatos corregidos v3, 2026-11-09; no esta en el lineamiento). */
+    public const TIPO_SOLICITUD = 'SC';
     public const TIPO_PRESUPUESTO = 'PR';
     public const TIPO_ESPECIFICACION = 'ET';
 
@@ -83,6 +86,7 @@ class CorrelativoDocumento extends ActiveRecord
             // "Ficha tecnica del proyecto" (aclarado por el desarrollador el 2026-11-05).
             self::TIPO_PROYECTO => 'Fichas técnicas del proyecto',
             self::TIPO_LISTA => 'Listas de materiales',
+            self::TIPO_SOLICITUD => 'Solicitudes de proforma de cotización',
             self::TIPO_PRESUPUESTO => 'Presupuestos',
             self::TIPO_ESPECIFICACION => 'Especificaciones técnicas',
         ];
@@ -115,7 +119,7 @@ class CorrelativoDocumento extends ActiveRecord
 
     /**
      * "RD-PI-PR-007" o, con año, "RD-GR-ET-007/26". Tres cifras como minimo;
-     * si en un año (ET) o en total (PT, LM, PR) se pasa del 999 sigue con 1000 (el
+     * si en un año (ET) o en total (PT, LM, SC, PR) se pasa del 999 sigue con 1000 (el
      * lineamiento no dice que hacer y asi nunca se repite uno).
      */
     public static function codigo(string $tipo, int $numero, string $proceso = self::PROCESO, ?int $anio = null): string

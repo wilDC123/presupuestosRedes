@@ -179,6 +179,9 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                             <div class="rd-card-titulo">
                                 <span class="mono"><?= Html::encode($solicitud->codigoCorto()) ?></span>
                                 · <?= Html::encode($solicitud->nombre) ?>
+                                <?php if ($solicitud->codigoDocumento !== null): ?>
+                                    · <span class="mono"><?= Html::encode($solicitud->codigoDocumento) ?></span>
+                                <?php endif; ?>
                             </div>
                             <?php if (!empty($solicitud->nota)): ?>
                                 <div class="rd-celda-sub"><?= Html::encode($solicitud->nota) ?></div>

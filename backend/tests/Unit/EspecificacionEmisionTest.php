@@ -295,7 +295,8 @@ class EspecificacionEmisionTest extends Unit
             ['emision' => $emision, 'proceso' => \backend\models\Proceso::nombreDe($emision->codigoProceso())]
         );
 
-        $this->assertStringContainsString('<strong>Versión:</strong> 1.2', $html);
+        // En la cabecera (sin negrita desde el 2026-11-09, como el Word) y en el control de elaboracion.
+        $this->assertStringContainsString('Versión: 1.2</td>', $html);
         $this->assertStringContainsString('Versión: 1.2', $html);
         // "RD-PI-ET-015/26" -> "RD-PI-ET-015_26_v03.pdf": la barra no va en un nombre de archivo.
         $this->assertSame(str_replace('/', '_', $emision->codigo()) . '_v1_2.pdf', $this->emisiones->generarPdf($emision, $html)['nombreArchivo']);
