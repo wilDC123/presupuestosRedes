@@ -228,6 +228,8 @@ $condiciones = array_values(array_filter([
     'elaborado' => $emision->firma(1),
     'aprobado' => $emision->firma(2),
     'fechaAprobacion' => $fecha->format('d/m/Y'),
+    // Nada por debajo de 11 en el formulario (revision del 2026-11-05).
+    'letraGrande' => true,
 ]) ?>
 
 </body>

@@ -234,6 +234,13 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   (`ACCION_ORDEN_CAMBIO_CREADA` / `_ELIMINADA`). Vista: "Fases del proyecto" con las órdenes debajo de su fase; listado con
   "OC n". En la ficha técnica va dentro de la carpeta de su fase y suma al COSTO TOTAL (parte 6c, ver FICHA TÉCNICA V3).
   PENDIENTE: confirmar con el Ing. la línea del proyecto y el código LM propio de la orden
+- PIES DE FIRMA EN TABLA (2026-11-09, decidido por el desarrollador, como los Word de FORMATOS CORREGIDOS v3):
+  `views/pdf/_control-elaboracion.php` (presupuesto, formulario ET y lista de materiales) es una tabla: fila gris
+  "| ELABORADO POR | APROBADO POR", filas "Firma:" (2 cm para firmar), "Nombre:" (prefijo + nombre, ej. "V°B° Ing. …") y
+  "Cargo:" (negrita), y abajo, de lado a lado en gris claro, "Versión: 1.0 · Fecha de aprobación: 23-10-2026" (fecha
+  dd-mm-aaaa). Anchos del Word 12% | 38% | 50%. La lista de materiales (no se aprueba, `soloElaborado`): solo "ELABORADO
+  POR" a TODO EL ANCHO de la hoja (indicación del Ing., 2026-11-09: con una sola firma ocupa todo el ancho), y abajo solo la versión. El formulario ET la pide en 11 pt (`letraGrande`); los demás en 9/10 pt. Las
+  firmas siguen saliendo de las mismas configuraciones y copias congeladas que antes
 - FICHA TÉCNICA V3 (PARTE 6c, 2026-11-09; el Word "00 PT RD-PI-PT-001" de FORMATOS CORREGIDOS v3; reemplaza el orden de
   las partes 4 y 5d): `proyecto/ficha-pdf.php` + `ProyectoService::datosFicha()`. 1. INFORMACIÓN GENERAL (n.° de proyecto,
   nombre EN MAYÚSCULAS, descripción, tipo, proceso, "Fases" si hay varias, COSTO TOTAL DEL PROYECTO y las FECHAS en el mismo
@@ -448,7 +455,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   marca de agua
   REEMPLAZADO / ANULADO / VENCIDO. Al fondo de la última página, el "control de elaboración" del
   lineamiento, como el del presupuesto (2026-10-22, vista compartida `views/pdf/_control-elaboracion.php`):
-  dos firmas SIN tabla (raya, nombre, cargo, "ELABORADO POR" / "APROBADO POR") y la línea "Versión: 02
+  dos firmas EN TABLA desde el 2026-11-09 (ver PIES DE FIRMA EN TABLA; antes sin tabla) y la línea "Versión: 02
   · Fecha de aprobación: …" (versión de la ficha; fecha = la de emisión). Las firmas se editan en la configuración del formulario y cada emisión
   guarda su COPIA (trait `FirmasDeControl`, migración
   `m261022_233202_control_elaboracion_en_formulario_especificacion`); las emitidas antes salen en blanco.
@@ -544,8 +551,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   página nueva), dos firmas lado a lado
   (prefijo opcional como "V°B°", nombre con tratamiento, cargo guardado en MAYÚSCULAS); desde el
   2026-10-22 son el "control de elaboración" del lineamiento: rotuladas "ELABORADO POR" (firma 1) y
-  "APROBADO POR" (firma 2, V°B°), SIN tabla (decidido el 2026-10-22: el 8.12 pide el contenido, no una
-  tabla), y debajo "Versión: 01 · Fecha de aprobación" (`Presupuesto.fechaAprobacion`, la pone
+  "APROBADO POR" (firma 2, V°B°), EN TABLA desde el 2026-11-09 (del 22-10 al 09-11 sin tabla: "el 8.12 pide el
+  contenido, no una tabla"; ver PIES DE FIRMA EN TABLA), y debajo "Versión: 01 · Fecha de aprobación" (`Presupuesto.fechaAprobacion`, la pone
   `PresupuestoService::cambiarEstado()` al aprobar; sin fecha, una raya). SIN pie de página desde el
   2026-10-30 (paso 9: "si es sistema de gestión documental no tiene pie de página"; los contactos están en el
   membrete de la carta; migración `m261030_162507_quitar_pie_de_configuracion_presupuesto` quitó sus columnas;
