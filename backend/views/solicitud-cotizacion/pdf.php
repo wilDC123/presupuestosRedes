@@ -14,7 +14,11 @@ use yii\helpers\Html;
  * de lo que se necesita y, abajo, el espacio para su firma (firma y sello,
  * nombre / empresa, fecha). Sin columnas de precio ni marca ofertada, sin
  * NIT, validez ni tiempo de entrega: eso lo trae la proforma que devuelve el
- * proveedor. Ninguna firma de la DTIC. Desde el 2026-11-09 lleva la cabecera
+ * proveedor. Desde el 2026-11-09, como el Word de los formatos corregidos v3,
+ * lleva tambien la firma "ELABORADO POR" de la DTIC (antes ninguna), en la
+ * tabla de todos los documentos a todo el ancho (views/pdf/_control-elaboracion.php):
+ * la firma 1 de "Configuración del PDF" del presupuesto, la de HOY (la
+ * solicitud no guarda copia, como sus textos). Ese mismo dia lleva la cabecera
  * de todos los documentos (views/pdf/_cabecera.php) con su codigo
  * RD-<proceso>-SC-NNN y version 1.0, como en los formatos corregidos v3;
  * antes, una cabecera propia con "N.° 001 / SC-01" y la unidad.
@@ -84,7 +88,7 @@ $numero = 0;
         font-weight: bold;
     }
     .firmas {
-        margin-top: 50px;
+        margin-top: 24px;
     }
     .firma-linea {
         margin-top: 40px;
@@ -158,7 +162,16 @@ $numero = 0;
     <div class="texto nota-final"><?= nl2br(Html::encode($configuracion->textoNotaFinal)) ?></div>
 <?php endif; ?>
 
-<?php // Solo firma el proveedor: ninguna firma de la DTIC, el documento es para el proveedor. ?>
+<?php // Elaborado por la DTIC (2026-11-09, como el Word v3): una sola firma, a todo el ancho. ?>
+<?= $this->render('//pdf/_control-elaboracion', [
+    'version' => $solicitud::VERSION_DOCUMENTO,
+    'elaborado' => backend\models\ConfiguracionPresupuesto::obtener()->firma(1),
+    'aprobado' => null,
+    'fechaAprobacion' => '',
+    'soloElaborado' => true,
+]) ?>
+
+<?php // Y el espacio para el proveedor, que devuelve la solicitud con su proforma. ?>
 <div class="firmas">
     <div class="firma-linea"></div>
     <div class="firma-etiqueta">Firma y sello del proveedor</div>

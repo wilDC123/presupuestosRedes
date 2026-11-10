@@ -61,5 +61,9 @@ class SolicitudCodigoTest extends Unit
             $this->assertStringContainsString($esperado, $html);
         }
         $this->assertStringNotContainsString('N.° ', $html);
+        // Firma de la DTIC (2026-11-09, como el Word v3): solo "ELABORADO POR", y el espacio del proveedor.
+        $this->assertStringContainsString('ELABORADO POR', $html);
+        $this->assertStringNotContainsString('APROBADO POR', $html);
+        $this->assertStringContainsString('Firma y sello del proveedor', $html);
     }
 }
