@@ -11,14 +11,16 @@ use yii\helpers\Html;
  *
  * Desde el 2026-10-30 (revision del Ing. de DTIC del 2026-10-29, paso 10) es
  * una lista SENCILLA para el proveedor: N.°, Descripcion, Unidad y Cantidad
- * de lo que se necesita y, abajo, el espacio para su firma (firma y sello,
- * nombre / empresa, fecha). Sin columnas de precio ni marca ofertada, sin
+ * de lo que se necesita. Sin columnas de precio ni marca ofertada, sin
  * NIT, validez ni tiempo de entrega: eso lo trae la proforma que devuelve el
  * proveedor. Desde el 2026-11-09, como el Word de los formatos corregidos v3,
  * lleva tambien la firma "ELABORADO POR" de la DTIC (antes ninguna), en la
  * tabla de todos los documentos a todo el ancho (views/pdf/_control-elaboracion.php):
  * la firma 1 de "Configuración del PDF" del presupuesto, la de HOY (la
- * solicitud no guarda copia, como sus textos). Ese mismo dia lleva la cabecera
+ * solicitud no guarda copia, como sus textos). Desde el 2026-11-10 esa firma va
+ * al FONDO de la ultima pagina (MARCA_AL_PIE, como la lista y el presupuesto)
+ * y ya no lleva el espacio del proveedor (firma y sello, nombre / empresa,
+ * fecha), que tenia desde el 2026-10-30. Ese mismo dia lleva la cabecera
  * de todos los documentos (views/pdf/_cabecera.php) con su codigo
  * RD-<proceso>-SC-NNN y version 1.0, como en los formatos corregidos v3;
  * antes, una cabecera propia con "N.° 001 / SC-01" y la unidad.
@@ -87,17 +89,6 @@ $numero = 0;
         margin-top: 12px;
         font-weight: bold;
     }
-    .firmas {
-        margin-top: 24px;
-    }
-    .firma-linea {
-        margin-top: 40px;
-        border-top: 1px solid #000;
-        width: 260px;
-    }
-    .firma-etiqueta {
-        margin-top: 4px;
-    }
 </style>
 </head>
 <body>
@@ -164,7 +155,9 @@ $numero = 0;
     <div class="texto nota-final"><?= nl2br(Html::encode($configuracion->textoNotaFinal)) ?></div>
 <?php endif; ?>
 
-<?php // Elaborado por la DTIC (2026-11-09, como el Word v3): una sola firma, a todo el ancho. ?>
+<?php // Elaborado por la DTIC: una sola firma, a todo el ancho, al FONDO de la última página (PresupuestoPdfGenerator). ?>
+<?= backend\components\PresupuestoPdfGenerator::MARCA_AL_PIE ?>
+
 <?= $this->render('//pdf/_control-elaboracion', [
     'version' => $solicitud::VERSION_DOCUMENTO,
     'elaborado' => backend\models\ConfiguracionPresupuesto::obtener()->firma(1),
@@ -172,14 +165,6 @@ $numero = 0;
     'fechaAprobacion' => '',
     'soloElaborado' => true,
 ]) ?>
-
-<?php // Y el espacio para el proveedor, que devuelve la solicitud con su proforma. ?>
-<div class="firmas">
-    <div class="firma-linea"></div>
-    <div class="firma-etiqueta">Firma y sello del proveedor</div>
-    <div class="firma-etiqueta">Nombre / empresa: ________________________________</div>
-    <div class="firma-etiqueta">Fecha: ________________________________</div>
-</div>
 
 </body>
 </html>
