@@ -237,8 +237,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - PIES DE FIRMA EN TABLA (2026-11-09, decidido por el desarrollador, como los Word de FORMATOS CORREGIDOS v3):
   `views/pdf/_control-elaboracion.php` (presupuesto, formulario ET y lista de materiales) es una tabla: fila gris
   "| ELABORADO POR | APROBADO POR", filas "Firma:" (2 cm para firmar), "Nombre:" (prefijo + nombre, ej. "V°B° Ing. …") y
-  "Cargo:" (negrita), y abajo, de lado a lado en gris claro, "Versión: 1.0 · Fecha de aprobación: 23-10-2026" (fecha
-  dd-mm-aaaa). Anchos del Word 12% | 38% | 50%. La lista de materiales (no se aprueba, `soloElaborado`): solo "ELABORADO
+  "Cargo:" (negrita), y abajo, de lado a lado en gris claro, "Fecha de aprobación: 23-10-2026" (fecha dd-mm-aaaa). SIN
+  VERSIÓN desde el 2026-11-10 (ya está en la cabecera de la página); la lista y la solicitud (una firma) no llevan esa fila. Anchos del Word 12% | 38% | 50%. La lista de materiales (no se aprueba, `soloElaborado`): solo "ELABORADO
   POR" a TODO EL ANCHO de la hoja (indicación del Ing., 2026-11-09: con una sola firma ocupa todo el ancho), y abajo solo la versión. El formulario ET la pide en 11 pt (`letraGrande`); los demás en 9/10 pt. Las
   firmas siguen saliendo de las mismas configuraciones y copias congeladas que antes
 - FICHA TÉCNICA V3 (PARTE 6c, 2026-11-09; el Word "00 PT RD-PI-PT-001" de FORMATOS CORREGIDOS v3; reemplaza el orden de
