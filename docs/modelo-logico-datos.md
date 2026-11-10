@@ -73,6 +73,8 @@ erDiagram
         int idProceso FK
         int idProyectoAnterior FK
         int numeroFase
+        int idFaseOrigen FK "orden de cambio: su fase"
+        int numeroOrdenCambio "1, 2... (NULL = fase)"
         int idPlantillaOrigen FK
         string unidadSolicitante
         string unidadDependencia
@@ -391,7 +393,12 @@ Proyecto de instalación de redes. Código RD-PI-PT-NNN. Puede ser la fase sigui
 | unidadSolicitante | nvarchar(250) | sí |  |
 | unidadDependencia | nvarchar(250) | sí |  |
 | lugarEntrega | nvarchar(300) | sí | lo copian los formularios de especificación al emitirse; vacío = el de la configuración |
-| numeroProyecto | int | sí | número del proyecto, el MISMO en todas sus fases (cada fila es una fase); único con numeroFase |
+| numeroProyecto | int | sí | número del proyecto, el MISMO en todas sus fases (cada fila es una fase); único con numeroFase y numeroOrdenCambio |
+| idFaseOrigen | int | sí | FK → Proyecto.id; ORDEN DE CAMBIO (2026-11-09): la fase a la que pertenece. NULL = la fila es una fase |
+| numeroOrdenCambio | int | sí | 1, 2... dentro de la fase; CHECK: los dos NULL o los dos con valor |
+| descripcionCambio | nvarchar(1000) | sí | orden de cambio: descripción (FR-006) |
+| motivoCambio | nvarchar(1000) | sí | orden de cambio: motivo |
+| tipoCambio | nvarchar(40) | sí | orden de cambio: tipo (FR-006, 7.1.1; `Proyecto::tiposCambio()`) |
 | codigoLista | nvarchar(20) | sí | único (filtrado); código de la lista de materiales, RD-<proceso>-LM-NNN, puesto al crear el proyecto |
 | idProceso | int | sí | FK → Proceso.id |
 

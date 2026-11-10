@@ -40,6 +40,12 @@ use yii\db\ActiveRecord;
  * @property int $numeroFase
  * @property int|null $numeroProyecto Numero del proyecto (revision del 2026-11-05): lo comparten TODAS sus
  *           fases (cada fila de esta tabla es una fase). Lo pone ProyectoService al crear; ver numeroTexto().
+ * @property int|null $idFaseOrigen ORDEN DE CAMBIO (parte 6, 2026-11-09): la fase a la que pertenece la orden.
+ *           NULL = la fila es una fase. Ver esOrdenCambio().
+ * @property int|null $numeroOrdenCambio 1, 2... dentro de su fase (NULL en una fase).
+ * @property string|null $descripcionCambio Orden de cambio: descripcion del cambio solicitado (FR-006).
+ * @property string|null $motivoCambio Orden de cambio: motivo.
+ * @property string|null $tipoCambio Orden de cambio: una de las claves de tiposCambio() (FR-006, 7.1.1).
  * @property int|null $idPlantillaOrigen Plantilla de la que partio la lista (solo informativo).
  * @property bool $listaIniciada true si el paso "Plantilla" ya se resolvio (se uso una o se omitio).
  * @property string $estadoLista Estado de la lista de items: ver las constantes LISTA_*.
@@ -52,7 +58,9 @@ use yii\db\ActiveRecord;
  * @property-read ProyectoParticipante[] $participantes Equipo del proyecto, en orden.
  * @property-read Proyecto|null $proyectoAnterior
  * @property-read Proyecto[] $fasesSiguientes
- * @property-read Proyecto[] $fases Todas las fases del proyecto (mismo numeroProyecto), en orden.
+ * @property-read Proyecto[] $fases Todas las fases del proyecto (mismo numeroProyecto), en orden; sin las ordenes de cambio.
+ * @property-read Proyecto|null $faseOrigen La fase de una orden de cambio.
+ * @property-read Proyecto[] $ordenesCambio Las ordenes de cambio de esta fase, en orden.
  * @property-read Presupuesto|null $presupuesto
  * @property-read Plantilla|null $plantillaOrigen
  * @property-read ProyectoItem[] $items
@@ -113,9 +121,50 @@ class Proyecto extends ActiveRecord
      * un atributo sin reglas no es "seguro" y load() lo ignora, asi que no
      * se pueden enviar desde el formulario. Los calcula ProyectoService.
      */
+    /**
+     * Escenario del formulario de una ORDEN DE CAMBIO: solo descripcion,
+     * motivo y tipo llegan del formulario (lo demas lo copia ProyectoService
+     * de la fase). Ver scenarios().
+     */
+    public const SCENARIO_ORDEN_CAMBIO = 'ordenCambio';
+
+    /**
+     * Tipos de orden de cambio del formato RD-GD-FR-006 (7.1.1).
+     *
+     * @return array<string, string>
+     */
+    public static function tiposCambio(): array
+    {
+        return [
+            'solicitud' => 'Nuevas solicitudes de los usuarios',
+            'omision' => 'Errores u omisiones en la planificación y propuestas técnicas',
+            'presupuesto' => 'Presupuestos imprecisos',
+            'alcance' => 'Cambios en el alcance del proyecto',
+            'costos' => 'Costos de recursos',
+            'imprevisto' => 'Eventos no planificados',
+        ];
+    }
+
+    /**
+     * Las reglas sin 'on' valen en todos los escenarios: por eso el de la
+     * orden de cambio se declara a mano, con SOLO sus tres campos (asi el
+     * formulario de la orden no puede cambiar el nombre ni nada del proyecto).
+     */
+    public function scenarios(): array
+    {
+        $escenarios = parent::scenarios();
+        $escenarios[self::SCENARIO_ORDEN_CAMBIO] = ['descripcionCambio', 'motivoCambio', 'tipoCambio'];
+
+        return $escenarios;
+    }
+
     public function rules(): array
     {
         return [
+            [['descripcionCambio', 'motivoCambio'], 'trim', 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            [['descripcionCambio', 'motivoCambio', 'tipoCambio'], 'required', 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            [['descripcionCambio', 'motivoCambio'], 'string', 'max' => 1000, 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            [['tipoCambio'], 'in', 'range' => array_keys(self::tiposCambio()), 'on' => self::SCENARIO_ORDEN_CAMBIO],
             [['nombre'], 'required'],
             [['nombre'], 'string', 'max' => 300],
             [['descripcion'], 'string', 'max' => 1000],
@@ -154,6 +203,9 @@ class Proyecto extends ActiveRecord
             'unidadDependencia' => 'Unidad / dependencia',
             'unidadSolicitante' => 'Unidad solicitante',
             'lugarEntrega' => 'Lugar de entrega por defecto',
+            'descripcionCambio' => 'Descripción del cambio',
+            'motivoCambio' => 'Motivo',
+            'tipoCambio' => 'Tipo de cambio',
             'areas' => 'Área de intervención',
             'codigoFacultad' => 'Facultad',
             'facultad' => 'Facultad',
@@ -216,6 +268,41 @@ class Proyecto extends ActiveRecord
     public function getProyectoAnterior(): ActiveQuery
     {
         return $this->hasOne(self::class, ['id' => 'idProyectoAnterior']);
+    }
+
+    /** La fase de una orden de cambio (null en una fase). */
+    public function getFaseOrigen(): ActiveQuery
+    {
+        return $this->hasOne(self::class, ['id' => 'idFaseOrigen']);
+    }
+
+    /** Las ordenes de cambio de esta fase, la 1 primero. */
+    public function getOrdenesCambio(): ActiveQuery
+    {
+        return $this->hasMany(self::class, ['idFaseOrigen' => 'id'])->orderBy(['numeroOrdenCambio' => SORT_ASC]);
+    }
+
+    /**
+     * true si la fila es una ORDEN DE CAMBIO (parte 6): un presupuesto
+     * adicional de una fase aprobada, con su propia lista, ET, solicitudes,
+     * presupuesto y carta. No es una fase: no cuenta en las fases, en la
+     * version de la ficha tecnica ni en "Agregar fase".
+     */
+    public function esOrdenCambio(): bool
+    {
+        return $this->idFaseOrigen !== null;
+    }
+
+    /** "Orden de cambio N.° 1" (vacio en una fase). */
+    public function textoOrdenCambio(): string
+    {
+        return $this->esOrdenCambio() ? 'Orden de cambio N.° ' . (int) $this->numeroOrdenCambio : '';
+    }
+
+    /** El texto del tipo de cambio ("Nuevas solicitudes de los usuarios"). */
+    public function tipoCambioLabel(): string
+    {
+        return self::tiposCambio()[(string) $this->tipoCambio] ?? (string) $this->tipoCambio;
     }
 
     /**
@@ -354,7 +441,10 @@ class Proyecto extends ActiveRecord
         $linea = 'PROYECTO: ' . ($this->numeroProyecto !== null ? $this->numeroTexto() . ' – ' : '')
             . mb_strtoupper(trim((string) $this->nombre), 'UTF-8');
 
-        return $this->tieneVariasFases() ? $linea . ' (FASE ' . (int) $this->numeroFase . ')' : $linea;
+        $linea = $this->tieneVariasFases() ? $linea . ' (FASE ' . (int) $this->numeroFase . ')' : $linea;
+
+        // Una orden de cambio: "PROYECTO: 001 – NOMBRE (FASE 1) – ORDEN DE CAMBIO N.° 1" (propuesta del 2026-11-09).
+        return $this->esOrdenCambio() ? $linea . ' – ' . mb_strtoupper($this->textoOrdenCambio(), 'UTF-8') : $linea;
     }
 
     /**
@@ -378,11 +468,15 @@ class Proyecto extends ActiveRecord
 
     /**
      * Todas las fases del proyecto (las filas con su mismo numero), de la 1 en
-     * adelante; incluye esta. Vacio si no tiene numero (filas de prueba).
+     * adelante; incluye esta si es una fase. Sin las ordenes de cambio (parte
+     * 6): son filas con el mismo numero, pero no fases. Vacio si no tiene
+     * numero (filas de prueba).
      */
     public function getFases(): ActiveQuery
     {
-        return $this->hasMany(self::class, ['numeroProyecto' => 'numeroProyecto'])->orderBy(['numeroFase' => SORT_ASC, 'id' => SORT_ASC]);
+        return $this->hasMany(self::class, ['numeroProyecto' => 'numeroProyecto'])
+            ->andOnCondition(['numeroOrdenCambio' => null])
+            ->orderBy(['numeroFase' => SORT_ASC, 'id' => SORT_ASC]);
     }
 
     /**
@@ -392,7 +486,7 @@ class Proyecto extends ActiveRecord
      */
     public function codigoFicha(): ?string
     {
-        if ((int) $this->numeroFase <= 1 || $this->numeroProyecto === null) {
+        if (((int) $this->numeroFase <= 1 && !$this->esOrdenCambio()) || $this->numeroProyecto === null) {
             return $this->codigo;
         }
 
@@ -405,9 +499,13 @@ class Proyecto extends ActiveRecord
         return is_string($codigo) ? $codigo : $this->codigo;
     }
 
-    /** true si ninguna fase del proyecto viene despues de esta. */
+    /** true si ninguna fase del proyecto viene despues de esta (una orden de cambio no es una fase: false). */
     public function esUltimaFase(): bool
     {
+        if ($this->esOrdenCambio()) {
+            return false;
+        }
+
         if ($this->numeroProyecto === null) {
             return !self::find()->andWhere(['idProyectoAnterior' => $this->id])->exists();
         }
@@ -432,8 +530,8 @@ class Proyecto extends ActiveRecord
         if ($this->variasFases === null) {
             $this->variasFases = (int) $this->numeroFase > 1
                 || ($this->numeroProyecto !== null && self::find()
-                    ->andWhere(['numeroProyecto' => $this->numeroProyecto])
-                    ->andWhere(['<>', 'id', (int) $this->id])
+                    ->andWhere(['numeroProyecto' => $this->numeroProyecto, 'numeroOrdenCambio' => null])
+                    ->andWhere(['<>', 'numeroFase', (int) $this->numeroFase])
                     ->exists());
         }
 
@@ -448,7 +546,9 @@ class Proyecto extends ActiveRecord
     {
         $texto = $this->numeroProyecto !== null ? 'Proyecto ' . $this->numeroTexto() : 'Proyecto #' . $this->id;
 
-        return $this->tieneVariasFases() ? $texto . ' · Fase ' . (int) $this->numeroFase : $texto;
+        $texto = $this->tieneVariasFases() ? $texto . ' · Fase ' . (int) $this->numeroFase : $texto;
+
+        return $this->esOrdenCambio() ? $texto . ' · ' . $this->textoOrdenCambio() : $texto;
     }
 
     /**
