@@ -546,6 +546,13 @@ $(function () {
         return $.trim($lugarProyecto.val()) || $lugarProyecto.data('configuracion') || 'Sin lugar de entrega';
     }
 
+    // Fila plegada: "Otro lugar de entrega" / "Cambiar" muestra el campo (2026-11-10).
+    $tabla.on('click', '.lista-lugar-abrir', function () {
+        var $lugar = $(this).closest('.lista-item-lugar');
+        $lugar.find('.lista-lugar-resumen').addClass('d-none');
+        $lugar.find('.lista-lugar-campo').removeClass('d-none').find('input').trigger('focus');
+    });
+
     $lugarProyecto.on('input', function () {
         $('#lista-items-form input[name$="[lugarEntrega]"]').attr('placeholder', lugarDeEjemplo());
     });

@@ -189,6 +189,9 @@ $selectorEspecificacion = static function (string $n, string $seleccionada, stri
  * "__n__" como marcador y lo reemplaza por un numero nuevo.
  */
 $fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '', string $emision = '', string $lugar = '') use ($selectorEspecificacion, $lugarEntregaPorDefecto): string {
+    // El lugar propio de la fila: vacio si no tiene o si es el mismo que el de arriba.
+    $propio = trim($lugar) !== '' && trim($lugar) !== trim((string) $lugarEntregaPorDefecto) ? trim($lugar) : '';
+
     return '<tr class="lista-item">'
         . '<td>'
         . Html::hiddenInput("items[$n][id]", $id)
@@ -206,17 +209,32 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
         . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
         . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
         // Lugar de entrega de ESTA especificacion (revision del 2026-11-05: cada una puede tener uno
-        // distinto). Solo con especificacion elegida (lista-items.js). Vacio = el del proyecto; cambiarlo
-        // en un formulario ya emitido lo reemite al guardar (ListaItemsService).
-        . '<div class="d-flex align-items-center gap-2 mt-1 lista-item-lugar' . ($idEspecificacion === '' ? ' d-none' : '') . '">'
+        // distinto). Solo con especificacion elegida (lista-items.js). Vacio = el de arriba de la lista;
+        // cambiarlo en un formulario ya emitido lo reemite al guardar (ListaItemsService).
+        // PLEGADO (2026-11-10, ocupaba mucho en cada fila): si es el mismo que el de arriba (o no tiene),
+        // solo el enlace "Otro lugar de entrega"; si es otro, una linea "Entrega: ... · Cambiar". El campo
+        // aparece al hacer clic. Uno igual al de arriba se envia vacio: en un formulario ya emitido vacio
+        // no cambia nada (no se reemite), en uno nuevo toma el de arriba.
+        . '<div class="mt-1 lista-item-lugar' . ($idEspecificacion === '' ? ' d-none' : '') . '">'
+        . '<div class="rd-celda-sub lista-lugar-resumen">'
+        . ($propio !== ''
+            ? 'Entrega: <strong>' . Html::encode($propio) . '</strong> · '
+                . Html::button('Cambiar', ['class' => 'btn btn-link btn-sm p-0 align-baseline lista-lugar-abrir'])
+            : Html::button('Otro lugar de entrega', [
+                'class' => 'btn btn-link btn-sm p-0 align-baseline lista-lugar-abrir',
+                'title' => 'Solo si esta especificación se entrega en un lugar distinto al de arriba de la lista',
+            ]))
+        . '</div>'
+        . '<div class="d-flex align-items-center gap-2 lista-lugar-campo d-none">'
         . '<label class="rd-celda-sub text-nowrap mb-0" for="lista-lugar-' . $n . '">Lugar de entrega</label>'
-        . Html::textInput("items[$n][lugarEntrega]", $lugar, [
+        . Html::textInput("items[$n][lugarEntrega]", $propio, [
             'id' => 'lista-lugar-' . $n,
             'class' => 'form-control form-control-sm',
             'maxlength' => 300,
             'placeholder' => (string) ($lugarEntregaPorDefecto ?? 'Sin lugar de entrega'),
             'title' => 'Si se cambia en un formulario ya emitido, al guardar se reemite (mismo código, versión siguiente).',
         ])
+        . '</div>'
         . '</div>'
         . $emision
         . '</td>'
