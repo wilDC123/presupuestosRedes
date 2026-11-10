@@ -45,7 +45,7 @@ use yii\db\ActiveRecord;
  * @property int|null $numeroOrdenCambio 1, 2... dentro de su fase (NULL en una fase).
  * @property string|null $descripcionCambio Orden de cambio: descripcion del cambio solicitado (FR-006).
  * @property string|null $motivoCambio Orden de cambio: motivo.
- * @property string|null $tipoCambio Orden de cambio: una de las claves de tiposCambio() (FR-006, 7.1.1).
+ * @property int|null $idTipoOrdenCambio Orden de cambio: FK a redes.TipoOrdenCambio (catalogo, FR-006 7.1.1).
  * @property int|null $idPlantillaOrigen Plantilla de la que partio la lista (solo informativo).
  * @property bool $listaIniciada true si el paso "Plantilla" ya se resolvio (se uso una o se omitio).
  * @property string $estadoLista Estado de la lista de items: ver las constantes LISTA_*.
@@ -61,6 +61,7 @@ use yii\db\ActiveRecord;
  * @property-read Proyecto[] $fases Todas las fases del proyecto (mismo numeroProyecto), en orden; sin las ordenes de cambio.
  * @property-read Proyecto|null $faseOrigen La fase de una orden de cambio.
  * @property-read Proyecto[] $ordenesCambio Las ordenes de cambio de esta fase, en orden.
+ * @property-read TipoOrdenCambio|null $tipoOrdenCambio
  * @property-read Presupuesto|null $presupuesto
  * @property-read Plantilla|null $plantillaOrigen
  * @property-read ProyectoItem[] $items
@@ -129,23 +130,6 @@ class Proyecto extends ActiveRecord
     public const SCENARIO_ORDEN_CAMBIO = 'ordenCambio';
 
     /**
-     * Tipos de orden de cambio del formato RD-GD-FR-006 (7.1.1).
-     *
-     * @return array<string, string>
-     */
-    public static function tiposCambio(): array
-    {
-        return [
-            'solicitud' => 'Nuevas solicitudes de los usuarios',
-            'omision' => 'Errores u omisiones en la planificación y propuestas técnicas',
-            'presupuesto' => 'Presupuestos imprecisos',
-            'alcance' => 'Cambios en el alcance del proyecto',
-            'costos' => 'Costos de recursos',
-            'imprevisto' => 'Eventos no planificados',
-        ];
-    }
-
-    /**
      * Las reglas sin 'on' valen en todos los escenarios: por eso el de la
      * orden de cambio se declara a mano, con SOLO sus tres campos (asi el
      * formulario de la orden no puede cambiar el nombre ni nada del proyecto).
@@ -153,7 +137,7 @@ class Proyecto extends ActiveRecord
     public function scenarios(): array
     {
         $escenarios = parent::scenarios();
-        $escenarios[self::SCENARIO_ORDEN_CAMBIO] = ['descripcionCambio', 'motivoCambio', 'tipoCambio'];
+        $escenarios[self::SCENARIO_ORDEN_CAMBIO] = ['descripcionCambio', 'motivoCambio', 'idTipoOrdenCambio'];
 
         return $escenarios;
     }
@@ -162,9 +146,10 @@ class Proyecto extends ActiveRecord
     {
         return [
             [['descripcionCambio', 'motivoCambio'], 'trim', 'on' => self::SCENARIO_ORDEN_CAMBIO],
-            [['descripcionCambio', 'motivoCambio', 'tipoCambio'], 'required', 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            [['descripcionCambio', 'motivoCambio', 'idTipoOrdenCambio'], 'required', 'on' => self::SCENARIO_ORDEN_CAMBIO],
             [['descripcionCambio', 'motivoCambio'], 'string', 'max' => 1000, 'on' => self::SCENARIO_ORDEN_CAMBIO],
-            [['tipoCambio'], 'in', 'range' => array_keys(self::tiposCambio()), 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            [['idTipoOrdenCambio'], 'integer', 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            TipoOrdenCambio::reglaElegible(self::SCENARIO_ORDEN_CAMBIO),
             [['nombre'], 'required'],
             [['nombre'], 'string', 'max' => 300],
             [['descripcion'], 'string', 'max' => 1000],
@@ -205,7 +190,7 @@ class Proyecto extends ActiveRecord
             'lugarEntrega' => 'Lugar de entrega por defecto',
             'descripcionCambio' => 'Descripción del cambio',
             'motivoCambio' => 'Motivo',
-            'tipoCambio' => 'Tipo de cambio',
+            'idTipoOrdenCambio' => 'Tipo de cambio',
             'areas' => 'Área de intervención',
             'codigoFacultad' => 'Facultad',
             'facultad' => 'Facultad',
@@ -299,10 +284,25 @@ class Proyecto extends ActiveRecord
         return $this->esOrdenCambio() ? 'Orden de cambio N.° ' . (int) $this->numeroOrdenCambio : '';
     }
 
-    /** El texto del tipo de cambio ("Nuevas solicitudes de los usuarios"). */
+    public function getTipoOrdenCambio(): ActiveQuery
+    {
+        return $this->hasOne(TipoOrdenCambio::class, ['id' => 'idTipoOrdenCambio']);
+    }
+
+    /**
+     * El nombre del tipo de cambio ("Nuevas solicitudes de los usuarios").
+     * Se lee de la base cada vez (no de la relacion): al editar la orden, el
+     * historial compara el de antes con el de despues.
+     */
     public function tipoCambioLabel(): string
     {
-        return self::tiposCambio()[(string) $this->tipoCambio] ?? (string) $this->tipoCambio;
+        if (empty($this->idTipoOrdenCambio)) {
+            return '';
+        }
+
+        $nombre = TipoOrdenCambio::find()->select('nombre')->where(['id' => (int) $this->idTipoOrdenCambio])->scalar();
+
+        return is_string($nombre) ? $nombre : '';
     }
 
     /**

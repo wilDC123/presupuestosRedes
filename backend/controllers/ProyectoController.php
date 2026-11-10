@@ -16,6 +16,7 @@ use backend\services\PersonalService;
 use backend\services\ProyectoService;
 use backend\services\ProcesoService;
 use backend\services\RolProyectoService;
+use backend\services\TipoOrdenCambioService;
 use backend\services\TipoProyectoService;
 use backend\services\contracts\InfraestructuraProvider;
 use Yii;
@@ -148,7 +149,7 @@ class ProyectoController extends Controller
             return $this->redirect(['plantilla', 'id' => $orden->id]);
         }
 
-        return $this->render('orden-cambio', ['orden' => $orden, 'fase' => $fase]);
+        return $this->render('orden-cambio', ['orden' => $orden, 'fase' => $fase, 'tipos' => (new TipoOrdenCambioService())->opciones()]);
     }
 
     /** Cambiar descripcion, motivo o tipo de una orden de cambio no aprobada. */
@@ -172,7 +173,14 @@ class ProyectoController extends Controller
             return $this->redirect(['view', 'id' => $orden->id]);
         }
 
-        return $this->render('orden-cambio', ['orden' => $orden, 'fase' => $orden->faseOrigen]);
+        // El tipo que ya tenia se conserva en el desplegable aunque se haya desactivado.
+        $tipoGuardado = $orden->getOldAttribute('idTipoOrdenCambio');
+
+        return $this->render('orden-cambio', [
+            'orden' => $orden,
+            'fase' => $orden->faseOrigen,
+            'tipos' => (new TipoOrdenCambioService())->opciones($tipoGuardado === null ? null : (int) $tipoGuardado),
+        ]);
     }
 
     /**

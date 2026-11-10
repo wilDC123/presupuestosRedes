@@ -9,10 +9,12 @@ use backend\models\HistorialProyecto;
 use backend\models\Personal;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
+use backend\models\TipoOrdenCambio;
 use backend\services\OrdenCambioFaseService;
 use backend\services\ProcesoService;
 use backend\services\ProyectoService;
 use backend\services\RolProyectoService;
+use backend\services\TipoOrdenCambioService;
 use Codeception\Test\Unit;
 
 /**
@@ -101,10 +103,16 @@ class OrdenCambioFaseTest extends Unit
         // El formulario del proyecto no la toca.
         $this->assertFalse($this->proyectos->actualizar($orden, ['Proyecto' => ['nombre' => 'Otro']]));
 
-        $datos = ['Proyecto' => ['descripcionCambio' => 'Ahora 80 m de cable', 'motivoCambio' => 'Se midió de nuevo', 'tipoCambio' => 'omision', 'nombre' => 'No debe cambiar']];
+        $omision = (int) TipoOrdenCambio::find()->select('id')->where(['like', 'nombre', 'Errores u omisiones'])->scalar();
+        $datos = ['Proyecto' => ['descripcionCambio' => 'Ahora 80 m de cable', 'motivoCambio' => 'Se midió de nuevo', 'idTipoOrdenCambio' => (string) $omision, 'nombre' => 'No debe cambiar']];
         $this->assertTrue($this->ordenes->actualizar($orden, $datos), json_encode($orden->errors));
         $orden = Proyecto::findOne($orden->id);
-        $this->assertSame(['Ahora 80 m de cable', 'omision', 'Proyecto test orden'], [$orden->descripcionCambio, $orden->tipoCambio, $orden->nombre]);
+        $this->assertSame(['Ahora 80 m de cable', $omision, 'Proyecto test orden'], [$orden->descripcionCambio, (int) $orden->idTipoOrdenCambio, $orden->nombre]);
+        $this->assertSame('Errores u omisiones en la planificación y propuestas técnicas', $orden->tipoCambioLabel());
+        // El historial anota el tipo con su nombre, antes y despues.
+        $detalle = (string) HistorialProyecto::find()->select('detalle')
+            ->andWhere(['idProyecto' => $orden->id, 'accion' => HistorialProyecto::ACCION_PROYECTO_MODIFICADO])->scalar();
+        $this->assertStringContainsString('Tipo de cambio: Nuevas solicitudes de los usuarios → Errores u omisiones', $detalle);
 
         // Aprobada ya no.
         $this->aprobar($orden);
@@ -173,7 +181,32 @@ class OrdenCambioFaseTest extends Unit
 
     private function datos(): array
     {
-        return ['Proyecto' => ['descripcionCambio' => '50 m más de cable', 'motivoCambio' => 'Pedido de la unidad', 'tipoCambio' => 'solicitud']];
+        $tipo = TipoOrdenCambio::find()->select('id')->where(['nombre' => 'Nuevas solicitudes de los usuarios'])->scalar();
+
+        return ['Proyecto' => ['descripcionCambio' => '50 m más de cable', 'motivoCambio' => 'Pedido de la unidad', 'idTipoOrdenCambio' => (string) $tipo]];
+    }
+
+    /** Catalogo (2026-11-09): un tipo inactivo no se elige, uno en uso no se elimina. */
+    public function testElTipoSaleDelCatalogo(): void
+    {
+        $fase = $this->crearFase();
+        $this->aprobar($fase);
+        $fase = Proyecto::findOne($fase->id);
+
+        $tipo = new TipoOrdenCambio(['nombre' => 'Tipo test inactivo', 'activo' => false]);
+        $tipo->save(false);
+        $this->assertArrayNotHasKey($tipo->id, (new TipoOrdenCambioService())->opciones());
+        $this->assertArrayHasKey($tipo->id, (new TipoOrdenCambioService())->opciones($tipo->id));
+
+        $orden = $this->ordenes->nueva($fase);
+        $datos = $this->datos();
+        $datos['Proyecto']['idTipoOrdenCambio'] = (string) $tipo->id;
+        $this->assertFalse($this->ordenes->crear($fase, $orden, $datos));
+        $this->assertStringContainsString('inactivo', (string) $orden->getFirstError('idTipoOrdenCambio'));
+
+        $usado = TipoOrdenCambio::findOne((int) $this->crearOrden($fase)->idTipoOrdenCambio);
+        $this->assertStringContainsString('lo usan órdenes de cambio', (string) (new TipoOrdenCambioService())->eliminar($usado));
+        $this->assertNull((new TipoOrdenCambioService())->eliminar($tipo));
     }
 
     private function aprobar(Proyecto $proyecto): void

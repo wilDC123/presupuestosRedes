@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use backend\models\Proyecto;
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 
@@ -15,8 +14,9 @@ use yii\widgets\ActiveForm;
  * entrega) lo copia OrdenCambioFaseService de la fase.
  *
  * @var yii\web\View $this
- * @var Proyecto $orden nueva (isNewRecord) o la que se edita
- * @var Proyecto $fase la fase a la que pertenece
+ * @var backend\models\Proyecto $orden nueva (isNewRecord) o la que se edita
+ * @var backend\models\Proyecto $fase la fase a la que pertenece
+ * @var array<int, string> $tipos [id => nombre] tipos de cambio activos (y el que ya tenia)
  */
 
 $nueva = $orden->isNewRecord;
@@ -52,8 +52,8 @@ $this->params['breadcrumbs'][] = $nueva ? 'Orden de cambio' : 'Editar';
         <div class="card rd-col-2 rd-card-pad">
             <div class="rd-card-titulo mb-2">Orden de cambio</div>
 
-            <?= $form->field($orden, 'tipoCambio')->dropDownList(Proyecto::tiposCambio(), ['prompt' => 'Seleccione el tipo', 'class' => 'form-select'])
-                ->hint('Los tipos del formato RD-GD-FR-006 (7.1.1).') ?>
+            <?= $form->field($orden, 'idTipoOrdenCambio')->dropDownList($tipos, ['prompt' => 'Seleccione el tipo', 'class' => 'form-select'])
+                ->hint('Los del formato RD-GD-FR-006 (7.1.1); se administran en Configuración → Tipos de orden de cambio.') ?>
             <?= $form->field($orden, 'descripcionCambio')->textarea(['rows' => 3, 'maxlength' => 1000])
                 ->hint('Qué se agrega (ej. "50 m más de cable UTP y 2 cámaras para el anfiteatro").') ?>
             <?= $form->field($orden, 'motivoCambio')->textarea(['rows' => 3, 'maxlength' => 1000])
