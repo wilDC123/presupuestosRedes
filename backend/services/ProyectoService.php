@@ -305,6 +305,44 @@ class ProyectoService
     }
 
     /**
+     * La franja "FASES" de la vista del proyecto (2026-11-10), encima de la
+     * barra de pasos: un grupo por fase, cada uno con la fase y despues sus
+     * ordenes de cambio, con el presupuesto y su total. Asi se pasa de una
+     * fase a otra sin bajar hasta el recuadro "Fases del proyecto". En una
+     * orden de cambio, las fases de su fase de origen. VACIA (no se muestra)
+     * con fase unica y sin ordenes de cambio.
+     *
+     * @return array<int, array<int, array{id: int, texto: string, presupuesto: ?Presupuesto, monto: ?float, actual: bool}>>
+     */
+    public function franjaFases(Proyecto $proyecto): array
+    {
+        $base = $proyecto->esOrdenCambio() ? $proyecto->faseOrigen : $proyecto;
+        /** @var Proyecto[] $fases */
+        $fases = $base->numeroProyecto !== null && $base->fases !== [] ? $base->fases : [$base];
+
+        if (count($fases) === 1 && $fases[0]->ordenesCambio === []) {
+            return [];
+        }
+
+        $grupos = [];
+        foreach ($fases as $fase) {
+            $grupo = [];
+            foreach (array_merge([$fase], $fase->ordenesCambio) as $fila) {
+                $grupo[] = [
+                    'id' => (int) $fila->id,
+                    'texto' => $fila->esOrdenCambio() ? $fila->textoOrdenCambio() : 'Fase ' . (int) $fila->numeroFase,
+                    'presupuesto' => $fila->presupuesto,
+                    'monto' => $this->montoPresupuesto($fila),
+                    'actual' => (int) $fila->id === (int) $proyecto->id,
+                ];
+            }
+            $grupos[] = $grupo;
+        }
+
+        return $grupos;
+    }
+
+    /**
      * Total del presupuesto del proyecto (null si aun no tiene presupuesto).
      */
     public function montoPresupuesto(Proyecto $proyecto): ?float
