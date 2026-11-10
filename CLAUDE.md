@@ -502,7 +502,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   referencia, la unidad, la fecha y la página), una lista sencilla N.° | Descripción | Unidad | Cantidad (en la descripción siguen el código ET, la
   marca / modelo de referencia y la observación) y abajo el espacio para el proveedor: firma y sello, nombre /
   empresa y fecha. SIN columnas de precio ni marca ofertada, sin TOTAL, NIT, validez ni tiempo de entrega (los trae
-  la proforma que devuelve el proveedor) y SIN firmas de la DTIC. Archivo `solicitud_proforma_…pdf`. Las pantallas
+  la proforma que devuelve el proveedor). Desde el 2026-11-09 (como el Word v3) lleva también la firma "ELABORADO POR" de la DTIC, en la tabla de una sola firma a todo el ancho, antes del espacio del proveedor: la firma 1 de "Configuración del PDF" del presupuesto, la de HOY (la solicitud no guarda copia); antes, sin firmas de la DTIC. Archivo `solicitud_proforma_…pdf`. Las pantallas
   siguen diciendo "Solicitud de cotización". La migración `m261030_200322_instrucciones_solicitud_de_proforma`
   cambió el texto de instrucciones por defecto ("Se solicita enviar su proforma de cotización…") solo si nadie lo
   había editado. PENDIENTE (Ing. de DTIC): ¿se adjuntan las especificaciones? (hoy, a elección al imprimir); en la
