@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use backend\components\NumeracionEspecificacion;
 use backend\models\ConfiguracionEspecificacion;
+use backend\models\UnidadMedida;
 use yii\helpers\Html;
 
 /**
@@ -179,7 +180,9 @@ $condiciones = array_values(array_filter([
 <?php endif; ?>
 
 <div class="bien"><?= Html::encode($emision->titulo) ?></div>
-<div class="dato"><strong>Cantidad:</strong> <?= Html::encode(trim($cantidad . ' ' . $emision->unidad)) ?></div>
+<?php // La unidad con su NOMBRE ("24 Unidad", no "24 u"; 2026-11-10): la emision guarda la abreviatura; si no esta en el catalogo, sale esa. ?>
+<?php $unidad = UnidadMedida::nombresPorAbreviatura()[(string) $emision->unidad] ?? (string) $emision->unidad; ?>
+<div class="dato"><strong>Cantidad:</strong> <?= Html::encode(trim($cantidad . ' ' . $unidad)) ?></div>
 <?php if (!empty($emision->dependencia)): ?>
     <div class="dato"><strong>Dependencia:</strong> <?= Html::encode($emision->dependencia) ?></div>
 <?php endif; ?>
