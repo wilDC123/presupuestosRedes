@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use backend\components\NumeracionEspecificacion;
+use backend\models\ConfiguracionEspecificacion;
 use yii\helpers\Html;
 
 /**
@@ -60,6 +61,13 @@ $seccion = static fn (string $titulo): string =>
     '<tr><td class="seccion">' . Html::encode($titulo) . '</td><td class="seccion"></td><td class="seccion"></td><td class="seccion"></td></tr>';
 $texto = static fn (?string $valor): string => nl2br(Html::encode((string) $valor));
 
+// Debajo de la cabecera, como el Word v3 (2026-11-10): la universidad y "D.T.I.C.", de la COPIA congelada
+// del texto de cabecera de la emision (una linea por renglon); sin texto, las de siempre.
+$lineasUniversidad = array_values(array_filter(
+    array_map('trim', preg_split('/\R/', (string) $emision->textoCabecera)),
+    static fn (string $linea): bool => $linea !== ''
+)) ?: [ConfiguracionEspecificacion::UNIVERSIDAD, 'D.T.I.C.'];
+
 // Secciones: I siempre; II la garantia, solo si tiene; la siguiente, las condiciones.
 $garantia = NumeracionEspecificacion::lineas($emision->garantia);
 $numeroCondiciones = $garantia !== [] ? 3 : 2;
@@ -89,6 +97,18 @@ $condiciones = array_values(array_filter([
     }
     /* Nada por debajo de 11 (revision del Ing. de DTIC del 2026-11-05: "las
        letras estan muy pequenas"; antes instrucciones y tabla en 10 y 9). */
+    /* Universidad y D.T.I.C., debajo de la cabecera (Word v3): centradas, en negrita, 13 y 11 pt. */
+    .universidad {
+        text-align: center;
+        font-weight: bold;
+        font-size: 13pt;
+    }
+    .unidad {
+        text-align: center;
+        font-weight: bold;
+        font-size: 11pt;
+        margin-bottom: 6px;
+    }
     .instrucciones {
         text-align: justify;
         font-size: 11pt;
@@ -152,6 +172,9 @@ $condiciones = array_values(array_filter([
 ]) ?>
 
 <?php if (!empty($emision->textoInstrucciones)): ?>
+    <?php foreach ($lineasUniversidad as $i => $linea): ?>
+        <div class="<?= $i === 0 ? 'universidad' : 'unidad' ?>"><?= Html::encode($linea) ?></div>
+    <?php endforeach; ?>
     <div class="instrucciones"><?= $texto($emision->textoInstrucciones) ?></div>
 <?php endif; ?>
 

@@ -525,8 +525,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   INFORMACION Y COMUNICACION U.M.R.P.S.F.X.CH." en 6 pt; centro "PROCESO: <NOMBRE EN MAYÚSCULAS>" (10 pt) y el título
   (12 pt), en negrita; derecha logo RedUSFX + "Redes y Telecomunicaciones"; abajo Código | Versión | Fecha | Página en
   10 pt sin negrita, fecha dd-mm-aaaa (lineamiento 8.8.2). Logos `backend/web/img/logo-dtic-usfx.png` y
-  `logo-redusfx.png`, sacados de los Word (se borraron `logo-usfx.png` y `logo-dtic.png`). Los textos de "Cabecera" de
-  la configuración de la solicitud y del formulario ET ya no se usan (columnas quedan). Al juntar varios documentos en un PDF cada uno sale con su cabecera
+  `logo-redusfx.png`, sacados de los Word (se borraron `logo-usfx.png` y `logo-dtic.png`). El texto "Cabecera" de la
+  configuración de la solicitud ya no se usa (columna queda). El del FORMULARIO ET sí (2026-11-10, como el Word v3): sale
+  DEBAJO de la cabecera, centrado y en negrita ("Universidad Mayor, Real y Pontificia de “San Francisco Xavier” de Chuquisaca"
+  en 13 pt y "D.T.I.C." en 11), de la copia de cada emisión (`EspecificacionEmision.textoCabecera`); se edita en la configuración
+  del formulario ("Universidad y unidad"); la migración `m261110_050000_universidad_con_comillas_en_especificacion` le puso las
+  comillas si nadie lo había cambiado. Al juntar varios documentos en un PDF cada uno sale con su cabecera
   (`PresupuestoPdfGenerator::empezarDocumento()`)
 - Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
   aprobado. Datos generales: la línea del proyecto (`Proyecto::lineaDocumento()`, ver PARTE 5c; del 2026-11-05 al 06
