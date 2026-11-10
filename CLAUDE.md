@@ -239,7 +239,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   "| ELABORADO POR | APROBADO POR", filas "Firma:" (2 cm para firmar), "Nombre:" (prefijo + nombre, ej. "V°B° Ing. …") y
   "Cargo:" (negrita), y abajo, de lado a lado en gris claro, "Versión: 1.0 · Fecha de aprobación: 23-10-2026" (fecha
   dd-mm-aaaa). Anchos del Word 12% | 38% | 50%. La lista de materiales (no se aprueba, `soloElaborado`): solo "ELABORADO
-  POR", media hoja, y abajo solo la versión. El formulario ET la pide en 11 pt (`letraGrande`); los demás en 9/10 pt. Las
+  POR" a TODO EL ANCHO de la hoja (indicación del Ing., 2026-11-09: con una sola firma ocupa todo el ancho), y abajo solo la versión. El formulario ET la pide en 11 pt (`letraGrande`); los demás en 9/10 pt. Las
   firmas siguen saliendo de las mismas configuraciones y copias congeladas que antes
 - FICHA TÉCNICA V3 (PARTE 6c, 2026-11-09; el Word "00 PT RD-PI-PT-001" de FORMATOS CORREGIDOS v3; reemplaza el orden de
   las partes 4 y 5d): `proyecto/ficha-pdf.php` + `ProyectoService::datosFicha()`. 1. INFORMACIÓN GENERAL (n.° de proyecto,

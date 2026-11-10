@@ -21,7 +21,9 @@ use yii\helpers\Html;
  *
  * Anchos del Word: 1268 | 4004 | 5272 twips. Un documento que no se aprueba
  * (la lista de materiales, $soloElaborado) lleva solo la columna "ELABORADO
- * POR", con media hoja de ancho, y en la ultima fila solo la version. Una
+ * POR" y en la ultima fila solo la version; con UNA sola firma la tabla ocupa
+ * TODO el ancho de la hoja (indicacion del Ing. de DTIC, 2026-11-09): rotulos
+ * 12%, la firma el resto. Una
  * firma sin nombre deja las casillas en blanco, para llenarla a mano.
  *
  * Estilos en linea para que salga igual en los tres documentos;
@@ -48,12 +50,12 @@ $mediana = $letraGrande ? '11pt' : '10pt';
 $borde = 'border: 1px solid #000; padding: 2px 5px;';
 $rotulo = $borde . " font-size: $chica; font-weight: bold; vertical-align: middle;";
 $celda = $borde . " font-size: $mediana; vertical-align: middle;";
-// Anchos del Word; con una sola firma, media hoja (1268 | 4004 de 5272).
-$anchos = $soloElaborado ? ['24%', '76%'] : ['12%', '38%', '50%'];
+// Anchos del Word; con una sola firma, todo el ancho (la columna de rotulos igual).
+$anchos = $soloElaborado ? ['12%', '88%'] : ['12%', '38%', '50%'];
 $valor = static fn (?array $firma, string $clave): string => $firma === null ? '' : Html::encode(trim($clave === 'nombre' ? $firma['prefijo'] . ' ' . $firma['nombre'] : $firma[$clave]));
 $fecha = $fechaAprobacion !== '' ? str_replace('/', '-', $fechaAprobacion) : '____-____-________';
 ?>
-<table style="width: <?= $soloElaborado ? '50%' : '100%' ?>; border-collapse: collapse; margin-top: 20px; page-break-inside: avoid;">
+<table style="width: 100%; border-collapse: collapse; margin-top: 20px; page-break-inside: avoid;">
     <tr>
         <td style="<?= $borde ?> width: <?= $anchos[0] ?>; background-color: #e0e0e0;"></td>
         <?php foreach (array_keys($firmas) as $k => $titulo): ?>
