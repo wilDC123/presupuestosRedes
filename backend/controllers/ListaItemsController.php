@@ -81,7 +81,10 @@ class ListaItemsController extends Controller
             $condiciones = $peticion->post('condiciones', []);
             $materiales = $peticion->post('materiales', []);
 
-            if ($this->service->guardar($proyecto, $peticion->post('items', []), $errores, $items, UsuarioActual::nombre(), $condiciones, $materiales)) {
+            // Lugar de entrega por defecto (2026-11-10: se escribe aqui, ya no al crear el proyecto); null = no vino.
+            $lugarEntrega = $peticion->post('lugarEntregaProyecto');
+
+            if ($this->service->guardar($proyecto, $peticion->post('items', []), $errores, $items, UsuarioActual::nombre(), $condiciones, $materiales, $lugarEntrega)) {
                 if ($peticion->post('accion') !== 'enviar') {
                     Yii::$app->session->setFlash('success', 'Lista guardada.');
                 } elseif ($this->service->enviarACotizacion($proyecto)) {
@@ -104,6 +107,7 @@ class ListaItemsController extends Controller
                 'items' => $items,
                 'condiciones' => array_values(array_filter((array) $condiciones, 'is_array')),
                 'materiales' => array_values(array_filter((array) $materiales, 'is_array')),
+                'lugarEntrega' => is_string($lugarEntrega) ? $lugarEntrega : null,
             ];
         }
 
@@ -115,7 +119,7 @@ class ListaItemsController extends Controller
      * que la accion solo atienda el formulario (como en ElaborarPresupuestoController).
      *
      * @param string[] $errores los del guardado que fallo ([] al abrir la pantalla)
-     * @param array{items?: array, condiciones?: array, materiales?: array} $enviado lo que el
+     * @param array{items?: array, condiciones?: array, materiales?: array, lugarEntrega?: ?string} $enviado lo que el
      *        usuario envio si no se pudo guardar ([] = mostrar lo guardado)
      */
     private function datosPantalla(Proyecto $proyecto, array $errores, array $enviado): array
@@ -143,6 +147,10 @@ class ListaItemsController extends Controller
             'configuracion' => $configuracion,
             // Texto de ejemplo del "Lugar de entrega" de cada fila y de la ventana "Reemitir": el que se usa si se deja vacio.
             'lugarEntregaPorDefecto' => EspecificacionEmisionService::lugarEntregaDe($proyecto, $configuracion),
+            // El campo "Lugar de entrega" de arriba de la lista: lo enviado, el guardado o, si no tiene, la sugerencia
+            // ("Administración de la Facultad de ..."); el de la configuracion es el ejemplo de la fila si queda vacio.
+            'lugarEntregaProyecto' => $enviado['lugarEntrega'] ?? ($proyecto->lugarEntrega ?? Proyecto::lugarEntregaSugerido($proyecto->unidadDependencia) ?? ''),
+            'lugarEntregaConfiguracion' => EspecificacionEmisionService::lugarEntregaPorDefecto($configuracion),
             'proximoCodigo' => (new CodificacionService())->proximo(
                 CorrelativoDocumento::TIPO_ESPECIFICACION,
                 $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO

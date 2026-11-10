@@ -265,7 +265,17 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   es columna: se guarda en `EspecificacionEmision.lugarEntrega`). Formulario nuevo: toma el de la fila (vacío = el del
   proyecto). Uno ya emitido con otro lugar se REEMITE al guardar (mismo código, versión + 1, motivo "Se cambió el lugar de
   entrega: A → B"; junto con "Cambiar ítem" es una sola reemisión, `ListaItemsService::reemitirPorCambio()`); vacío no
-  cambia nada. `Proyecto.lugarEntrega` queda como "Lugar de entrega por defecto" y SALE de la ficha técnica
+  cambia nada. `Proyecto.lugarEntrega` queda como "Lugar de entrega por defecto" y SALE de la ficha técnica. DESDE EL 2026-11-10 ("no quieren que esté en crear un proyecto") ese lugar por defecto ya NO
+  se pide en el formulario del proyecto ni sale en su vista: se escribe ARRIBA DE LA LISTA DE ÍTEMS ("Lugar de entrega de los
+  materiales", `lugarEntregaProyecto`), se guarda con el mismo botón, ANTES de emitir y en la
+  misma transacción (`ListaItemsService::guardar(..., $lugarEntrega)`, null = no se toca, '' = se borra; queda en el
+  historial); si el proyecto no tiene, el campo trae la sugerencia `Proyecto::lugarEntregaSugerido()` y se guarda al guardar la
+  lista. Cada fila sigue pudiendo poner otro; al escribir arriba se actualiza el texto de ejemplo de las filas (`lista-items.js`).
+  La fila va PLEGADA (ocupaba mucho), en la MISMA LÍNEA que "Cambiar ítem": si su lugar es el de arriba (o no tiene), solo
+  el enlace "Otro lugar de entrega"; si es otro, "· Entrega: … Cambiar"; el campo aparece debajo de esa línea al hacer clic. Uno igual al de arriba se envía vacío (en un
+  formulario ya emitido, vacío no reemite; para volver al de arriba hay que escribirlo).
+  `Proyecto` ya no tiene regla para `lugarEntrega` (el formulario del proyecto no lo cambia); la fase siguiente y la orden de
+  cambio lo siguen copiando
 - NÚMERO DE PROYECTO (revisión del 2026-11-05 puntos 1 y 3; PARTE 5a, migración `m261106_120000_numero_de_proyecto`;
   decidido con el desarrollador el 2026-11-06: OPCIÓN 1, sin tabla nueva). Cada fila de `redes.Proyecto` es una FASE (con
   su área, equipo y carpeta económica); `Proyecto.numeroProyecto` (correlativo `CorrelativoDocumento::TIPO_NUMERO_PROYECTO`
@@ -377,7 +387,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     2026-10-21, antes el de la ficha; cantidad, unidad,
     dependencia = unidad / dependencia del proyecto desde el 2026-10-29 (del 28 al 29 la solicitante, antes la facultad), garantía, textos,
     condiciones de entrega; el LUGAR DE ENTREGA es desde el 2026-11-03 el del PROYECTO (`Proyecto.lugarEntrega`, texto
-    libre en el formulario del proyecto; migración `m261104_020312_agregar_lugar_entrega_a_proyecto`, que puso
+    libre, desde el 2026-11-10 arriba de la lista de ítems y antes en el formulario del proyecto; migración `m261104_020312_agregar_lugar_entrega_a_proyecto`, que puso
     "Administración de la <unidad>" a los proyectos cuya unidad / dependencia empieza con "Facultad"; el formulario lo
     SUGIERE igual, `Proyecto::lugarEntregaSugerido()` y `proyecto-form.js`, mientras el usuario no escriba otro; la fase
     siguiente lo hereda; va al historial y a la ficha técnica) y, si el proyecto no tiene, el texto

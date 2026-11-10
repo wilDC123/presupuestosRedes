@@ -57,6 +57,8 @@ use yii\web\JqueryAsset;
  * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
  * @var backend\models\ConfiguracionEspecificacion $configuracion
  * @var string|null $lugarEntregaPorDefecto texto de ejemplo del "Lugar de entrega" de cada fila y al reemitir (null = no hay)
+ * @var string $lugarEntregaProyecto valor del campo "Lugar de entrega" de arriba de la lista (2026-11-10)
+ * @var string|null $lugarEntregaConfiguracion el de la configuracion del formulario (si el de arriba queda vacio)
  * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001/26)
  * @var array<int, array<string, string>> $materiales otros materiales de la DTIC (los guardados o lo enviado)
  * @var string[] $categorias nombres de las categorias, subtitulos de los materiales escritos a mano
@@ -187,6 +189,9 @@ $selectorEspecificacion = static function (string $n, string $seleccionada, stri
  * "__n__" como marcador y lo reemplaza por un numero nuevo.
  */
 $fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '', string $emision = '', string $lugar = '') use ($selectorEspecificacion, $lugarEntregaPorDefecto): string {
+    // El lugar propio de la fila: vacio si no tiene o si es el mismo que el de arriba.
+    $propio = trim($lugar) !== '' && trim($lugar) !== trim((string) $lugarEntregaPorDefecto) ? trim($lugar) : '';
+
     return '<tr class="lista-item">'
         . '<td>'
         . Html::hiddenInput("items[$n][id]", $id)
@@ -199,16 +204,26 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
             'class' => 'btn btn-link btn-sm p-0 text-nowrap lista-item-cambiar',
             'title' => 'Elegir otro ítem del subcatálogo para esta fila (ej. el mismo cable en cajas en vez de metros). Su formulario de especificación se corrige con el mismo código.',
         ]) : '')
-        . '</div>'
-        . '<div class="rd-celda-sub text-warning-emphasis lista-item-cambio d-none"></div>'
-        . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
-        . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
         // Lugar de entrega de ESTA especificacion (revision del 2026-11-05: cada una puede tener uno
-        // distinto). Solo con especificacion elegida (lista-items.js). Vacio = el del proyecto; cambiarlo
-        // en un formulario ya emitido lo reemite al guardar (ListaItemsService).
-        . '<div class="d-flex align-items-center gap-2 mt-1 lista-item-lugar' . ($idEspecificacion === '' ? ' d-none' : '') . '">'
+        // distinto), PLEGADO en la misma linea que "Cambiar ítem" (2026-11-10, ocupaba mucho en cada
+        // fila): si es el mismo que el de arriba de la lista (o no tiene), solo el enlace "Otro lugar de
+        // entrega"; si es otro, "Entrega: ... · Cambiar". El campo aparece debajo al hacer clic. Solo con
+        // especificacion elegida (lista-items.js). Uno igual al de arriba se envia vacio: en un formulario
+        // ya emitido vacio no cambia nada (no se reemite), en uno nuevo toma el de arriba; cambiarlo en uno
+        // ya emitido lo reemite al guardar (ListaItemsService).
+        . '<span class="rd-celda-sub text-nowrap lista-item-lugar lista-lugar-resumen' . ($idEspecificacion === '' ? ' d-none' : '') . '">'
+        . ($propio !== ''
+            ? '· Entrega: <strong>' . Html::encode($propio) . '</strong> '
+                . Html::button('Cambiar', ['class' => 'btn btn-link btn-sm p-0 align-baseline lista-lugar-abrir'])
+            : Html::button('Otro lugar de entrega', [
+                'class' => 'btn btn-link btn-sm p-0 align-baseline lista-lugar-abrir',
+                'title' => 'Solo si esta especificación se entrega en un lugar distinto al de arriba de la lista',
+            ]))
+        . '</span>'
+        . '</div>'
+        . '<div class="d-flex align-items-center gap-2 mt-1 lista-lugar-campo d-none">'
         . '<label class="rd-celda-sub text-nowrap mb-0" for="lista-lugar-' . $n . '">Lugar de entrega</label>'
-        . Html::textInput("items[$n][lugarEntrega]", $lugar, [
+        . Html::textInput("items[$n][lugarEntrega]", $propio, [
             'id' => 'lista-lugar-' . $n,
             'class' => 'form-control form-control-sm',
             'maxlength' => 300,
@@ -216,6 +231,9 @@ $fila = static function (string $n, string $id, string $idSubcatalogo, string $n
             'title' => 'Si se cambia en un formulario ya emitido, al guardar se reemite (mismo código, versión siguiente).',
         ])
         . '</div>'
+        . '<div class="rd-celda-sub text-warning-emphasis lista-item-cambio d-none"></div>'
+        . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
+        . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
         . $emision
         . '</td>'
         . '<td class="lista-item-unidad">' . Html::encode($unidad) . '</td>'
@@ -305,6 +323,29 @@ $grupoCierra = static fn (int $cantidad): string =>
             (el próximo será el <?= Html::encode($proximoCodigo) ?>). Cambiarla o quitarla anula el anterior.
         </p>
     <?php endif; ?>
+
+    <?php // Lugar de entrega por defecto (2026-11-10: aqui y no al crear el proyecto). Cada fila puede poner otro. ?>
+    <div class="card rd-card-pad mb-3">
+        <?php if ($editable): ?>
+            <label for="lista-lugar-entrega"><strong>Lugar de entrega de los materiales</strong> <span class="rd-nota">— se usa en todas las especificaciones; si alguna se entrega en otro lugar, escríbalo en su fila.</span></label>
+            <?= Html::textInput('lugarEntregaProyecto', $lugarEntregaProyecto, [
+                'id' => 'lista-lugar-entrega',
+                'class' => 'form-control',
+                'maxlength' => 300,
+                'placeholder' => (string) ($lugarEntregaConfiguracion ?? 'Ej. Administración de la Facultad de Ciencias Agrarias'),
+                'data-configuracion' => (string) ($lugarEntregaConfiguracion ?? ''),
+            ]) ?>
+            <div class="rd-nota mt-1">
+                Cambiar este lugar no cambia los formularios ya emitidos.
+                <?php if ($proyecto->lugarEntrega === null && $lugarEntregaProyecto !== ''): ?>
+                    Sugerido por la unidad / dependencia: se guarda al guardar la lista.
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <strong>Lugar de entrega de los materiales:</strong> <?= Html::encode($proyecto->lugarEntrega ?: ($lugarEntregaConfiguracion ?? '—')) ?>
+            <span class="rd-nota">(salvo las especificaciones que dicen otro en su fila)</span>
+        <?php endif; ?>
+    </div>
     <div class="alert alert-danger d-none" id="lista-error-cliente">Revise las cantidades marcadas: en la lista, números mayores o iguales a 0; en los materiales de la DTIC, mayores que 0.</div>
 
     <div class="rd-cols">

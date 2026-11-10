@@ -29,9 +29,11 @@ use yii\db\ActiveRecord;
  *                                         Es la que sale en los documentos ("Dependencia").
  * @property string|null $unidadSolicitante Quien pide, en texto libre tal como dice la nota. Puede
  *                                         ser otra (el Rector pide para el Canal Universitario).
- * @property string|null $lugarEntrega Donde se entregan los bienes (texto libre, 2026-11-03). Lo copian los
- *                                    formularios de especificacion al emitirse; vacio = el de la
- *                                    configuracion del formulario. Ver lugarEntregaSugerido().
+ * @property string|null $lugarEntrega LUGAR DE ENTREGA POR DEFECTO (texto libre, 2026-11-03): el que toma una
+ *                                    especificacion si su fila de la lista no dice otro; vacio = el de la
+ *                                    configuracion del formulario. Desde el 2026-11-10 se escribe ARRIBA DE LA
+ *                                    LISTA DE ITEMS (ListaItemsService::guardar()), no en el formulario del
+ *                                    proyecto (sin regla aqui). Ver lugarEntregaSugerido().
  * @property string|null $codigoFacultad Ubicacion ANTERIOR al 2026-10-28 (ya no se escribe).
  * @property string|null $facultad       Idem: los proyectos nuevos usan las unidades
  * @property string|null $codigoEdificio y las areas de intervencion.
@@ -161,9 +163,6 @@ class Proyecto extends ActiveRecord
             [['unidadDependencia', 'unidadSolicitante'], 'trim'],
             [['unidadDependencia', 'unidadSolicitante'], 'required'],
             [['unidadDependencia', 'unidadSolicitante'], 'string', 'max' => 250],
-            [['lugarEntrega'], 'trim'],
-            [['lugarEntrega'], 'default', 'value' => null],
-            [['lugarEntrega'], 'string', 'max' => 300],
             [['idProyectoAnterior'], 'integer'],
             [['idProyectoAnterior'], 'exist', 'skipOnError' => true, 'targetClass' => self::class, 'targetAttribute' => ['idProyectoAnterior' => 'id']],
             // 'safe': las areas las revisa ProyectoService una por una contra la

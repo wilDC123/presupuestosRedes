@@ -8,6 +8,7 @@ use backend\models\Categoria;
 use backend\models\CorrelativoDocumento;
 use backend\models\Especificacion;
 use backend\models\EspecificacionEmision;
+use backend\models\HistorialProyecto;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SubcatalogoItem;
@@ -105,6 +106,50 @@ class LugarEntregaEspecificacionTest extends Unit
         $anterior->refresh();
         $this->assertStringContainsString('Se cambió el ítem', $anterior->motivo);
         $this->assertStringContainsString('Se cambió el lugar de entrega', $anterior->motivo);
+    }
+
+    /**
+     * 2026-11-10: el lugar por defecto se escribe ARRIBA DE LA LISTA (ya no al
+     * crear el proyecto). Se guarda antes de emitir: las filas vacias toman el
+     * nuevo en el mismo guardado, y queda en el historial.
+     */
+    public function testElLugarDeArribaDeLaListaLoTomanLasFilasVacias(): void
+    {
+        $errores = [];
+        $enviados = [];
+        $guardado = $this->lista->guardar(
+            Proyecto::findOne($this->proyecto->id),
+            [$this->fila(null, $this->item, ''), $this->fila(null, $this->otroItem, 'Bloque B')],
+            $errores,
+            $enviados,
+            'encargado',
+            null,
+            null,
+            '  Almacén test nuevo  '
+        );
+        $this->assertTrue($guardado, implode(' ', $errores));
+
+        $this->assertSame('Almacén test nuevo', Proyecto::findOne($this->proyecto->id)->lugarEntrega);
+        [$primero, $segundo] = $this->items();
+        $this->assertSame('Almacén test nuevo', $primero->emisionVigente->lugarEntrega);
+        $this->assertSame('Bloque B', $segundo->emisionVigente->lugarEntrega);
+        $detalle = (string) HistorialProyecto::find()->select('detalle')
+            ->andWhere(['idProyecto' => $this->proyecto->id, 'accion' => HistorialProyecto::ACCION_PROYECTO_MODIFICADO])->scalar();
+        $this->assertSame('Lugar de entrega por defecto: Almacén test del proyecto → Almacén test nuevo', $detalle);
+
+        // null = no se toca; '' = se borra (las filas vacias toman el de la configuracion).
+        $this->assertTrue($this->lista->guardar(Proyecto::findOne($this->proyecto->id), [], $errores, $enviados, 'encargado'));
+        $this->assertSame('Almacén test nuevo', Proyecto::findOne($this->proyecto->id)->lugarEntrega);
+        $this->assertTrue($this->lista->guardar(Proyecto::findOne($this->proyecto->id), [], $errores, $enviados, 'encargado', null, null, ''));
+        $this->assertNull(Proyecto::findOne($this->proyecto->id)->lugarEntrega);
+    }
+
+    /** El formulario del proyecto ya no lo cambia (sin regla en Proyecto). */
+    public function testElFormularioDelProyectoYaNoLoCambia(): void
+    {
+        $proyecto = Proyecto::findOne($this->proyecto->id);
+        $proyecto->load(['Proyecto' => ['lugarEntrega' => 'No debe quedar']]);
+        $this->assertSame('Almacén test del proyecto', $proyecto->lugarEntrega);
     }
 
     public function testUnLugarDemasiadoLargoNoGuardaNada(): void

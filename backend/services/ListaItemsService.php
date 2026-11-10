@@ -103,6 +103,13 @@ class ListaItemsService
      * CondicionPreviaService). Se guardan en la misma transaccion; null = no
      * se tocan.
      *
+     * $lugarEntrega = el LUGAR DE ENTREGA POR DEFECTO del proyecto
+     * (Proyecto.lugarEntrega): el que toma cada especificacion cuyo campo de la
+     * fila quede vacio. Desde el 2026-11-10 se escribe AQUI, arriba de la lista
+     * (antes en el formulario del proyecto: "no quieren que este en crear un
+     * proyecto"); null = no se toca, '' = se borra. Se guarda ANTES de emitir,
+     * en la misma transaccion, y se anota en el historial.
+     *
      * Devuelve false si la lista no es editable o si algo no es valido. Los
      * mensajes quedan en $errores y $enviados trae los items tal como
      * llegaron, para volver a mostrarlos.
@@ -112,8 +119,9 @@ class ListaItemsService
      * @param ProyectoItem[] $enviados (por referencia)
      * @param mixed $condiciones
      * @param mixed $materiales
+     * @param mixed $lugarEntrega
      */
-    public function guardar(Proyecto $proyecto, $filas, array &$errores = [], array &$enviados = [], ?string $usuario = null, $condiciones = null, $materiales = null): bool
+    public function guardar(Proyecto $proyecto, $filas, array &$errores = [], array &$enviados = [], ?string $usuario = null, $condiciones = null, $materiales = null, $lugarEntrega = null): bool
     {
         $errores = [];
         $enviados = [];
@@ -132,6 +140,14 @@ class ListaItemsService
         );
         $plan['materiales'] = $materiales === null ? null : (new MaterialDticService())->armar($proyecto, $materiales, $errores);
         $plan['condiciones'] = $condiciones === null ? null : (new CondicionPreviaService())->armar($proyecto, $condiciones, $errores);
+        $plan['lugarEntrega'] = null;
+        if ($lugarEntrega !== null) {
+            $lugar = $this->texto(is_string($lugarEntrega) ? $lugarEntrega : '');
+            if (mb_strlen($lugar) > 300) {
+                $errores[] = 'El lugar de entrega tiene más de 300 caracteres.';
+            }
+            $plan['lugarEntrega'] = ['valor' => $lugar === '' ? null : $lugar];
+        }
 
         if ($errores !== []) {
             return false;
@@ -451,13 +467,41 @@ class ListaItemsService
     }
 
     /**
+     * Cambia el lugar de entrega por defecto del proyecto, si cambio, y lo
+     * anota en el historial. Los items de la lista quedan apuntando a ESTE
+     * $proyecto (populateRelation): asi emitir() toma el lugar nuevo y no uno
+     * leido antes.
+     *
+     * @param ProyectoItem[] $enviados
+     * @param array{valor: ?string}|null $cambio null = no se toca
+     */
+    private function guardarLugarEntrega(Proyecto $proyecto, array $enviados, ?array $cambio): void
+    {
+        if ($cambio === null || (string) $proyecto->lugarEntrega === (string) $cambio['valor']) {
+            return;
+        }
+
+        $antes = trim((string) $proyecto->lugarEntrega);
+        $proyecto->updateAttributes(['lugarEntrega' => $cambio['valor']]);
+        foreach ($enviados as $item) {
+            $item->populateRelation('proyecto', $proyecto);
+        }
+
+        (new HistorialService())->registrar(
+            $proyecto,
+            HistorialProyecto::ACCION_PROYECTO_MODIFICADO,
+            $proyecto->getAttributeLabel('lugarEntrega') . ': ' . ($antes !== '' ? $antes : '(ninguno)') . ' → ' . ($cambio['valor'] ?? '(ninguno)')
+        );
+    }
+
+    /**
      * Guarda lo que ya se reviso, todo en UNA transaccion (o todo, o nada).
      * El orden importa: primero lo que se quita (solicitud, linea del
      * presupuesto, emision, item) y despues lo que queda.
      *
      * @param ProyectoItem[] $enviados
      * @param array $plan lo que arman revisarFilas() y guardar(): quitados, cambianEspecificacion,
-     *        cambianItem, recordar, lineasABorrar, materiales y condiciones (null = no se tocan)
+     *        cambianItem, recordar, lineasABorrar, materiales, condiciones y lugarEntrega (null = no se tocan)
      * @throws DomainException si algo que se reviso antes cambio entre tanto
      */
     private function persistir(Proyecto $proyecto, array $enviados, array $plan, ?string $usuario): void
@@ -469,6 +513,9 @@ class ListaItemsService
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
+            // Primero el lugar de entrega por defecto: lo usan las especificaciones que se emiten abajo.
+            $this->guardarLugarEntrega($proyecto, $enviados, $plan['lugarEntrega'] ?? null);
+
             (new SolicitudCotizacionService())->retirarItems(array_keys($plan['quitados']));
 
             if ($plan['lineasABorrar'] !== []) {

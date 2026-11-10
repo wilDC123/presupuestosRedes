@@ -473,8 +473,13 @@ $(function () {
 
     $tabla.on('change', '.lista-item-esp', function () {
         actualizarEnlaceDocumento($(this));
-        // El lugar de entrega es de la especificacion: sin especificacion no se pide.
-        $(this).closest('td').find('.lista-item-lugar').toggleClass('d-none', $(this).val() === '');
+        // El lugar de entrega es de la especificacion: sin especificacion no se pide (ni su campo, si estaba abierto).
+        var $celda = $(this).closest('td');
+        var sinEspecificacion = $(this).val() === '';
+        $celda.find('.lista-item-lugar').toggleClass('d-none', sinEspecificacion);
+        if (sinEspecificacion) {
+            $celda.find('.lista-lugar-campo').addClass('d-none');
+        }
         actualizarTotales();
         marcarCambios();
     });
@@ -533,6 +538,32 @@ $(function () {
     $('.rd-pasos a').on('click', function (evento) {
         if (hayCambios && !window.confirm('Hay cambios sin guardar en la lista y se perderán. ¿Ir a otro paso de todos modos?')) {
             evento.preventDefault();
+        }
+    });
+
+    // Lugar de entrega de arriba de la lista (2026-11-10): es el que toma cada
+    // fila que deja su lugar vacio, asi que se muestra como su texto de ejemplo
+    // (vacio = el de la configuracion del formulario). Tambien en las filas que
+    // se agregan despues (al entrar al campo).
+    var $lugarProyecto = $('#lista-lugar-entrega');
+
+    function lugarDeEjemplo() {
+        return $.trim($lugarProyecto.val()) || $lugarProyecto.data('configuracion') || 'Sin lugar de entrega';
+    }
+
+    // Fila plegada: "Otro lugar de entrega" / "Cambiar" muestra el campo (2026-11-10).
+    $tabla.on('click', '.lista-lugar-abrir', function () {
+        var $celda = $(this).closest('td');
+        $celda.find('.lista-lugar-resumen').addClass('d-none');
+        $celda.find('.lista-lugar-campo').removeClass('d-none').find('input').trigger('focus');
+    });
+
+    $lugarProyecto.on('input', function () {
+        $('#lista-items-form input[name$="[lugarEntrega]"]').attr('placeholder', lugarDeEjemplo());
+    });
+    $('#lista-items-form').on('focus', 'input[name$="[lugarEntrega]"]', function () {
+        if ($lugarProyecto.length) {
+            $(this).attr('placeholder', lugarDeEjemplo());
         }
     });
 });

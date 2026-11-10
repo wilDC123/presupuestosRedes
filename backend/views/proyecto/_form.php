@@ -133,12 +133,7 @@ $hintComun = $esFaseSiguiente
             <?php endforeach; ?>
         </datalist>
 
-        <?php // web/js/proyecto-form.js lo llena con "Administración de la <unidad>" si la unidad / dependencia es una
-        // facultad, mientras el usuario no lo haya cambiado (misma regla que Proyecto::lugarEntregaSugerido()). ?>
-        <?= $form->field($model, 'lugarEntrega')->textInput([
-            'maxlength' => 300,
-            'placeholder' => 'Dónde se entregan los bienes. Ej. Administración de la Facultad de Ciencias Agrarias',
-        ])->hint('Cada especificación técnica tiene su propio lugar de entrega: se escribe en la lista de ítems. Este es el que toma la especificación si allí se deja vacío. Si la unidad / dependencia es una facultad, se sugiere su administración. Vacío = el de la configuración del formulario de especificación.') ?>
+        <?php // El lugar de entrega ya no se pide aqui (2026-11-10): se escribe en la lista de items. ?>
 
         <div class="form-group<?= $model->hasErrors('areas') ? ' has-error' : '' ?>">
             <label for="proyecto-buscar-ambiente"><?= Html::encode($model->getAttributeLabel('areas')) ?></label>
