@@ -90,6 +90,8 @@ class ProyectoController extends Controller
             'urlPresupuesto' => $this->service->urlPresupuesto($model),
             'nombreTipo' => $model->tipoProyecto?->nombre,
             'monto' => $this->service->montoPresupuesto($model),
+            // Total unico del proyecto: fases + ordenes de cambio aprobadas (parte 6c).
+            'costo' => $this->service->costoTotal($model),
             'totalItems' => (new ListaItemsService())->contar($model),
             'listaEditable' => (new ListaItemsService())->puedeEditarse($model),
             'puedeEditarse' => $this->service->puedeEditarse($model),
