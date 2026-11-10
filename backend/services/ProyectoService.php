@@ -73,8 +73,9 @@ class ProyectoService
     {
         return new ActiveDataProvider([
             // Por proyecto (el mas nuevo arriba) y, dentro, sus fases en orden: cada proyecto con sus fases juntas.
+            // Las ordenes de cambio (parte 6) van debajo de su fase: en SQL Server NULL (la fase) va primero.
             'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto', 'proceso'])
-                ->orderBy(['numeroProyecto' => SORT_DESC, 'numeroFase' => SORT_ASC, 'id' => SORT_DESC]),
+                ->orderBy(['numeroProyecto' => SORT_DESC, 'numeroFase' => SORT_ASC, 'numeroOrdenCambio' => SORT_ASC, 'id' => SORT_DESC]),
             'pagination' => [
                 'pageSize' => 20,
             ],
@@ -195,9 +196,15 @@ class ProyectoService
      */
     public function eliminar(Proyecto $proyecto): ?string
     {
+        // Una orden de cambio no aprobada se elimina con sus documentos (parte 6).
+        if ($proyecto->esOrdenCambio()) {
+            return (new OrdenCambioFaseService())->eliminar($proyecto);
+        }
+
         $usos = array_filter([
             'presupuesto' => Presupuesto::find()->andWhere(['idProyecto' => $proyecto->id])->exists() ? 1 : 0,
             'fase(s) siguiente(s)' => (int) Proyecto::find()->andWhere(['idProyectoAnterior' => $proyecto->id])->count(),
+            'orden(es) de cambio' => (int) Proyecto::find()->andWhere(['idFaseOrigen' => $proyecto->id])->count(),
             'especificación(es) emitida(s)' => (int) EspecificacionEmision::find()->andWhere(['idProyecto' => $proyecto->id])->count(),
         ]);
 
@@ -271,7 +278,8 @@ class ProyectoService
      */
     public function datosComunesFijos(Proyecto $proyecto): bool
     {
-        if ($proyecto->idProyectoAnterior !== null) {
+        // Una fase 2+ y una orden de cambio los toman de su fase.
+        if ($proyecto->idProyectoAnterior !== null || $proyecto->esOrdenCambio()) {
             return true;
         }
 
@@ -605,6 +613,14 @@ class ProyectoService
      */
     private function guardar(Proyecto $proyecto, array $datosFormulario): bool
     {
+        // Una orden de cambio tiene su propio formulario (OrdenCambioFaseService):
+        // por aqui se copiaria como si fuera una fase 1.
+        if ($proyecto->esOrdenCambio()) {
+            $proyecto->addError('nombre', 'Una orden de cambio se edita desde su propio formulario.');
+
+            return false;
+        }
+
         // Como estaba antes, para anotar en el historial solo lo que cambio.
         $antes = $proyecto->isNewRecord ? null : $this->historial->foto(Proyecto::findOne($proyecto->id));
 
@@ -841,7 +857,7 @@ class ProyectoService
 
         $anterior = $this->obtener((int) $proyecto->idProyectoAnterior);
 
-        if ($anterior === null || (!$proyecto->isNewRecord && $anterior->id === $proyecto->id)) {
+        if ($anterior === null || $anterior->esOrdenCambio() || (!$proyecto->isNewRecord && $anterior->id === $proyecto->id)) {
             $proyecto->addError('idProyectoAnterior', 'No se encontró la fase anterior del proyecto.');
 
             return;

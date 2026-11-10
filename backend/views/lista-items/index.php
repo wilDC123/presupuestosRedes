@@ -563,8 +563,8 @@ $grupoCierra = static fn (int $cantidad): string =>
     <?php else: ?>
         <div class="card rd-card-pad mt-3">
             <p class="rd-nota mb-0">
-                Esta lista ya no se modifica. Una ampliación se registra como un proyecto nuevo de fase siguiente,
-                con su propia lista.
+                Esta lista ya no se modifica. Si piden algo más, desde la vista del proyecto se registra una orden de
+                cambio (presupuesto adicional de esta fase aprobada) o se agrega una fase, cada una con su propia lista.
             </p>
         </div>
     <?php endif; ?>

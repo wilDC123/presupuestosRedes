@@ -206,6 +206,34 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `ListaMaterialesAprobacion` conserva su nombre: una fila = versión enviada, `fechaAprobacion` = fecha del envío). El PDF
   lleva solo "ELABORADO POR" y "Versión: x" (`_control-elaboracion` con `soloElaborado`). Lo que se dice abajo de la
   aprobación de la lista (paso 8b) quedó así reemplazado
+- ORDEN DE CAMBIO (revisión del 2026-11-05 punto 4, PARTE 6b, 2026-11-09; formato RD-GD-FR-006; migración
+  `m261110_030000_orden_de_cambio`; decidido con el desarrollador el 2026-11-09): un PRESUPUESTO ADICIONAL dentro de una
+  fase APROBADA, solo con lo que se agrega ("100 m de cable comprados, piden 50 m más"). OPCIÓN B: es una FILA MÁS de
+  `redes.Proyecto`, con el mismo `numeroProyecto` y `numeroFase` que su fase, `idFaseOrigen` (la fase) y
+  `numeroOrdenCambio` (1, 2…; índice único número + fase + orden). Así tiene sola su lista (código LM propio), sus ET
+  (EMISIONES PROPIAS con la cantidad de la orden; la ET de la fase no se toca), solicitudes (SC), presupuesto (PR) y carta,
+  y sigue los mismos pasos. `Proyecto::esOrdenCambio()`, `textoOrdenCambio()` ("Orden de cambio N.° 1"), relaciones
+  `faseOrigen` y `ordenesCambio`. NO es una fase: `getFases()` la excluye, `esUltimaFase()` = false, no cuenta en
+  `tieneVariasFases()` ni en la versión de la ficha técnica (aprobarla no la cambia), no tiene código PT (usa
+  `codigoFicha()` de la fase 1). `identificador()` = "Proyecto 001 · Fase 1 · Orden de cambio N.° 1"; `lineaDocumento()` =
+  "PROYECTO: 001 – NOMBRE (FASE 1) – ORDEN DE CAMBIO N.° 1" (propuesta, a confirmar con el Ing.); SC en pantalla "001 · OC 1 /
+  SC-01". Del FR-006 se guardan SOLO tipo, descripción y motivo (`idTipoOrdenCambio`, `descripcionCambio`,
+  `motivoCambio`; escenario `Proyecto::SCENARIO_ORDEN_CAMBIO`); el FR-006 se hace en Word y se le adjunta el presupuesto. El
+  TIPO es un catálogo (pedido del desarrollador el 2026-11-09; migración `m261110_040000_crear_tipo_orden_cambio`):
+  `redes.TipoOrdenCambio` (nombre único, activo), cargado con la lista 7.1.1 del FR-006 tal cual (Nuevas solicitudes de los
+  usuarios; Errores u omisiones en la planificación y propuestas técnicas; Presupuestos imprecisos; Cambios en el alcance de
+  los proyectos; Costos de recursos; Eventos no planificados), administrado en Configuración → "Tipos de orden de cambio"
+  (`TipoOrdenCambioService`); obligatorio en la orden; uno en uso no se elimina (se desactiva) y quien lo tenía lo conserva
+  (`TipoOrdenCambio::reglaElegible()`). Reglas en `OrdenCambioFaseService` (no confundir con `OrdenCambioService` = reabrir la
+  lista): se registra solo sobre una FASE con presupuesto aprobado (botón "Registrar orden de cambio" en la vista,
+  `proyecto/orden-cambio?idFase=`); copia de la fase los datos del proyecto, el área, el equipo y el lugar de entrega (fijos:
+  `datosComunesFijos()`; el formulario general del proyecto no la edita, "Editar datos" lleva a
+  `proyecto/editar-orden-cambio`); se edita mientras su presupuesto no esté aprobado ni cancelado; si NO se aprueba se
+  ELIMINA con lista, solicitudes, cotizaciones y presupuesto, sus ET quedan ANULADAS y pasan a la fase (una emisión siempre
+  es de un proyecto), los códigos LM/SC/PR/ET no se reutilizan; una aprobada no se elimina. Historial en la orden y en la fase
+  (`ACCION_ORDEN_CAMBIO_CREADA` / `_ELIMINADA`). Vista: "Fases del proyecto" con las órdenes debajo de su fase; listado con
+  "OC n". PENDIENTE (6c): la orden en la ficha técnica (dentro de la carpeta de su fase) y el TOTAL ÚNICO del proyecto (fases +
+  órdenes aprobadas); confirmar con el Ing. la línea del proyecto y el código LM propio de la orden
 - REABRIR LA LISTA (PARTE 6a, 2026-11-09): lo que el sistema llamaba "orden de cambio" (reabrir una lista enviada a
   cotización, con su motivo: `redes.OrdenCambio`, `OrdenCambioService`, `lista-items/solicitar-cambio`) en pantalla se
   llama ahora "reabrir la lista" / "Reaperturas de la lista". La tabla y las clases conservan su nombre. La ORDEN DE
@@ -779,6 +807,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   (reemplaza "Crear fase siguiente"); secuencias y actividades. Resumen en `docs/cambios-revision-2026-11-05.md`
 - PENDIENTE (tutor): `SolicitudCotizacion.codigoDocumento` y el tipo SC del correlativo (2026-11-09) en el diagrama de
   clases; informar al Ing. que la solicitud tomó código propio RD-PI-SC-NNN como en los formatos corregidos v3
+- PENDIENTE (tutor): orden de cambio (2026-11-09, parte 6b): en el diagrama de clases, auto-asociación de Proyecto
+  "ordenesCambio" 0..* (idFaseOrigen) y los atributos numeroOrdenCambio, descripcionCambio, motivoCambio, tipoCambio; caso de
+  uso "Registrar orden de cambio" (extiende Consultar proyecto, sobre una fase aprobada) y "Eliminar orden de cambio";
+  clase `TipoOrdenCambio` (catálogo, asociación 1 tipo → 0..* órdenes) y caso de uso "Gestionar tipos de orden de cambio"
 - PENDIENTE (tutor): agregar `TratamientoCarta` (2026-11-04; catálogo sin asociación: la carta copia el nombre) al
   diagrama de clases; "Configurar carta de entrega" incluye la lista de tratamientos
 - PENDIENTE (tutor): agregar la clase `Proceso` (2026-10-29; catálogo, asociación 1 proceso → 0..* proyectos)

@@ -58,7 +58,9 @@ $this->params['breadcrumbs'][] = $this->title;
                 'label' => 'Fase',
                 'format' => 'raw',
                 // Solo si el proyecto tiene mas de una fase (con fase unica no se muestra "Fase").
-                'value' => static fn ($model) => $model->tieneVariasFases() ? '<span class="pill-fase">Fase ' . (int) $model->numeroFase . '</span>' : '',
+                // Una orden de cambio (parte 6) va debajo de su fase, con su numero.
+                'value' => static fn ($model) => ($model->tieneVariasFases() ? '<span class="pill-fase">Fase ' . (int) $model->numeroFase . '</span>' : '')
+                    . ($model->esOrdenCambio() ? ' <span class="pill-fase">OC ' . (int) $model->numeroOrdenCambio . '</span>' : ''),
             ],
             [
                 // En el listado, la beneficiaria (la misma que sale en los documentos).
