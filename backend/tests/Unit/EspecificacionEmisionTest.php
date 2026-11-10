@@ -13,12 +13,14 @@ use backend\models\Proceso;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SubcatalogoItem;
+use backend\models\UnidadMedida;
 use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
 use backend\services\ListaItemsService;
 use backend\services\ProcesoService;
 use Codeception\Test\Unit;
 use DateTimeImmutable;
+use yii\helpers\Html;
 
 /**
  * Emisiones de especificaciones (RD-PI-ET): enlazar = emitir, correlativo
@@ -297,6 +299,12 @@ class EspecificacionEmisionTest extends Unit
 
         // En la cabecera (sin negrita desde el 2026-11-09, como el Word) y en el control de elaboracion.
         $this->assertStringContainsString('Versión: 1.2</td>', $html);
+        // La cantidad con el NOMBRE de la unidad, no la abreviatura (2026-11-10).
+        $nombreUnidad = UnidadMedida::nombresPorAbreviatura()[(string) $emision->unidad] ?? null;
+        if ($nombreUnidad !== null) {
+            $this->assertStringContainsString(' ' . Html::encode($nombreUnidad) . '</div>', $html);
+            $this->assertStringNotContainsString(' ' . Html::encode((string) $emision->unidad) . '</div>', $html);
+        }
         $this->assertStringContainsString('Versión: 1.2', $html);
         // "RD-PI-ET-015/26" -> "RD-PI-ET-015_26_v03.pdf": la barra no va en un nombre de archivo.
         $this->assertSame(str_replace('/', '_', $emision->codigo()) . '_v1_2.pdf', $this->emisiones->generarPdf($emision, $html)['nombreArchivo']);

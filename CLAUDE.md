@@ -500,7 +500,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   el PDF de la solicitud es un documento formal para el PROVEEDOR: título "SOLICITUD DE PROFORMA DE COTIZACIÓN",
   la cabecera de todos los documentos (desde el 2026-11-09, con su código RD-PI-SC-NNN; antes una propia con la
   referencia, la unidad, la fecha y la página), una lista sencilla N.° | Descripción | Unidad | Cantidad (la UNIDAD con su NOMBRE, "Metro" y no "m", desde el 2026-11-10:
-  `UnidadMedida::nombresPorAbreviatura()`, la abreviatura si no está en el catálogo; en la descripción siguen el código ET, la
+  `UnidadMedida::nombresPorAbreviatura()`, la abreviatura si no está en el catálogo; igual la "Cantidad:" del formulario ET, "24
+  Unidad"; en la descripción siguen el código ET, la
   marca / modelo de referencia y la observación) y abajo el espacio para el proveedor: firma y sello, nombre /
   empresa y fecha. SIN columnas de precio ni marca ofertada, sin TOTAL, NIT, validez ni tiempo de entrega (los trae
   la proforma que devuelve el proveedor). Desde el 2026-11-09 (como el Word v3) lleva también la firma "ELABORADO POR" de la DTIC, en la tabla de una sola firma a todo el ancho, antes del espacio del proveedor: la firma 1 de "Configuración del PDF" del presupuesto, la de HOY (la solicitud no guarda copia); antes, sin firmas de la DTIC. Archivo `solicitud_proforma_…pdf`. Las pantallas
