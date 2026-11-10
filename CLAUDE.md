@@ -206,6 +206,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `ListaMaterialesAprobacion` conserva su nombre: una fila = versión enviada, `fechaAprobacion` = fecha del envío). El PDF
   lleva solo "ELABORADO POR" y "Versión: x" (`_control-elaboracion` con `soloElaborado`). Lo que se dice abajo de la
   aprobación de la lista (paso 8b) quedó así reemplazado
+- REABRIR LA LISTA (PARTE 6a, 2026-11-09): lo que el sistema llamaba "orden de cambio" (reabrir una lista enviada a
+  cotización, con su motivo: `redes.OrdenCambio`, `OrdenCambioService`, `lista-items/solicitar-cambio`) en pantalla se
+  llama ahora "reabrir la lista" / "Reaperturas de la lista". La tabla y las clases conservan su nombre. La ORDEN DE
+  CAMBIO del formato RD-GD-FR-006 es otra cosa: un presupuesto adicional de una fase aprobada (parte 6)
 - REVISIÓN DEL 2026-11-05, PARTE 3: el LUGAR DE ENTREGA es de CADA especificación (pueden ser distintos). Se escribe en la
   fila de la lista, debajo del selector de especificación (`items[n][lugarEntrega]`, `ProyectoItem::$lugarEntregaPedido`, no
   es columna: se guarda en `EspecificacionEmision.lugarEntrega`). Formulario nuevo: toma el de la fila (vacío = el del
@@ -557,12 +561,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     desarrollador el 2026-10-30): lleva el CÓDIGO DEL PROYECTO (RD-PI-PT-NNN, "Proceso:" = PI), porque cada proyecto
     tiene una sola lista y ese código no cambia. "Enviar a cotización" APRUEBA la versión siguiente
     (`ListaItemsService::enviarACotizacion()` → `aprobarVersion()`): `redes.ListaMaterialesAprobacion`, una fila por
-    versión (01 la primera vez, +1 después de cada orden de cambio), nunca se modifica: fecha, usuario y COPIA de
+    versión (01 la primera vez, +1 después de cada reapertura de la lista), nunca se modifica: fecha, usuario y COPIA de
     las firmas de "Configuración del PDF" del presupuesto (trait `FirmasDeControl`); se anota en el historial
     (`HistorialProyecto::ACCION_LISTA_APROBADA`). No guarda copia de la lista (mientras está aprobada no cambia).
     `ListaItemsService::documento()`: en edición imprime la versión SIGUIENTE con marca BORRADOR y las firmas de
     hoy; enviada o cerrada, la última aprobada. La "Fecha" de la cabecera es la de CREACIÓN de la versión (paso 9):
-    la v01 nace con el proyecto (`Proyecto.fechaCreacion`), cada una siguiente con la orden de cambio que reabrió
+    la v01 nace con el proyecto (`Proyecto.fechaCreacion`), cada una siguiente con la reapertura que reabrió
     la lista (la 1.ª orden crea la v02…); la de aprobación va abajo. Las 4 listas ya enviadas recibieron su v01 sin
     fecha de aprobación. La versión sale también en la pantalla de la lista y en la ficha técnica.
     Sin "documentos relacionados" (opcional en el nivel D: cada ítem ya cita su ET)

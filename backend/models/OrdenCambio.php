@@ -9,7 +9,11 @@ use yii\db\ActiveRecord;
 
 /**
  * Modelo para la tabla "redes.OrdenCambio": registro de por que se reabrio
- * algo que ya estaba bloqueado (la lista enviada a cotizacion).
+ * algo que ya estaba bloqueado (la lista enviada a cotizacion). En pantalla
+ * se llama "REAPERTURA DE LA LISTA" desde el 2026-11-09: la ORDEN DE CAMBIO
+ * del formato RD-GD-FR-006 es otra cosa (un presupuesto adicional de una
+ * fase aprobada, parte 6 de la revision del 2026-11-05). La tabla y la clase
+ * conservan su nombre.
  *
  * Solo "motivo" llega del formulario. Proyecto, alcance, quien la solicito y
  * el estado los pone OrdenCambioService: por eso no tienen regla (un atributo
@@ -43,7 +47,7 @@ class OrdenCambio extends ActiveRecord
     {
         return [
             [['motivo'], 'trim'],
-            [['motivo'], 'required', 'message' => 'Escriba el motivo del cambio.'],
+            [['motivo'], 'required', 'message' => 'Escriba el motivo para reabrir la lista.'],
             [['motivo'], 'string', 'max' => 500],
         ];
     }
@@ -51,7 +55,7 @@ class OrdenCambio extends ActiveRecord
     public function attributeLabels(): array
     {
         return [
-            'motivo' => 'Motivo del cambio',
+            'motivo' => 'Motivo para reabrir la lista',
             'solicitadoPor' => 'Solicitado por',
             'fecha' => 'Fecha',
             'estado' => 'Estado',

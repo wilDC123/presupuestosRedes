@@ -11,7 +11,8 @@ use Yii;
 use yii\db\Expression;
 
 /**
- * Capa de Servicio para las ordenes de cambio (redes.OrdenCambio).
+ * Capa de Servicio para las reaperturas de la lista (redes.OrdenCambio; en
+ * pantalla "reabrir la lista" desde el 2026-11-09, ver el modelo).
  *
  * Regla de negocio: una lista ya enviada a cotizacion no se edita
  * libremente. Para modificarla hay que registrar una orden de cambio (motivo,

@@ -85,7 +85,7 @@ class ListaItemsController extends Controller
                 if ($peticion->post('accion') !== 'enviar') {
                     Yii::$app->session->setFlash('success', 'Lista guardada.');
                 } elseif ($this->service->enviarACotizacion($proyecto)) {
-                    Yii::$app->session->setFlash('success', 'Lista guardada y enviada a cotización. Desde ahora solo se modifica con una orden de cambio.');
+                    Yii::$app->session->setFlash('success', 'Lista guardada y enviada a cotización. Desde ahora, para modificarla hay que reabrirla.');
 
                     $sinCantidad = $this->service->contarSinCantidad($proyecto);
 
@@ -231,7 +231,9 @@ class ListaItemsController extends Controller
     }
 
     /**
-     * Registra una orden de cambio y devuelve la lista a "en edicion".
+     * Reabre la lista: registra el motivo (redes.OrdenCambio, que en pantalla
+     * se llama "reapertura de la lista" desde el 2026-11-09, para no
+     * confundirla con la orden de cambio de la parte 6) y la devuelve a "en edicion".
      */
     public function actionSolicitarCambio(int $id)
     {
@@ -242,7 +244,7 @@ class ListaItemsController extends Controller
         $usuario = UsuarioActual::nombre() ?? 'desconocido';
 
         if ($this->ordenes->solicitarCambioLista($proyecto, $orden, Yii::$app->request->post(), $usuario)) {
-            Yii::$app->session->setFlash('success', 'Orden de cambio registrada. La lista volvió a edición.');
+            Yii::$app->session->setFlash('success', 'Lista reabierta: volvió a edición.');
         } else {
             Yii::$app->session->setFlash('error', implode(' ', $orden->getFirstErrors()));
         }
