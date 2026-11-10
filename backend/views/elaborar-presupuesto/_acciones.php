@@ -84,7 +84,7 @@ $botones = [
                     <?= $botonEstado($estado, $texto, $clase, $confirmar) ?>
                 <?php endif; ?>
             <?php endforeach; ?>
-            <?php // Solo en la ultima fase del proyecto: se le agrega la siguiente, con el mismo numero (2026-11-06). ?>
+            <?php // En la ultima fase, ya aprobada, un atajo a la siguiente (la vista del proyecto lo ofrece siempre en la ultima fase). ?>
             <?php if ($presupuesto->estado === Presupuesto::ESTADO_APROBADO && $proyecto->esUltimaFase()): ?>
                 <?= Html::a('Agregar fase ' . ((int) $proyecto->numeroFase + 1) . ' al proyecto →', ['/proyecto/create', 'idAnterior' => $proyecto->id], ['class' => 'btn btn-primary']) ?>
             <?php endif; ?>

@@ -92,7 +92,7 @@ class ProyectoController extends Controller
             'listaEditable' => (new ListaItemsService())->puedeEditarse($model),
             'puedeEditarse' => $this->service->puedeEditarse($model),
             'estaAprobado' => $this->service->estaAprobado($model),
-            // "Agregar fase": solo en la ultima fase, ya aprobada (2026-11-06).
+            // "Agregar fase": en la ultima fase, aprobada o no (varias fases a la vez, 2026-11-09).
             'puedeAgregarFase' => $this->service->puedeAgregarFase($model),
         ]);
     }
@@ -293,6 +293,7 @@ class ProyectoController extends Controller
             // Personas y roles activos, mas los que ya estan en el equipo del formulario.
             'personal' => (new PersonalService())->opciones(array_column($equipo, 'nombre')),
             'roles' => (new RolProyectoService())->opciones(array_map('intval', array_filter(array_column($equipo, 'idRol'), 'ctype_digit'))),
+            'datosComunesFijos' => $this->service->datosComunesFijos($model),
         ];
     }
 

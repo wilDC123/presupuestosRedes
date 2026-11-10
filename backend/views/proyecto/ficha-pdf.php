@@ -18,7 +18,7 @@ use yii\helpers\Html;
  * 2026-11-05, punto 2: "se imprime, se aprueba y lleva codigo", PT) y es UNO
  * por proyecto (parte 5d, 2026-11-06): sale igual desde cualquier fase.
  *  - Cabecera del lineamiento: el codigo RD-PI-PT-NNN de la ficha (el de la
- *    fase 1), la version (1.0, 1.1 al aprobarse la fase 2...), la fecha de
+ *    fase 1), la version (1.0, 1.1 al aprobarse otra fase...), la fecha de
  *    creacion de esa version y la pagina. Ver ProyectoService::datosFicha().
  *  - Primero lo del proyecto, que no cambia por fase: 1 datos, 2 unidades,
  *    3 fechas (con varias fases, una columna por fase).
@@ -26,7 +26,7 @@ use yii\helpers\Html;
  *    y 6 documentos de la carpeta economica, sin "Fase"; con varias, un bloque
  *    "4. FASE 1", "5. FASE 2"... con esas tres cosas (4.1, 4.2, 4.3).
  *  - Al fondo de la ultima pagina el control de elaboracion (elaborado y
- *    aprobado); mientras la ultima fase no esta aprobada, marca de agua
+ *    aprobado); mientras alguna fase no esta aprobada, marca de agua
  *    BORRADOR (la pone el controlador).
  *  - Sin "Lugar de entrega" (va en cada especificacion). Espacios ajustados
  *    para que las firmas entren al pie de la ultima hoja y no queden solas.

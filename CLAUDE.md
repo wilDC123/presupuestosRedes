@@ -220,13 +220,17 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   fase. Se escribe "001" (`Proyecto::numeroTexto()`, ÚNICO lugar del formato, 3 cifras hasta que el Ing. confirme dígitos o
   prefijo). `Proyecto::identificador()` = "Proyecto 001" o "Proyecto 001 · Fase 2" (migas, títulos, avisos);
   `etiqueta()` = "001 — Nombre"; `tieneVariasFases()` (con fase única no se muestra "Fase"). Los existentes: cada cadena de
-  fases recibió un número en orden de creación (local: 26 y 27 = proyecto 001 fases 1 y 2, 28 = 002). Una fase siguiente solo
-  se crea con la anterior APROBADA (confirmado el 2026-11-06).
-  PARTE 5b ("Agregar fase"): botón en la vista del proyecto y en el paso Presupuesto, solo en la ÚLTIMA fase y con su
-  presupuesto aprobado (`ProyectoService::puedeAgregarFase()`, `Proyecto::esUltimaFase()`); abre `proyecto/create?idAnterior=`
+  fases recibió un número en orden de creación (local: 26 y 27 = proyecto 001 fases 1 y 2, 28 = 002). VARIAS FASES A LA VEZ
+  (dicho por el Ing. de DTIC, 2026-11-09, PARTE 5f): una fase siguiente se crea aunque la anterior no esté aprobada (del 06
+  al 09-11 se exigía la anterior APROBADA).
+  PARTE 5b ("Agregar fase"): botón en la vista del proyecto y en el paso Presupuesto, en la vista del proyecto en la
+  ÚLTIMA fase, aprobada o no; en el paso Presupuesto, como atajo, con ella aprobada (`ProyectoService::puedeAgregarFase()`,
+  `Proyecto::esUltimaFase()`); abre `proyecto/create?idAnterior=`
   ("Agregar fase N al proyecto 001"). La fase nueva copia los DATOS DEL PROYECTO (`Proyecto::ATRIBUTOS_COMUNES`: nombre,
   descripción, tipo, proceso y las dos unidades), que en una fase 2+ van DESHABILITADOS y el servidor siempre toma de la fase
-  anterior (así nunca hay que sincronizar: la fase 1 solo se edita mientras no está aprobada, y la 2 nace después); trae el
+  anterior. Se escriben SOLO en la fase 1: al guardarla se COPIAN a las demás fases en la misma transacción, con su historial
+  ("Desde la fase 1: …") y el cambio de código LM si cambió el proceso (`ProyectoService::llevarDatosComunesALasFases()`);
+  quedan fijos también en la fase 1 cuando OTRA fase está aprobada (`ProyectoService::datosComunesFijos()`); trae el
   equipo y el lugar de entrega por defecto (editables); área y carpeta empiezan VACÍAS. Ya no hay selector "fase anterior"
   en el formulario (se quitó `proyectosAprobados()`); al editar, la fase anterior no cambia. Vista: "Fases del proyecto 001"
   (`Proyecto::$fases`) con el estado de cada presupuesto; listado ordenado por número y fase, "Fase" solo si hay varias.
@@ -244,10 +248,11 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   número no se reutiliza. La ficha se imprime IGUAL desde cualquier fase (`ProyectoService::datosFicha()`: `fases`, una por
   fase con sus fechas, lista, presupuesto, ET y SC): 1 datos (con "Fases: N"), 2 unidades, 3 fechas (una columna por fase),
   y un bloque "4. FASE 1" (4.1 área, 4.2 equipo, 4.3 documentos), "5. FASE 2"…; con fase única, 4 área, 5 equipo, 6
-  documentos. VERSIÓN calculada, sin tabla: cada fase aprobada es una versión (1.0, 1.1…); si la última fase no está
-  aprobada, la siguiente en BORRADOR; aprobada = fecha y firmas del presupuesto de esa fase; fecha de cabecera = creación de
-  la última fase. En pantallas la solicitud de cotización se identifica con el número: "001 · Fase 2 / SC-01" (`SolicitudCotizacion::codigo()`;
-  en el PDF y la ficha, su código RD-PI-SC-NNN);
+  documentos. VERSIÓN calculada, sin tabla: cada fase aprobada es una versión (1.0, 1.1…), contadas en el ORDEN EN QUE
+  SE APROBARON (5f: la fase 2 puede aprobarse antes que la 1); mientras ALGUNA fase tenga el presupuesto sin aprobar, la
+  siguiente en BORRADOR (una fase con presupuesto cancelado no cuenta); aprobada = fecha y firmas del presupuesto aprobado
+  más reciente; fecha de cabecera = creación de la fase más nueva. En pantallas la solicitud de cotización se identifica con
+  el número: "001 · Fase 2 / SC-01" (`SolicitudCotizacion::codigo()`; en el PDF y la ficha, su código RD-PI-SC-NNN);
   el historial copia `identificador()` en `codigoProyecto`
 - REVISIÓN DEL 2026-11-05, PARTE 4 (punto 2): la FICHA TÉCNICA es un DOCUMENTO normado (antes "reporte de control"):
   cabecera del lineamiento (código = el del proyecto RD-PI-PT-NNN hasta la parte 5, versión 1.0, fecha = creación del

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\tests\Unit;
 
 use backend\models\CorrelativoDocumento;
+use backend\models\HistorialProyecto;
 use backend\models\Personal;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
@@ -52,10 +53,8 @@ class NumeroProyectoTest extends Unit
 
     public function testLaFaseSiguienteLlevaElMismoNumero(): void
     {
+        // Sin aprobar: varias fases pueden elaborarse a la vez (2026-11-09).
         $fase1 = $this->crear('Proyecto test fases');
-        // Solo un proyecto aprobado puede tener fase siguiente.
-        $presupuesto = new Presupuesto(['idProyecto' => $fase1->id, 'estado' => Presupuesto::ESTADO_APROBADO]);
-        $presupuesto->save(false);
         $siguiente = (int) (new CodificacionService())->correlativos()[CorrelativoDocumento::TIPO_NUMERO_PROYECTO]->siguiente;
 
         $fase2 = $this->crear('Proyecto test fases', $fase1->id);
@@ -97,18 +96,48 @@ class NumeroProyectoTest extends Unit
         $this->assertSame(2, (int) $fase2->numeroFase);
     }
 
-    public function testSoloSeAgregaFaseALaUltimaFaseAprobada(): void
+    public function testSoloSeAgregaFaseALaUltimaFase(): void
     {
         $fase1 = $this->crear('Proyecto test última fase');
-        // Sin aprobar: no.
-        $this->assertFalse($this->proyectos->puedeAgregarFase($fase1));
-        $this->aprobar($fase1);
-        $this->assertTrue($this->proyectos->puedeAgregarFase(Proyecto::findOne($fase1->id)));
+        // Aprobada o no (varias fases a la vez, 2026-11-09).
+        $this->assertTrue($this->proyectos->puedeAgregarFase($fase1));
+        $this->assertSame((int) $fase1->id, (int) $this->proyectos->nuevo($fase1->id)->idProyectoAnterior);
 
         $this->crear('Proyecto test última fase', $fase1->id);
         // Ya tiene fase 2: la fase 1 deja de ser la ultima.
         $this->assertFalse($this->proyectos->puedeAgregarFase(Proyecto::findOne($fase1->id)));
         $this->assertNull($this->proyectos->nuevo($fase1->id)->idProyectoAnterior);
+    }
+
+    /**
+     * Con fases a la vez, la fase 1 se edita aunque ya exista la 2: sus datos
+     * del proyecto pasan a la 2 (con su historial). Cuando otra fase se
+     * aprueba, quedan fijos tambien en la fase 1.
+     */
+    public function testLosDatosDelProyectoSeEditanEnLaFase1YPasanALasDemas(): void
+    {
+        $fase1 = $this->crear('Proyecto test simultáneas');
+        $fase2 = $this->crear('Proyecto test simultáneas', $fase1->id);
+        $this->assertFalse($this->proyectos->datosComunesFijos($fase1));
+        $this->assertTrue($this->proyectos->datosComunesFijos($fase2));
+
+        $datos = $this->datos('Nombre corregido test', null);
+        $datos['Proyecto']['unidadDependencia'] = 'Carrera corregida test';
+        $this->assertTrue($this->proyectos->actualizar($fase1, $datos), json_encode($fase1->errors));
+
+        $fase2 = Proyecto::findOne($fase2->id);
+        $this->assertSame(['Nombre corregido test', 'Carrera corregida test'], [$fase2->nombre, $fase2->unidadDependencia]);
+        $historial = HistorialProyecto::find()->andWhere(['idProyecto' => $fase2->id, 'accion' => HistorialProyecto::ACCION_PROYECTO_MODIFICADO])->one();
+        $this->assertNotNull($historial);
+        $this->assertStringContainsString('Desde la fase 1', (string) $historial->detalle);
+        $this->assertStringContainsString('Nombre corregido test', (string) $historial->detalle);
+
+        // La fase 2 se aprueba: en la fase 1 los datos del proyecto ya no cambian.
+        $this->aprobar($fase2);
+        $fase1 = Proyecto::findOne($fase1->id);
+        $this->assertTrue($this->proyectos->datosComunesFijos($fase1));
+        $this->assertTrue($this->proyectos->actualizar($fase1, $this->datos('Otro nombre que no debe quedar', null)), json_encode($fase1->errors));
+        $this->assertSame('Nombre corregido test', Proyecto::findOne($fase1->id)->nombre);
     }
 
     /**
@@ -121,7 +150,6 @@ class NumeroProyectoTest extends Unit
         $numero = $fase1->numeroTexto();
         $this->assertSame("PROYECTO: $numero – INSTALACIÓN DE CÁMARAS DE SEGURIDAD", $fase1->lineaDocumento());
 
-        $this->aprobar($fase1);
         $fase2 = $this->crear('Instalación de cámaras de seguridad', $fase1->id);
         $this->assertSame("PROYECTO: $numero – INSTALACIÓN DE CÁMARAS DE SEGURIDAD (FASE 2)", $fase2->lineaDocumento());
         // La fase 1 ahora tambien dice su fase: el proyecto ya tiene dos.

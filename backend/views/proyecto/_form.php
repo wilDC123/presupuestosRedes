@@ -33,6 +33,7 @@ use yii\widgets\ActiveForm;
  * @var array<int, array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string, texto: string, grupo: string, detalle: string}> $areas Ver ProyectoService::areasDelFormulario()
  * @var string[] $personal nombres para el desplegable "Persona" (activos y los ya elegidos)
  * @var array<int, string> $roles [id => nombre] para el desplegable "Rol" (activos y los ya elegidos)
+ * @var bool $datosComunesFijos los datos del proyecto no se cambian aqui (ProyectoService::datosComunesFijos())
  */
 
 $this->registerJsFile('@web/js/proyecto-form.js', ['depends' => [JqueryAsset::class]]);
@@ -56,11 +57,14 @@ $filaEquipo = static function ($clave, string $nombre, string $idRol, bool $resp
         . '</tr>';
 };
 
-// Una fase siguiente (2, 3...) no cambia los datos del proyecto: se muestran
-// deshabilitados (no se envian; ProyectoService los copia de la fase anterior).
+// Los datos del proyecto se escriben solo en la fase 1 y mientras ninguna otra
+// fase este aprobada: si no, se muestran deshabilitados (no se envian;
+// ProyectoService los toma de la fase anterior o deja los que tenia).
 $esFaseSiguiente = $model->idProyectoAnterior !== null;
-$comun = $esFaseSiguiente ? ['disabled' => true] : [];
-$hintComun = 'Dato del proyecto: es el mismo en todas sus fases (se escribió en la fase 1).';
+$comun = $datosComunesFijos ? ['disabled' => true] : [];
+$hintComun = $esFaseSiguiente
+    ? 'Dato del proyecto: es el mismo en todas sus fases (se escribe en la fase 1).'
+    : 'Dato del proyecto: ya no se cambia porque otra fase del proyecto tiene su presupuesto aprobado.';
 ?>
 <?php $form = ActiveForm::begin([
     'id' => 'proyecto-form',
@@ -96,12 +100,12 @@ $hintComun = 'Dato del proyecto: es el mismo en todas sus fases (se escribió en
         <?php // A todo el ancho: los nombres de los procesos son largos. ?>
         <?= $form->field($model, 'idProceso')
             ->dropDownList($procesos, ['prompt' => 'Seleccione el proceso', 'class' => 'form-select'] + $comun)
-            ->hint($esFaseSiguiente ? $hintComun : 'Qué proceso lleva adelante el proyecto. Lo normal es PI; otros procesos (despliegue, gestión de la red…) también registran sus requerimientos como proyecto.') ?>
+            ->hint($datosComunesFijos ? $hintComun : 'Qué proceso lleva adelante el proyecto. Lo normal es PI; otros procesos (despliegue, gestión de la red…) también registran sus requerimientos como proyecto.') ?>
 
         <?= $form->field($model, 'nombre')->textInput([
             'maxlength' => 300,
             'placeholder' => 'Ej. Ampliación de red — Facultad de Tecnología',
-        ] + $comun)->hint($esFaseSiguiente ? $hintComun : null) ?>
+        ] + $comun)->hint($datosComunesFijos ? $hintComun : null) ?>
 
         <?= $form->field($model, 'descripcion')->textarea([
             'rows' => 3,
@@ -115,14 +119,14 @@ $hintComun = 'Dato del proyecto: es el mismo en todas sus fases (se escribió en
             'list' => 'proyecto-unidades-sugeridas',
             'autocomplete' => 'off',
             'placeholder' => 'A dónde va el proyecto. Ej. Canal Universitario, Carrera de Psicología',
-        ] + $comun)->hint($esFaseSiguiente ? $hintComun : 'La unidad beneficiada: es la que sale como "Dependencia" en los documentos. Texto libre: facultad, carrera, oficina…') ?>
+        ] + $comun)->hint($datosComunesFijos ? $hintComun : 'La unidad beneficiada: es la que sale como "Dependencia" en los documentos. Texto libre: facultad, carrera, oficina…') ?>
 
         <?= $form->field($model, 'unidadSolicitante')->textInput([
             'maxlength' => 250,
             'list' => 'proyecto-unidades-sugeridas',
             'autocomplete' => 'off',
             'placeholder' => 'Quién lo pide, tal como dice la nota. Ej. Rectorado, Decanato de Humanidades',
-        ] + $comun)->hint($esFaseSiguiente ? $hintComun : 'Puede ser la misma unidad u otra (ej. el Rector pide cámaras para el Canal Universitario). Al escribir se sugieren las ya usadas.') ?>
+        ] + $comun)->hint($datosComunesFijos ? $hintComun : 'Puede ser la misma unidad u otra (ej. el Rector pide cámaras para el Canal Universitario). Al escribir se sugieren las ya usadas.') ?>
         <datalist id="proyecto-unidades-sugeridas">
             <?php foreach ($sugerenciasUnidad as $sugerencia): ?>
                 <option value="<?= Html::encode($sugerencia) ?>"></option>
@@ -269,8 +273,9 @@ $hintComun = 'Dato del proyecto: es el mismo en todas sus fases (se escribió en
             </div>
         <?php else: ?>
             <p class="rd-nota">
-                Un proyecto puede tener una o más fases, todas con el mismo número. La fase siguiente se agrega
-                desde el proyecto, con "Agregar fase", cuando la fase anterior tiene su presupuesto aprobado.
+                Un proyecto puede tener una o más fases, todas con el mismo número, y varias pueden elaborarse a la
+                vez. La fase siguiente se agrega desde la última fase del proyecto, con "Agregar fase". Los datos del
+                proyecto que se cambien aquí pasan también a las demás fases.
             </p>
         <?php endif; ?>
     </div>

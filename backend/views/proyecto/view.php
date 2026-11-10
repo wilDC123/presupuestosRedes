@@ -16,7 +16,7 @@ use yii\helpers\Html;
  * @var array $urlPresupuesto Ver ProyectoService::urlPresupuesto()
  * @var bool $puedeEditarse
  * @var bool $estaAprobado
- * @var bool $puedeAgregarFase la ultima fase del proyecto, ya aprobada: se le puede agregar la siguiente
+ * @var bool $puedeAgregarFase la ultima fase del proyecto (aprobada o no): se le puede agregar la siguiente
  * @var int $totalItems items en la lista del proyecto
  * @var bool $listaEditable Ver ListaItemsService::puedeEditarse()
  * @var array{creacion: string|null, revision: string|null, aprobacion: string|null, ultimaModificacion: string|null, ultimoUsuario: string|null} $fechas Ver HistorialService::fechas()
