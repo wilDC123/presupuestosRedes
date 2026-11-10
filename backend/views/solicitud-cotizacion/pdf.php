@@ -132,6 +132,7 @@ $numero = 0;
             </tr>
         </thead>
         <tbody>
+            <?php $unidades = backend\models\UnidadMedida::nombresPorAbreviatura(); ?>
             <?php foreach ($solicitud->items as $fila): ?>
                 <?php $item = $fila->proyectoItem; ?>
                 <tr>
@@ -150,7 +151,8 @@ $numero = 0;
                             <br><span class="observacion"><?= Html::encode($item->observacion) ?></span>
                         <?php endif; ?>
                     </td>
-                    <td><?= Html::encode((string) ($item->unidadMedida ?? '')) ?></td>
+                    <?php // El nombre de la unidad ("Metro", no "m"), para que el proveedor entienda; si no esta en el catalogo, la abreviatura. ?>
+                    <td><?= Html::encode($unidades[(string) $item->unidadMedida] ?? (string) ($item->unidadMedida ?? '')) ?></td>
                     <td class="numero"><?= Yii::$app->formatter->asDecimal($item->cantidad ?? 0, 2) ?></td>
                 </tr>
             <?php endforeach; ?>

@@ -57,4 +57,17 @@ class UnidadMedida extends ActiveRecord
     {
         return $this->nombre . ' (' . $this->abreviatura . ')';
     }
+
+    /**
+     * El NOMBRE de cada abreviatura ("m" => "Metro"), de todas las unidades
+     * (tambien las inactivas: una lista vieja puede tenerlas). Las filas de la
+     * lista guardan la abreviatura; la solicitud de proforma muestra el nombre
+     * (2026-11-10, "para que se entienda mejor").
+     *
+     * @return array<string, string>
+     */
+    public static function nombresPorAbreviatura(): array
+    {
+        return self::find()->select(['nombre', 'abreviatura'])->indexBy('abreviatura')->column();
+    }
 }

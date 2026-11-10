@@ -11,10 +11,12 @@ use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SolicitudCotizacion;
 use backend\models\SubcatalogoItem;
+use backend\models\UnidadMedida;
 use backend\services\CodificacionService;
 use backend\services\SolicitudCotizacionService;
 use Codeception\Test\Unit;
 use Yii;
+use yii\helpers\Html;
 
 /**
  * Codigo de la solicitud de proforma de cotizacion (formatos corregidos v3,
@@ -35,7 +37,7 @@ class SolicitudCodigoTest extends Unit
 
         $proyecto = new Proyecto(['nombre' => 'Proyecto test código SC', 'idProceso' => $proceso->id, 'estadoLista' => Proyecto::LISTA_EN_COTIZACION]);
         $proyecto->save(false);
-        $fila = new ProyectoItem(['idProyecto' => $proyecto->id, 'idSubcatalogo' => $item->id, 'idCategoria' => $item->idCategoria, 'cantidad' => 1, 'orden' => 1]);
+        $fila = new ProyectoItem(['idProyecto' => $proyecto->id, 'idSubcatalogo' => $item->id, 'idCategoria' => $item->idCategoria, 'cantidad' => 1, 'orden' => 1, 'unidadMedida' => 'm']);
         $fila->save(false);
         $siguiente = (int) (new CodificacionService())->correlativos()[CorrelativoDocumento::TIPO_SOLICITUD]->siguiente;
 
@@ -61,6 +63,11 @@ class SolicitudCodigoTest extends Unit
             $this->assertStringContainsString($esperado, $html);
         }
         $this->assertStringNotContainsString('N.° ', $html);
+        // La unidad con su nombre, no la abreviatura (2026-11-10).
+        $nombre = UnidadMedida::nombresPorAbreviatura()[(string) $fila->unidadMedida] ?? null;
+        if ($nombre !== null) {
+            $this->assertStringContainsString('<td>' . Html::encode($nombre) . '</td>', $html);
+        }
         // Firma de la DTIC (2026-11-09, como el Word v3): solo "ELABORADO POR", y el espacio del proveedor.
         $this->assertStringContainsString('ELABORADO POR', $html);
         $this->assertStringNotContainsString('APROBADO POR', $html);
