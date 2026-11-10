@@ -334,7 +334,7 @@ $columnasFechas = count($fases);
 </table>
 
 <table class="ficha">
-    <tr><th class="seccion" colspan="2">2. Unidades</th></tr>
+    <tr><th class="seccion" colspan="2">2. Unidades / Dependencia</th></tr>
     <tr><th style="width: 28.4%;">Unidad / dependencia (beneficiaria)</th><td><?= $texto($proyecto->unidadDependencia) ?></td></tr>
     <tr><th>Unidad solicitante</th><td><?= $texto($proyecto->unidadSolicitante) ?></td></tr>
 </table>
