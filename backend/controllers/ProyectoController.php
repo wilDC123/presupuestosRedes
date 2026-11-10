@@ -182,7 +182,7 @@ class ProyectoController extends Controller
         }
 
         if (!$lista->puedeEditarse($model)) {
-            Yii::$app->session->setFlash('error', 'La lista ya fue enviada a cotización: para cargarle una plantilla registre antes una orden de cambio.');
+            Yii::$app->session->setFlash('error', 'La lista ya fue enviada a cotización: para cargarle una plantilla reábrala antes.');
 
             return $this->redirect(['/lista-items/index', 'id' => $model->id]);
         }

@@ -51,7 +51,7 @@ use yii\web\JqueryAsset;
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
  * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>, subcatalogos: array<int, int>, sugeridasPorItem: array<int, int[]>} $especificaciones Ver EspecificacionService::selector()
  * @var array<string, array{opciones: array, grupos: array}> $opcionesPorItem Ver EspecificacionService::opcionesPorItem() (vacio si la lista no se edita)
- * @var backend\models\OrdenCambio[] $ordenes ordenes de cambio del proyecto
+ * @var backend\models\OrdenCambio[] $ordenes reaperturas de la lista (en pantalla ya no se llaman "orden de cambio", 2026-11-09)
  * @var array<int, array{emision: ?backend\models\EspecificacionEmision, avisos: string[]}> $emisiones Ver EspecificacionEmisionService::estadoPorItem()
  * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
  * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
@@ -278,7 +278,7 @@ $grupoCierra = static fn (int $cantidad): string =>
                     'id' => 'lista-enviar',
                     // La confirmacion la pide lista-items.js (no data-confirm de Yii, que
                     // envia el formulario por su cuenta y pierde el name/value del boton).
-                    'data' => ['mensaje' => 'Al enviar a cotización la lista queda bloqueada: para modificarla después hará falta una orden de cambio. ¿Continuar?'],
+                    'data' => ['mensaje' => 'Al enviar a cotización la lista queda bloqueada: para modificarla después habrá que reabrirla, explicando el motivo. ¿Continuar?'],
                 ]) ?>
                 <?= Html::submitButton('Guardar lista', ['class' => 'btn btn-primary', 'name' => 'accion', 'value' => 'guardar']) ?>
             <?php endif; ?>
@@ -549,15 +549,15 @@ $grupoCierra = static fn (int $cantidad): string =>
         <div class="card rd-card-pad mt-3">
             <div class="rd-card-titulo mb-2">Lista enviada a cotización</div>
             <p class="rd-nota">
-                La lista está bloqueada para que lo cotizado coincida con lo pedido. Para modificarla registre una
-                orden de cambio: la lista vuelve a edición y la orden queda abierta hasta que la envíe otra vez a cotización.
+                La lista está bloqueada para que lo cotizado coincida con lo pedido. Para corregirla, reábrala con el
+                motivo: vuelve a edición hasta que la envíe otra vez a cotización (y se emite la versión siguiente).
             </p>
             <?= Html::beginForm(['solicitar-cambio', 'id' => $proyecto->id], 'post', ['id' => 'orden-cambio-form']) ?>
                 <div class="form-group">
-                    <label for="orden-motivo">Motivo del cambio</label>
+                    <label for="orden-motivo">Motivo para reabrir la lista</label>
                     <?= Html::textarea('OrdenCambio[motivo]', '', ['id' => 'orden-motivo', 'class' => 'form-control', 'rows' => 2, 'maxlength' => 500, 'required' => true]) ?>
                 </div>
-                <?= Html::submitButton('Solicitar cambio', ['class' => 'btn btn-primary']) ?>
+                <?= Html::submitButton('Reabrir lista', ['class' => 'btn btn-primary']) ?>
             <?= Html::endForm() ?>
         </div>
     <?php else: ?>
@@ -572,7 +572,7 @@ $grupoCierra = static fn (int $cantidad): string =>
     <?php if ($ordenes !== []): ?>
         <div class="card mt-3">
             <div class="rd-card-head">
-                <div class="rd-card-titulo">Órdenes de cambio</div>
+                <div class="rd-card-titulo">Reaperturas de la lista</div>
                 <div class="kicker"><?= count($ordenes) ?> registradas</div>
             </div>
             <table class="table">
