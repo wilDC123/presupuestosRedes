@@ -535,4 +535,23 @@ $(function () {
             evento.preventDefault();
         }
     });
+
+    // Lugar de entrega de arriba de la lista (2026-11-10): es el que toma cada
+    // fila que deja su lugar vacio, asi que se muestra como su texto de ejemplo
+    // (vacio = el de la configuracion del formulario). Tambien en las filas que
+    // se agregan despues (al entrar al campo).
+    var $lugarProyecto = $('#lista-lugar-entrega');
+
+    function lugarDeEjemplo() {
+        return $.trim($lugarProyecto.val()) || $lugarProyecto.data('configuracion') || 'Sin lugar de entrega';
+    }
+
+    $lugarProyecto.on('input', function () {
+        $('#lista-items-form input[name$="[lugarEntrega]"]').attr('placeholder', lugarDeEjemplo());
+    });
+    $('#lista-items-form').on('focus', 'input[name$="[lugarEntrega]"]', function () {
+        if ($lugarProyecto.length) {
+            $(this).attr('placeholder', lugarDeEjemplo());
+        }
+    });
 });

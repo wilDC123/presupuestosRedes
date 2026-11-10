@@ -57,6 +57,8 @@ use yii\web\JqueryAsset;
  * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
  * @var backend\models\ConfiguracionEspecificacion $configuracion
  * @var string|null $lugarEntregaPorDefecto texto de ejemplo del "Lugar de entrega" de cada fila y al reemitir (null = no hay)
+ * @var string $lugarEntregaProyecto valor del campo "Lugar de entrega" de arriba de la lista (2026-11-10)
+ * @var string|null $lugarEntregaConfiguracion el de la configuracion del formulario (si el de arriba queda vacio)
  * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001/26)
  * @var array<int, array<string, string>> $materiales otros materiales de la DTIC (los guardados o lo enviado)
  * @var string[] $categorias nombres de las categorias, subtitulos de los materiales escritos a mano
@@ -305,6 +307,30 @@ $grupoCierra = static fn (int $cantidad): string =>
             (el próximo será el <?= Html::encode($proximoCodigo) ?>). Cambiarla o quitarla anula el anterior.
         </p>
     <?php endif; ?>
+
+    <?php // Lugar de entrega por defecto (2026-11-10: aqui y no al crear el proyecto). Cada fila puede poner otro. ?>
+    <div class="card rd-card-pad mb-3">
+        <?php if ($editable): ?>
+            <label for="lista-lugar-entrega"><strong>Lugar de entrega</strong> <span class="rd-nota">(para las especificaciones que no digan otro)</span></label>
+            <?= Html::textInput('lugarEntregaProyecto', $lugarEntregaProyecto, [
+                'id' => 'lista-lugar-entrega',
+                'class' => 'form-control',
+                'maxlength' => 300,
+                'placeholder' => (string) ($lugarEntregaConfiguracion ?? 'Ej. Administración de la Facultad de Ciencias Agrarias'),
+                'data-configuracion' => (string) ($lugarEntregaConfiguracion ?? ''),
+            ]) ?>
+            <div class="rd-nota mt-1">
+                Si los materiales se entregan en lugares distintos, escriba el de cada especificación en su fila, debajo
+                del selector. Cambiar este lugar no cambia los formularios ya emitidos.
+                <?php if ($proyecto->lugarEntrega === null && $lugarEntregaProyecto !== ''): ?>
+                    Sugerido por la unidad / dependencia: se guarda al guardar la lista.
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <strong>Lugar de entrega:</strong> <?= Html::encode($proyecto->lugarEntrega ?: ($lugarEntregaConfiguracion ?? '—')) ?>
+            <span class="rd-nota">(el de las especificaciones que no dicen otro)</span>
+        <?php endif; ?>
+    </div>
     <div class="alert alert-danger d-none" id="lista-error-cliente">Revise las cantidades marcadas: en la lista, números mayores o iguales a 0; en los materiales de la DTIC, mayores que 0.</div>
 
     <div class="rd-cols">
