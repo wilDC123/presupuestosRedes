@@ -65,5 +65,7 @@ class SolicitudCodigoTest extends Unit
         $this->assertStringContainsString('ELABORADO POR', $html);
         $this->assertStringNotContainsString('APROBADO POR', $html);
         $this->assertStringContainsString('Firma y sello del proveedor', $html);
+        // La version solo en la cabecera (2026-11-10): la tabla de firmas ya no la repite.
+        $this->assertSame(1, substr_count($html, 'Versión:'));
     }
 }

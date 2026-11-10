@@ -17,25 +17,29 @@ use yii\helpers\Html;
  *   | Firma:   | (espacio, 2 cm)   |                       |
  *   | Nombre:  | Ing. ...          | V°B° Ing. ...         |
  *   | Cargo:   | RESP. ...         | RESP. ...             |
- *   | Version: 1.0 · Fecha de aprobacion: 23-10-2026      |   <- gris #f2f2f2
+ *   | Fecha de aprobacion: 23-10-2026                     |   <- gris #f2f2f2
  *
  * Anchos del Word: 1268 | 4004 | 5272 twips. Un documento que no se aprueba
  * (la lista de materiales, $soloElaborado) lleva solo la columna "ELABORADO
- * POR" y en la ultima fila solo la version; con UNA sola firma la tabla ocupa
+ * POR", sin la ultima fila; con UNA sola firma la tabla ocupa
  * TODO el ancho de la hoja (indicacion del Ing. de DTIC, 2026-11-09): rotulos
  * 12%, la firma el resto. Una
  * firma sin nombre deja las casillas en blanco, para llenarla a mano.
+ *
+ * SIN VERSION desde el 2026-11-10 (pedido del desarrollador): ya esta en la
+ * cabecera de la pagina (Codigo | Version | Fecha | Pagina). $version se
+ * sigue recibiendo, pero no se imprime.
  *
  * Estilos en linea para que salga igual en los tres documentos;
  * page-break-inside: mPDF no la corta entre dos paginas.
  *
  * @var yii\web\View $this
- * @var string $version '1.0' (VersionDocumento::texto())
+ * @var string $version '1.0' (VersionDocumento::texto()); no se imprime (va en la cabecera)
  * @var array{prefijo: string, nombre: string, cargo: string}|null $elaborado null = en blanco, para llenarla a mano
  * @var array{prefijo: string, nombre: string, cargo: string}|null $aprobado
  * @var string $fechaAprobacion 'dd/mm/aaaa', o vacia (se deja la raya); sale dd-mm-aaaa, como el Word
  * @var bool $soloElaborado true = documento que no se aprueba (la lista de materiales, revision del
- *           2026-11-05): una sola columna, "ELABORADO POR", y abajo solo la version
+ *           2026-11-05): una sola columna, "ELABORADO POR", sin la fila de la fecha
  * @var bool|null $letraGrande true = todo en 11 pt (el formulario de especificacion: nada por debajo de 11,
  *           revision del 2026-11-05); si no, como el Word del presupuesto (9 y 10 pt)
  */
@@ -80,13 +84,12 @@ $fecha = $fechaAprobacion !== '' ? str_replace('/', '-', $fechaAprobacion) : '__
             <td style="<?= $celda ?> font-size: <?= $chica ?>; font-weight: bold;"><?= $valor($firma, 'cargo') ?></td>
         <?php endforeach; ?>
     </tr>
-    <tr>
-        <td colspan="<?= $columnas ?>" style="<?= $borde ?> background-color: #f2f2f2; text-align: center; font-size: <?= $chica ?>;">
-            <?php if ($soloElaborado): ?>
-                Versión: <?= Html::encode($version) ?>
-            <?php else: ?>
-                Versión: <?= Html::encode($version) ?> · Fecha de aprobación: <?= Html::encode($fecha) ?>
-            <?php endif; ?>
-        </td>
-    </tr>
+    <?php // Sin la version (va en la cabecera); un documento que no se aprueba no lleva esta fila. ?>
+    <?php if (!$soloElaborado): ?>
+        <tr>
+            <td colspan="<?= $columnas ?>" style="<?= $borde ?> background-color: #f2f2f2; text-align: center; font-size: <?= $chica ?>;">
+                Fecha de aprobación: <?= Html::encode($fecha) ?>
+            </td>
+        </tr>
+    <?php endif; ?>
 </table>
