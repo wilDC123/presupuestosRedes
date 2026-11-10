@@ -13,6 +13,7 @@ use yii\helpers\Html;
  * @var array<int, array{titulo: string, estado: string, url: array|null}> $pasos Ver ProyectoService::pasos()
  * @var string|null $nombreTipo
  * @var float|null $monto total del presupuesto (null si no tiene)
+ * @var array{total: float, partes: array<int, array{rotulo: string, monto: float}>} $costo Ver ProyectoService::costoTotal()
  * @var array $urlPresupuesto Ver ProyectoService::urlPresupuesto()
  * @var bool $puedeEditarse
  * @var bool $estaAprobado
@@ -244,8 +245,17 @@ $formato = Yii::$app->formatter;
                         </div>
                     <?php endforeach; ?>
                 <?php endforeach; ?>
+                <?php // Costo total del proyecto: un solo total, de los presupuestos aprobados (parte 6c). ?>
+                <div class="rd-dato mt-2">
+                    <strong>Costo total del proyecto:</strong> Bs. <?= $formato->asDecimal($costo['total'], 2) ?>
+                    <?php if (count($costo['partes']) > 1): ?>
+                        <div class="rd-nota"><?= Html::encode(implode(' + ', array_map(static fn (array $p) => $p['rotulo'] . ': ' . $formato->asDecimal($p['monto'], 2), $costo['partes']))) ?></div>
+                    <?php elseif ($costo['partes'] === []): ?>
+                        <div class="rd-nota">Todavía no hay presupuestos aprobados.</div>
+                    <?php endif; ?>
+                </div>
                 <?php if (count($fases) === 1): ?>
-                    <div class="rd-nota mt-1">Fase única. La siguiente se agrega con "Agregar fase" cuando esta tenga su presupuesto aprobado.</div>
+                    <div class="rd-nota mt-1">Fase única. La siguiente se agrega con "Agregar fase"; con el presupuesto aprobado, lo que falte se pide con una orden de cambio.</div>
                 <?php endif; ?>
             </div>
         </div>

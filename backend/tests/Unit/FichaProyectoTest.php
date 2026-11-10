@@ -7,6 +7,8 @@ namespace backend\tests\Unit;
 use backend\models\Personal;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
+use backend\models\TipoOrdenCambio;
+use backend\services\OrdenCambioFaseService;
 use backend\services\ProcesoService;
 use backend\services\ProyectoService;
 use backend\services\RolProyectoService;
@@ -44,23 +46,24 @@ class FichaProyectoTest extends Unit
         $html = $this->html($proyecto, $datos);
 
         foreach ([
-            'FICHA TÉCNICA DEL PROYECTO', $proyecto->codigo, $proyecto->numeroTexto(), 'Proyecto test ficha', 'Canal Universitario test',
+            'FICHA TÉCNICA DEL PROYECTO', $proyecto->codigo, $proyecto->numeroTexto(), 'PROYECTO TEST FICHA', 'Canal Universitario test',
             'Rectorado test', 'Edificio en construcción test', 'Ing. Test Ficha', 'Proyectista', 'Todavía no tiene.', 'por encargado',
         ] as $esperado) {
             $this->assertStringContainsString($esperado, $html);
         }
 
-        // Documento normado, en el orden nuevo, sin "Fase" ni lugar de entrega.
+        // Formato de los formatos corregidos v3 (2026-11-09): sin "Fase", sin lugar de entrega y SIN firmas.
         $this->assertFalse($datos['aprobada']);
         $this->assertFalse($datos['variasFases']);
         $this->assertSame('1.0', $datos['version']);
-        $this->assertStringContainsString('ELABORADO POR', $html);
-        $this->assertStringContainsString('APROBADO POR', $html);
+        $this->assertStringNotContainsString('ELABORADO POR', $html);
+        $this->assertStringNotContainsString('APROBADO POR', $html);
         $this->assertStringContainsString('Versión: 1.0', $html);
+        $this->assertStringContainsString('Todavía no hay presupuestos aprobados', $html);
         $this->assertStringNotContainsString('FASE 1', $html);
         $this->assertStringNotContainsString('Lugar de entrega', $html);
         $this->assertStringNotContainsString('Reporte de control', $html);
-        $this->assertEnOrden($html, ['1. Datos', '2. Unidades', '3. Fechas', '4. Área', '5. Equipo', '6. Documentos']);
+        $this->assertEnOrden($html, ['1. Información general', 'Costo total del proyecto', 'Fecha de creación', '2. Unidades', '3. Área', '4. Equipo', '5. Carpeta económica', 'Lista de materiales y condiciones previas']);
     }
 
     /**
@@ -85,8 +88,8 @@ class FichaProyectoTest extends Unit
             $datos = $this->proyectos->datosFicha(Proyecto::findOne($id));
             $this->assertSame([$fase1->codigo, '1.1', false, ''], [$datos['codigo'], $datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
             $html = $this->html(Proyecto::findOne($id), $datos);
-            $this->assertEnOrden($html, ['1. Datos', '2. Unidades', '3. Fechas', '4. FASE 1', '4.1 Área', 'Edificio test fase 1', '4.3 Documentos', '5. FASE 2', '5.1 Área', 'Edificio test fase 2']);
-            $this->assertStringNotContainsString('6. Documentos', $html);
+            $this->assertEnOrden($html, ['1. Información general', 'Fechas', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. Unidades', '3. FASE 1', '3.1 Área', 'Edificio test fase 1', '3.3 Carpeta económica', '4. FASE 2', '4.1 Área', 'Edificio test fase 2']);
+            $this->assertStringNotContainsString('5. Carpeta', $html);
         }
 
         // Al aprobarse la fase 2, la 1.1 queda aprobada con su fecha.
@@ -122,6 +125,43 @@ class FichaProyectoTest extends Unit
         (new Presupuesto(['idProyecto' => $fase3->id, 'estado' => Presupuesto::ESTADO_CANCELADO]))->save(false);
         $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase3->id));
         $this->assertSame(['1.1', true], [$datos['version'], $datos['aprobada']]);
+    }
+
+    /**
+     * Parte 6c (formatos corregidos v3): la orden de cambio va dentro de la
+     * carpeta de su fase, y el costo total suma los presupuestos aprobados de
+     * fases y ordenes.
+     */
+    public function testLaOrdenDeCambioVaEnLaCarpetaDeSuFaseYSumaAlCostoTotal(): void
+    {
+        $fase1 = $this->crear(null, 'Edificio test orden ficha');
+        $this->aprobar($fase1, '2026-10-23');
+        $fase1 = Proyecto::findOne($fase1->id);
+        $ordenes = new OrdenCambioFaseService();
+        $orden = $ordenes->nueva($fase1);
+        $tipo = TipoOrdenCambio::find()->select('id')->scalar();
+        $this->assertTrue($ordenes->crear($fase1, $orden, ['Proyecto' => [
+            'descripcionCambio' => 'Dos cámaras más', 'motivoCambio' => 'El sector de gradas queda sin cobertura', 'idTipoOrdenCambio' => (string) $tipo,
+        ]]), json_encode($orden->errors));
+
+        // Sin aprobar: el costo total es solo el de la fase.
+        $this->assertSame(['Presupuesto'], array_column($this->proyectos->costoTotal($fase1)['partes'], 'rotulo'));
+
+        $this->aprobar(Proyecto::findOne($orden->id), '2026-11-09');
+        // Leida de nuevo: la de arriba ya tiene en cache sus ordenes sin aprobar (como un pedido nuevo del navegador).
+        $fase1 = Proyecto::findOne($fase1->id);
+        $datos = $this->proyectos->datosFicha($fase1);
+        // La orden no cambia la version ni cuenta como fase.
+        $this->assertSame(['1.0', false], [$datos['version'], $datos['variasFases']]);
+        $this->assertCount(1, $datos['fases'][0]['ordenes']);
+        $this->assertSame(['Presupuesto', 'orden de cambio N.° 1'], array_column($datos['costo']['partes'], 'rotulo'));
+
+        $html = $this->html($fase1, $datos);
+        $this->assertEnOrden($html, [
+            '5. Carpeta económica', $fase1->codigoLista, 'Orden de cambio N.° 1 · solicitada el', 'aprobada el 09-11-2026',
+            'Motivo: El sector de gradas queda sin cobertura', Proyecto::findOne($orden->id)->codigoLista,
+        ]);
+        $this->assertStringContainsString('Presupuesto: 0.00 + orden de cambio N.° 1: 0.00 (presupuestos aprobados)', $html);
     }
 
     private function crear(?int $idAnterior, string $edificio): Proyecto

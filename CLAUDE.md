@@ -232,8 +232,23 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   ELIMINA con lista, solicitudes, cotizaciones y presupuesto, sus ET quedan ANULADAS y pasan a la fase (una emisión siempre
   es de un proyecto), los códigos LM/SC/PR/ET no se reutilizan; una aprobada no se elimina. Historial en la orden y en la fase
   (`ACCION_ORDEN_CAMBIO_CREADA` / `_ELIMINADA`). Vista: "Fases del proyecto" con las órdenes debajo de su fase; listado con
-  "OC n". PENDIENTE (6c): la orden en la ficha técnica (dentro de la carpeta de su fase) y el TOTAL ÚNICO del proyecto (fases +
-  órdenes aprobadas); confirmar con el Ing. la línea del proyecto y el código LM propio de la orden
+  "OC n". En la ficha técnica va dentro de la carpeta de su fase y suma al COSTO TOTAL (parte 6c, ver FICHA TÉCNICA V3).
+  PENDIENTE: confirmar con el Ing. la línea del proyecto y el código LM propio de la orden
+- FICHA TÉCNICA V3 (PARTE 6c, 2026-11-09; el Word "00 PT RD-PI-PT-001" de FORMATOS CORREGIDOS v3; reemplaza el orden de
+  las partes 4 y 5d): `proyecto/ficha-pdf.php` + `ProyectoService::datosFicha()`. 1. INFORMACIÓN GENERAL (n.° de proyecto,
+  nombre EN MAYÚSCULAS, descripción, tipo, proceso, "Fases" si hay varias, COSTO TOTAL DEL PROYECTO y las FECHAS en el mismo
+  cuadro: con fase única filas "Fecha de creación / revisión / aprobación / última modificación", con varias un subcuadro
+  "Fechas | Fase 1 | Fase 2"), 2. UNIDADES, y después con fase única 3 área, 4 equipo, 5 CARPETA ECONÓMICA; con varias "3. FASE
+  1" (3.1 área, 3.2 equipo, 3.3 carpeta), "4. FASE 2"… CARPETA = tabla Documento | Código | Detalle | Versión
+  (`ProyectoService::carpeta()`): lista de materiales ("Elaborada el …"), presupuesto ("Aprobado el … · Total Bs." o su estado),
+  especificaciones vigentes (con "Reemitida el …: motivo" si se reemitieron; el motivo está en la emisión reemplazada), solicitudes
+  de proforma (rubro · fecha) y PROFORMAS RECIBIDAS (una fila por cotización: proveedor · fecha; solo si hay). Las ÓRDENES DE
+  CAMBIO de la fase van dentro de su carpeta: barra gris "Orden de cambio N.° 1 · solicitada el … · aprobada el …" + "Motivo: …"
+  y sus documentos. COSTO TOTAL = `ProyectoService::costoTotal()`: suma de los presupuestos APROBADOS de fases y órdenes, con el
+  detalle "Fase 1: 5,732.50 + orden de cambio N.° 1: 1,870.00 + fase 2: 3,026.00 (presupuestos aprobados)" (fase única:
+  "Presupuesto aprobado"); también en la vista del proyecto (recuadro de fases). SIN FIRMAS (sale el control de elaboración que
+  tenía desde la parte 4); sigue la marca BORRADOR mientras alguna fase esté sin aprobar. Fechas dd-mm-aaaa; carpeta en 10 pt;
+  al pie "Impresa el … por …"
 - REABRIR LA LISTA (PARTE 6a, 2026-11-09): lo que el sistema llamaba "orden de cambio" (reabrir una lista enviada a
   cotización, con su motivo: `redes.OrdenCambio`, `OrdenCambioService`, `lista-items/solicitar-cambio`) en pantalla se
   llama ahora "reabrir la lista" / "Reaperturas de la lista". La tabla y las clases conservan su nombre. La ORDEN DE
@@ -291,7 +306,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   proyecto), orden 1 datos, 2 unidades, 3 fechas, 4 área, 5 equipo, 6 documentos (especificaciones en subtabla Código | Ítem
   | Versión), "Fase" solo si hay más de una (`datosFicha()['variasFases']`), sin lugar de entrega, letra 11, control de
   elaboración (elaborado y aprobado) al pie. Hasta las fases (parte 5) queda APROBADA con el presupuesto (punto de control
-  "Revisar y aprobar diseño"): fecha y firmas del presupuesto aprobado; antes, marca BORRADOR. Proformas: pendiente de decidir
+  "Revisar y aprobar diseño"): fecha y firmas del presupuesto aprobado; antes, marca BORRADOR. Proformas: pendiente de decidir.
+  DESDE EL 2026-11-09 el orden, las proformas y la falta de firmas son los de FICHA TÉCNICA V3 (parte 6c)
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
