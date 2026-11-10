@@ -28,6 +28,7 @@ nuevo con su propio código. Ahora:
 | 5b | #48 | **"Agregar fase"**: solo en la última fase y con su presupuesto aprobado. Los datos del proyecto no cambian en las fases siguientes. |
 | 5c | #49 | Línea única del proyecto en los documentos: `PROYECTO: 001 – NOMBRE EN MAYÚSCULAS (FASE n)`. |
 | 5d | #50 | **Una sola ficha técnica por proyecto**, con un bloque por fase y la versión calculada (1.0, 1.1…). |
+| 5f | — | **Varias fases a la vez** (Ing. de DTIC, 2026-11-09): "Agregar fase" ya no exige la fase anterior aprobada. Los datos del proyecto se copian de la fase 1 a las demás; la versión de la ficha técnica sigue el orden de aprobación. |
 
 ## Modelo de datos (diagrama de clases)
 
@@ -104,15 +105,19 @@ equipo, lugar de entrega por defecto, lista, especificaciones, cotizaciones y pr
 
 1. **Número de proyecto**: lo asigna el sistema (correlativo NP). Un proyecto nuevo toma el siguiente;
    una fase siguiente, el de la anterior. Se escribe "001" (un solo lugar: `Proyecto::numeroTexto()`).
-2. **Agregar fase**: solo a la **última** fase del proyecto y solo si su **presupuesto está aprobado**
-   (confirmado el 2026-11-06). Una fase aprobada nunca se modifica; "reabrir" un proyecto aprobado es
-   agregarle una fase. No se repite una fase dentro del proyecto.
-3. **Datos del proyecto**: se escriben en la fase 1; en una fase 2+ se muestran deshabilitados y el
-   servidor los toma siempre de la fase anterior. No hace falta sincronizarlos: la fase 1 solo se edita
-   mientras no está aprobada, y la fase 2 recién se crea después.
-4. **Ficha técnica**: una por proyecto (código PT de la fase 1). Cada fase aprobada es una versión
-   (1.0, 1.1…); si la última fase no está aprobada, la ficha es la versión siguiente en BORRADOR.
-   Aprobada = fecha y firmas del presupuesto de esa fase. La versión **se calcula**, no se guarda.
+2. **Agregar fase**: desde la **última** fase del proyecto, esté o no aprobada: **varias fases pueden
+   elaborarse a la vez** (dicho por el Ing. de DTIC el 2026-11-09; del 06 al 09-11 se exigía la anterior
+   aprobada). Una fase aprobada nunca se modifica; "reabrir" un proyecto aprobado es agregarle una fase.
+   No se repite una fase dentro del proyecto.
+3. **Datos del proyecto**: se escriben solo en la fase 1; en una fase 2+ se muestran deshabilitados y el
+   servidor los toma siempre de la fase anterior. Como la fase 1 puede editarse cuando ya existen las
+   siguientes, al guardarla sus datos se **copian a las demás fases** (cada una lo anota en su
+   historial). Quedan fijos también en la fase 1 cuando **otra fase ya está aprobada**.
+4. **Ficha técnica del proyecto**: una por proyecto (código PT de la fase 1). Cada fase aprobada es una
+   versión (1.0, 1.1…), contadas en el **orden en que se aprobaron**; mientras **alguna** fase tenga su
+   presupuesto sin aprobar, la ficha técnica del proyecto es la versión siguiente en BORRADOR (una fase
+   con presupuesto cancelado no cuenta). Aprobada = fecha y firmas del presupuesto aprobado más reciente.
+   La versión **se calcula**, no se guarda.
 5. **Lista de materiales**: no se aprueba; "Enviar a cotización" emite la versión siguiente.
 6. **Lugar de entrega**: por especificación; cambiarlo en un formulario ya emitido lo reemite
    (mismo código, versión siguiente).
@@ -124,7 +129,7 @@ equipo, lugar de entrega por defecto, lista, especificaciones, cotizaciones y pr
 | Caso de uso | Cambio |
 |---|---|
 | Registrar proyecto | Asigna el número de proyecto, el código de la ficha y el de la lista. Ya no se elige "fase anterior" |
-| **Agregar fase** (nuevo; reemplaza "Crear fase siguiente") | Extiende *Consultar proyecto* y *Elaborar presupuesto*: solo con la última fase aprobada |
+| **Agregar fase** (nuevo; reemplaza "Crear fase siguiente") | Extiende *Consultar proyecto* y *Elaborar presupuesto*: desde la última fase, aprobada o no (varias fases a la vez) |
 | Imprimir ficha técnica del proyecto | Pasa a ser un documento normado, uno por proyecto, con todas sus fases |
 | Elaborar lista de ítems | Incluye el lugar de entrega de cada especificación |
 | Enviar lista a cotización | Emite (ya no aprueba) la versión de la lista |

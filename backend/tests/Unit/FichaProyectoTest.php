@@ -95,6 +95,35 @@ class FichaProyectoTest extends Unit
         $this->assertSame(['1.1', true, '04/11/2026'], [$datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
     }
 
+    /**
+     * Varias fases a la vez (2026-11-09): la version cuenta las fases en el
+     * orden en que se aprobaron, y la ficha tecnica del proyecto sigue en
+     * BORRADOR mientras alguna fase este sin aprobar (una cancelada no cuenta).
+     */
+    public function testConFasesALaVezLaVersionSigueElOrdenDeAprobacion(): void
+    {
+        $fase1 = $this->crear(null, 'Edificio test simultánea 1');
+        $fase2 = $this->crear($fase1->id, 'Edificio test simultánea 2');
+        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase1->id));
+        $this->assertSame(['1.0', false], [$datos['version'], $datos['aprobada']]);
+
+        // Se aprueba primero la fase 2: es la 1.0, pero la ficha sigue en borrador (falta la fase 1).
+        $this->aprobar($fase2, '2026-11-04');
+        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase1->id));
+        $this->assertSame(['1.1', false, ''], [$datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
+
+        // Con la fase 1 aprobada despues, la 1.1 queda aprobada con la fecha mas reciente.
+        $this->aprobar($fase1, '2026-11-08');
+        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase2->id));
+        $this->assertSame(['1.1', true, '08/11/2026'], [$datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
+
+        // Una fase 3 cancelada no deja la ficha en borrador.
+        $fase3 = $this->crear($fase2->id, 'Edificio test simultánea 3');
+        (new Presupuesto(['idProyecto' => $fase3->id, 'estado' => Presupuesto::ESTADO_CANCELADO]))->save(false);
+        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase3->id));
+        $this->assertSame(['1.1', true], [$datos['version'], $datos['aprobada']]);
+    }
+
     private function crear(?int $idAnterior, string $edificio): Proyecto
     {
         $proyecto = new Proyecto();
