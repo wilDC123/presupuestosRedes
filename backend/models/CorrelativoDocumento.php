@@ -12,11 +12,10 @@ use yii\db\ActiveRecord;
  *
  * Los codigos siguen el lineamiento de la DTIC RD-GD-LI-001: unidad (RD,
  * Redes y Telecomunicaciones) - proceso - tipo de documento - correlativo de
- * 3 cifras. Ej. RD-GR-ET-015/26:
+ * 3 cifras. Ej. RD-GR-ET-015:
  *
- *     RD - GR - ET - 015 /26
- *     |    |    |    |    +-- año: solo las especificaciones (vuelven a 001 cada 1 de enero)
- *     |    |    |    +------- correlativo de 3 cifras (desde 001)
+ *     RD - GR - ET - 015
+ *     |    |    |    +------- correlativo de 3 cifras como minimo (desde 001; despues del 999 sigue con 1000)
  *     |    |    +------------ tipo: PT ficha tecnica del proyecto, LM lista de materiales, SC solicitud de proforma,
  *     |    |                         PR presupuesto, ET especificacion
  *     |    +----------------- proceso del proyecto (redes.Proceso); el PT siempre PI
@@ -25,15 +24,14 @@ use yii\db\ActiveRecord;
  * Desde la revision del 2026-10-29 (paso 4) el proceso de PR y ET (y desde
  * el 2026-11-05 el de LM) es el del
  * proyecto, pero el numero es UNO SOLO para todos los procesos: nunca hay un
- * RD-PI-PR-016 y un RD-GR-PR-016. Las ET llevan el año porque son las que
- * pueden pasar de 999 en un año.
+ * RD-PI-PR-016 y un RD-GR-PR-016. NINGUN codigo lleva el año: desde el
+ * 2026-11-10 las ET tampoco (del 2026-10-29 al 11-10 eran "RD-PI-ET-015/26" y
+ * volvian a 001 cada 1 de enero); su numero sigue subiendo sin reiniciarse.
  *
  * Los numeros los reparte CodificacionService.
  *
  * @property string $tipo Ver las constantes TIPO_*.
  * @property int $siguiente El numero que recibira el proximo documento.
- * @property int|null $anio Dos digitos del año al que pertenece "siguiente" (solo ET): si
- *           el año ya cambio, el proximo es el 001 del año nuevo. NULL en PT, LM, SC y PR.
  */
 class CorrelativoDocumento extends ActiveRecord
 {
@@ -109,46 +107,35 @@ class CorrelativoDocumento extends ActiveRecord
     }
 
     /**
-     * Si el tipo lleva el año en el codigo y su numero vuelve a 1 cada año:
-     * solo las especificaciones tecnicas (revision del 2026-10-29).
+     * "RD-PI-PR-007" o "RD-GR-ET-007". Tres cifras como minimo; despues del
+     * 999 sigue con 1000, 1001... (el lineamiento no dice que hacer y asi
+     * nunca se repite uno). Sin año (2026-11-10).
      */
-    public static function reiniciaPorAnio(string $tipo): bool
-    {
-        return $tipo === self::TIPO_ESPECIFICACION;
-    }
-
-    /**
-     * "RD-PI-PR-007" o, con año, "RD-GR-ET-007/26". Tres cifras como minimo;
-     * si en un año (ET) o en total (PT, LM, SC, PR) se pasa del 999 sigue con 1000 (el
-     * lineamiento no dice que hacer y asi nunca se repite uno).
-     */
-    public static function codigo(string $tipo, int $numero, string $proceso = self::PROCESO, ?int $anio = null): string
+    public static function codigo(string $tipo, int $numero, string $proceso = self::PROCESO): string
     {
         // El numero de proyecto no es un codigo del lineamiento: solo "001".
         if ($tipo === self::TIPO_NUMERO_PROYECTO) {
             return self::numeroTexto($numero);
         }
 
-        $codigo = sprintf('%s-%s-%s-%03d', self::UNIDAD, $proceso, $tipo, $numero);
-
-        return $anio === null ? $codigo : $codigo . sprintf('/%02d', $anio % 100);
+        return sprintf('%s-%s-%s-%03d', self::UNIDAD, $proceso, $tipo, $numero);
     }
 
     /**
-     * "007" o "007/26": el numero sin unidad, proceso ni tipo. Para los
-     * mensajes y la pantalla de codificacion, donde el proceso depende de
-     * cada proyecto.
+     * "007": el numero sin unidad, proceso ni tipo. Para los mensajes y la
+     * pantalla de codificacion, donde el proceso depende de cada proyecto.
      */
-    public static function numeroTexto(int $numero, ?int $anio = null): string
+    public static function numeroTexto(int $numero): string
     {
-        return sprintf('%03d', $numero) . ($anio === null ? '' : sprintf('/%02d', $anio % 100));
+        return sprintf('%03d', $numero);
     }
 
     /**
      * Las partes de un codigo de ese tipo, con cualquier proceso:
-     * "RD-GR-ET-015/26" -> ['proceso' => 'GR', 'numero' => 15, 'anio' => 26].
-     * 'anio' es null si el codigo no lo trae. Null si el texto no es un
-     * codigo de ese tipo.
+     * "RD-GR-ET-015" -> ['proceso' => 'GR', 'numero' => 15, 'anio' => null].
+     * Todavia reconoce el año de los formularios ET impresos del 2026-10-29 al
+     * 11-10 ("RD-GR-ET-015/26" -> 'anio' => 26), para buscarlos con lo que
+     * dice el papel. Null si el texto no es un codigo de ese tipo.
      *
      * @return array{proceso: string, numero: int, anio: int|null}|null
      */

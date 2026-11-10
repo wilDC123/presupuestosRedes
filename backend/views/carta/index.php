@@ -40,7 +40,7 @@ foreach ($carta->tratamientosElegibles() as $nombre) {
     $atributosTratamiento[$nombre] = ['data-femenino' => !empty($femeninos[$nombre]) ? '1' : '0'];
 }
 
-$marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los del presupuesto, y {especificaciones} con los códigos de las especificaciones técnicas vigentes del proyecto, separados por comas (ej. RD-PI-ET-001/26, RD-PI-ET-002/26).';
+$marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los del presupuesto, y {especificaciones} con los códigos de las especificaciones técnicas vigentes del proyecto, separados por comas (ej. RD-PI-ET-001, RD-PI-ET-002).';
 ?>
 <div class="carta-index">
 

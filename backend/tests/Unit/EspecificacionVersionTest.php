@@ -140,9 +140,9 @@ class EspecificacionVersionTest extends Unit
     public function testCodigoYVencimiento(): void
     {
         // Las nuevas: codigo del lineamiento RD-GD-LI-001.
-        // Con el año (2026-10-29) y el proceso con el que se emitio (PI si no se dice).
-        $this->assertSame('RD-PI-ET-007/26', (new EspecificacionEmision(['serie' => EspecificacionEmision::SERIE_ET, 'numeroNet' => 7, 'anio' => 26]))->codigo());
-        $this->assertSame('RD-GR-ET-007/27 v1.1', (new EspecificacionEmision(['serie' => EspecificacionEmision::SERIE_ET, 'numeroNet' => 7, 'anio' => 27, 'proceso' => 'GR', 'versionDocumento' => 2]))->codigoConVersion());
+        // Con el proceso con el que se emitio (PI si no se dice) y SIN el año (2026-11-10).
+        $this->assertSame('RD-PI-ET-007', (new EspecificacionEmision(['serie' => EspecificacionEmision::SERIE_ET, 'numeroNet' => 7, 'anio' => 26]))->codigo());
+        $this->assertSame('RD-GR-ET-007 v1.1', (new EspecificacionEmision(['serie' => EspecificacionEmision::SERIE_ET, 'numeroNet' => 7, 'anio' => 27, 'proceso' => 'GR', 'versionDocumento' => 2]))->codigoConVersion());
 
         // Las de antes del 2026-10-22 conservan su codigo NET.
         $emision = new EspecificacionEmision([

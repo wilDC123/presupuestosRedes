@@ -39,15 +39,18 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 ### SÍ incluye:
 - CODIFICACIÓN según el lineamiento de la DTIC RD-GD-LI-001 (2026-10-22; resumen y decisiones en
   `docs/cambios-codificacion-lineamiento.md`): `RD-PI-PT-NNN` proyecto, `RD-<proceso>-PR-NNN` presupuesto,
-  `RD-<proceso>-ET-NNN/AA` especificación técnica (3 cifras; después del 999 sigue con 1000). Desde la
+  `RD-<proceso>-ET-NNN` especificación técnica (3 cifras; después del 999 sigue con 1000). Desde la
   revisión del 2026-10-29 (paso 4, migración `m261030_024446_especificacion_con_proceso_y_anio`): PR y ET
-  llevan el proceso DEL PROYECTO (el PT siempre PI), con UN solo número para todos los procesos; SOLO la
-  ET lleva el año ("/26") y vuelve a 001 cada 1 de enero (`CorrelativoDocumento.anio`, `reiniciaPorAnio()`;
-  año del calendario de Bolivia, `CodificacionService::anioActual()`); PT y PR no llevan año ni se
-  reinician. Lo emitido conserva su código: `EspecificacionEmision.proceso` y `anio` congelados (reemitir en
-  enero un 850/26 da 850/26 v02); el presupuesto guarda el código entero en `numeroPresupuesto`
+  llevan el proceso DEL PROYECTO (el PT siempre PI), con UN solo número para todos los procesos. NINGÚN código
+  lleva el AÑO ni se reinicia: desde el 2026-11-10 (migración `m261110_060000_especificacion_sin_anio`) la ET
+  tampoco ("RD-PI-ET-033", no "/26"; del 29-10 al 10-11 llevaba "/26" y volvía a 001 cada 1 de enero), sigue
+  subiendo (999, 1000…); también las ya emitidas salen sin "/26". Se quitaron `CorrelativoDocumento.anio`,
+  `reiniciaPorAnio()` y `anioActual()`; `EspecificacionEmision.anio` queda solo como dato (filtro "Año" del
+  registro, código de los NET viejos) y el registro todavía encuentra "RD-PI-ET-033/26" (lo impreso). Lo emitido
+  conserva su código: `EspecificacionEmision.proceso` congelado (reemitir da el mismo código, versión + 1); el
+  presupuesto guarda el código entero en `numeroPresupuesto`
   (`Presupuesto::codigoProceso()`). La línea "Proceso:" de la cabecera de los PDF sale de
-  `Proceso::nombreDe()` con ese código. Las ET emitidas antes (021–024, todas de 2026) pasaron a /26. Los números los da
+  `Proceso::nombreDe()` con ese código. Los números los da
   el sistema desde `redes.CorrelativoDocumento` (una fila por tipo, `CodificacionService::tomar()` con
   UPDLOCK); el encargado fija desde cuál siguen en el menú "Codificación de documentos" (solo mayor que
   el último usado). El formato está en `CorrelativoDocumento::codigo()`. Desde el 2026-11-09 (formatos
@@ -382,8 +385,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     versión ya usada en una emisión NO se modifica: editarla crea la siguiente
     (`EspecificacionService::guardarVersion()`); cambiar solo título/categoría/activo no crea versión.
   - EMISIÓN `redes.EspecificacionEmision`: el formulario con código `RD-PI-ET-001` (columna `serie` =
-    'ET', desde el 2026-10-22, correlativo desde 1; desde el 2026-10-29 `RD-<proceso>-ET-001/26`, ver
-    CODIFICACIÓN; índice único por serie + `anio` + `numeroNet` + `versionDocumento`;
+    'ET', desde el 2026-10-22, correlativo desde 1; desde el 2026-10-29 `RD-<proceso>-ET-001`, sin año desde el
+    2026-11-10, ver CODIFICACIÓN; índice único por serie + `numeroNet` + `versionDocumento`;
     `EspecificacionEmision::codigo()`. Las emitidas antes con `NET:880/26` se convirtieron a ET con la
     migración `m261022_144239_convertir_codigos_viejos_al_lineamiento` y guardan el NET en
     `codigoAnterior`, que se ve y se busca en el registro; la serie 'NET' queda solo para su `safeDown()`) que se firma y se
@@ -432,7 +435,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   (`HistorialProyecto::ACCION_LISTA_ITEM_CAMBIADO`). Reemitir se permite mientras el presupuesto no
   esté aprobado ni cancelado. Correlativo: el ET de `redes.CorrelativoDocumento` (antes
   `ConfiguracionEspecificacion.siguienteNet`, eliminado el 2026-10-22; esa tabla sigue con los textos fijos
-  del formulario), sube de 1 en 1, vuelve a 001 cada 1 de enero (2026-10-29) y nunca se reutiliza. Avisos que
+  del formulario), sube de 1 en 1, no se reinicia (del 2026-10-29 al 11-10 volvía a 001 cada 1 de enero) y nunca se reutiliza. Avisos que
   no bloquean: cantidad distinta de la emitida, emisión vencida, versión nueva de la ficha. La
   especificación es OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud,
   cotización, presupuesto ni PDF. Los impresos citan el NET de la emisión vigente
@@ -728,7 +731,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261104_233000_crear_tratamiento_carta`, aplicada el 2026-11-04), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261110_060000_especificacion_sin_anio`, aplicada el 2026-11-10), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -818,7 +821,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `codigoAnterior`, `EspecificacionEmision.versionDocumento` (2026-10-24: reemitir = mismo código, versión + 1),
   `Presupuesto.firma1Prefijo…firma2Cargo` {congelado al aprobar} (2026-10-24), se quita
   `ConfiguracionEspecificacion.siguienteNet`, caso de uso "Configurar codificación de documentos"; 2026-10-29:
-  `EspecificacionEmision.proceso` {congelado} y `CorrelativoDocumento.anio` (ET por año); resumen
+  `EspecificacionEmision.proceso` {congelado} (`CorrelativoDocumento.anio` se agregó el 2026-10-29 y se quitó el
+  2026-11-10: la ET ya no lleva año); resumen
   en `docs/cambios-codificacion-lineamiento.md`
 - PENDIENTE (tutor): secciones sin precio (2026-10-29): `PresupuestoComplemento` (2026-10-23) ya NO existe; nuevas
   clases `ProyectoMaterialDtic` (composición 0..* desde Proyecto, asociación 0..1 a SubcatalogoItem),

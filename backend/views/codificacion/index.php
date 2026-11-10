@@ -15,7 +15,7 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var CorrelativoDocumento[] $correlativos indexados por tipo
- * @var array<string, string|null> $ultimos el ultimo numero usado de cada tipo ("015", "026/26"); en ET, de este año
+ * @var array<string, string|null> $ultimos el ultimo numero usado de cada tipo ("015")
  */
 
 $this->title = 'Codificación de documentos';
@@ -29,7 +29,7 @@ $this->params['breadcrumbs'][] = $this->title;
             <h1><?= Html::encode($this->title) ?></h1>
             <div class="rd-pagehead-sub">
                 Lineamiento RD-GD-LI-001 de la D.T.I.C.: unidad (RD, Redes y Telecomunicaciones) – proceso – tipo de
-                documento – número de 3 cifras; las especificaciones técnicas llevan además el año (/26).
+                documento – número de 3 cifras como mínimo.
             </div>
         </div>
     </div>
@@ -66,8 +66,7 @@ $this->params['breadcrumbs'][] = $this->title;
                             <td class="mono"><?= Html::encode(CorrelativoDocumento::codigo(
                                 $tipo,
                                 max(1, (int) $correlativo->siguiente),
-                                CorrelativoDocumento::PROCESO,
-                                CorrelativoDocumento::reiniciaPorAnio($tipo) ? (int) $correlativo->anio : null
+                                CorrelativoDocumento::PROCESO
                             )) ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -86,10 +85,9 @@ $this->params['breadcrumbs'][] = $this->title;
         <strong>Proceso:</strong> el proyecto siempre lleva PI. El presupuesto y las especificaciones llevan el proceso del
         proyecto (RD-GR-PR-016 si el proyecto es de GR), pero el número es uno solo para todos los procesos: arriba se
         muestran con PI.
-        <strong>Año:</strong> solo las especificaciones técnicas. El 1 de enero vuelven solas al 001 con el año nuevo
-        (RD-PI-ET-001/27); proyectos y presupuestos siguen su numeración. Al reemitir una especificación conserva su
-        código, aunque sea de un año anterior. Los formularios emitidos antes con código NET y los números de presupuesto
-        escritos a mano antes conservan el suyo.
+        Ningún código lleva el año ni vuelve a 001 al cambiar de año: las especificaciones técnicas siguen su numeración
+        (RD-PI-ET-999, RD-PI-ET-1000…) como los demás. Al reemitir una especificación conserva su código. Los formularios
+        emitidos antes con código NET y los números de presupuesto escritos a mano antes conservan el suyo.
     </p>
 
     <div class="form-group">

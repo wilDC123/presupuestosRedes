@@ -52,7 +52,7 @@ class CambiarItemListaTest extends Unit
 
         // Correlativo conocido, por encima de cualquier emision de la base local.
         CorrelativoDocumento::updateAll(
-            ['siguiente' => (int) EspecificacionEmision::find()->max('numeroNet') + 1000, 'anio' => (int) date('y')],
+            ['siguiente' => (int) EspecificacionEmision::find()->max('numeroNet') + 1000],
             ['tipo' => CorrelativoDocumento::TIPO_ESPECIFICACION]
         );
     }

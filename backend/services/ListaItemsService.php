@@ -389,7 +389,7 @@ class ListaItemsService
      * de la anterior salvo que haya cambiado ($lugarAntes = el que tenia; el
      * nuevo esta en $item->lugarEntregaPedido). $antes = nombre del item
      * anterior, o null si el item no cambio. Sin formulario vigente no hace
-     * nada. Devuelve el codigo nuevo ("RD-PI-ET-033/26 v1.1"), o null si no
+     * nada. Devuelve el codigo nuevo ("RD-PI-ET-033 v1.1"), o null si no
      * habia formulario.
      *
      * @throws DomainException si no se pudo reemitir

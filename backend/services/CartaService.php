@@ -176,7 +176,7 @@ class CartaService
     }
 
     /**
-     * "RD-PI-ET-001/26, RD-PI-ET-004/26": el codigo de las especificaciones
+     * "RD-PI-ET-001, RD-PI-ET-004": el codigo de las especificaciones
      * VIGENTES de la lista del proyecto (las que se entregan), de menor a
      * mayor. Las de antes del 2026-10-22 (serie NET) salen solo con su
      * numero, sin "NET:" ni el año ("896, 897"), como se citaban entonces, y
