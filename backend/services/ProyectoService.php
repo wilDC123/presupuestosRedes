@@ -36,7 +36,8 @@ use yii\db\IntegrityException;
  *    infraestructura de la universidad (UsfxGEO); se guarda su referencia y
  *    una copia de los nombres (el tipo lo valida el modelo contra
  *    redes.TipoProyecto),
- *  - una fase nueva es un proyecto NUEVO enlazado a uno ya aprobado,
+ *  - una fase nueva es un proyecto NUEVO enlazado a la ultima fase (varias
+ *    fases pueden estar en elaboracion a la vez),
  *  - un proyecto con presupuesto aprobado o cancelado no se modifica.
  */
 class ProyectoService
@@ -87,7 +88,7 @@ class ProyectoService
 
     /**
      * Proyecto vacio para el formulario "Nuevo proyecto". Si llega el id de
-     * la ultima fase APROBADA de un proyecto ("Agregar fase", revision del
+     * la ultima fase de un proyecto ("Agregar fase", revision del
      * 2026-11-05), se prepara como su FASE SIGUIENTE: mismo numero de
      * proyecto, los datos del proyecto (Proyecto::ATRIBUTOS_COMUNES, que no se
      * cambian en la fase) y, para empezar, el EQUIPO con su responsable y el
@@ -249,14 +250,43 @@ class ProyectoService
     }
 
     /**
-     * REGLA DE NEGOCIO (confirmada con el desarrollador el 2026-11-06): una
-     * fase nueva se agrega solo a la ULTIMA fase del proyecto y solo si esta
-     * APROBADA (su presupuesto). Asi una fase aprobada nunca se toca y "reabrir"
-     * un proyecto aprobado es agregarle una fase.
+     * REGLA DE NEGOCIO: una fase nueva se agrega desde la ULTIMA fase del
+     * proyecto, este o no aprobada. El Ing. de DTIC dijo el 2026-11-09 que se
+     * pueden empezar varias fases a la vez (del 06 al 09-11 se exigia la
+     * anterior aprobada). "Reabrir" la ficha tecnica de un proyecto aprobado
+     * sigue siendo agregarle una fase.
      */
     public function puedeAgregarFase(Proyecto $proyecto): bool
     {
-        return $this->estaAprobado($proyecto) && $proyecto->esUltimaFase();
+        return $proyecto->esUltimaFase();
+    }
+
+    /**
+     * Los DATOS DEL PROYECTO (Proyecto::ATRIBUTOS_COMUNES) son los mismos en
+     * todas las fases y se escriben SOLO en la fase 1: en una fase 2+ van
+     * fijos. En la fase 1 tambien quedan fijos cuando OTRA fase del proyecto
+     * ya esta aprobada (la ficha tecnica del proyecto aprobada los muestra);
+     * si la fase 1 esta aprobada, el proyecto entero ya no se edita
+     * (puedeEditarse()).
+     */
+    public function datosComunesFijos(Proyecto $proyecto): bool
+    {
+        if ($proyecto->idProyectoAnterior !== null) {
+            return true;
+        }
+
+        if ($proyecto->isNewRecord || $proyecto->numeroProyecto === null) {
+            return false;
+        }
+
+        $otrasFases = Proyecto::find()
+            ->select('id')
+            ->andWhere(['numeroProyecto' => $proyecto->numeroProyecto])
+            ->andWhere(['<>', 'id', $proyecto->id]);
+
+        return Presupuesto::find()
+            ->andWhere(['idProyecto' => $otrasFases, 'estado' => Presupuesto::ESTADO_APROBADO])
+            ->exists();
     }
 
     /** Los datos del proyecto (iguales en todas sus fases) de una fase a otra. */
@@ -289,13 +319,16 @@ class ProyectoService
      * igual desde cualquier fase.
      *
      * Version y aprobacion se CALCULAN (no hay tabla): cada fase que se aprueba
-     * es una version, 1.0 la fase 1, 1.1 la fase 2... ("reabrir la ficha" es
-     * agregar una fase). Solo la ultima fase puede estar sin aprobar (una fase
-     * se agrega con la anterior aprobada): si lo esta, la ficha es la version
-     * siguiente en BORRADOR; si no, la ultima version, aprobada con la fecha y
-     * las firmas copiadas del presupuesto de esa fase. La fecha de la cabecera
-     * es la de creacion de la version (la de su fase): "arriba va la fecha de
-     * creacion del documento".
+     * es una version, contadas en el ORDEN EN QUE SE APROBARON (la primera
+     * aprobada da 1.0, la segunda 1.1..., sea la fase 1 o la 2: desde el
+     * 2026-11-09 varias fases se elaboran a la vez). "Reabrir la ficha tecnica"
+     * es agregar una fase. Mientras ALGUNA fase tenga su presupuesto sin
+     * aprobar, la ficha tecnica del proyecto es la version siguiente en
+     * BORRADOR; con todas aprobadas, la ultima version, con la fecha y las
+     * firmas copiadas del presupuesto aprobado MAS RECIENTE. Una fase con el
+     * presupuesto CANCELADO no cuenta como pendiente (nunca se aprobara). La
+     * fecha de la cabecera es la de creacion de la fase mas nueva: "arriba va
+     * la fecha de creacion del documento".
      *
      * @return array{
      *   codigo: string|null,
@@ -314,11 +347,18 @@ class ProyectoService
         /** @var Proyecto[] $fases */
         $fases = $proyecto->numeroProyecto !== null ? $proyecto->fases : [$proyecto];
         $fases = $fases === [] ? [$proyecto] : $fases;
-        $ultima = end($fases);
-        $aprobadas = count(array_filter($fases, fn (Proyecto $fase) => $this->estaAprobado($fase)));
-        $ultimaAprobada = $this->estaAprobado($ultima);
+        $aprobadas = array_values(array_filter($fases, fn (Proyecto $fase) => $this->estaAprobado($fase)));
+        $pendientes = array_filter(
+            $fases,
+            fn (Proyecto $fase) => !$this->estaAprobado($fase) && ($fase->presupuesto->estado ?? null) !== Presupuesto::ESTADO_CANCELADO
+        );
+        $todasAprobadas = $aprobadas !== [] && $pendientes === [];
+        // La aprobada mas reciente (a igual fecha, la de fase mayor) da la fecha y las firmas.
+        usort($aprobadas, static fn (Proyecto $a, Proyecto $b) => [(string) $a->presupuesto->fechaAprobacion, (int) $a->numeroFase]
+            <=> [(string) $b->presupuesto->fechaAprobacion, (int) $b->numeroFase]);
         $configuracion = ConfiguracionPresupuesto::obtener();
-        $presupuesto = $ultimaAprobada ? $ultima->presupuesto : null;
+        $presupuesto = $todasAprobadas ? end($aprobadas)->presupuesto : null;
+        $creaciones = array_map(static fn (Proyecto $fase) => (string) $fase->fechaCreacion, $fases);
 
         $porFase = [];
         foreach ($fases as $fase) {
@@ -336,9 +376,9 @@ class ProyectoService
             'codigo' => $fases[0]->codigo,
             'fases' => $porFase,
             'variasFases' => count($fases) > 1,
-            'version' => VersionDocumento::texto(max(1, $ultimaAprobada ? $aprobadas : $aprobadas + 1)),
-            'fechaDocumento' => $ultima->fechaCreacion,
-            'aprobada' => $ultimaAprobada,
+            'version' => VersionDocumento::texto(max(1, $todasAprobadas ? count($aprobadas) : count($aprobadas) + 1)),
+            'fechaDocumento' => max($creaciones) === '' ? null : max($creaciones),
+            'aprobada' => $todasAprobadas,
             'fechaAprobacion' => $presupuesto !== null ? $presupuesto->fechaAprobacionFormateada() : '',
             'elaborado' => $presupuesto !== null ? $presupuesto->firmaDeControl(1, $configuracion) : $configuracion->firma(1),
             'aprobado' => $presupuesto !== null ? $presupuesto->firmaDeControl(2, $configuracion) : $configuracion->firma(2),
@@ -583,11 +623,16 @@ class ProyectoService
             $proyecto->idProyectoAnterior = $proyecto->getOldAttribute('idProyectoAnterior');
         }
 
-        // Una fase siguiente lleva los datos del proyecto tal como estan en la anterior:
-        // lo que llegue del formulario para ellos no cuenta (los campos van deshabilitados).
+        // Una fase siguiente lleva los datos del proyecto tal como estan en la anterior;
+        // una fase 1 con otra fase aprobada, los que ya tenia. Lo que llegue del
+        // formulario para ellos no cuenta (los campos van deshabilitados).
         $anteriorDatos = $proyecto->idProyectoAnterior === null ? null : Proyecto::findOne((int) $proyecto->idProyectoAnterior);
         if ($anteriorDatos !== null) {
             $this->copiarDatosComunes($anteriorDatos, $proyecto);
+        } elseif ($this->datosComunesFijos($proyecto)) {
+            foreach (Proyecto::ATRIBUTOS_COMUNES as $atributo) {
+                $proyecto->$atributo = $proyecto->getOldAttribute($atributo);
+            }
         }
 
         // validate() borra los errores anteriores: por eso va ANTES de las
@@ -615,6 +660,7 @@ class ProyectoService
             $this->reemplazarAreas($proyecto, $areas);
             $this->reemplazarEquipo($proyecto, $equipo);
             $this->anotarEnHistorial($proyecto, $antes);
+            $this->llevarDatosComunesALasFases($proyecto);
 
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -782,8 +828,8 @@ class ProyectoService
     }
 
     /**
-     * Calcula numeroFase a partir del proyecto de la fase anterior. Solo se
-     * acepta como fase anterior un proyecto con presupuesto APROBADO.
+     * Calcula numeroFase a partir del proyecto de la fase anterior (que no
+     * tiene que estar aprobada: varias fases pueden elaborarse a la vez).
      */
     private function aplicarFase(Proyecto $proyecto): void
     {
@@ -795,8 +841,8 @@ class ProyectoService
 
         $anterior = $this->obtener((int) $proyecto->idProyectoAnterior);
 
-        if ($anterior === null || (!$proyecto->isNewRecord && $anterior->id === $proyecto->id) || !$this->estaAprobado($anterior)) {
-            $proyecto->addError('idProyectoAnterior', 'Solo se agrega una fase a una fase con presupuesto aprobado.');
+        if ($anterior === null || (!$proyecto->isNewRecord && $anterior->id === $proyecto->id)) {
+            $proyecto->addError('idProyectoAnterior', 'No se encontró la fase anterior del proyecto.');
 
             return;
         }
@@ -818,6 +864,47 @@ class ProyectoService
 
         if ($ocupada) {
             $proyecto->addError('idProyectoAnterior', $anterior->identificador() . ' ya tiene una fase ' . $proyecto->numeroFase . '.');
+        }
+    }
+
+    /**
+     * Con varias fases a la vez, la fase 1 se puede editar cuando ya existen
+     * las siguientes: sus DATOS DEL PROYECTO se copian a las demas fases en la
+     * misma transaccion (si no, cada fase diria otro nombre). Cada fase anota
+     * lo que cambio en su historial; si cambio el proceso, su lista cambia de
+     * codigo como en la fase 1 (solo si aun no se envio a cotizacion).
+     */
+    private function llevarDatosComunesALasFases(Proyecto $fase1): void
+    {
+        if ($fase1->idProyectoAnterior !== null || $fase1->numeroProyecto === null) {
+            return;
+        }
+
+        $otras = Proyecto::find()
+            ->andWhere(['numeroProyecto' => $fase1->numeroProyecto])
+            ->andWhere(['<>', 'id', $fase1->id])
+            ->all();
+
+        /** @var Proyecto $fase */
+        foreach ($otras as $fase) {
+            $nuevos = [];
+            foreach (Proyecto::ATRIBUTOS_COMUNES as $atributo) {
+                if ((string) $fase->$atributo !== (string) $fase1->$atributo) {
+                    $nuevos[$atributo] = $fase1->$atributo;
+                }
+            }
+
+            if ($nuevos === []) {
+                continue;
+            }
+
+            $antes = $this->historial->foto($fase);
+            $fase->updateAttributes($nuevos);
+            $this->ajustarProcesoDeLaLista($fase);
+            $cambios = $this->historial->cambios($antes, $this->historial->foto(Proyecto::findOne($fase->id)));
+            if ($cambios !== '') {
+                $this->historial->registrar($fase, HistorialProyecto::ACCION_PROYECTO_MODIFICADO, "Desde la fase 1:\n" . $cambios);
+            }
         }
     }
 
