@@ -57,11 +57,10 @@ class SolicitudFechaEnvioTest extends Unit
         // En la cabecera, con guiones como en el Word (2026-11-09).
         $this->assertStringContainsString('Fecha: 23-10-2026', $html);
 
-        // Solicitud de proforma (2026-10-30, paso 10): lista sencilla y firma del proveedor, sin precios.
+        // Solicitud de proforma (2026-10-30, paso 10): lista sencilla, sin precios. Sin el espacio
+        // del proveedor (firma y sello, nombre / empresa) desde el 2026-11-10.
         $this->assertStringContainsString('SOLICITUD DE PROFORMA DE COTIZACIÓN', $html);
-        $this->assertStringContainsString('Firma y sello del proveedor', $html);
-        $this->assertStringContainsString('Nombre / empresa', $html);
-        foreach (['Precio unitario', 'TOTAL Bs.', 'NIT', 'Validez de la oferta'] as $quitado) {
+        foreach (['Precio unitario', 'TOTAL Bs.', 'NIT', 'Validez de la oferta', 'Firma y sello del proveedor', 'Nombre / empresa'] as $quitado) {
             $this->assertStringNotContainsString($quitado, $html);
         }
     }
