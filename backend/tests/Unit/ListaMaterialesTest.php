@@ -192,6 +192,11 @@ class ListaMaterialesTest extends Unit
         $this->assertStringNotContainsString(ProyectoMaterialDtic::TITULO, $html());
         $this->assertStringNotContainsString(ProyectoCondicionPrevia::TITULO, $html());
 
+        // Los items en UNA tabla, la categoria como fila y sin subtotal (2026-11-11, como el Word).
+        $this->assertSame(1, substr_count($html(), '<table class="items">'));
+        $this->assertStringContainsString('<td colspan="4" class="categoria">', $html());
+        $this->assertStringNotContainsString('Subtotal', $html());
+
         $tipo = TipoCondicionPrevia::findOne(['nombre' => 'Instalaciones eléctricas']);
         $this->assertTrue($this->lista->guardar(Proyecto::findOne($proyecto->id), [$this->fila(Proyecto::findOne($proyecto->id)->items[0]->id)], $errores, $enviados, null,
             [['idTipo' => (string) $tipo->id, 'descripcion' => 'Tomacorriente junto al rack', 'unidadEncargada' => 'Mantenimiento eléctrico']],
