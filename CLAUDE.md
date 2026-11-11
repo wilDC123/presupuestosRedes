@@ -248,15 +248,21 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   las partes 4 y 5d): `proyecto/ficha-pdf.php` + `ProyectoService::datosFicha()`. 1. INFORMACIÓN GENERAL (n.° de proyecto,
   nombre EN MAYÚSCULAS, descripción, tipo, proceso, "Fases" si hay varias, COSTO TOTAL DEL PROYECTO y las FECHAS en el mismo
   cuadro: con fase única filas "Fecha de creación / revisión / aprobación / última modificación", con varias un subcuadro
-  "Fechas | Fase 1 | Fase 2"), 2. UNIDADES / DEPENDENCIA (título desde el 2026-11-10), y después con fase única 3 área, 4 equipo, 5 CARPETA ECONÓMICA; con varias "3. FASE
-  1" (3.1 área, 3.2 equipo, 3.3 carpeta), "4. FASE 2"… CARPETA = tabla Documento | Código | Detalle | Versión
+  "Fechas | Fase 1 | Fase 2"), 2. UNIDADES / DEPENDENCIA (título desde el 2026-11-10), y después con fase única 3 área, 4 equipo, 5 CARPETA ECONÓMICA; con varias,
+  desde el 2026-11-11, "3. FASES" y dentro "3.1 FASE 1" (3.1.1 área, 3.1.2 equipo, 3.1.3 carpeta), "3.2 FASE 2" (3.2.1…)… (del 09 al
+  11-11 "3. FASE 1" (3.1, 3.2, 3.3), "4. FASE 2"…). Desde el 2026-11-11 los títulos de PRIMER nivel ("1. INFORMACIÓN GENERAL",
+  "2. UNIDADES / DEPENDENCIA", "3. FASES" o, con fase única, "3. ÁREA DE INTERVENCIÓN"…) y los de cada fase ("3.1 FASE 1") van
+  en MAYÚSCULAS; los de tercer nivel ("3.1.1 Área de intervención") no CARPETA = tabla Documento | Código | Detalle | Versión
   (`ProyectoService::carpeta()`): lista de materiales (rótulo "Lista de materiales y condiciones previas (BoM)" desde el 2026-11-10; "Elaborada el …"), presupuesto ("Aprobado el … · Total Bs." o su estado),
   especificaciones vigentes (con "Reemitida el …: motivo" si se reemitieron; el motivo está en la emisión reemplazada), solicitudes
   de proforma (rubro · fecha) y PROFORMAS RECIBIDAS (una fila por cotización: proveedor · fecha; solo si hay). Las ÓRDENES DE
   CAMBIO de la fase van dentro de su carpeta: barra gris "Orden de cambio N.° 1 · solicitada el … · aprobada el …" + "Motivo: …"
   y sus documentos. COSTO TOTAL = `ProyectoService::costoTotal()`: suma de los presupuestos APROBADOS de fases y órdenes, con el
   detalle "Fase 1: 5,732.50 + orden de cambio N.° 1: 1,870.00 + fase 2: 3,026.00 (presupuestos aprobados)" (fase única:
-  "Presupuesto aprobado"); también en la vista del proyecto (recuadro de fases). SIN FIRMAS (sale el control de elaboración que
+  "Presupuesto aprobado"); también en la vista del proyecto (recuadro de fases). En la FICHA, desde el 2026-11-11
+  (sugerencia del Ing.), con varias fases (o con órdenes de cambio aprobadas) ese detalle va en FILAS dentro de la misma
+  columna: "Fase 1 | Bs. 1,000.00", "Fase 2 | Bs. 2,500.00" (cada orden después de su fase) y al final "Total (presupuestos
+  aprobados) | Bs. 3,500.00"; el rótulo "Costo total del proyecto" ocupa todas esas filas (rowspan). SIN FIRMAS (sale el control de elaboración que
   tenía desde la parte 4); sigue la marca BORRADOR mientras alguna fase esté sin aprobar. Fechas dd-mm-aaaa; carpeta en 10 pt;
   al pie "Impresa el … por …"
 - REABRIR LA LISTA (PARTE 6a, 2026-11-09): lo que el sistema llamaba "orden de cambio" (reabrir una lista enviada a

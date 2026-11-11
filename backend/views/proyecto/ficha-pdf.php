@@ -24,10 +24,11 @@ use yii\helpers\Html;
  *    version y pagina. Ver ProyectoService::datosFicha().
  *  - 1. INFORMACION GENERAL: datos del proyecto, "Fases" (si hay varias), el
  *    COSTO TOTAL DEL PROYECTO (presupuestos aprobados de fases y ordenes de
- *    cambio, con su detalle) y las FECHAS en el mismo cuadro (con varias
+ *    cambio; con varias, una fila por cada una y el total al final) y las FECHAS en el mismo cuadro (con varias
  *    fases, una columna por fase). 2. UNIDADES.
  *  - Despues lo de cada fase: con fase unica, 3 area de intervencion, 4 equipo
- *    y 5 carpeta economica; con varias, "3. FASE 1" (3.1, 3.2, 3.3), "4. FASE 2"...
+ *    y 5 carpeta economica; con varias (desde el 2026-11-11), "3. FASES" y dentro
+ *    "3.1 FASE 1" (3.1.1, 3.1.2, 3.1.3), "3.2 FASE 2" (3.2.1...)...
  *  - CARPETA ECONOMICA: tabla Documento | Codigo | Detalle | Version (lista de
  *    materiales, presupuesto, especificaciones -con el motivo si se
  *    reemitieron-, solicitudes de proforma y proformas recibidas). Las ORDENES
@@ -139,15 +140,19 @@ $carpeta = static function (array $c) use ($fila, $texto, $monto, $fecha, $guion
 /**
  * Area, equipo y carpeta economica de UNA fase (con sus ordenes de cambio).
  * $numeros = los titulos de sus tres secciones ("3." "4." "5." con fase
- * unica; "3.1" "3.2" "3.3" en la fase 1...).
+ * unica; "3.1.1" "3.1.2" "3.1.3" en la fase 1...).
  */
 $bloque = static function (array $fase, array $numeros) use ($texto, $carpeta, $fecha, $guiones): string {
+    // Titulo de seccion: los de primer nivel ("3.", "4."...) en MAYUSCULAS, como
+    // "1. INFORMACIÓN GENERAL" (pedido del 2026-11-11); "3.1.1 Área..." queda igual.
+    $titulo = static fn (string $numero, string $nombre): string => $numero . ' '
+        . (preg_match('/^\d+\.$/', $numero) === 1 ? mb_strtoupper($nombre, 'UTF-8') : $nombre);
     /** @var Proyecto $p */
     $p = $fase['proyecto'];
     $areas = ProyectoAreaIntervencion::lineasPorEdificio($p->areasIntervencion);
 
     // Area de intervencion: una casilla por edificio.
-    $html = '<table class="ficha"><tr><th class="seccion">' . $numeros[0] . ' Área de intervención</th></tr>';
+    $html = '<table class="ficha"><tr><th class="seccion">' . $titulo($numeros[0], 'Área de intervención') . '</th></tr>';
     if ($areas === []) {
         // Proyectos de antes del 2026-10-28: la ubicacion que tenian.
         $areas = [$p->ubicacionAnterior()];
@@ -158,7 +163,7 @@ $bloque = static function (array $fase, array $numeros) use ($texto, $carpeta, $
     $html .= '</table>';
 
     // Equipo.
-    $html .= '<table class="ficha"><tr><th class="seccion" colspan="3">' . $numeros[1] . ' Equipo del proyecto</th></tr>'
+    $html .= '<table class="ficha"><tr><th class="seccion" colspan="3">' . $titulo($numeros[1], 'Equipo del proyecto') . '</th></tr>'
         . '<tr><th style="width: 39.8%;">Persona</th><th style="width: 43.1%;">Rol</th><th class="centro" style="width: 17.1%;">Responsable</th></tr>';
     if ($p->participantes === []) {
         $html .= '<tr><td colspan="3">—</td></tr>';
@@ -170,7 +175,7 @@ $bloque = static function (array $fase, array $numeros) use ($texto, $carpeta, $
     $html .= '</table>';
 
     // Carpeta economica: la de la fase y, dentro, la de cada orden de cambio.
-    $html .= '<table class="ficha carpeta"><tr><th class="seccion" colspan="4">' . $numeros[2] . ' Carpeta económica</th></tr>'
+    $html .= '<table class="ficha carpeta"><tr><th class="seccion" colspan="4">' . $titulo($numeros[2], 'Carpeta económica') . '</th></tr>'
         . '<tr><th style="width: 25.6%;">Documento</th><th style="width: 20.4%;">Código</th><th style="width: 44.6%;">Detalle</th><th class="centro" style="width: 9.4%;">Versión</th></tr>'
         . $carpeta($fase);
     foreach ($fase['ordenes'] as $orden) {
@@ -197,16 +202,22 @@ $filasFechas = [
         . ($f['fechas']['ultimoUsuario'] !== null ? ' · ' . Html::encode($f['fechas']['ultimoUsuario']) : ''),
 ];
 
-// Costo total: el monto y, debajo, de donde sale.
+// Costo total. Con fase unica y sin ordenes de cambio, el monto y debajo de
+// donde sale. Con varias fases (o con ordenes de cambio), como pidio el Ing.
+// de DTIC el 2026-11-11: una fila por fase ("Fase 1 | Bs. 1,000.00", "Fase 2 |
+// Bs. 2,500.00", con cada orden de cambio despues de su fase) y al final el
+// total, en la misma columna.
 $partes = $costo['partes'];
+$costoPorFilas = $variasFases ? $partes !== [] : count($partes) > 1;
+// Con muchas fases hay muchas columnas: el rotulo toma la mitad y el monto la otra mitad.
+$colRotulo = max(1, intdiv(max(2, count($fases)), 2));
+$colMonto = max(2, count($fases)) - $colRotulo;
 if ($partes === []) {
     $detalleCosto = 'Todavía no hay presupuestos aprobados';
-} elseif (count($partes) === 1 && !$variasFases) {
-    $detalleCosto = 'Presupuesto aprobado';
 } else {
-    $detalleCosto = implode(' + ', array_map(static fn (array $parte) => Html::encode($parte['rotulo']) . ': ' . $monto($parte['monto']), $partes))
-        . ' (presupuestos aprobados)';
+    $detalleCosto = 'Presupuesto aprobado';
 }
+$mayuscula = static fn (string $t): string => mb_strtoupper(mb_substr($t, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($t, 1, null, 'UTF-8');
 $columnasFechas = count($fases);
 ?>
 <!DOCTYPE html>
@@ -272,10 +283,20 @@ $columnasFechas = count($fases);
         font-weight: bold;
         padding: 3px 6px;
     }
+    /* Cada fase dentro del titulo de las fases: un poco menor. */
+    table.fase.subfase {
+        margin-top: 10px;
+    }
+    table.fase.subfase td {
+        font-size: 11pt;
+    }
     /* Con "table.ficha" delante, para ganarle al text-align: left de las celdas. */
     table.ficha th.centro,
     table.ficha td.centro {
         text-align: center;
+    }
+    table.ficha td.derecha {
+        text-align: right;
     }
     .nota {
         font-size: 9pt;
@@ -296,7 +317,7 @@ $columnasFechas = count($fases);
 
 <?php // 1. Informacion general: tres columnas (rotulo y dos para el valor, o una por fase en las fechas). ?>
 <table class="ficha">
-    <tr><th class="seccion" colspan="<?= 1 + max(2, $columnasFechas) ?>">1. Información general</th></tr>
+    <tr><th class="seccion" colspan="<?= 1 + max(2, $columnasFechas) ?>">1. INFORMACIÓN GENERAL</th></tr>
     <?php $span = max(2, $columnasFechas); ?>
     <tr><th style="width: 28.4%;">N.° de proyecto</th><td colspan="<?= $span ?>"><?= Html::encode($proyecto->numeroTexto()) ?></td></tr>
     <tr><th>Nombre del proyecto</th><td colspan="<?= $span ?>"><?= Html::encode(mb_strtoupper((string) $proyecto->nombre, 'UTF-8')) ?></td></tr>
@@ -306,10 +327,27 @@ $columnasFechas = count($fases);
     <?php if ($variasFases): ?>
         <tr><th>Fases</th><td colspan="<?= $span ?>"><?= count($fases) ?></td></tr>
     <?php endif; ?>
-    <tr>
-        <th>Costo total del proyecto</th>
-        <td colspan="<?= $span ?>"><strong>Bs. <?= $monto($costo['total']) ?></strong><br><em><?= $detalleCosto ?></em></td>
-    </tr>
+    <?php if ($costoPorFilas): ?>
+        <?php // Una fila por fase u orden de cambio y el total al final; el monto alineado a la derecha. ?>
+        <?php foreach ($partes as $i => $parte): ?>
+            <tr>
+                <?php if ($i === 0): ?>
+                    <th rowspan="<?= count($partes) + 1 ?>">Costo total del proyecto</th>
+                <?php endif; ?>
+                <td colspan="<?= $colRotulo ?>"><?= Html::encode($mayuscula($parte['rotulo'])) ?></td>
+                <td class="derecha" colspan="<?= $colMonto ?>">Bs. <?= $monto($parte['monto']) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        <tr>
+            <td colspan="<?= $colRotulo ?>"><strong>Total</strong> <em>(presupuestos aprobados)</em></td>
+            <td class="derecha" colspan="<?= $colMonto ?>"><strong>Bs. <?= $monto($costo['total']) ?></strong></td>
+        </tr>
+    <?php else: ?>
+        <tr>
+            <th>Costo total del proyecto</th>
+            <td colspan="<?= $span ?>"><strong>Bs. <?= $monto($costo['total']) ?></strong><br><em><?= $detalleCosto ?></em></td>
+        </tr>
+    <?php endif; ?>
     <?php if ($variasFases): ?>
         <?php // Una columna por fase. ?>
         <tr>
@@ -334,7 +372,7 @@ $columnasFechas = count($fases);
 </table>
 
 <table class="ficha">
-    <tr><th class="seccion" colspan="2">2. Unidades / Dependencia</th></tr>
+    <tr><th class="seccion" colspan="2">2. UNIDADES / DEPENDENCIA</th></tr>
     <tr><th style="width: 28.4%;">Unidad / dependencia (beneficiaria)</th><td><?= $texto($proyecto->unidadDependencia) ?></td></tr>
     <tr><th>Unidad solicitante</th><td><?= $texto($proyecto->unidadSolicitante) ?></td></tr>
 </table>
@@ -342,9 +380,11 @@ $columnasFechas = count($fases);
 <?php if (!$variasFases): ?>
     <?= $bloque($fases[0], ['3.', '4.', '5.']) ?>
 <?php else: ?>
+    <?php // Desde el 2026-11-11: "3. FASES" y dentro "3.1 FASE 1" (3.1.1, 3.1.2, 3.1.3), "3.2 FASE 2"... ?>
+    <table class="fase"><tr><td>3. FASES</td></tr></table>
     <?php foreach ($fases as $i => $f): ?>
-        <?php $n = 3 + $i; ?>
-        <table class="fase"><tr><td><?= $n ?>. FASE <?= (int) $f['proyecto']->numeroFase ?></td></tr></table>
+        <?php $n = '3.' . ($i + 1); ?>
+        <table class="fase subfase"><tr><td><?= $n ?> FASE <?= (int) $f['proyecto']->numeroFase ?></td></tr></table>
         <?= $bloque($f, ["$n.1", "$n.2", "$n.3"]) ?>
     <?php endforeach; ?>
 <?php endif; ?>

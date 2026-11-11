@@ -63,7 +63,7 @@ class FichaProyectoTest extends Unit
         $this->assertStringNotContainsString('FASE 1', $html);
         $this->assertStringNotContainsString('Lugar de entrega', $html);
         $this->assertStringNotContainsString('Reporte de control', $html);
-        $this->assertEnOrden($html, ['1. Información general', 'Costo total del proyecto', 'Fecha de creación', '2. Unidades / Dependencia', '3. Área', '4. Equipo', '5. Carpeta económica', 'Lista de materiales y condiciones previas (BoM)']);
+        $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Costo total del proyecto', 'Fecha de creación', '2. UNIDADES / DEPENDENCIA', '3. ÁREA DE INTERVENCIÓN', '4. EQUIPO DEL PROYECTO', '5. CARPETA ECONÓMICA', 'Lista de materiales y condiciones previas (BoM)']);
     }
 
     /**
@@ -88,8 +88,9 @@ class FichaProyectoTest extends Unit
             $datos = $this->proyectos->datosFicha(Proyecto::findOne($id));
             $this->assertSame([$fase1->codigo, '1.1', false, ''], [$datos['codigo'], $datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
             $html = $this->html(Proyecto::findOne($id), $datos);
-            $this->assertEnOrden($html, ['1. Información general', 'Fechas', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. Unidades / Dependencia', '3. FASE 1', '3.1 Área', 'Edificio test fase 1', '3.3 Carpeta económica', '4. FASE 2', '4.1 Área', 'Edificio test fase 2']);
-            $this->assertStringNotContainsString('5. Carpeta', $html);
+            $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Fechas', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. UNIDADES / DEPENDENCIA', '3. FASES', '3.1 FASE 1', '3.1.1 Área', 'Edificio test fase 1', '3.1.3 Carpeta económica', '3.2 FASE 2', '3.2.1 Área', 'Edificio test fase 2']);
+            $this->assertStringNotContainsString('4. FASE', $html);
+            $this->assertStringNotContainsString('5. CARPETA', $html);
         }
 
         // Al aprobarse la fase 2, la 1.1 queda aprobada con su fecha.
@@ -158,10 +159,15 @@ class FichaProyectoTest extends Unit
 
         $html = $this->html($fase1, $datos);
         $this->assertEnOrden($html, [
-            '5. Carpeta económica', $fase1->codigoLista, 'Orden de cambio N.° 1 · solicitada el', 'aprobada el 09-11-2026',
+            '5. CARPETA ECONÓMICA', $fase1->codigoLista, 'Orden de cambio N.° 1 · solicitada el', 'aprobada el 09-11-2026',
             'Motivo: El sector de gradas queda sin cobertura', Proyecto::findOne($orden->id)->codigoLista,
         ]);
-        $this->assertStringContainsString('Presupuesto: 0.00 + orden de cambio N.° 1: 0.00 (presupuestos aprobados)', $html);
+        // Costo total: una fila por presupuesto y el total al final (pedido del Ing., 2026-11-11).
+        $this->assertEnOrden($html, [
+            'Costo total del proyecto', '>Presupuesto</td>', '>Orden de cambio N.° 1</td>', '<strong>Total</strong>',
+        ]);
+        $this->assertStringContainsString('rowspan="3">Costo total del proyecto', $html);
+        $this->assertStringNotContainsString('Presupuesto: 0.00 +', $html);
     }
 
     private function crear(?int $idAnterior, string $edificio): Proyecto
