@@ -39,6 +39,17 @@ class Cotizacion extends ActiveRecord
      */
     public ?UploadedFile $documentoFile = null;
 
+    /**
+     * Atributo virtual: el ENLACE a la proforma (Google Drive u otro lugar),
+     * la otra forma de adjuntarla (2026-11-11, pedido del Ing. de DTIC: las
+     * proformas ya estan en un Drive). Se guarda en la misma columna que la
+     * ruta del PDF subido: documentoRuta con http(s):// = enlace (ver
+     * ArchivoSubido::esEnlaceExterno()). Al leer la cotizacion se llena con
+     * el enlace guardado; vaciarlo quita el enlace. Lo pasa a documentoRuta
+     * CotizacionService::asignarDocumento().
+     */
+    public ?string $documentoEnlace = null;
+
     public static function tableName(): string
     {
         return 'redes.Cotizacion';
@@ -51,8 +62,13 @@ class Cotizacion extends ActiveRecord
             [['idProveedor', 'validezDias'], 'integer'],
             [['fecha'], 'date', 'format' => 'php:Y-m-d'],
             [['numeroReferencia'], 'string', 'max' => 100],
-            [['documentoRuta'], 'string', 'max' => 500],
+            // documentoRuta NO tiene regla: lo pone solo el servicio (archivo subido o enlace).
             [['documentoFile'], 'file', 'extensions' => 'pdf', 'maxSize' => 10 * 1024 * 1024],
+            [['documentoEnlace'], 'trim'],
+            [['documentoEnlace'], 'default', 'value' => null],
+            [['documentoEnlace'], 'string', 'max' => 500],
+            [['documentoEnlace'], 'url', 'validSchemes' => ['https', 'http'], 'message' => 'Escriba el enlace completo, como lo copia de Google Drive (https://drive.google.com/…).'],
+            [['documentoEnlace'], 'validarUnaSolaForma'],
             [['idProveedor'], 'exist', 'skipOnError' => true, 'targetClass' => Proveedor::class, 'targetAttribute' => ['idProveedor' => 'id']],
         ];
     }
@@ -67,13 +83,50 @@ class Cotizacion extends ActiveRecord
             'documentoRuta' => 'Documento',
             'validezDias' => 'Validez (días)',
             'documentoFile' => 'Archivo PDF de la cotización',
+            'documentoEnlace' => 'Enlace a la proforma (Google Drive)',
         ];
     }
 
     /**
-     * Enlace para abrir el PDF de la cotizacion (null si no tiene). Lo entrega
-     * CotizacionController::actionDocumento(), que exige sesion: el archivo
-     * esta fuera de la carpeta publica (ver ArchivoSubido).
+     * La proforma va como archivo O como enlace: con las dos a la vez no se
+     * sabe cual vale, y se pide elegir. Si el enlace es el que ya estaba
+     * guardado (el campo viene lleno al corregir), el PDF nuevo lo reemplaza.
+     */
+    public function validarUnaSolaForma(string $atributo): void
+    {
+        $enlace = (string) $this->documentoEnlace;
+        $yaGuardado = $this->tieneEnlace() && $enlace === $this->getOldAttribute('documentoRuta');
+        if ($this->documentoFile !== null && $enlace !== '' && !$yaGuardado) {
+            $this->addError($atributo, 'Suba el PDF o pegue el enlace, no los dos.');
+        }
+    }
+
+    public function afterFind(): void
+    {
+        parent::afterFind();
+        $this->documentoEnlace = $this->tieneEnlace() ? $this->documentoRuta : null;
+    }
+
+    /**
+     * true = la proforma esta en un enlace (Drive); false = PDF subido o nada.
+     */
+    public function tieneEnlace(): bool
+    {
+        return ArchivoSubido::esEnlaceExterno($this->documentoRuta);
+    }
+
+    /**
+     * Texto del boton que abre la proforma: "Ver PDF" o "Abrir enlace".
+     */
+    public function textoDocumento(): string
+    {
+        return $this->tieneEnlace() ? 'Abrir enlace' : 'Ver PDF';
+    }
+
+    /**
+     * Enlace para abrir la proforma (null si no tiene): el enlace guardado tal
+     * cual, o, si se subio el PDF, CotizacionController::actionDocumento(), que
+     * exige sesion: el archivo esta fuera de la carpeta publica (ver ArchivoSubido).
      */
     public function urlDocumento(): ?string
     {
@@ -81,7 +134,7 @@ class Cotizacion extends ActiveRecord
             return null;
         }
 
-        return ArchivoSubido::esEnlaceExterno($this->documentoRuta)
+        return $this->tieneEnlace()
             ? $this->documentoRuta
             : Url::to(['/cotizacion/documento', 'id' => $this->id]);
     }

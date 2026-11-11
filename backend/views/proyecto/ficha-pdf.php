@@ -120,14 +120,17 @@ $carpeta = static function (array $c) use ($fila, $texto, $monto, $fecha, $guion
         );
     }
 
-    // Proformas recibidas (las cotizaciones de cada solicitud): solo si hay.
+    // Proformas recibidas (las cotizaciones de cada solicitud): solo si hay. La que se guardo
+    // como enlace lleva "ver proforma" (el PDF subido no: su enlace pide la sesion del sistema).
     $primera = true;
     foreach ($solicitudes as $solicitud) {
         foreach ($solicitud->cotizaciones as $cotizacion) {
             $html .= $fila(
                 $primera ? 'Proformas recibidas' : '',
                 $texto($solicitud->codigoDocumento ?? $solicitud->codigoCorto()),
-                $texto($cotizacion->proveedor->razonSocial ?? null) . ' · ' . $fecha($cotizacion->fecha),
+                $texto($cotizacion->proveedor->razonSocial ?? null) . ' · ' . $fecha($cotizacion->fecha)
+                    // Guardada en el Drive (2026-11-11): su enlace, para abrirla desde el PDF.
+                    . ($cotizacion->tieneEnlace() ? ' · ' . Html::a('ver proforma', $cotizacion->documentoRuta) : ''),
                 '—'
             );
             $primera = false;
@@ -301,6 +304,11 @@ $columnasFechas = count($fases);
     .nota {
         font-size: 9pt;
         margin-top: 8px;
+    }
+    /* Enlace a la proforma en el Drive: subrayado, en negro (impresos en grises). */
+    a {
+        color: #000;
+        text-decoration: underline;
     }
 </style>
 </head>

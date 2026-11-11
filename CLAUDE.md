@@ -504,6 +504,13 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Cotizaciones de proveedores (relación N:N con ítems/especificaciones). Una línea que viene de
   una solicitud guarda contra qué NET cotizó (`CotizacionDetalle.idEspecificacionEmision`, no
   cambia si el NET se reemite); una cotización suelta solo elige la ficha (`idEspecificacion`)
+- PROFORMA RECIBIDA (2026-11-11, pedido del Ing. de DTIC: las proformas se guardan en un Drive): cada cotización
+  adjunta su proforma como PDF subido O como ENLACE (campo "Enlace a la proforma (Google Drive)", atributo virtual
+  `Cotizacion::$documentoEnlace`, http(s) válido, máx. 500). Los dos van en `Cotizacion.documentoRuta` (el enlace tal cual;
+  `tieneEnlace()`), sin migración; lo pone `CotizacionService::asignarDocumento()`: con los dos a la vez pide elegir (salvo que
+  el enlace sea el ya guardado: el PDF nuevo lo reemplaza), borrar el enlace lo quita, un PDF ya subido se conserva.
+  `documentoRuta` ya no tiene regla (no llega desde formularios). En la ficha técnica, "Proformas recibidas" lleva "ver
+  proforma" con el enlace (el PDF subido no: su enlace pide sesión)
 - Textos fijos del PDF de la solicitud de cotización (instrucciones, nota final; la "cabecera" ya no sale desde el
   2026-11-09 y se quitó de la pantalla) en
   `redes.ConfiguracionSolicitudCotizacion` (una sola fila, igual que la del NET), editables en

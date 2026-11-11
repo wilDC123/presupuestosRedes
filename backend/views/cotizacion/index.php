@@ -51,14 +51,14 @@ $this->params['breadcrumbs'][] = $this->title;
             ],
             'validezDias',
             [
-                'label' => 'PDF',
+                'label' => 'Proforma',
                 'format' => 'raw',
                 'value' => static function ($model) {
                     if (empty($model->documentoRuta)) {
                         return '<span class="text-muted">Sin adjunto</span>';
                     }
 
-                    return Html::a('Ver PDF', $model->urlDocumento(), ['target' => '_blank']);
+                    return Html::a($model->textoDocumento(), $model->urlDocumento(), ['target' => '_blank', 'rel' => 'noopener']);
                 },
             ],
             ['class' => ActionColumn::class],
