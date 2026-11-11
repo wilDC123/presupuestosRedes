@@ -68,10 +68,11 @@ class SolicitudCodigoTest extends Unit
         if ($nombre !== null) {
             $this->assertStringContainsString('<td>' . Html::encode($nombre) . '</td>', $html);
         }
-        // Firma de la DTIC (2026-11-09, como el Word v3): solo "ELABORADO POR", y el espacio del proveedor.
+        // Firma de la DTIC (2026-11-09, como el Word v3): solo "ELABORADO POR". Sin el espacio del
+        // proveedor desde el 2026-11-10.
         $this->assertStringContainsString('ELABORADO POR', $html);
         $this->assertStringNotContainsString('APROBADO POR', $html);
-        $this->assertStringContainsString('Firma y sello del proveedor', $html);
+        $this->assertStringNotContainsString('Firma y sello del proveedor', $html);
         // La version solo en la cabecera (2026-11-10): la tabla de firmas ya no la repite.
         $this->assertSame(1, substr_count($html, 'Versión:'));
     }
