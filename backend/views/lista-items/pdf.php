@@ -121,10 +121,13 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
         margin-top: 16px;
         margin-bottom: 4px;
     }
-    td.subtitulo {
+    /* Subtitulos de las secciones sin precio: banda sin lineas de celda, como
+       las categorias de los items (2026-11-11). */
+    table.items td.subtitulo {
         background-color: #f2f2f2;
         font-style: italic;
         font-weight: bold;
+        border: none;
     }
 </style>
 </head>
