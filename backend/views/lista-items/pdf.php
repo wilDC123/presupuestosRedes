@@ -27,6 +27,11 @@ use yii\helpers\Html;
  * la COPIA de su firma. La "Fecha" de la cabecera es la de CREACION de la
  * version (2026-10-30, paso 9).
  *
+ * Los items van en UNA sola tabla, con cada categoria como banda gris sin
+ * lineas y SIN subtotal por categoria (2026-11-11; antes una tabla por
+ * categoria con "Subtotal X: N item(s)"). La primera categoria va ARRIBA de
+ * los titulos de columnas. Al final, el total.
+ *
  * CSS deliberadamente simple, igual que el PDF del presupuesto: mPDF
  * interpreta un subconjunto de CSS pensado para documentos.
  *
@@ -90,21 +95,17 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
     table.items td.numero {
         text-align: right;
     }
-    .categoria-titulo {
+    /* Fila de categoria dentro de la tabla de items: una banda gris SIN lineas de
+       celda (2026-11-11); las de los items de arriba y abajo se quedan. */
+    table.items td.categoria {
         background-color: #d0d0d0;
         font-weight: bold;
-        padding: 4px;
-        margin-top: 10px;
+        border: none;
     }
     .observacion {
         font-style: italic;
         font-size: 9pt;
         color: #333;
-    }
-    tr.subtotal td {
-        font-weight: bold;
-        text-align: right;
-        background-color: #f2f2f2;
     }
     .total-general {
         text-align: right;
@@ -150,18 +151,21 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
 <?php if ($grupos === []): ?>
     <p>Esta lista todavía no tiene ítems.</p>
 <?php else: ?>
-    <?php foreach ($grupos as $grupo): ?>
-        <div class="categoria-titulo"><?= Html::encode($grupo['nombre']) ?></div>
-        <table class="items">
-            <thead>
-                <tr>
-                    <th width="6%">N.°</th>
-                    <th>Descripción</th>
-                    <th width="14%">Unidad</th>
-                    <th width="14%">Cantidad</th>
-                </tr>
-            </thead>
-            <tbody>
+    <?php // UNA sola tabla (2026-11-11): cada categoria es una banda gris sin subtotal; la PRIMERA va
+    // arriba de los titulos de columnas (pedido del desarrollador), las demas entre los items.
+    // Por eso los titulos no van en <thead> y no se repiten en cada pagina. ?>
+    <table class="items">
+        <tbody>
+            <?php foreach ($grupos as $g => $grupo): ?>
+                <tr><td colspan="4" class="categoria"><?= Html::encode($grupo['nombre']) ?></td></tr>
+                <?php if ($g === array_key_first($grupos)): ?>
+                    <tr>
+                        <th width="6%">N.°</th>
+                        <th>Descripción</th>
+                        <th width="14%">Unidad</th>
+                        <th width="14%">Cantidad</th>
+                    </tr>
+                <?php endif; ?>
                 <?php foreach ($grupo['items'] as $item): ?>
                     <tr>
                         <td class="numero"><?= ++$numero ?></td>
@@ -180,14 +184,9 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
                         <td class="numero"><?= Yii::$app->formatter->asDecimal($item->cantidad, 2) ?></td>
                     </tr>
                 <?php endforeach; ?>
-            </tbody>
-            <tfoot>
-                <tr class="subtotal">
-                    <td colspan="4">Subtotal <?= Html::encode($grupo['nombre']) ?>: <?= count($grupo['items']) ?> ítem(s)</td>
-                </tr>
-            </tfoot>
-        </table>
-    <?php endforeach; ?>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
 
     <div class="total-general">
         TOTAL: <?= $totalItems ?> ÍTEM(S) EN <?= count($grupos) ?> CLASIFICACIÓN(ES)
