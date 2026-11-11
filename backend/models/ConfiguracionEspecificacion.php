@@ -17,7 +17,9 @@ use yii\db\ActiveRecord;
  * documentos ya emitidos.
  *
  * @property int $id
- * @property string|null $textoCabecera
+ * @property string|null $textoCabecera La universidad y "D.T.I.C.", una linea por renglon: desde el 2026-11-10 sale
+ *           DEBAJO de la cabecera del formulario (como el Word v3; antes, del 22-10 al 09-11, dentro de la cabecera).
+ *           Cada emision guarda su copia.
  * @property string|null $textoInstrucciones
  * @property string|null $garantiaPorDefecto
  * @property string|null $textoNotaFinal
@@ -34,6 +36,9 @@ use yii\db\ActiveRecord;
  */
 class ConfiguracionEspecificacion extends ActiveRecord
 {
+    /** Nombre de la universidad como en el Word v3 del formulario (2026-11-10): primera linea de textoCabecera. */
+    public const UNIVERSIDAD = 'Universidad Mayor, Real y Pontificia de “San Francisco Xavier” de Chuquisaca';
+
     use FirmasDeControl;
 
     public static function tableName(): string
@@ -72,7 +77,7 @@ class ConfiguracionEspecificacion extends ActiveRecord
     public function attributeLabels(): array
     {
         return [
-            'textoCabecera' => 'Cabecera',
+            'textoCabecera' => 'Universidad y unidad (debajo de la cabecera)',
             'textoInstrucciones' => 'Instrucciones al proveedor',
             'garantiaPorDefecto' => 'Garantía por defecto',
             'textoNotaFinal' => 'Nota final',

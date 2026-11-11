@@ -29,10 +29,11 @@ $this->params['breadcrumbs'][] = $this->title;
         'emptyText' => 'Todavía no hay proyectos registrados.',
         'columns' => [
             [
-                'attribute' => 'codigo',
-                'label' => 'Código',
+                // El numero del proyecto (lo comparten sus fases); el codigo PT es de la ficha (2026-11-06).
+                'attribute' => 'numeroProyecto',
+                'label' => 'N.°',
                 'contentOptions' => ['class' => 'mono'],
-                'value' => static fn ($model) => $model->codigo ?: '—',
+                'value' => static fn ($model) => $model->numeroTexto(),
             ],
             [
                 'attribute' => 'nombre',
@@ -56,7 +57,10 @@ $this->params['breadcrumbs'][] = $this->title;
                 'attribute' => 'numeroFase',
                 'label' => 'Fase',
                 'format' => 'raw',
-                'value' => static fn ($model) => '<span class="pill-fase">Fase ' . (int) $model->numeroFase . '</span>',
+                // Solo si el proyecto tiene mas de una fase (con fase unica no se muestra "Fase").
+                // Una orden de cambio (parte 6) va debajo de su fase, con su numero.
+                'value' => static fn ($model) => ($model->tieneVariasFases() ? '<span class="pill-fase">Fase ' . (int) $model->numeroFase . '</span>' : '')
+                    . ($model->esOrdenCambio() ? ' <span class="pill-fase">OC ' . (int) $model->numeroOrdenCambio . '</span>' : ''),
             ],
             [
                 // En el listado, la beneficiaria (la misma que sale en los documentos).

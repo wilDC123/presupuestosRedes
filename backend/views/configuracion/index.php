@@ -23,6 +23,7 @@ $grupos = [
         ['Personal', ['/personal/index'], 'Personas que se ponen en el equipo de un proyecto.'],
         ['Roles del proyecto', ['/rol-proyecto/index'], 'Con qué rol participa cada persona del equipo (proyectista, coordinador…).'],
         ['Tipos de trabajo complementario', ['/tipo-condicion-previa/index'], 'Lo que deben hacer otras unidades (condiciones previas): instalación eléctrica, obras civiles, ductos…'],
+        ['Tipos de orden de cambio', ['/tipo-orden-cambio/index'], 'Por qué se pide una orden de cambio (formato RD-GD-FR-006): nuevas solicitudes, errores u omisiones…'],
     ],
     'Codificación' => [
         ['Codificación de documentos', ['/codificacion/index'], 'Desde qué número siguen los códigos RD-PI-PT, RD-PI-PR y RD-PI-ET.'],

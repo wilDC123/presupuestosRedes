@@ -74,11 +74,11 @@ class Presupuesto extends ActiveRecord
 
     /**
      * Version del documento para la cabecera y el control de elaboracion
-     * del PDF (lineamiento RD-GD-LI-001: "consecutivo, inicia con 01"). Cada
-     * proyecto tiene un solo presupuesto y uno aprobado ya no cambia (una
-     * ampliacion es otro proyecto), asi que siempre es la 01.
+     * del PDF. Cada proyecto tiene un solo presupuesto y uno aprobado ya no
+     * cambia (una ampliacion es otro proyecto), asi que siempre es la primera:
+     * "1.0" desde el 2026-11-05 (antes "01"; ver VersionDocumento).
      */
-    public const VERSION_DOCUMENTO = '01';
+    public const VERSION_DOCUMENTO = '1.0';
 
     public static function tableName(): string
     {
@@ -184,7 +184,9 @@ class Presupuesto extends ActiveRecord
         return [
             [['idProyecto'], 'required'],
             [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'manoDeObra'], 'trim'],
-            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
+            // Sin area de intervencion desde el 2026-11-05: va en la ficha tecnica del proyecto, no en el
+            // presupuesto (revision del Ing., punto 5). La columna queda con lo de los ya enviados.
+            [['numeroPresupuesto', 'oficioDtic'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
             [['idProyecto'], 'integer'],
             // Mensaje claro en vez del error de la base por el indice unico.
             [['idProyecto'], 'unique', 'message' => 'Este proyecto ya tiene un presupuesto.'],

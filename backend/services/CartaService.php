@@ -9,7 +9,9 @@ use backend\models\CartaPresupuesto;
 use backend\models\ConfiguracionCarta;
 use backend\models\EspecificacionEmision;
 use backend\models\Presupuesto;
+use backend\models\TratamientoCarta;
 use DateTime;
+use Yii;
 
 /**
  * Capa de Servicio de la carta de entrega del presupuesto.
@@ -68,8 +70,9 @@ class CartaService
         $carta = new CartaPresupuesto();
         $carta->idPresupuesto = $presupuesto->id;
         $carta->fecha = date('Y-m-d');
-        $carta->tratamiento = 'Señor';
-        $carta->destinatarioCargo = $this->cargoSugerido('Señor', $unidad);
+        // El primero de la lista de "Configuración de la carta".
+        $carta->tratamiento = (string) array_key_first(TratamientoCarta::opciones());
+        $carta->destinatarioCargo = $this->cargoSugerido($carta->tratamiento, $unidad);
         // Los marcadores se normalizan antes de reemplazar: una plantilla
         // guardada con {PROYECTO} tambien funciona.
         $carta->referencia = CartaPresupuesto::mayusculas(strtr(CartaPresupuesto::normalizarMarcadores((string) $configuracion->plantillaReferencia), [
@@ -100,8 +103,9 @@ class CartaService
     }
 
     /**
-     * Cargo sugerido para el destinatario: "DECANA DE LA FACULTAD DE…" con
-     * Señora/Señoras, "DECANO DE LA FACULTAD DE…" con los demas. Solo si la
+     * Cargo sugerido para el destinatario: "DECANA DE LA FACULTAD DE…" con un
+     * tratamiento marcado como femenino en la configuracion (Señora,
+     * Señoras), "DECANO DE LA FACULTAD DE…" con los demas. Solo si la
      * unidad solicitante es una facultad (empieza con "Facultad"): para una
      * carrera, oficina o persona queda vacio y se escribe a mano. La
      * pantalla lo cambia sola al elegir otro tratamiento (web/js/carta.js),
@@ -113,7 +117,7 @@ class CartaService
             return '';
         }
 
-        $cargo = in_array($tratamiento, ['Señora', 'Señoras'], true) ? 'DECANA' : 'DECANO';
+        $cargo = TratamientoCarta::esFemenino($tratamiento) ? 'DECANA' : 'DECANO';
 
         return mb_strtoupper($cargo . ' DE LA ' . $unidad, 'UTF-8');
     }
@@ -172,7 +176,7 @@ class CartaService
     }
 
     /**
-     * "RD-PI-ET-001/26, RD-PI-ET-004/26": el codigo de las especificaciones
+     * "RD-PI-ET-001, RD-PI-ET-004": el codigo de las especificaciones
      * VIGENTES de la lista del proyecto (las que se entregan), de menor a
      * mayor. Las de antes del 2026-10-22 (serie NET) salen solo con su
      * numero, sin "NET:" ni el año ("896, 897"), como se citaban entonces, y
@@ -244,11 +248,41 @@ class CartaService
     }
 
     /**
-     * Textos fijos de la carta (redes.ConfiguracionCarta).
+     * Textos fijos de la carta (redes.ConfiguracionCarta) y, si llegan, la
+     * lista de tratamientos (redes.TratamientoCarta), todo en una
+     * transaccion. La lista se REEMPLAZA entera, en el orden del formulario:
+     * las cartas guardan su propia copia del tratamiento, asi que no hay
+     * nada que conservar.
      */
     public function guardarConfiguracion(ConfiguracionCarta $configuracion, array $datosFormulario): bool
     {
-        return $configuracion->load($datosFormulario) && $configuracion->save();
+        if (!$configuracion->load($datosFormulario) || !$configuracion->validate()) {
+            return false;
+        }
+
+        $transaccion = Yii::$app->db->beginTransaction();
+        try {
+            $configuracion->save(false);
+
+            if (is_array($configuracion->tratamientos)) {
+                TratamientoCarta::deleteAll();
+                foreach (array_values($configuracion->tratamientos) as $i => $fila) {
+                    $tratamiento = new TratamientoCarta();
+                    $tratamiento->nombre = $fila['nombre'];
+                    $tratamiento->femenino = (bool) $fila['femenino'];
+                    $tratamiento->orden = $i + 1;
+                    $tratamiento->save(false);
+                }
+            }
+
+            $transaccion->commit();
+        } catch (\Throwable $e) {
+            $transaccion->rollBack();
+
+            throw $e;
+        }
+
+        return true;
     }
 
     /**

@@ -6,6 +6,9 @@
  *     copiando la fila modelo (<template>) con un indice nuevo en
  *     items[n][...]. Si la clasificacion aun no tiene grupo, lo crea.
  *  3. Boton "×": quita la fila (y el grupo, si queda vacio).
+ *     "Cambiar ítem" (filas ya guardadas): el siguiente "+" del panel pone
+ *     ese item en la fila en vez de agregar otra; la fila pasa al grupo de
+ *     su clasificacion y muestra "Antes: …" con "Deshacer".
  *  4. Antes de enviar: las cantidades de la lista deben ser numeros >= 0, y
  *     las de los materiales de la DTIC, mayores que 0 (como el servidor).
  *  5. Avisa que hay cambios sin guardar.
@@ -98,8 +101,119 @@ $(function () {
         });
     });
 
+    // ---- "Cambiar ítem": otro item del subcatalogo en una fila ya guardada ----
+    // Mientras $filaACambiar no es null, el "+" del panel reemplaza el item de
+    // esa fila en vez de agregar una nueva. Al guardar, el servidor reemite su
+    // formulario de especificacion con el mismo codigo (ListaItemsService::cambiarItem()).
+    var $filaACambiar = null;
+
+    function salirDeCambiar() {
+        if ($filaACambiar !== null) {
+            $filaACambiar.removeClass('lista-item-cambiando');
+        }
+        $filaACambiar = null;
+        $('#lista-cambiando').addClass('d-none');
+    }
+
+    // Pone en la fila el item elegido: nombre, unidad, id y el grupo de su clasificacion.
+    function ponerItem($fila, item) {
+        var $grupoAnterior = $fila.closest('tbody');
+
+        $fila.find('.lista-item-subcatalogo').val(item.id);
+        $fila.find('.lista-item-nombre').text(item.nombre);
+        $fila.find('.lista-item-unidad').text(item.unidad);
+
+        if (String($grupoAnterior.data('categoria')) !== String(item.categoria)) {
+            grupoDe(String(item.categoria), item.categoriaNombre).find('tr.subtotal-row').before($fila);
+
+            if ($grupoAnterior.find('tr.lista-item').length === 0) {
+                $grupoAnterior.remove();
+            }
+        }
+
+        actualizarTotales();
+        marcarCambios();
+    }
+
+    $tabla.on('click', '.lista-item-cambiar', function () {
+        var $fila = $(this).closest('tr');
+        var $grupo = $fila.closest('tbody');
+
+        // Lo que tenia al cargar la pagina, para "Deshacer" (se guarda una sola vez).
+        if (!$fila.data('original')) {
+            $fila.data('original', {
+                id: String($fila.find('.lista-item-subcatalogo').val()),
+                nombre: $fila.find('.lista-item-nombre').text(),
+                unidad: $fila.find('.lista-item-unidad').text(),
+                categoria: String($grupo.data('categoria')),
+                categoriaNombre: $grupo.find('.cat-row td').text()
+            });
+        }
+
+        salirDeCambiar();
+        $filaACambiar = $fila.addClass('lista-item-cambiando');
+        $('#lista-cambiando-nombre').text($fila.find('.lista-item-nombre').text());
+        $('#lista-cambiando').removeClass('d-none');
+        $('#lista-buscar').trigger('focus');
+    });
+
+    $('#lista-cambiando-cancelar').on('click', salirDeCambiar);
+
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape' && $filaACambiar !== null) {
+            salirDeCambiar();
+        }
+    });
+
+    $tabla.on('click', '.lista-item-deshacer', function (e) {
+        e.preventDefault();
+        var $fila = $(this).closest('tr');
+
+        ponerItem($fila, $fila.data('original'));
+        $fila.find('.lista-item-cambio').addClass('d-none').empty();
+    });
+
+    function cambiarItemDeFila($fila, $origen) {
+        var original = $fila.data('original');
+        var item = {
+            id: String($origen.data('id')),
+            nombre: String($origen.data('nombre')),
+            unidad: String($origen.data('unidad') || ''),
+            categoria: String($origen.data('categoria')),
+            categoriaNombre: String($origen.data('categoriaNombre'))
+        };
+        var $nota = $fila.find('.lista-item-cambio');
+
+        ponerItem($fila, item);
+        salirDeCambiar();
+
+        // Volvio a elegir el que tenia: no hay cambio.
+        if (item.id === original.id) {
+            $nota.addClass('d-none').empty();
+            return;
+        }
+
+        // .text() escapa los nombres: nunca se interpretan como HTML.
+        var antes = original.nombre + (original.unidad ? ' (' + original.unidad + ')' : '');
+        var codigo = $.trim($fila.find('.lista-item-net strong').first().text());
+        var texto = 'Antes: ' + antes + '. ' + (codigo
+            ? 'Al guardar, el formulario ' + codigo + ' se corrige con el mismo código y la versión siguiente.'
+            : 'Se cambia al guardar.');
+
+        $nota.empty().text(texto + ' ')
+            .append($('<a href="#" class="lista-item-deshacer">').text('Deshacer'))
+            .removeClass('d-none');
+        $fila.find('.qty').trigger('focus').trigger('select');
+    }
+
     $('#lista-subcatalogo').on('click', '.addbtn', function () {
         var $origen = $(this).closest('.row-item');
+
+        if ($filaACambiar !== null) {
+            cambiarItemDeFila($filaACambiar, $origen);
+            return;
+        }
+
         var $fila = $(filaModelo.replace(/__n__/g, String(siguiente++)));
 
         $fila.find('.lista-item-subcatalogo').val($origen.data('id'));
@@ -142,6 +256,10 @@ $(function () {
 
     $tabla.on('click', '.rd-quitar', function () {
         var $grupo = $(this).closest('tbody');
+
+        if ($filaACambiar !== null && $filaACambiar.is($(this).closest('tr'))) {
+            salirDeCambiar();
+        }
 
         $(this).closest('tr').remove();
 
@@ -355,6 +473,13 @@ $(function () {
 
     $tabla.on('change', '.lista-item-esp', function () {
         actualizarEnlaceDocumento($(this));
+        // El lugar de entrega es de la especificacion: sin especificacion no se pide (ni su campo, si estaba abierto).
+        var $celda = $(this).closest('td');
+        var sinEspecificacion = $(this).val() === '';
+        $celda.find('.lista-item-lugar').toggleClass('d-none', sinEspecificacion);
+        if (sinEspecificacion) {
+            $celda.find('.lista-lugar-campo').addClass('d-none');
+        }
         actualizarTotales();
         marcarCambios();
     });
@@ -413,6 +538,32 @@ $(function () {
     $('.rd-pasos a').on('click', function (evento) {
         if (hayCambios && !window.confirm('Hay cambios sin guardar en la lista y se perderán. ¿Ir a otro paso de todos modos?')) {
             evento.preventDefault();
+        }
+    });
+
+    // Lugar de entrega de arriba de la lista (2026-11-10): es el que toma cada
+    // fila que deja su lugar vacio, asi que se muestra como su texto de ejemplo
+    // (vacio = el de la configuracion del formulario). Tambien en las filas que
+    // se agregan despues (al entrar al campo).
+    var $lugarProyecto = $('#lista-lugar-entrega');
+
+    function lugarDeEjemplo() {
+        return $.trim($lugarProyecto.val()) || $lugarProyecto.data('configuracion') || 'Sin lugar de entrega';
+    }
+
+    // Fila plegada: "Otro lugar de entrega" / "Cambiar" muestra el campo (2026-11-10).
+    $tabla.on('click', '.lista-lugar-abrir', function () {
+        var $celda = $(this).closest('td');
+        $celda.find('.lista-lugar-resumen').addClass('d-none');
+        $celda.find('.lista-lugar-campo').removeClass('d-none').find('input').trigger('focus');
+    });
+
+    $lugarProyecto.on('input', function () {
+        $('#lista-items-form input[name$="[lugarEntrega]"]').attr('placeholder', lugarDeEjemplo());
+    });
+    $('#lista-items-form').on('focus', 'input[name$="[lugarEntrega]"]', function () {
+        if ($lugarProyecto.length) {
+            $(this).attr('placeholder', lugarDeEjemplo());
         }
     });
 });

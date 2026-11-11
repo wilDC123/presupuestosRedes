@@ -14,7 +14,8 @@ use yii\helpers\Html;
  * contactos) es UNA imagen (web/img/fondo-carta.png) que va de fondo en
  * todas las paginas (@page background), estirada a la hoja completa. Como en
  * la carta Word de la DTIC, el membrete no llega a los bordes: deja 6 mm a
- * la izquierda, 8 arriba, 17 a la derecha y 20 abajo (mide 193 x 302 mm).
+ * la izquierda, 8 arriba, 18 a la derecha y 19 abajo (mide 192 x 303 mm;
+ * membrete "División de Tecnologías…", cambiado el 2026-11-04).
  * mPDF no puede dar a un fondo un tamaño en mm, asi que esos espacios ya
  * vienen dentro de la imagen: es un lienzo transparente del tamaño de la
  * hoja oficio con el membrete original pegado en esa posicion. Si cambia el

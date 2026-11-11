@@ -40,8 +40,6 @@ $this->params['breadcrumbs'][] = 'Solicitud de cotización';
     <div class="card mb-3">
         <div class="rd-card-head"><div class="rd-card-titulo">Textos del documento</div></div>
         <div class="rd-card-pad">
-            <?= $form->field($configuracion, 'textoCabecera')->textarea(['rows' => 2, 'maxlength' => 500])
-                ->hint('Una línea por renglón. La primera sale en negrita (ej. el nombre de la universidad y la unidad).') ?>
             <?= $form->field($configuracion, 'textoInstrucciones')->textarea(['rows' => 4, 'maxlength' => 1000])
                 ->hint('Sale debajo de los datos de la solicitud, antes de la tabla de ítems.') ?>
             <?= $form->field($configuracion, 'textoNotaFinal')->textarea(['rows' => 2, 'maxlength' => 500])

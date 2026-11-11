@@ -37,7 +37,7 @@ $this->registerJsFile('@web/js/cotizar.js', ['depends' => [JqueryAsset::class]])
 $proyecto = $solicitud->proyecto;
 $this->title = ($cotizacion->isNewRecord ? 'Registrar cotización recibida' : 'Corregir cotización') . ' — ' . $solicitud->codigoCorto();
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
-$this->params['breadcrumbs'][] = ['label' => $proyecto->codigo ?: '#' . $proyecto->id, 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
+$this->params['breadcrumbs'][] = ['label' => $proyecto->identificador(), 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
 $this->params['breadcrumbs'][] = ['label' => 'Solicitudes de cotización', 'url' => ['index', 'id' => $proyecto->id]];
 $this->params['breadcrumbs'][] = $cotizacion->isNewRecord ? 'Registrar cotización' : 'Corregir cotización';
 

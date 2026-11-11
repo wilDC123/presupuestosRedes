@@ -104,12 +104,24 @@ $fila = static function (string $n, string $idSubcatalogo, string $nombre, strin
                      data-id="<?= $itemSubcatalogo->id ?>"
                      data-nombre="<?= Html::encode($itemSubcatalogo->descripcion) ?>"
                      data-categoria="<?= $itemSubcatalogo->idCategoria ?>">
-                    <div>
+                    <?php
+                    // Linea SIGMA (2026-11-10, como el panel de la lista de items): a que item
+                    // generico de SIGMA apunta y su partida. Solo se muestra: el buscador sigue
+                    // buscando por el nombre DTIC. Nombre largo = recortado con "…" (CSS),
+                    // completo en el title.
+                    $sigma = $itemSubcatalogo->catalogoSigma;
+                    $lineaSigma = $sigma !== null ? 'SIGMA: ' . $sigma->Descripcion : 'Sin ítem SIGMA';
+                    if ($itemSubcatalogo->partida) {
+                        $lineaSigma .= ' · Partida ' . $itemSubcatalogo->partida;
+                    }
+                    ?>
+                    <div class="rd-row-item-texto">
                         <div class="rd-celda-titulo"><?= Html::encode($itemSubcatalogo->descripcion) ?></div>
                         <div class="rd-celda-sub">
                             <?= Html::encode($categorias[$itemSubcatalogo->idCategoria] ?? '') ?>
                             <?= $itemSubcatalogo->unidad ? ' · Unidad: ' . Html::encode($itemSubcatalogo->unidad->abreviatura) : '' ?>
                         </div>
+                        <div class="rd-celda-sub rd-linea-sigma" title="<?= Html::encode($lineaSigma) ?>"><?= Html::encode($lineaSigma) ?></div>
                     </div>
                     <button type="button" class="addbtn" aria-label="Agregar a la plantilla">+</button>
                 </div>

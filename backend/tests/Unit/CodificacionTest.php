@@ -39,9 +39,10 @@ class CodificacionTest extends Unit
         $this->assertSame('RD-PI-PT-004', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, 4));
         $this->assertSame('RD-PI-PR-015', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PRESUPUESTO, 15));
         $this->assertSame('RD-GR-PR-016', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PRESUPUESTO, 16, 'GR'));
-        $this->assertSame('RD-PI-ET-001/27', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_ESPECIFICACION, 1, 'PI', 27));
-        // Si en un año pasa del 999 sigue: nunca se repite un codigo.
-        $this->assertSame('RD-PI-ET-1000/26', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_ESPECIFICACION, 1000, 'PI', 26));
+        // Sin año (2026-11-10).
+        $this->assertSame('RD-PI-ET-001', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_ESPECIFICACION, 1));
+        // Despues del 999 sigue: nunca se repite un codigo.
+        $this->assertSame('RD-GR-ET-1000', CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_ESPECIFICACION, 1000, 'GR'));
 
         $this->assertSame(4, CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_PROYECTO, 'RD-PI-PT-004'));
         $this->assertSame(16, CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_PRESUPUESTO, 'RD-GR-PR-016'));
@@ -51,42 +52,28 @@ class CodificacionTest extends Unit
         $this->assertNull(CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_PRESUPUESTO, '690'));
     }
 
-    public function testElEtVuelveAUnoElPrimeroDeEnero(): void
+    public function testElEtNoSeReiniciaYPasaDel999(): void
     {
-        // 31/12/2026: va por el 912.
-        CorrelativoDocumento::updateAll(['siguiente' => 912, 'anio' => 26], ['tipo' => CorrelativoDocumento::TIPO_ESPECIFICACION]);
+        // Ya no vuelve a 001 el 1 de enero (2026-11-10): sigue subiendo, tambien despues del 999.
+        CorrelativoDocumento::updateAll(['siguiente' => 999], ['tipo' => CorrelativoDocumento::TIPO_ESPECIFICACION]);
 
-        $this->assertSame(912, $this->service->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION, 26));
-        // 01/01/2027: el primero del año es el 001, y sigue el 002.
-        $this->assertSame(1, $this->service->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION, 27));
-        $this->assertSame(2, $this->service->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION, 27));
-        $fila = CorrelativoDocumento::findOne(CorrelativoDocumento::TIPO_ESPECIFICACION);
-        $this->assertSame([3, 27], [(int) $fila->siguiente, (int) $fila->anio]);
-
-        // Presupuestos y proyectos no se reinician.
-        CorrelativoDocumento::updateAll(['siguiente' => 40], ['tipo' => CorrelativoDocumento::TIPO_PRESUPUESTO]);
-        $this->assertSame(40, $this->service->tomar(CorrelativoDocumento::TIPO_PRESUPUESTO, 27));
+        $this->assertSame(999, $this->service->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION));
+        $this->assertSame(1000, $this->service->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION));
+        $this->assertSame(1001, (int) CorrelativoDocumento::findOne(CorrelativoDocumento::TIPO_ESPECIFICACION)->siguiente);
+        $this->assertSame('RD-GR-ET-1001', $this->service->proximo(CorrelativoDocumento::TIPO_ESPECIFICACION, 'GR'));
     }
 
-    public function testLaPantallaMuestraElPrimeroDelAnioNuevoYElUltimoUsadoEsDeEsteAnio(): void
+    public function testElUltimoUsadoDeEtEsElMayorDeTodos(): void
     {
-        $anio = $this->service->anioActual();
-        // El contador quedo en el año pasado.
-        CorrelativoDocumento::updateAll(['siguiente' => 850, 'anio' => $anio - 1], ['tipo' => CorrelativoDocumento::TIPO_ESPECIFICACION]);
-
+        $mayor = (int) EspecificacionEmision::find()->where(['serie' => EspecificacionEmision::SERIE_ET])->max('numeroNet');
         $correlativos = $this->service->correlativos();
-        $this->assertSame(1, (int) $correlativos[CorrelativoDocumento::TIPO_ESPECIFICACION]->siguiente);
-        $this->assertSame(sprintf('RD-GR-ET-001/%02d', $anio), $this->service->proximo(CorrelativoDocumento::TIPO_ESPECIFICACION, 'GR'));
 
-        // Al guardar la pantalla queda en este año.
-        $mayor = (int) EspecificacionEmision::find()->where(['serie' => EspecificacionEmision::SERIE_ET, 'anio' => $anio])->max('numeroNet');
-        $this->assertTrue($this->service->guardar($correlativos, $this->datos($correlativos, [CorrelativoDocumento::TIPO_ESPECIFICACION => (string) ($mayor + 5)])));
-        $fila = CorrelativoDocumento::findOne(CorrelativoDocumento::TIPO_ESPECIFICACION);
-        $this->assertSame([$mayor + 5, $anio], [(int) $fila->siguiente, (int) $fila->anio]);
-
-        // Una ET de otro año con numero alto no cuenta como "ultimo usado".
+        // Una ET de cualquier año cuenta: sin año en el codigo, el numero no se puede repetir.
         $this->assertSame($mayor === 0 ? null : $mayor, $this->service->ultimoUsado(CorrelativoDocumento::TIPO_ESPECIFICACION));
-        $this->assertSame(sprintf('%03d/%02d', 7, $anio), $this->service->numeroTexto(CorrelativoDocumento::TIPO_ESPECIFICACION, 7));
+        $this->assertTrue($this->service->guardar($correlativos, $this->datos($correlativos, [CorrelativoDocumento::TIPO_ESPECIFICACION => (string) ($mayor + 5)])));
+        $this->assertSame($mayor + 5, (int) CorrelativoDocumento::findOne(CorrelativoDocumento::TIPO_ESPECIFICACION)->siguiente);
+
+        $this->assertSame('007', $this->service->numeroTexto(CorrelativoDocumento::TIPO_ESPECIFICACION, 7));
         $this->assertSame('007', $this->service->numeroTexto(CorrelativoDocumento::TIPO_PRESUPUESTO, 7));
     }
 

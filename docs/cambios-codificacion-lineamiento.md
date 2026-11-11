@@ -226,3 +226,20 @@ código no cambia. Así no hay un tipo nuevo en el correlativo ni un código que
 - **Especificación técnica:** sin cambios (se crea y se emite el mismo día).
 - El presupuesto ya no lleva pie de página con contactos (un documento de la gestión documental no lo lleva).
 
+## Revisión del 2026-11-10: la especificación técnica ya no lleva el año
+
+Se pidió que el código de las especificaciones técnicas **no lleve el año para nada**: `RD-PI-ET-033`, no
+`RD-PI-ET-033/26`. Su número tampoco vuelve a 001 el 1 de enero: sigue subiendo como el de los demás
+documentos (999, 1000, 1001…). Esto deshace la parte del año de la revisión del 2026-10-29 (el proceso del
+proyecto se queda).
+
+- `CorrelativoDocumento::codigo()` ya no recibe año; se quitaron `reiniciaPorAnio()` y
+  `CodificacionService::anioActual()`, y `tomar()` solo suma 1.
+- Las ya emitidas (todas de 2026) también salen sin `/26`, al verlas y al reimprimirlas.
+- `EspecificacionEmision.anio` se queda como dato (año de emisión): filtro "Año" del registro y código de
+  los NET de antes (`NET:880/26`). El buscador del registro todavía entiende `RD-PI-ET-033/26`, como dice
+  el papel impreso del 29-10 al 10-11.
+- Migración `m261110_060000_especificacion_sin_anio`: quita `CorrelativoDocumento.anio`, vuelve al índice
+  único (`serie`, `numeroNet`, `versionDocumento`) (se detiene si hubiera números repetidos en años
+  distintos) y deja el siguiente ET por encima del mayor usado.
+- Diagrama de clases: `CorrelativoDocumento` pierde `anio`.

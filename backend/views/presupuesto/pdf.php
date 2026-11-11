@@ -32,8 +32,8 @@ use yii\helpers\Html;
  * aprobación va abajo, en el control de elaboración.
  * Un presupuesto APROBADO usa las firmas copiadas al aprobarlo (Presupuesto::firmaDeControl()).
  * Cabecera y fuente (Carlito = medidas de Calibri) también según el lineamiento. No lleva proveedor por línea, resumen por partida, anexo
- * comparativo, área de intervención ni estado: se ven en la pantalla del
- * paso Presupuesto.
+ * comparativo, unidad, área de intervención ni estado (la unidad y el área van en la ficha técnica
+ * del proyecto desde el 2026-11-05).
  *
  * @var yii\web\View $this
  * @var backend\models\Presupuesto $presupuesto
@@ -49,7 +49,6 @@ use yii\helpers\Html;
 
 $proyecto = $presupuesto->proyecto;
 
-$area = $proyecto->areaIntervencionTexto();
 $numero = 0;
 ?>
 <!DOCTYPE html>
@@ -90,12 +89,11 @@ $numero = 0;
         padding: 4px 4px;
         font-size: 10pt;
     }
-    /* Mismos colores que las secciones sin precio (2026-10-23): titulos de
-       columna en azul oscuro, categorias en celeste, subtotales y total en
-       azul claro. */
+    /* Escala de grises, como la lista de materiales y el formulario de
+       especificacion (2026-11-03; antes azules): titulos de columna y total
+       en gris medio, categorias en gris, subtotales en gris claro. */
     table.items th {
-        background-color: #1f3864;
-        color: #fff;
+        background-color: #e0e0e0;
         font-weight: bold;
         text-align: center;
     }
@@ -111,7 +109,7 @@ $numero = 0;
        margen y usa los mismos bordes que las celdas. Sin borde arriba (ya
        esta el de la tabla anterior), salvo el de la primera categoria. */
     .categoria-titulo {
-        background-color: #ddebf7;
+        background-color: #d0d0d0;
         font-style: italic;
         font-weight: bold;
         padding: 4px;
@@ -124,7 +122,7 @@ $numero = 0;
     tr.subtotal td {
         font-weight: bold;
         text-align: right;
-        background-color: #eef3fa;
+        background-color: #f2f2f2;
     }
     /* Fila de total pegada a la ultima categoria, con los mismos bordes. */
     table.total-general {
@@ -134,7 +132,7 @@ $numero = 0;
     table.total-general td {
         border: 1px solid #666;
         border-top: none;
-        background-color: #dbe5f1;
+        background-color: #e0e0e0;
         font-size: 11pt;
         font-weight: bold;
         text-align: right;
@@ -157,19 +155,16 @@ $numero = 0;
     'fecha' => $presupuesto->fechaFormateada() ?: '—',
 ]) ?>
 
-<?php // Código, versión y fecha ya van en la cabecera. ?>
+<?php // Código, versión y fecha ya van en la cabecera. El proyecto, en su única
+// línea (Proyecto::lineaDocumento(): "PROYECTO: 001 – NOMBRE (FASE n)", sin
+// negrilla; la fase solo si hay varias). Sin unidad ni área de intervención
+// desde el 2026-11-05 (revisión del Ing., puntos 5 y 6: están en la ficha
+// técnica del proyecto). ?>
 <table class="datos-generales">
     <tr>
-        <td><strong>Código de proyecto:</strong> <?= Html::encode($proyecto->codigo ?: '—') ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
-        <td><strong><?= Html::encode($oficio !== '' ? $oficio : 'Oficio DTIC: —') ?></strong></td>
-    </tr>
-    <tr>
-        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre ?? '—') ?></td>
-        <td><strong>Unidad / dependencia:</strong> <?= Html::encode($proyecto->unidadDependencia ?: '—') ?></td>
-    </tr>
-    <?php // A todo el ancho: varias areas pueden ocupar mas de una linea. ?>
-    <tr>
-        <td colspan="2"><strong>Área de intervención:</strong> <?= Html::encode($area !== '' ? $area : '—') ?></td>
+        <?php // El nombre del proyecto suele ser largo: mas ancho que el oficio. ?>
+        <td style="width: 72%"><?= Html::encode($proyecto->lineaDocumento()) ?></td>
+        <td style="width: 28%; text-align: right"><strong><?= Html::encode($oficio !== '' ? $oficio : 'Oficio DTIC: —') ?></strong></td>
     </tr>
 </table>
 

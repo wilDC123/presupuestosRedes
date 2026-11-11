@@ -67,7 +67,7 @@ class EspecificacionImportacionTest extends Unit
 
         // Restos de formulas de Word, limpios.
         $this->assertSame(
-            ['nombre' => 'Dimensiones', 'valor' => 'diámetro de 6.3 mm ± 0.3 mm'],
+            ['nombre' => 'Dimensiones', 'valor' => 'diámetro de 6.3 mm ± 0.3 mm', 'esSubtitulo' => false, 'nivel' => 1],
             $plan['880 Cable CAT6.docx']['caracteristicas'][1]
         );
     }

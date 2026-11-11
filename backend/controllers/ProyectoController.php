@@ -9,12 +9,14 @@ use backend\components\UsuarioActual;
 use backend\models\Proyecto;
 use backend\services\HistorialService;
 use backend\services\ListaItemsService;
+use backend\services\OrdenCambioFaseService;
 use backend\services\ParametrosProyectoService;
 use backend\services\PlantillaService;
 use backend\services\PersonalService;
 use backend\services\ProyectoService;
 use backend\services\ProcesoService;
 use backend\services\RolProyectoService;
+use backend\services\TipoOrdenCambioService;
 use backend\services\TipoProyectoService;
 use backend\services\contracts\InfraestructuraProvider;
 use Yii;
@@ -88,33 +90,101 @@ class ProyectoController extends Controller
             'urlPresupuesto' => $this->service->urlPresupuesto($model),
             'nombreTipo' => $model->tipoProyecto?->nombre,
             'monto' => $this->service->montoPresupuesto($model),
+            // Total unico del proyecto: fases + ordenes de cambio aprobadas (parte 6c).
+            'costo' => $this->service->costoTotal($model),
             'totalItems' => (new ListaItemsService())->contar($model),
             'listaEditable' => (new ListaItemsService())->puedeEditarse($model),
             'puedeEditarse' => $this->service->puedeEditarse($model),
             'estaAprobado' => $this->service->estaAprobado($model),
+            // "Agregar fase": en la ultima fase, aprobada o no (varias fases a la vez, 2026-11-09).
+            'puedeAgregarFase' => $this->service->puedeAgregarFase($model),
+            // Franja "FASES" encima de los pasos (vacia con fase unica y sin ordenes de cambio).
+            'franjaFases' => $this->service->franjaFases($model),
+            // "Registrar orden de cambio": en una fase con su presupuesto aprobado (parte 6).
+            'puedeRegistrarOrden' => (new OrdenCambioFaseService())->puedeRegistrar($model),
         ]);
     }
 
     /**
      * Ficha tecnica del proyecto en PDF (boton en "Datos generales" de la
-     * vista). Se abre en el navegador ('inline') para imprimirla. Formato
-     * provisional: ver ProyectoService::datosFicha().
+     * vista). Se abre en el navegador ('inline') para imprimirla. Mientras no
+     * esta aprobada lleva la marca de agua BORRADOR, como el presupuesto (ver
+     * ProyectoService::datosFicha()).
      */
     public function actionFicha(int $id): Response
     {
         $model = $this->findModel($id);
+        $datos = $this->service->datosFicha($model);
 
         $html = $this->renderPartial('ficha-pdf', [
             'model' => $model,
-            'datos' => $this->service->datosFicha($model),
+            'datos' => $datos,
             'usuario' => UsuarioActual::nombre(),
         ]);
 
         return Yii::$app->response->sendContentAsFile(
-            (new PresupuestoPdfGenerator())->generarDesdeHtml($html),
-            'ficha_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $model->codigo ?: (string) $model->id) . '.pdf',
+            (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $datos['aprobada'] ? null : PresupuestoPdfGenerator::MARCA_BORRADOR),
+            'ficha_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $datos['codigo'] ?: (string) $model->id) . '.pdf',
             ['mimeType' => 'application/pdf', 'inline' => true]
         );
+    }
+
+    /**
+     * "Registrar orden de cambio" de una fase aprobada (parte 6): solo
+     * descripcion, motivo y tipo; lo demas lo copia OrdenCambioFaseService de
+     * la fase. Despues sigue el mismo camino que una fase: plantilla, lista...
+     */
+    public function actionOrdenCambio(int $idFase)
+    {
+        $fase = $this->findModel($idFase);
+        $ordenes = new OrdenCambioFaseService();
+
+        if (!$ordenes->puedeRegistrar($fase)) {
+            Yii::$app->session->setFlash('error', 'Una orden de cambio se registra sobre una fase con su presupuesto aprobado.');
+
+            return $this->redirect(['view', 'id' => $fase->id]);
+        }
+
+        $orden = $ordenes->nueva($fase);
+
+        if (Yii::$app->request->isPost && $ordenes->crear($fase, $orden, Yii::$app->request->post())) {
+            Yii::$app->session->setFlash('success', $orden->identificador() . ' registrada. Ahora arme su lista solo con lo que se agrega.');
+
+            return $this->redirect(['plantilla', 'id' => $orden->id]);
+        }
+
+        return $this->render('orden-cambio', ['orden' => $orden, 'fase' => $fase, 'tipos' => (new TipoOrdenCambioService())->opciones()]);
+    }
+
+    /** Cambiar descripcion, motivo o tipo de una orden de cambio no aprobada. */
+    public function actionEditarOrdenCambio(int $id)
+    {
+        $orden = $this->findModel($id);
+
+        if (!$orden->esOrdenCambio()) {
+            return $this->redirect(['update', 'id' => $orden->id]);
+        }
+
+        if (!$this->service->puedeEditarse($orden)) {
+            Yii::$app->session->setFlash('error', 'Esta orden de cambio ya tiene su presupuesto ' . mb_strtolower($orden->presupuesto->estadoLabel()) . ' y no se modifica.');
+
+            return $this->redirect(['view', 'id' => $orden->id]);
+        }
+
+        if (Yii::$app->request->isPost && (new OrdenCambioFaseService())->actualizar($orden, Yii::$app->request->post())) {
+            Yii::$app->session->setFlash('success', 'Orden de cambio actualizada.');
+
+            return $this->redirect(['view', 'id' => $orden->id]);
+        }
+
+        // El tipo que ya tenia se conserva en el desplegable aunque se haya desactivado.
+        $tipoGuardado = $orden->getOldAttribute('idTipoOrdenCambio');
+
+        return $this->render('orden-cambio', [
+            'orden' => $orden,
+            'fase' => $orden->faseOrigen,
+            'tipos' => (new TipoOrdenCambioService())->opciones($tipoGuardado === null ? null : (int) $tipoGuardado),
+        ]);
     }
 
     /**
@@ -126,7 +196,7 @@ class ProyectoController extends Controller
         $model = $this->service->nuevo($idAnterior);
 
         if ($this->service->crear($model, Yii::$app->request->post())) {
-            Yii::$app->session->setFlash('success', 'Proyecto ' . $model->codigo . ' creado. Ahora puede cargar una plantilla de ítems o empezar en blanco.');
+            Yii::$app->session->setFlash('success', $model->identificador() . ' creado. Ahora puede cargar una plantilla de ítems o empezar en blanco.');
 
             // "Guardar y continuar": el paso siguiente es la plantilla.
             return $this->redirect(['plantilla', 'id' => $model->id]);
@@ -139,8 +209,13 @@ class ProyectoController extends Controller
     {
         $model = $this->findModel($id);
 
+        // Una orden de cambio solo cambia descripcion, motivo y tipo (parte 6).
+        if ($model->esOrdenCambio()) {
+            return $this->redirect(['editar-orden-cambio', 'id' => $model->id]);
+        }
+
         if (!$this->service->puedeEditarse($model)) {
-            Yii::$app->session->setFlash('error', 'Este proyecto ya tiene su presupuesto ' . mb_strtolower($model->presupuesto->estadoLabel()) . ' y no se modifica. Una ampliación se registra como un proyecto nuevo de fase siguiente.');
+            Yii::$app->session->setFlash('error', 'Este proyecto ya tiene su presupuesto ' . mb_strtolower($model->presupuesto->estadoLabel()) . ' y no se modifica. Si piden algo más, registre una orden de cambio o agregue una fase.');
 
             return $this->redirect(['view', 'id' => $model->id]);
         }
@@ -178,7 +253,7 @@ class ProyectoController extends Controller
         }
 
         if (!$lista->puedeEditarse($model)) {
-            Yii::$app->session->setFlash('error', 'La lista ya fue enviada a cotización: para cargarle una plantilla registre antes una orden de cambio.');
+            Yii::$app->session->setFlash('error', 'La lista ya fue enviada a cotización: para cargarle una plantilla reábrala antes.');
 
             return $this->redirect(['/lista-items/index', 'id' => $model->id]);
         }
@@ -259,6 +334,7 @@ class ProyectoController extends Controller
     public function actionDelete(int $id)
     {
         $model = $this->findModel($id);
+        $idFase = $model->idFaseOrigen;
 
         $error = $this->service->eliminar($model);
 
@@ -266,6 +342,13 @@ class ProyectoController extends Controller
             Yii::$app->session->setFlash('error', $error);
 
             return $this->redirect(['view', 'id' => $model->id]);
+        }
+
+        // Una orden de cambio eliminada vuelve a su fase.
+        if ($idFase !== null) {
+            Yii::$app->session->setFlash('success', $model->textoOrdenCambio() . ' eliminada. Sus especificaciones emitidas quedaron anuladas.');
+
+            return $this->redirect(['view', 'id' => $idFase]);
         }
 
         return $this->redirect(['index']);
@@ -289,7 +372,7 @@ class ProyectoController extends Controller
             // Personas y roles activos, mas los que ya estan en el equipo del formulario.
             'personal' => (new PersonalService())->opciones(array_column($equipo, 'nombre')),
             'roles' => (new RolProyectoService())->opciones(array_map('intval', array_filter(array_column($equipo, 'idRol'), 'ctype_digit'))),
-            'proyectosAprobados' => $this->service->proyectosAprobados($model->isNewRecord ? null : $model->id),
+            'datosComunesFijos' => $this->service->datosComunesFijos($model),
         ];
     }
 

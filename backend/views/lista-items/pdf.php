@@ -17,13 +17,15 @@ use yii\helpers\Html;
  * trabajos complementarios (agrupados por tipo).
  *
  * Desde el 2026-10-30 (paso 8b) es un documento del lineamiento RD-GD-LI-001:
- * cabecera con el CODIGO DEL PROYECTO (la lista no tiene codigo propio),
- * version y fecha, y al fondo el control de elaboracion. Version, borrador y
- * firmas salen de ListaItemsService::documento(): en edicion, la version
- * siguiente con marca de agua BORRADOR (la pone el controlador) y las firmas
- * de la configuracion de hoy; enviada o cerrada, la ultima aprobada con su
- * fecha y la COPIA de sus firmas. La "Fecha" de la cabecera es la de CREACION
- * de la version (2026-10-30, paso 9).
+ * cabecera con su codigo, version y fecha, y al fondo el control de
+ * elaboracion. Desde la revision del 2026-11-05 (punto 7) tiene CODIGO
+ * PROPIO (Proyecto.codigoLista, RD-PI-LM-NNN; antes el del proyecto) y NO se
+ * aprueba: el control lleva solo "ELABORADO POR" y la version. Version,
+ * borrador y firma salen de ListaItemsService::documento(): en edicion, la
+ * version siguiente con marca de agua BORRADOR (la pone el controlador) y la
+ * firma de la configuracion de hoy; enviada o cerrada, la ultima emitida con
+ * la COPIA de su firma. La "Fecha" de la cabecera es la de CREACION de la
+ * version (2026-10-30, paso 9).
  *
  * CSS deliberadamente simple, igual que el PDF del presupuesto: mPDF
  * interpreta un subconjunto de CSS pensado para documentos.
@@ -32,21 +34,17 @@ use yii\helpers\Html;
  * @var backend\models\Proyecto $proyecto
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string} $documento
- * @var backend\models\ConfiguracionPresupuesto $configuracion firmas de hoy (mientras no esta aprobada)
+ * @var backend\models\ConfiguracionPresupuesto $configuracion firmas de hoy (mientras no se envia)
  * @var array<string, backend\models\ProyectoMaterialDtic[]> $materiales [subtitulo => materiales], ver MaterialDticService::agrupar()
  * @var array<string, backend\models\ProyectoCondicionPrevia[]> $trabajos [tipo => trabajos], ver CondicionPreviaService::agrupar()
- * @var string $proceso nombre del proceso para la cabecera: el codigo es el del proyecto (RD-PI-PT-NNN), que
- *             siempre lleva PI; lo calcula el controlador
+ * @var string $proceso nombre del proceso para la cabecera, el del codigo de la lista; lo calcula el controlador
  */
 
-$area = $proyecto->areaIntervencionTexto();
 $totalItems = array_sum(array_map(static fn ($grupo) => count($grupo['items']), $grupos));
 $numero = 0;
 
-// Aprobada: su fecha y sus firmas copiadas; borrador (o fecha desconocida): la de hoy y la configuracion.
-$aprobacion = $documento['aprobacion'];
-$fechaAprobacion = $aprobacion?->fechaAprobacionFormateada() ?? '';
-$firmas = $aprobacion ?? $configuracion;
+// Enviada: su firma copiada; borrador: la de la configuracion de hoy.
+$firmas = $documento['aprobacion'] ?? $configuracion;
 ?>
 <!DOCTYPE html>
 <html>
@@ -73,7 +71,6 @@ $firmas = $aprobacion ?? $configuracion;
     table.datos-generales td {
         padding: 3px 4px;
         vertical-align: top;
-        width: 50%;
     }
     table.items {
         width: 100%;
@@ -134,22 +131,19 @@ $firmas = $aprobacion ?? $configuracion;
 
 <?= $this->render('//pdf/_cabecera', [
     'titulo' => backend\models\ListaMaterialesAprobacion::TITULO,
-    'codigo' => $proyecto->codigo ?: '—',
+    'codigo' => $proyecto->codigoLista ?: '—',
     'version' => $documento['version'],
     'proceso' => $proceso,
-    // La de CREACION de esta version (la de aprobacion va abajo, en el control de elaboracion).
+    // La de CREACION de esta version.
     'fecha' => $documento['fechaCreacion'] ?: '—',
 ]) ?>
 
-<?php // Codigo, version y fecha ya van en la cabecera. ?>
+<?php // Codigo, version y fecha ya van en la cabecera. Solo la linea del proyecto (Proyecto::lineaDocumento(),
+// "PROYECTO: 001 – NOMBRE (FASE n)", sin negrilla): sin unidad ni area de intervencion desde el 2026-11-05
+// (revision del Ing., puntos 5 y 6: estan en la ficha tecnica). ?>
 <table class="datos-generales">
     <tr>
-        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre) ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
-        <td><strong>Unidad / dependencia:</strong> <?= Html::encode($proyecto->unidadDependencia ?: '—') ?></td>
-    </tr>
-    <?php // A todo el ancho: varias areas pueden ocupar mas de una linea. ?>
-    <tr>
-        <td colspan="2"><strong>Área de intervención:</strong> <?= Html::encode($area !== '' ? $area : '—') ?></td>
+        <td><?= Html::encode($proyecto->lineaDocumento()) ?></td>
     </tr>
 </table>
 
@@ -178,7 +172,7 @@ $firmas = $aprobacion ?? $configuracion;
                             <?php endif; ?>
                             <?php if ($item->especificacion !== null): ?>
                                 <br><span class="observacion">
-                                    Según especificación técnica <?= Html::encode($item->referenciaEspecificacion()) ?><?= $proyecto->codigo ? ' — proyecto ' . Html::encode($proyecto->codigo) : '' ?>
+                                    Según especificación técnica <?= Html::encode($item->referenciaEspecificacion()) ?><?= $proyecto->numeroProyecto !== null ? ' — proyecto ' . Html::encode($proyecto->numeroTexto()) : '' ?>
                                 </span>
                             <?php endif; ?>
                         </td>
@@ -254,8 +248,9 @@ $firmas = $aprobacion ?? $configuracion;
 <?= $this->render('//pdf/_control-elaboracion', [
     'version' => $documento['version'],
     'elaborado' => $firmas->firma(1),
-    'aprobado' => $firmas->firma(2),
-    'fechaAprobacion' => $fechaAprobacion,
+    'aprobado' => null,
+    'fechaAprobacion' => '',
+    'soloElaborado' => true,
 ]) ?>
 
 </body>

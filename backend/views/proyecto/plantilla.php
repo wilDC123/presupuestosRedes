@@ -25,7 +25,7 @@ $this->registerJsFile('@web/js/cargar-plantilla.js', ['depends' => [JqueryAsset:
 
 $this->title = 'Cargar plantilla de ítems';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = ['label' => $model->codigo ?: '#' . $model->id, 'url' => ['view', 'id' => $model->id]];
+$this->params['breadcrumbs'][] = ['label' => $model->identificador(), 'url' => ['view', 'id' => $model->id]];
 $this->params['breadcrumbs'][] = 'Plantilla';
 
 $primera = $plantillas[0]['plantilla']->id ?? null;

@@ -372,6 +372,11 @@ body.rd {
 .rd-celda-doble { display: flex; align-items: center; gap: 12px; }
 .rd-celda-titulo { font-weight: 600; }
 .rd-celda-sub { font-size: 11.5px; color: var(--rd-texto-suave); }
+/* Caracteristicas de una especificacion: subtitulo (1.4 Hardware) y sangria por nivel (1.4.1, 1.4.1.1). */
+.esp-es-subtitulo .esp-valor, tr.esp-subtitulo-fila td { font-weight: 600; }
+.esp-numero { color: var(--rd-texto-suave); }
+td.esp-nivel-2 { padding-left: 1.75rem; }
+td.esp-nivel-3 { padding-left: 3.25rem; }
 .rd-item-borde { padding: 10px; border: 1px solid var(--rd-borde); border-radius: 6px; }
 .rd-pila { display: flex; flex-direction: column; gap: 10px; }
 .rd-dato { font-size: 12.5px; color: var(--rd-etiqueta); margin-bottom: 6px; }
@@ -484,6 +489,12 @@ body.rd {
 /* Fila de item del subcatalogo con su boton "+". */
 .rd .row-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--rd-fila); }
 .rd .row-item:hover { background: #f5f9fd; }
+/* Fila de la lista que espera su item nuevo ("Cambiar ítem"). */
+.rd tr.lista-item-cambiando > td { background: #fff8e1; }
+/* min-width: 0 deja que el texto se achique dentro del flex (si no, el "…" no aparece). */
+.rd .rd-row-item-texto { min-width: 0; }
+/* Linea "SIGMA: … · Partida …" del panel de la lista: un renglon, lo que no entra va con "…". */
+.rd .rd-linea-sigma { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rd .addbtn {
     width: 26px;
     height: 26px;
@@ -588,3 +599,14 @@ body.rd {
     letter-spacing: .04em; text-transform: uppercase; color: var(--rd-texto-tenue);
 }
 .rd-resultados-ambiente li.grupo:hover { background: none; }
+
+/* Franja "FASES" de la vista del proyecto, encima de la barra de pasos (2026-11-10). */
+.rd-franja-fases { display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px; row-gap: 6px; margin-bottom: 12px; }
+.rd-franja-fases > .kicker { margin: 0; }
+.rd-franja-grupo { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rd-franja-sep { color: var(--rd-texto-tenue); }
+.rd .rd-franja-pastilla { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border: 1px solid var(--rd-borde-fuerte); border-radius: 6px; background: #fff; font-size: 12.5px; color: var(--rd-texto); text-decoration: none; }
+.rd a.rd-franja-pastilla:hover { border-color: var(--rd-azul); }
+.rd .rd-franja-pastilla.es-actual { border: 2px solid var(--rd-azul); background: var(--rd-azul-claro); font-weight: 700; padding: 0 9px; }
+.rd .rd-franja-viendo { font-weight: 400; color: var(--rd-texto-suave); }
+.rd .rd-franja-pastilla.rd-franja-agregar { border-style: dashed; color: var(--rd-azul); }

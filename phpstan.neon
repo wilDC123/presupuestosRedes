@@ -15,6 +15,9 @@ includes:
 parameters:
     level: 5
 
+    # Version de PHP del servidor de pruebas de la DTIC (2026-11-02).
+    phpVersion: 80300
+
     paths:
         - backend/assets
         - backend/components

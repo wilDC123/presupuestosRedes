@@ -33,6 +33,14 @@ use yii\db\ActiveRecord;
  */
 class ProyectoItem extends ActiveRecord
 {
+    /**
+     * "Lugar de entrega" que llego del formulario de la lista para la
+     * especificacion de este item (no es una columna: lo guarda su formulario
+     * de especificacion, EspecificacionEmision.lugarEntrega). null = no vino.
+     * Ver ListaItemsService::revisarFilas().
+     */
+    public ?string $lugarEntregaPedido = null;
+
     public static function tableName(): string
     {
         return 'redes.ProyectoItem';

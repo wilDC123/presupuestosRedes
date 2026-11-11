@@ -35,6 +35,11 @@ class HistorialProyecto extends ActiveRecord
     public const ACCION_PRECIOS = 'precios';
     /** "Enviar a cotizacion": aprueba una version de la lista de materiales (paso 8b). */
     public const ACCION_LISTA_APROBADA = 'lista_aprobada';
+    /** "Cambiar ítem" en la lista: otro item del subcatalogo en la misma fila (2026-11-04). */
+    public const ACCION_LISTA_ITEM_CAMBIADO = 'lista_item_cambiado';
+    /** Orden de cambio (parte 6, 2026-11-09): se anota en la orden y en su fase. */
+    public const ACCION_ORDEN_CAMBIO_CREADA = 'orden_cambio_creada';
+    public const ACCION_ORDEN_CAMBIO_ELIMINADA = 'orden_cambio_eliminada';
 
     public static function tableName(): string
     {
@@ -53,7 +58,10 @@ class HistorialProyecto extends ActiveRecord
             self::ACCION_PRESUPUESTO_CREADO => 'Presupuesto creado',
             self::ACCION_PRESUPUESTO_ESTADO => 'Presupuesto: ' . mb_strtolower(Presupuesto::estados()[$this->estado] ?? (string) $this->estado, 'UTF-8'),
             self::ACCION_PRECIOS => 'Precios del presupuesto',
-            self::ACCION_LISTA_APROBADA => 'Lista de materiales aprobada',
+            self::ACCION_LISTA_APROBADA => 'Lista de materiales enviada a cotización',
+            self::ACCION_LISTA_ITEM_CAMBIADO => 'Ítem de la lista cambiado',
+            self::ACCION_ORDEN_CAMBIO_CREADA => 'Orden de cambio registrada',
+            self::ACCION_ORDEN_CAMBIO_ELIMINADA => 'Orden de cambio eliminada',
             default => $this->accion,
         };
     }

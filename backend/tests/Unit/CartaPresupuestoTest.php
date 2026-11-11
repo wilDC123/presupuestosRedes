@@ -8,6 +8,7 @@ use backend\models\CartaPresupuesto;
 use backend\models\ConfiguracionCarta;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
+use backend\models\TratamientoCarta;
 use backend\services\CartaService;
 use Codeception\Test\Unit;
 
@@ -51,6 +52,66 @@ class CartaPresupuestoTest extends Unit
         $this->assertSame('', $this->service->cargoSugerido('Señora', ''));
         // Solo para facultades: una oficina o persona no tiene decano.
         $this->assertSame('', $this->service->cargoSugerido('Señor', 'Secretaría General de Vicerrectorado'));
+    }
+
+    public function testLosTratamientosSeAdministranEnLaConfiguracion(): void
+    {
+        $configuracion = ConfiguracionCarta::obtener();
+        $this->assertTrue($this->service->guardarConfiguracion($configuracion, ['ConfiguracionCarta' => ['tratamientos' => [
+            ['nombre' => '  Señora  ', 'femenino' => '1'],
+            ['nombre' => '', 'femenino' => '1'],
+            ['nombre' => 'Señor', 'femenino' => '0'],
+            ['nombre' => 'Estimada', 'femenino' => '1'],
+        ]]]), implode(' ', $configuracion->getFirstErrors()));
+
+        // En el orden del formulario, sin la fila en blanco.
+        $this->assertSame(['Señora' => true, 'Señor' => false, 'Estimada' => true], TratamientoCarta::opciones());
+        $this->assertSame('DECANA DE LA FACULTAD DE MEDICINA', $this->service->cargoSugerido('Estimada', 'Facultad de Medicina'));
+
+        // Una carta nueva empieza con el primero.
+        $carta = $this->service->nueva($this->crearPresupuesto(Presupuesto::ESTADO_EN_PROCESO));
+        $this->assertSame('Señora', $carta->tratamiento);
+        $this->assertSame('DECANA DE LA FACULTAD DE MEDICINA', $carta->destinatarioCargo);
+    }
+
+    public function testLaListaDeTratamientosNoQuedaVaciaNiRepetida(): void
+    {
+        $configuracion = ConfiguracionCarta::obtener();
+        $antes = TratamientoCarta::opciones();
+
+        $this->assertFalse($this->service->guardarConfiguracion($configuracion, ['ConfiguracionCarta' => ['tratamientos' => '']]));
+        $this->assertSame('Escriba al menos un tratamiento.', $configuracion->getFirstError('tratamientos'));
+
+        $configuracion = ConfiguracionCarta::obtener();
+        $this->assertFalse($this->service->guardarConfiguracion($configuracion, ['ConfiguracionCarta' => ['tratamientos' => [
+            ['nombre' => 'Señor'],
+            ['nombre' => 'SEÑOR'],
+        ]]]));
+        $this->assertStringContainsString('repetido', $configuracion->getFirstError('tratamientos'));
+        $this->assertSame($antes, TratamientoCarta::opciones(), 'con un error no se toca la lista');
+    }
+
+    public function testUnaCartaConservaElTratamientoQuitadoDeLaLista(): void
+    {
+        $presupuesto = $this->crearPresupuesto(Presupuesto::ESTADO_EN_PROCESO);
+        $carta = $this->service->nueva($presupuesto);
+        $this->assertTrue($this->service->guardar($carta, ['CartaPresupuesto' => [
+            'fecha' => '16/10/2026',
+            'tratamiento' => 'Señoras',
+            'destinatarioNombre' => 'Lic. Ana Pérez',
+        ]]), implode(' ', $carta->getFirstErrors()));
+
+        $configuracion = ConfiguracionCarta::obtener();
+        $this->assertTrue($this->service->guardarConfiguracion($configuracion, ['ConfiguracionCarta' => ['tratamientos' => [
+            ['nombre' => 'Señor'],
+        ]]]));
+
+        $carta = CartaPresupuesto::findOne($carta->id);
+        $this->assertSame(['Señor', 'Señoras'], $carta->tratamientosElegibles());
+        $this->assertTrue($carta->save(), implode(' ', $carta->getFirstErrors()));
+
+        $carta->tratamiento = 'Señora';
+        $this->assertFalse($carta->validate(['tratamiento']), 'uno que no esta en la lista no se elige');
     }
 
     public function testSeGuardaEnBorradorPeroNoSeImprimeSinOficioNiNumero(): void

@@ -13,12 +13,14 @@ use backend\models\Proceso;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SubcatalogoItem;
+use backend\models\UnidadMedida;
 use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
 use backend\services\ListaItemsService;
 use backend\services\ProcesoService;
 use Codeception\Test\Unit;
 use DateTimeImmutable;
+use yii\helpers\Html;
 
 /**
  * Emisiones de especificaciones (RD-PI-ET): enlazar = emitir, correlativo
@@ -52,7 +54,7 @@ class EspecificacionEmisionTest extends Unit
         // Correlativo conocido para el test, por encima de cualquier emision de la base local.
         // Con el año de hoy: si no, el primer numero que se tome volveria a 1.
         CorrelativoDocumento::updateAll(
-            ['siguiente' => (int) EspecificacionEmision::find()->max('numeroNet') + 1000, 'anio' => (int) date('y')],
+            ['siguiente' => (int) EspecificacionEmision::find()->max('numeroNet') + 1000],
             ['tipo' => CorrelativoDocumento::TIPO_ESPECIFICACION]
         );
     }
@@ -82,7 +84,25 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame('encargado', $emision->elaboradoPor);
         // Sin garantia propia en la ficha: se congela la de la configuracion.
         $this->assertSame(ConfiguracionEspecificacion::obtener()->garantiaPorDefecto, $emision->garantia);
-        $this->assertSame(sprintf('RD-PI-ET-%03d/%s', $siguiente, date('y')), $item->referenciaEspecificacion());
+        $this->assertSame(sprintf('RD-PI-ET-%03d', $siguiente), $item->referenciaEspecificacion());
+    }
+
+    public function testElLugarDeEntregaEsElDelProyectoYSinoElDeLaConfiguracion(): void
+    {
+        $ficha = $this->ficha('Cable test lugar', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+        ConfiguracionEspecificacion::updateAll(['lugarEntregaPorDefecto' => 'Almacenes test USFX'], ['id' => ConfiguracionEspecificacion::obtener()->id]);
+        Proyecto::updateAll(['lugarEntrega' => 'Administración de la Facultad test de Agrarias'], ['id' => $this->proyecto->id]);
+
+        $this->guardarLista([$this->fila(null, 2, $ficha)], 'encargado');
+        $this->assertSame('Administración de la Facultad test de Agrarias', $this->unicoItem()->emisionVigente->lugarEntrega);
+
+        // Al reemitir, lo que se escribe manda; vacio = el del proyecto (aunque haya cambiado).
+        $escrito = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'otro lugar', 'lugarEntrega' => 'Bloque test B'], 'encargado');
+        $this->assertSame('Bloque test B', $escrito['emision']->lugarEntrega);
+
+        Proyecto::updateAll(['lugarEntrega' => null], ['id' => $this->proyecto->id]);
+        $vacio = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'sin lugar', 'lugarEntrega' => ' '], 'encargado');
+        $this->assertSame('Almacenes test USFX', $vacio['emision']->lugarEntrega);
     }
 
     public function testElNumeroEtPuedeCoincidirConElDeUnNetViejo(): void
@@ -99,7 +119,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertTrue($vieja->save(false));
 
         $this->assertSame(sprintf('NET:%03d/%s', $nueva->numeroNet, date('y')), $vieja->codigo());
-        $this->assertSame(sprintf('RD-PI-ET-%03d/%s', $nueva->numeroNet, date('y')), $nueva->codigo());
+        $this->assertSame(sprintf('RD-PI-ET-%03d', $nueva->numeroNet), $nueva->codigo());
     }
 
     public function testFichaSinContenidoNoSeEnlaza(): void
@@ -199,7 +219,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame($anterior->codigo(), $nueva->codigo());
         $this->assertSame(1, (int) $anterior->versionDocumento);
         $this->assertSame(2, (int) $nueva->versionDocumento);
-        $this->assertSame($anterior->codigo() . ' v02', $nueva->codigoConVersion());
+        $this->assertSame($anterior->codigo() . ' v1.1', $nueva->codigoConVersion());
         $this->assertSame($siguiente, $this->siguienteEt());
         $this->assertSame(7.0, (float) $nueva->cantidad);
         $this->assertSame('Suministros USFX', $nueva->lugarEntrega);
@@ -219,7 +239,7 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame($siguiente, $this->siguienteEt());
     }
 
-    public function testLlevaElProcesoDelProyectoYAlReemitirConservaProcesoYAnio(): void
+    public function testLlevaElProcesoDelProyectoYAlReemitirLoConserva(): void
     {
         $gr = Proceso::findOne(['codigo' => 'GR']);
         if ($gr === null) {
@@ -231,17 +251,19 @@ class EspecificacionEmisionTest extends Unit
         $this->guardarLista([$this->fila(null, 5, $ficha)]);
         $emision = $this->unicoItem()->emisionVigente;
         $this->assertSame('GR', $emision->proceso);
-        $this->assertSame(sprintf('RD-GR-ET-%03d/%s', $emision->numeroNet, date('y')), $emision->codigo());
+        // Sin año (2026-11-10).
+        $this->assertSame(sprintf('RD-GR-ET-%03d', $emision->numeroNet), $emision->codigo());
 
         // Emitida "el año pasado" y despues el proyecto paso a PI: la
-        // reemision es el mismo documento, con su proceso y su año.
+        // reemision es el mismo documento, con su proceso y su año de emision.
         EspecificacionEmision::updateAll(['anio' => (int) date('y') - 1], ['id' => $emision->id]);
         Proyecto::updateAll(['idProceso' => (new ProcesoService())->idPorDefecto()], ['id' => $this->proyecto->id]);
         $siguiente = $this->siguienteEt();
 
         $nueva = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'venció'], 'encargado')['emision'];
 
-        $this->assertSame(sprintf('RD-GR-ET-%03d/%02d v02', $emision->numeroNet, (int) date('y') - 1), $nueva->codigoConVersion());
+        $this->assertSame(sprintf('RD-GR-ET-%03d v1.1', $emision->numeroNet), $nueva->codigoConVersion());
+        $this->assertSame((int) date('y') - 1, (int) $nueva->anio);
         $this->assertSame($siguiente, $this->siguienteEt());
     }
 
@@ -277,10 +299,17 @@ class EspecificacionEmisionTest extends Unit
             ['emision' => $emision, 'proceso' => \backend\models\Proceso::nombreDe($emision->codigoProceso())]
         );
 
-        $this->assertStringContainsString('<strong>Versión:</strong> 03', $html);
-        $this->assertStringContainsString('Versión: 03', $html);
-        // "RD-PI-ET-015/26" -> "RD-PI-ET-015_26_v03.pdf": la barra no va en un nombre de archivo.
-        $this->assertSame(str_replace('/', '_', $emision->codigo()) . '_v03.pdf', $this->emisiones->generarPdf($emision, $html)['nombreArchivo']);
+        // En la cabecera (sin negrita desde el 2026-11-09, como el Word) y en el control de elaboracion.
+        $this->assertStringContainsString('Versión: 1.2</td>', $html);
+        // La cantidad con el NOMBRE de la unidad, no la abreviatura (2026-11-10).
+        $nombreUnidad = UnidadMedida::nombresPorAbreviatura()[(string) $emision->unidad] ?? null;
+        if ($nombreUnidad !== null) {
+            $this->assertStringContainsString(' ' . Html::encode($nombreUnidad) . '</div>', $html);
+            $this->assertStringNotContainsString(' ' . Html::encode((string) $emision->unidad) . '</div>', $html);
+        }
+        $this->assertStringContainsString('Versión: 1.2', $html);
+        // "RD-PI-ET-015" -> "RD-PI-ET-015_v1_2.pdf".
+        $this->assertSame(str_replace('/', '_', $emision->codigo()) . '_v1_2.pdf', $this->emisiones->generarPdf($emision, $html)['nombreArchivo']);
     }
 
     public function testAvisaVencimientoYVersionNueva(): void
@@ -315,11 +344,15 @@ class EspecificacionEmisionTest extends Unit
             ['emision' => $emision, 'proceso' => \backend\models\Proceso::nombreDe($emision->codigoProceso())]
         );
 
-        $this->assertStringContainsString('Versión: 01', $html);
+        $this->assertStringContainsString('Versión: 1.0', $html);
         $this->assertStringContainsString('Ing. Quien Elabora', $html);
         $this->assertStringContainsString('V°B° Ing. Quien Aprueba', $html);
         $this->assertStringContainsString('RESPONSABLE DE REDES', $html);
-        $this->assertStringContainsString('Fecha de aprobación: ' .(new DateTimeImmutable($emision->fechaEmision))->format('d/m/Y'), $html);
+        // La version solo en la cabecera (2026-11-10), no en la tabla de firmas.
+        $this->assertSame(1, substr_count($html, 'Versión:'));
+        // En tabla y con la fecha dd-mm-aaaa, como el Word (2026-11-09).
+        $this->assertStringContainsString('Fecha de aprobación: ' . (new DateTimeImmutable($emision->fechaEmision))->format('d-m-Y'), $html);
+        $this->assertStringContainsString('>Firma:</td>', $html);
         $this->assertStringNotContainsString('Ing. Otra Persona', $html);
     }
 
@@ -350,7 +383,7 @@ class EspecificacionEmisionTest extends Unit
 
         $pdf = $this->emisiones->generarPdf($emision, $html);
         $this->assertStringStartsWith('%PDF', $pdf['contenido']);
-        $this->assertSame(str_replace([':', '/'], '_', $emision->codigo()) . '_v01.pdf', $pdf['nombreArchivo']);
+        $this->assertSame(str_replace([':', '/'], '_', $emision->codigo()) . '_v1_0.pdf', $pdf['nombreArchivo']);
     }
 
     public function testRegistroFiltraPorEstadoYBuscaPorCodigo(): void
@@ -375,13 +408,13 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame([], $deEsteProyecto(['estado' => 'vencida']));
         // El codigo trae todas sus versiones; con la version, solo esa.
         $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => (string) $numero]));
-        // Sin el año: el de todos los años; con otro año, no es esta.
+        // Sin el año, como sale desde el 2026-11-10; con el año de los impresos del 29-10 al 10-11 tambien (con otro año, no es esta).
         $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d', $numero)]));
         $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d/%s', $numero, date('y'))]));
         $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('%d/%s', $numero, date('y'))]));
         $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d/%02d', $numero, (int) date('y') - 1)]));
         $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d', $numero)]));
-        $this->assertSame([$idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d/%s v01', $numero, date('y'))]));
+        $this->assertSame([$idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d/%s v1.0', $numero, date('y'))]));
         $this->assertSame([$idSegunda], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d V02', $numero)]));
         // Es de la serie ET: buscarla como NET no la encuentra.
         $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $numero, date('y'))]));
@@ -395,8 +428,8 @@ class EspecificacionEmisionTest extends Unit
 
         $csv = $this->emisiones->exportarCsv(['buscar' => sprintf('RD-PI-ET-%03d v01', $numero)]);
         $this->assertStringStartsWith("\xEF\xBB\xBF" . 'Código;Versión;"Código anterior";"Fecha de emisión"', $csv);
-        $this->assertStringContainsString(sprintf('RD-PI-ET-%03d/%s;01;', $numero, date('y')), $csv);
-        $this->assertStringContainsString(sprintf('Reemplazada;prueba;"RD-PI-ET-%03d/%s v02"', $numero, date('y')), $csv);
+        $this->assertStringContainsString(sprintf('RD-PI-ET-%03d;1.0;', $numero), $csv);
+        $this->assertStringContainsString(sprintf('Reemplazada;prueba;"RD-PI-ET-%03d v1.1"', $numero), $csv);
     }
 
     public function testUnaPasadaDeNetAEtSeBuscaPorSuCodigoAnterior(): void

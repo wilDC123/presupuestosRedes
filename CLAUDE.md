@@ -6,13 +6,17 @@ instalaciones de redes en la Universidad San Francisco Xavier de Chuquisaca (USF
 para la Unidad de Redes y Telecomunicaciones de DTIC.
 
 ## Stack tecnológico (NO cambiar sin autorización del tutor académico)
-- Backend: PHP 8.2 + Yii2 Advanced (v2.0.55)
+- Backend: PHP 8.3 + Yii2 Advanced (v2.0.55). Desde el 2026-11-02 (la Ing. de DTIC pidió PHP 8.3 para el
+  servidor de pruebas): `composer.json` exige `>=8.3` y PHPStan analiza como 8.3 (`phpVersion: 80300`)
 - Frontend: jQuery, validación en frontend Y backend
 - Base de datos: SQL Server (institución usa 2012; entorno local puede diferir)
 - Servidor web real de la institución: Nginx (confirmado con el equipo técnico)
 - SO del servidor: Ubuntu Server (Linux, case-sensitive)
-- Entorno local de desarrollo: Laragon con PHP 8.2.33, Nginx en puerto 8080
-- Driver SQL Server para PHP: msphpsql v5.12.0 (última compatible con PHP 8.2)
+- Entorno local de desarrollo: Laragon con PHP 8.3.33 (`C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64`, mismo
+  php.ini que el 8.2.33 de antes), Nginx en puerto 8080
+- Driver SQL Server para PHP: msphpsql v5.12.0 (soporta PHP 8.1 a 8.3)
+- Modelo lógico de datos (diagramas ER en Mermaid + diccionario generado de la base): `docs/modelo-logico-datos.md`.
+  Al agregar o cambiar tablas, actualizarlo
 
 ## Estructura del proyecto (Yii2 Advanced)
 - `backend/` → panel administrativo, AQUÍ vive el módulo de redes que se está construyendo
@@ -35,19 +39,26 @@ para la Unidad de Redes y Telecomunicaciones de DTIC.
 ### SÍ incluye:
 - CODIFICACIÓN según el lineamiento de la DTIC RD-GD-LI-001 (2026-10-22; resumen y decisiones en
   `docs/cambios-codificacion-lineamiento.md`): `RD-PI-PT-NNN` proyecto, `RD-<proceso>-PR-NNN` presupuesto,
-  `RD-<proceso>-ET-NNN/AA` especificación técnica (3 cifras; después del 999 sigue con 1000). Desde la
+  `RD-<proceso>-ET-NNN` especificación técnica (3 cifras; después del 999 sigue con 1000). Desde la
   revisión del 2026-10-29 (paso 4, migración `m261030_024446_especificacion_con_proceso_y_anio`): PR y ET
-  llevan el proceso DEL PROYECTO (el PT siempre PI), con UN solo número para todos los procesos; SOLO la
-  ET lleva el año ("/26") y vuelve a 001 cada 1 de enero (`CorrelativoDocumento.anio`, `reiniciaPorAnio()`;
-  año del calendario de Bolivia, `CodificacionService::anioActual()`); PT y PR no llevan año ni se
-  reinician. Lo emitido conserva su código: `EspecificacionEmision.proceso` y `anio` congelados (reemitir en
-  enero un 850/26 da 850/26 v02); el presupuesto guarda el código entero en `numeroPresupuesto`
+  llevan el proceso DEL PROYECTO (el PT siempre PI), con UN solo número para todos los procesos. NINGÚN código
+  lleva el AÑO ni se reinicia: desde el 2026-11-10 (migración `m261110_060000_especificacion_sin_anio`) la ET
+  tampoco ("RD-PI-ET-033", no "/26"; del 29-10 al 10-11 llevaba "/26" y volvía a 001 cada 1 de enero), sigue
+  subiendo (999, 1000…); también las ya emitidas salen sin "/26". Se quitaron `CorrelativoDocumento.anio`,
+  `reiniciaPorAnio()` y `anioActual()`; `EspecificacionEmision.anio` queda solo como dato (filtro "Año" del
+  registro, código de los NET viejos) y el registro todavía encuentra "RD-PI-ET-033/26" (lo impreso). Lo emitido
+  conserva su código: `EspecificacionEmision.proceso` congelado (reemitir da el mismo código, versión + 1); el
+  presupuesto guarda el código entero en `numeroPresupuesto`
   (`Presupuesto::codigoProceso()`). La línea "Proceso:" de la cabecera de los PDF sale de
-  `Proceso::nombreDe()` con ese código. Las ET emitidas antes (021–024, todas de 2026) pasaron a /26. Los números los da
+  `Proceso::nombreDe()` con ese código. Los números los da
   el sistema desde `redes.CorrelativoDocumento` (una fila por tipo, `CodificacionService::tomar()` con
   UPDLOCK); el encargado fija desde cuál siguen en el menú "Codificación de documentos" (solo mayor que
-  el último usado). El formato está en `CorrelativoDocumento::codigo()`. La solicitud de cotización NO
-  lleva código del lineamiento (FR no aplica). Letra Carlito (= medidas de Calibri, OFL,
+  el último usado). El formato está en `CorrelativoDocumento::codigo()`. Desde el 2026-11-09 (formatos
+  corregidos v3) la SOLICITUD DE PROFORMA lleva código `RD-<proceso>-SC-NNN` (`SolicitudCotizacion.codigoDocumento`,
+  correlativo `CorrelativoDocumento::TIPO_SOLICITUD`, sin año, un número para todos los procesos; lo pone
+  `SolicitudCotizacionService` al crearla y no cambia; versión fija 1.0; migración
+  `m261110_010000_codigo_solicitud_cotizacion`, que numeró las existentes en orden de creación). "SC-01" (`codigoCorto()`)
+  y "001 · Fase 2 / SC-01" (`codigo()`) siguen solo en las pantallas. Letra Carlito (= medidas de Calibri, OFL,
   `backend/fonts/carlito`) en todos los impresos menos la carta
 - Gestión de proyectos (`redes.Proyecto`; código RD-PI-PT-NNN del correlativo PT al crearlo, los
   existentes se renumeraron a 3 cifras)
@@ -172,8 +183,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   no se anotan (se pueden agregar igual: un `registrar()` en su servicio). Vista del proyecto: recuadro "Fechas"
   (`HistorialService::fechas()`: creación = `Proyecto.fechaCreacion`, revisión = último paso a "en revisión",
   aprobación = `Presupuesto.fechaAprobacion`, última modificación = último hecho y quién) y sección "Historial"
-- FICHA TÉCNICA DEL PROYECTO (revisión del 2026-10-29, paso 7; formato PROVISIONAL hasta que el Ing. de DTIC
-  pase el suyo): PDF oficio desde el botón "Imprimir ficha técnica" de la tarjeta "Datos generales" de la vista
+- FICHA TÉCNICA DEL PROYECTO (revisión del 2026-10-29, paso 7; desde el 2026-11-05 documento normado, ver PARTE 4 arriba;
+  lo que sigue es lo de antes): PDF oficio desde el botón "Imprimir ficha técnica" de la tarjeta "Datos generales" de la vista
   del proyecto (`proyecto/ficha`, `ProyectoController::actionFicha()`, vista `proyecto/ficha-pdf.php`, datos de
   `ProyectoService::datosFicha()`), se abre en el navegador para imprimir. Secciones: 1 datos (código, nombre,
   descripción, tipo, proceso, fase), 2 unidades, 3 área de intervención (agrupada), 4 equipo (persona, rol,
@@ -181,6 +192,146 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   con estado y total, especificaciones vigentes, solicitudes de cotización); al pie, cuándo y quién la imprimió.
   "Es un reporte de control, no de la gestión documental": cabecera SIN código del lineamiento (la de la
   solicitud: código del proyecto | unidad / dependencia | fecha de impresión | página), sin firmas ni marca de agua
+- REVISIÓN DEL 2026-11-05, PARTE 1 (acta `Desktoprchivos guia\A1cuerdos_revision_ficha_proyecto.md`): VERSIÓN
+  "1.0" en todos los documentos (`backend\components\VersionDocumento`: la versión 1 se escribe "1.0", la 2 "1.1"…;
+  en la base sigue el número corrido; el buscador del registro entiende "v1.1" y "v02"; antes "01", "02").
+  ÁREA DE INTERVENCIÓN en documentos = UNA línea por edificio, sin repetirlo, con bloque, piso y espacio juntos
+  (`ProyectoAreaIntervencion::lineasPorEdificio()`; bloques enteros juntos: "Bloque A y Bloque B"; `resumen()` las une
+  con " | " para el historial). El presupuesto y la lista ya NO llevan unidad ni área (van en la ficha técnica); el
+  presupuesto ya no pide área al enviarlo a revisión (`Presupuesto.areaIntervencion` queda solo con lo de antes).
+  Formulario ET: nada por debajo de 11 pt
+- REVISIÓN DEL 2026-11-05, PARTE 2 (punto 7; migración `m261106_030000_codigo_lista_materiales`): la LISTA DE MATERIALES
+  NO SE APRUEBA (la que se aprueba es el presupuesto) y tiene CÓDIGO PROPIO `RD-<proceso>-LM-NNN`
+  (`Proyecto.codigoLista`, correlativo `CorrelativoDocumento::TIPO_LISTA`, sin año; antes llevaba el del proyecto). Lo pone
+  `ProyectoService` al crear el proyecto (cada fase es su propio proyecto, su propia lista); si se cambia el proceso antes del
+  primer envío a cotización, el código cambia de proceso con el mismo número; después queda fijo. Los proyectos existentes
+  recibieron LM-001… en orden de creación. "Enviar a cotización" EMITE la versión (`ListaItemsService::emitirVersion()`;
+  `ListaMaterialesAprobacion` conserva su nombre: una fila = versión enviada, `fechaAprobacion` = fecha del envío). El PDF
+  lleva solo "ELABORADO POR" y "Versión: x" (`_control-elaboracion` con `soloElaborado`). Lo que se dice abajo de la
+  aprobación de la lista (paso 8b) quedó así reemplazado
+- ORDEN DE CAMBIO (revisión del 2026-11-05 punto 4, PARTE 6b, 2026-11-09; formato RD-GD-FR-006; migración
+  `m261110_030000_orden_de_cambio`; decidido con el desarrollador el 2026-11-09): un PRESUPUESTO ADICIONAL dentro de una
+  fase APROBADA, solo con lo que se agrega ("100 m de cable comprados, piden 50 m más"). OPCIÓN B: es una FILA MÁS de
+  `redes.Proyecto`, con el mismo `numeroProyecto` y `numeroFase` que su fase, `idFaseOrigen` (la fase) y
+  `numeroOrdenCambio` (1, 2…; índice único número + fase + orden). Así tiene sola su lista (código LM propio), sus ET
+  (EMISIONES PROPIAS con la cantidad de la orden; la ET de la fase no se toca), solicitudes (SC), presupuesto (PR) y carta,
+  y sigue los mismos pasos. `Proyecto::esOrdenCambio()`, `textoOrdenCambio()` ("Orden de cambio N.° 1"), relaciones
+  `faseOrigen` y `ordenesCambio`. NO es una fase: `getFases()` la excluye, `esUltimaFase()` = false, no cuenta en
+  `tieneVariasFases()` ni en la versión de la ficha técnica (aprobarla no la cambia), no tiene código PT (usa
+  `codigoFicha()` de la fase 1). `identificador()` = "Proyecto 001 · Fase 1 · Orden de cambio N.° 1"; `lineaDocumento()` =
+  "PROYECTO: 001 – NOMBRE (FASE 1) – ORDEN DE CAMBIO N.° 1" (propuesta, a confirmar con el Ing.); SC en pantalla "001 · OC 1 /
+  SC-01". Del FR-006 se guardan SOLO tipo, descripción y motivo (`idTipoOrdenCambio`, `descripcionCambio`,
+  `motivoCambio`; escenario `Proyecto::SCENARIO_ORDEN_CAMBIO`); el FR-006 se hace en Word y se le adjunta el presupuesto. El
+  TIPO es un catálogo (pedido del desarrollador el 2026-11-09; migración `m261110_040000_crear_tipo_orden_cambio`):
+  `redes.TipoOrdenCambio` (nombre único, activo), cargado con la lista 7.1.1 del FR-006 tal cual (Nuevas solicitudes de los
+  usuarios; Errores u omisiones en la planificación y propuestas técnicas; Presupuestos imprecisos; Cambios en el alcance de
+  los proyectos; Costos de recursos; Eventos no planificados), administrado en Configuración → "Tipos de orden de cambio"
+  (`TipoOrdenCambioService`); obligatorio en la orden; uno en uso no se elimina (se desactiva) y quien lo tenía lo conserva
+  (`TipoOrdenCambio::reglaElegible()`). Reglas en `OrdenCambioFaseService` (no confundir con `OrdenCambioService` = reabrir la
+  lista): se registra solo sobre una FASE con presupuesto aprobado (botón "Registrar orden de cambio" en la vista,
+  `proyecto/orden-cambio?idFase=`); copia de la fase los datos del proyecto, el área, el equipo y el lugar de entrega (fijos:
+  `datosComunesFijos()`; el formulario general del proyecto no la edita, "Editar datos" lleva a
+  `proyecto/editar-orden-cambio`); se edita mientras su presupuesto no esté aprobado ni cancelado; si NO se aprueba se
+  ELIMINA con lista, solicitudes, cotizaciones y presupuesto, sus ET quedan ANULADAS y pasan a la fase (una emisión siempre
+  es de un proyecto), los códigos LM/SC/PR/ET no se reutilizan; una aprobada no se elimina. Historial en la orden y en la fase
+  (`ACCION_ORDEN_CAMBIO_CREADA` / `_ELIMINADA`). Vista: "Fases del proyecto" con las órdenes debajo de su fase; listado con
+  "OC n". En la ficha técnica va dentro de la carpeta de su fase y suma al COSTO TOTAL (parte 6c, ver FICHA TÉCNICA V3).
+  PENDIENTE: confirmar con el Ing. la línea del proyecto y el código LM propio de la orden
+- PIES DE FIRMA EN TABLA (2026-11-09, decidido por el desarrollador, como los Word de FORMATOS CORREGIDOS v3):
+  `views/pdf/_control-elaboracion.php` (presupuesto, formulario ET y lista de materiales) es una tabla: fila gris
+  "| ELABORADO POR | APROBADO POR", filas "Firma:" (2 cm para firmar), "Nombre:" (prefijo + nombre, ej. "V°B° Ing. …") y
+  "Cargo:" (negrita), y abajo, de lado a lado en gris claro, "Fecha de aprobación: 23-10-2026" (fecha dd-mm-aaaa). SIN
+  VERSIÓN desde el 2026-11-10 (ya está en la cabecera de la página); la lista y la solicitud (una firma) no llevan esa fila. Anchos del Word 12% | 38% | 50%. La lista de materiales (no se aprueba, `soloElaborado`): solo "ELABORADO
+  POR" a TODO EL ANCHO de la hoja (indicación del Ing., 2026-11-09: con una sola firma ocupa todo el ancho), y abajo solo la versión. El formulario ET la pide en 11 pt (`letraGrande`); los demás en 9/10 pt. Las
+  firmas siguen saliendo de las mismas configuraciones y copias congeladas que antes
+- FICHA TÉCNICA V3 (PARTE 6c, 2026-11-09; el Word "00 PT RD-PI-PT-001" de FORMATOS CORREGIDOS v3; reemplaza el orden de
+  las partes 4 y 5d): `proyecto/ficha-pdf.php` + `ProyectoService::datosFicha()`. 1. INFORMACIÓN GENERAL (n.° de proyecto,
+  nombre EN MAYÚSCULAS, descripción, tipo, proceso, "Fases" si hay varias, COSTO TOTAL DEL PROYECTO y las FECHAS en el mismo
+  cuadro: con fase única filas "Fecha de creación / revisión / aprobación / última modificación", con varias un subcuadro
+  "Fechas | Fase 1 | Fase 2"), 2. UNIDADES / DEPENDENCIA (título desde el 2026-11-10), y después con fase única 3 área, 4 equipo, 5 CARPETA ECONÓMICA; con varias "3. FASE
+  1" (3.1 área, 3.2 equipo, 3.3 carpeta), "4. FASE 2"… CARPETA = tabla Documento | Código | Detalle | Versión
+  (`ProyectoService::carpeta()`): lista de materiales (rótulo "Lista de materiales y condiciones previas (BoM)" desde el 2026-11-10; "Elaborada el …"), presupuesto ("Aprobado el … · Total Bs." o su estado),
+  especificaciones vigentes (con "Reemitida el …: motivo" si se reemitieron; el motivo está en la emisión reemplazada), solicitudes
+  de proforma (rubro · fecha) y PROFORMAS RECIBIDAS (una fila por cotización: proveedor · fecha; solo si hay). Las ÓRDENES DE
+  CAMBIO de la fase van dentro de su carpeta: barra gris "Orden de cambio N.° 1 · solicitada el … · aprobada el …" + "Motivo: …"
+  y sus documentos. COSTO TOTAL = `ProyectoService::costoTotal()`: suma de los presupuestos APROBADOS de fases y órdenes, con el
+  detalle "Fase 1: 5,732.50 + orden de cambio N.° 1: 1,870.00 + fase 2: 3,026.00 (presupuestos aprobados)" (fase única:
+  "Presupuesto aprobado"); también en la vista del proyecto (recuadro de fases). SIN FIRMAS (sale el control de elaboración que
+  tenía desde la parte 4); sigue la marca BORRADOR mientras alguna fase esté sin aprobar. Fechas dd-mm-aaaa; carpeta en 10 pt;
+  al pie "Impresa el … por …"
+- REABRIR LA LISTA (PARTE 6a, 2026-11-09): lo que el sistema llamaba "orden de cambio" (reabrir una lista enviada a
+  cotización, con su motivo: `redes.OrdenCambio`, `OrdenCambioService`, `lista-items/solicitar-cambio`) en pantalla se
+  llama ahora "reabrir la lista" / "Reaperturas de la lista". La tabla y las clases conservan su nombre. La ORDEN DE
+  CAMBIO del formato RD-GD-FR-006 es otra cosa: un presupuesto adicional de una fase aprobada (parte 6)
+- REVISIÓN DEL 2026-11-05, PARTE 3: el LUGAR DE ENTREGA es de CADA especificación (pueden ser distintos). Se escribe en la
+  fila de la lista, debajo del selector de especificación (`items[n][lugarEntrega]`, `ProyectoItem::$lugarEntregaPedido`, no
+  es columna: se guarda en `EspecificacionEmision.lugarEntrega`). Formulario nuevo: toma el de la fila (vacío = el del
+  proyecto). Uno ya emitido con otro lugar se REEMITE al guardar (mismo código, versión + 1, motivo "Se cambió el lugar de
+  entrega: A → B"; junto con "Cambiar ítem" es una sola reemisión, `ListaItemsService::reemitirPorCambio()`); vacío no
+  cambia nada. `Proyecto.lugarEntrega` queda como "Lugar de entrega por defecto" y SALE de la ficha técnica. DESDE EL 2026-11-10 ("no quieren que esté en crear un proyecto") ese lugar por defecto ya NO
+  se pide en el formulario del proyecto ni sale en su vista: se escribe ARRIBA DE LA LISTA DE ÍTEMS ("Lugar de entrega de los
+  materiales", `lugarEntregaProyecto`), se guarda con el mismo botón, ANTES de emitir y en la
+  misma transacción (`ListaItemsService::guardar(..., $lugarEntrega)`, null = no se toca, '' = se borra; queda en el
+  historial); si el proyecto no tiene, el campo trae la sugerencia `Proyecto::lugarEntregaSugerido()` y se guarda al guardar la
+  lista. Cada fila sigue pudiendo poner otro; al escribir arriba se actualiza el texto de ejemplo de las filas (`lista-items.js`).
+  La fila va PLEGADA (ocupaba mucho), en la MISMA LÍNEA que "Cambiar ítem": si su lugar es el de arriba (o no tiene), solo
+  el enlace "Otro lugar de entrega"; si es otro, "· Entrega: … Cambiar"; el campo aparece debajo de esa línea al hacer clic. Uno igual al de arriba se envía vacío (en un
+  formulario ya emitido, vacío no reemite; para volver al de arriba hay que escribirlo).
+  `Proyecto` ya no tiene regla para `lugarEntrega` (el formulario del proyecto no lo cambia); la fase siguiente y la orden de
+  cambio lo siguen copiando
+- NÚMERO DE PROYECTO (revisión del 2026-11-05 puntos 1 y 3; PARTE 5a, migración `m261106_120000_numero_de_proyecto`;
+  decidido con el desarrollador el 2026-11-06: OPCIÓN 1, sin tabla nueva). Cada fila de `redes.Proyecto` es una FASE (con
+  su área, equipo y carpeta económica); `Proyecto.numeroProyecto` (correlativo `CorrelativoDocumento::TIPO_NUMERO_PROYECTO`
+  = 'NP') lo COMPARTEN todas las fases y `numeroFase` las ordena (índice único numeroProyecto + numeroFase). Un proyecto
+  nuevo toma el siguiente NP; una fase siguiente, el de la anterior (`ProyectoService::asignarNumero()`), y no se repite una
+  fase. Se escribe "001" (`Proyecto::numeroTexto()`, ÚNICO lugar del formato, 3 cifras hasta que el Ing. confirme dígitos o
+  prefijo). `Proyecto::identificador()` = "Proyecto 001" o "Proyecto 001 · Fase 2" (migas, títulos, avisos);
+  `etiqueta()` = "001 — Nombre"; `tieneVariasFases()` (con fase única no se muestra "Fase"). Los existentes: cada cadena de
+  fases recibió un número en orden de creación (local: 26 y 27 = proyecto 001 fases 1 y 2, 28 = 002). VARIAS FASES A LA VEZ
+  (dicho por el Ing. de DTIC, 2026-11-09, PARTE 5f): una fase siguiente se crea aunque la anterior no esté aprobada (del 06
+  al 09-11 se exigía la anterior APROBADA).
+  PARTE 5b ("Agregar fase"): botón en la vista del proyecto y en el paso Presupuesto, en la vista del proyecto en la
+  ÚLTIMA fase, aprobada o no; en el paso Presupuesto, como atajo, con ella aprobada (`ProyectoService::puedeAgregarFase()`,
+  `Proyecto::esUltimaFase()`); abre `proyecto/create?idAnterior=`
+  ("Agregar fase N al proyecto 001"). FRANJA "FASES" (2026-11-10, `proyecto/_franja-fases.php`, `ProyectoService::franjaFases()`):
+  encima de la barra de pasos de la vista del proyecto, una pastilla por fase (estado y total de su presupuesto), sus órdenes
+  de cambio después ("›"), la que se ve marcada ("· está viendo") y al final "Agregar fase N →"; con varias fases (o con
+  órdenes de cambio) el botón "Agregar fase" de la cabecera se quita y queda solo esa pastilla. Con fase única y sin órdenes
+  no sale y todo queda como antes. El recuadro "Fases del proyecto" de abajo sigue igual. La fase nueva copia los DATOS DEL PROYECTO (`Proyecto::ATRIBUTOS_COMUNES`: nombre,
+  descripción, tipo, proceso y las dos unidades), que en una fase 2+ van DESHABILITADOS y el servidor siempre toma de la fase
+  anterior. Se escriben SOLO en la fase 1: al guardarla se COPIAN a las demás fases en la misma transacción, con su historial
+  ("Desde la fase 1: …") y el cambio de código LM si cambió el proceso (`ProyectoService::llevarDatosComunesALasFases()`);
+  quedan fijos también en la fase 1 cuando OTRA fase está aprobada (`ProyectoService::datosComunesFijos()`); trae el
+  equipo y el lugar de entrega por defecto (editables); área y carpeta empiezan VACÍAS. Ya no hay selector "fase anterior"
+  en el formulario (se quitó `proyectosAprobados()`); al editar, la fase anterior no cambia. Vista: "Fases del proyecto 001"
+  (`Proyecto::$fases`) con el estado de cada presupuesto; listado ordenado por número y fase, "Fase" solo si hay varias.
+  PARTE 5c: la ÚNICA línea del proyecto en los documentos es `Proyecto::lineaDocumento()` = "PROYECTO: 001 – NOMBRE EN
+  MAYÚSCULAS (FASE 2)" (guion largo; "(FASE n)" solo si hay varias fases; SIN negrilla, a confirmar con el Ing.). La usan la
+  lista de materiales, el presupuesto y el reporte de relación con SIGMA. La solicitud de cotización NO la lleva (decidido
+  con el desarrollador); el formulario de especificación sigue con su formato (Dependencia, sin línea de proyecto).
+  Pendiente: 5d una sola ficha PT por proyecto
+- EL CÓDIGO PT ES DE LA FICHA TÉCNICA, no del proyecto (aclarado por el desarrollador el 2026-11-05: el lineamiento cambiará
+  "Proyecto técnico" por "Ficha técnica del proyecto"; en "Codificación de documentos" el tipo PT ya se llama así). Hoy se
+  guarda en `Proyecto.codigo` porque cada proyecto tiene una sola ficha; el proyecto tendrá su propio número en la parte 5
+- UNA SOLA FICHA TÉCNICA POR PROYECTO (PARTE 5d, 2026-11-06; migración `m261106_150000_una_ficha_por_proyecto`): solo la fase
+  1 tiene código PT (`Proyecto.codigo`); una fase siguiente no toma uno (NULL) y usa el de su proyecto
+  (`Proyecto::codigoFicha()`). La migración quitó el PT de las fases 2+ (local: RD-PI-PT-027) y lo anotó en el historial; el
+  número no se reutiliza. La ficha se imprime IGUAL desde cualquier fase (`ProyectoService::datosFicha()`: `fases`, una por
+  fase con sus fechas, lista, presupuesto, ET y SC): 1 datos (con "Fases: N"), 2 unidades, 3 fechas (una columna por fase),
+  y un bloque "4. FASE 1" (4.1 área, 4.2 equipo, 4.3 documentos), "5. FASE 2"…; con fase única, 4 área, 5 equipo, 6
+  documentos. VERSIÓN calculada, sin tabla: cada fase aprobada es una versión (1.0, 1.1…), contadas en el ORDEN EN QUE
+  SE APROBARON (5f: la fase 2 puede aprobarse antes que la 1); mientras ALGUNA fase tenga el presupuesto sin aprobar, la
+  siguiente en BORRADOR (una fase con presupuesto cancelado no cuenta); aprobada = fecha y firmas del presupuesto aprobado
+  más reciente; fecha de cabecera = creación de la fase más nueva. En pantallas la solicitud de cotización se identifica con
+  el número: "001 · Fase 2 / SC-01" (`SolicitudCotizacion::codigo()`; en el PDF y la ficha, su código RD-PI-SC-NNN);
+  el historial copia `identificador()` en `codigoProyecto`
+- REVISIÓN DEL 2026-11-05, PARTE 4 (punto 2): la FICHA TÉCNICA es un DOCUMENTO normado (antes "reporte de control"):
+  cabecera del lineamiento (código = el del proyecto RD-PI-PT-NNN hasta la parte 5, versión 1.0, fecha = creación del
+  proyecto), orden 1 datos, 2 unidades, 3 fechas, 4 área, 5 equipo, 6 documentos (especificaciones en subtabla Código | Ítem
+  | Versión), "Fase" solo si hay más de una (`datosFicha()['variasFases']`), sin lugar de entrega, letra 11, control de
+  elaboración (elaborado y aprobado) al pie. Hasta las fases (parte 5) queda APROBADA con el presupuesto (punto de control
+  "Revisar y aprobar diseño"): fecha y firmas del presupuesto aprobado; antes, marca BORRADOR. Proformas: pendiente de decidir.
+  DESDE EL 2026-11-09 el orden, las proformas y la falta de firmas son los de FICHA TÉCNICA V3 (parte 6c)
 - `PresupuestoDetalle.observacion`: texto libre de la línea (medidas, "según especificación");
   los detalles de una compra concreta van ahí, no en el subcatálogo
 - Resumen por partida presupuestaria (`PresupuestoService::resumenPorPartida()`), en la vista
@@ -234,18 +385,23 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     versión ya usada en una emisión NO se modifica: editarla crea la siguiente
     (`EspecificacionService::guardarVersion()`); cambiar solo título/categoría/activo no crea versión.
   - EMISIÓN `redes.EspecificacionEmision`: el formulario con código `RD-PI-ET-001` (columna `serie` =
-    'ET', desde el 2026-10-22, correlativo desde 1; desde el 2026-10-29 `RD-<proceso>-ET-001/26`, ver
-    CODIFICACIÓN; índice único por serie + `anio` + `numeroNet` + `versionDocumento`;
+    'ET', desde el 2026-10-22, correlativo desde 1; desde el 2026-10-29 `RD-<proceso>-ET-001`, sin año desde el
+    2026-11-10, ver CODIFICACIÓN; índice único por serie + `numeroNet` + `versionDocumento`;
     `EspecificacionEmision::codigo()`. Las emitidas antes con `NET:880/26` se convirtieron a ET con la
     migración `m261022_144239_convertir_codigos_viejos_al_lineamiento` y guardan el NET en
     `codigoAnterior`, que se ve y se busca en el registro; la serie 'NET' queda solo para su `safeDown()`) que se firma y se
     entrega al proveedor. NUNCA cambia: guarda copias congeladas (título = nombre DTIC del ítem de la lista desde el
     2026-10-21, antes el de la ficha; cantidad, unidad,
     dependencia = unidad / dependencia del proyecto desde el 2026-10-29 (del 28 al 29 la solicitante, antes la facultad), garantía, textos,
-    condiciones de entrega; el lugar de entrega por defecto es desde el 2026-10-28 el texto
-    `ConfiguracionEspecificacion.lugarEntregaPorDefecto` de la configuración del formulario (vacío = no sale;
-    del 2026-10-26 al 28 fue "Administración de la <facultad>"),
-    `EspecificacionEmisionService::lugarEntregaPorDefecto()`, las anteriores conservan el suyo) y apunta a una
+    condiciones de entrega; el LUGAR DE ENTREGA es desde el 2026-11-03 el del PROYECTO (`Proyecto.lugarEntrega`, texto
+    libre, desde el 2026-11-10 arriba de la lista de ítems y antes en el formulario del proyecto; migración `m261104_020312_agregar_lugar_entrega_a_proyecto`, que puso
+    "Administración de la <unidad>" a los proyectos cuya unidad / dependencia empieza con "Facultad"; el formulario lo
+    SUGIERE igual, `Proyecto::lugarEntregaSugerido()` y `proyecto-form.js`, mientras el usuario no escriba otro; la fase
+    siguiente lo hereda; va al historial y a la ficha técnica) y, si el proyecto no tiene, el texto
+    `ConfiguracionEspecificacion.lugarEntregaPorDefecto` (vacío = no sale) (`EspecificacionEmisionService::lugarEntregaDe()`;
+    pedido del Ing. el 2026-10-26: "Administración de la … facultad", pero no todo se entrega en una facultad; del
+    2026-10-26 al 28 se armaba solo con la facultad, del 28 al 3-11 era solo el de la configuración). Al reemitir, lo
+    escrito en la ventana manda (vacío = el del proyecto); las anteriores conservan el suyo) y apunta a una
     versión que ya no cambia. Estados: vigente, reemplazada, anulada; "vencida" se calcula
     (fecha + vigencia). Reglas en `EspecificacionEmisionService`.
   Se ENLAZA a los ítems de la lista con `redes.ProyectoItem.idEspecificacion` (como máximo una por
@@ -269,10 +425,17 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `m261025_000938_version_del_documento_en_emision`). La casilla "Versión" del formulario es la del
   DOCUMENTO, no la de la ficha (`versionTexto()`); `codigo()` no lleva versión (lo citan carta,
   solicitud y presupuesto) y `codigoConVersion()` ("RD-PI-ET-015 v02") se usa en pantallas, registro
-  y CSV. Cambiar la ficha por otra sí da código nuevo (es otro documento). Reemitir se permite mientras el presupuesto no
+  y CSV. Cambiar la ficha por otra sí da código nuevo (es otro documento). "CAMBIAR ÍTEM" (2026-11-04): en una fila
+  ya guardada de la lista se elige otro ítem del subcatálogo SIN quitar la fila (ej. el cable en metros por el de
+  cajas); con la misma ficha su formulario se REEMITE (mismo código, versión + 1, motivo "Se cambió el ítem: A → B",
+  conserva las condiciones de entrega) en vez de anularse y gastar otro número (`ListaItemsService::cambiarItem()`,
+  `reemitirPorCambio()`; JS en `lista-items.js`). No se permite si la fila ya tiene cotizaciones
+  (`SolicitudCotizacionService::itemTieneCotizaciones()`: precios de otro producto, se quita y se agrega); con el
+  presupuesto en borrador borra su línea (precio directo o SIGMA del ítem anterior); se anota en el historial
+  (`HistorialProyecto::ACCION_LISTA_ITEM_CAMBIADO`). Reemitir se permite mientras el presupuesto no
   esté aprobado ni cancelado. Correlativo: el ET de `redes.CorrelativoDocumento` (antes
   `ConfiguracionEspecificacion.siguienteNet`, eliminado el 2026-10-22; esa tabla sigue con los textos fijos
-  del formulario), sube de 1 en 1, vuelve a 001 cada 1 de enero (2026-10-29) y nunca se reutiliza. Avisos que
+  del formulario), sube de 1 en 1, no se reinicia (del 2026-10-29 al 11-10 volvía a 001 cada 1 de enero) y nunca se reutiliza. Avisos que
   no bloquean: cantidad distinta de la emitida, emisión vencida, versión nueva de la ficha. La
   especificación es OPCIONAL por ítem: un ítem sin ella nunca bloquea lista, solicitud,
   cotización, presupuesto ni PDF. Los impresos citan el NET de la emisión vigente
@@ -290,10 +453,26 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Formulario de especificación en PDF (`especificacion/formulario`; en pantallas ya no se llama
   "formulario NET") con la cabecera del lineamiento (código, versión = la de la ficha emitida, fecha,
   página) y el formato institucional (tabla
-  Especificación | Propuesta | Cumple | No cumple, secciones I, II y III); marca de agua
+  Especificación | Propuesta | Cumple | No cumple, secciones I, II y III). NUMERACIÓN (2026-11-03): cada fila
+  lleva su número, CALCULADO y nunca guardado (`backend\components\NumeracionEspecificacion`, el único lugar que
+  lo decide; `EspecificacionVersion::caracteristicasNumeradas()`): I = 1.1 marca y modelo, 1.2 URL, 1.3… las
+  características. Cada fila tiene su NIVEL (`EspecificacionCaracteristica.nivel`, 1 a 3, flechas ← → en la ficha;
+  migración `m261103_190000_nivel_en_caracteristicas_de_especificacion`), como un índice: nivel 2 va debajo de la
+  última de nivel 1 (1.4 → 1.4.1), nivel 3 debajo de la de nivel 2 (1.4.1.1) y una de nivel 1 cierra el grupo (1.5);
+  un nivel que se salta uno se corrige al numerar y al guardar (`NumeracionEspecificacion::niveles()`). Un SUBTÍTULO
+  (`esSubtitulo`, casilla "Subtítulo"; un solo texto en `valor`, sin nombre) solo es la fila en negrita: el nivel no
+  depende de él (antes del nivel, todo lo que seguía a un subtítulo quedaba dentro hasta el siguiente; la migración
+  dejó así los niveles, sin cambiar ningún número, y lo atrapado se corrige a mano); II = garantía, una fila por línea (2.1…); la última = condiciones, una fila por dato
+  (3.1 validez, 3.2 tiempo, 3.3 lugar; 2.x si no hay garantía). Se quita el número escrito a mano del Word
+  ("II. MEDIO AMBIENTE", "1.Garantías"; `sinNumeral()`). Los mismos números se ven en la ficha, en "Ver detalle"
+  (`views/especificacion/_caracteristicas.php`) y en el formulario de edición (JS, misma regla). La migración
+  `m261103_141729_subtitulos_en_caracteristicas_de_especificacion` marcó 259 subtítulos seguros (sin nombre, una
+  línea, ≤ 40 caracteres, sin punto final, con filas después; `EspecificacionCaracteristica::pareceSubtitulo()`
+  para el importador), también en versiones emitidas: al reimprimirlas salen numeradas (decidido el 2026-11-03);
+  marca de agua
   REEMPLAZADO / ANULADO / VENCIDO. Al fondo de la última página, el "control de elaboración" del
   lineamiento, como el del presupuesto (2026-10-22, vista compartida `views/pdf/_control-elaboracion.php`):
-  dos firmas SIN tabla (raya, nombre, cargo, "ELABORADO POR" / "APROBADO POR") y la línea "Versión: 02
+  dos firmas EN TABLA desde el 2026-11-09 (ver PIES DE FIRMA EN TABLA; antes sin tabla) y la línea "Versión: 02
   · Fecha de aprobación: …" (versión de la ficha; fecha = la de emisión). Las firmas se editan en la configuración del formulario y cada emisión
   guarda su COPIA (trait `FirmasDeControl`, migración
   `m261022_233202_control_elaboracion_en_formulario_especificacion`); las emitidas antes salen en blanco.
@@ -305,25 +484,38 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Carga inicial desde el banco de .docx de DTIC: `php yii especificacion/importar "<carpeta>"`
   (sin `--confirmar` solo escribe un CSV; `--desde=AAAA`). Agrupa por título + modelo sugerido y
   toma la emisión más reciente de cada familia. No importa emisiones antiguas
+- ORDEN DE LA LIBRERÍA (2026-11-03): `php yii especificacion/ordenar console/data/orden-especificaciones-2026-11-03.json`
+  (sin `--confirmar` solo muestra; `EspecificacionOrdenService`). El plan, revisado y aprobado por el desarrollador, deja
+  114 fichas con niveles, subtítulos y arreglos de forma (sin cambiar el orden de las filas ni los valores técnicos).
+  Cada ficha se reconoce por TÍTULO + HUELLA del contenido (nombre y valor de sus filas), no por id: sirve también en el
+  servidor de la DTIC; una ficha editada después del plan, ya ordenada o con la versión actual emitida se salta. Todo en
+  una transacción; se puede volver a correr. Aplicado en la base local el 2026-11-03 (las 172 fichas: ese día se borraron
+  los 9 proyectos de PRUEBA que tenían formularios ET, para liberar las 8 fichas emitidas; copia previa de la base en
+  `POAPresupuestos-antes-de-borrar-proyectos-2026-11-03.bak`, carpeta Backup de SQL Server). Las siglas en subtítulos
+  (VLAN, MIMO) quedan en mayúsculas. PENDIENTE: correrlo en el servidor de la DTIC y llevar al Ing. las 44 dudas (título "UN disco" con DOS discos,
+  FACE PLATE 4 TOMAS con "2 posiciones", fichas vacías, datos repetidos, restos del Word)
 - Cotizaciones de proveedores (relación N:N con ítems/especificaciones). Una línea que viene de
   una solicitud guarda contra qué NET cotizó (`CotizacionDetalle.idEspecificacionEmision`, no
   cambia si el NET se reemite); una cotización suelta solo elige la ficha (`idEspecificacion`)
-- Textos fijos del PDF de la solicitud de cotización (cabecera, instrucciones, nota final) en
+- Textos fijos del PDF de la solicitud de cotización (instrucciones, nota final; la "cabecera" ya no sale desde el
+  2026-11-09 y se quitó de la pantalla) en
   `redes.ConfiguracionSolicitudCotizacion` (una sola fila, igual que la del NET), editables en
   "Configuración del documento" (`solicitud-cotizacion/configuracion`). La solicitud NO guarda
   copia: un cambio se ve también al reimprimir las anteriores. Título, columnas y bloque del
   proveedor siguen fijos en `backend/views/solicitud-cotizacion/pdf.php`
 - SOLICITUD DE PROFORMA DE COTIZACIÓN (revisión del 2026-10-29, paso 10, decidido con el desarrollador el 2026-10-30):
   el PDF de la solicitud es un documento formal para el PROVEEDOR: título "SOLICITUD DE PROFORMA DE COTIZACIÓN",
-  la misma cabecera de hoy (USFX y DTIC, sin código del lineamiento: referencia RD-PI-PT-022 / SC-01, unidad, fecha,
-  página), una lista sencilla N.° | Descripción | Unidad | Cantidad (en la descripción siguen el código ET, la
-  marca / modelo de referencia y la observación) y abajo el espacio para el proveedor: firma y sello, nombre /
-  empresa y fecha. SIN columnas de precio ni marca ofertada, sin TOTAL, NIT, validez ni tiempo de entrega (los trae
-  la proforma que devuelve el proveedor) y SIN firmas de la DTIC. Archivo `solicitud_proforma_…pdf`. Las pantallas
+  la cabecera de todos los documentos (desde el 2026-11-09, con su código RD-PI-SC-NNN; antes una propia con la
+  referencia, la unidad, la fecha y la página), una lista sencilla N.° | Descripción | Unidad | Cantidad (la UNIDAD con su NOMBRE, "Metro" y no "m", desde el 2026-11-10:
+  `UnidadMedida::nombresPorAbreviatura()`, la abreviatura si no está en el catálogo; igual la "Cantidad:" del formulario ET, "24
+  Unidad"; en la descripción siguen el código ET, la
+  marca / modelo de referencia y la observación). Desde el 2026-11-10 SIN espacio para el proveedor (antes firma y
+  sello, nombre / empresa y fecha). SIN columnas de precio ni marca ofertada, sin TOTAL, NIT, validez ni tiempo de entrega (los trae
+  la proforma que devuelve el proveedor). Desde el 2026-11-09 (como el Word v3) lleva también la firma "ELABORADO POR" de la DTIC, en la tabla de una sola firma a todo el ancho, desde el 2026-11-10 AL FONDO de la última página (`MARCA_AL_PIE`): la firma 1 de "Configuración del PDF" del presupuesto, la de HOY (la solicitud no guarda copia); antes, sin firmas de la DTIC. Archivo `solicitud_proforma_…pdf`. Las pantallas
   siguen diciendo "Solicitud de cotización". La migración `m261030_200322_instrucciones_solicitud_de_proforma`
   cambió el texto de instrucciones por defecto ("Se solicita enviar su proforma de cotización…") solo si nadie lo
   había editado. PENDIENTE (Ing. de DTIC): ¿se adjuntan las especificaciones? (hoy, a elección al imprimir); en la
-  reunión también se nombró la solicitud entre los documentos "a normar": hoy no lleva código del lineamiento; la
+  reunión también se nombró la solicitud entre los documentos "a normar" (desde el 2026-11-09 lleva código SC); la
   solicitud se despacha con una NOTA que el sistema no genera
 - Fecha de la solicitud de cotización (2026-10-24): `SolicitudCotizacion.fechaEnvio` (date, opcional,
   con calendario en "Cambiar nombre, nota o fecha de envío"; migración
@@ -341,17 +533,27 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   (nunca se recalcula retroactivamente si cambia el precio de una cotización nueva)
 - Tamaño de hoja de TODOS los impresos: OFICIO, 8,5 x 13 pulgadas = 216 x 330 mm (2026-10-21; antes
   A4), la que usa la DTIC. En mPDF se llama "Folio": `PresupuestoPdfGenerator::HOJA_OFICIO` (por
-  defecto) y `HOJA_OFICIO_HORIZONTAL` (reporte de relación con SIGMA)
-- Cabecera de página de los impresos (2026-10-21, `backend/views/pdf/_cabecera.php`, etiqueta
-  `<htmlpageheader>` de mPDF): recuadro con escudo USFX | títulos + fila de datos | logo DTIC
-  (`backend/web/img/logo-usfx.png`, `logo-dtic.png`, reducidos), repetida en cada página, a 5 mm del
-  borde. Con `codigo` (presupuesto y formulario de especificación, 2026-10-22): "Proceso: …", título y
-  fila Código | Versión | Fecha | Página (lineamiento 8.8.2). Sin `codigo` (solicitud de cotización):
-  fila N.° / facultad / fecha / pág., y las 2 primeras líneas salen de "Configuración del documento".
-  Al juntar varios documentos en un PDF cada uno sale con su cabecera
+  defecto) y `HOJA_OFICIO_HORIZONTAL` (reporte de relación con SIGMA). Desde el 2026-11-03 todos los
+  impresos van en ESCALA DE GRISES (fondos #e0e0e0 títulos, #d0d0d0 categorías, #f2f2f2 subtotales), como el
+  formulario de especificación y la lista de materiales; el presupuesto tenía azules. Solo los logos y el
+  membrete de la carta conservan su color
+- Cabecera de página de los impresos (`backend/views/pdf/_cabecera.php`, etiqueta `<htmlpageheader>` de mPDF),
+  repetida en cada página, a 5 mm del borde (contenido desde 37 mm). Desde el 2026-11-09 es UNA SOLA para todos los
+  documentos (ficha técnica, lista, ET, solicitud, presupuesto), copiada de los Word de "FORMATOS CORREGIDOS v3":
+  tabla de 5 columnas con los anchos del Word; izquierda (2 filas) logo DTIC USFX + "DIVISION DE TECNOLOGIAS DE
+  INFORMACION Y COMUNICACION U.M.R.P.S.F.X.CH." en 6 pt; centro "PROCESO: <NOMBRE EN MAYÚSCULAS>" (10 pt) y el título
+  (12 pt), en negrita; derecha logo RedUSFX + "Redes y Telecomunicaciones"; abajo Código | Versión | Fecha | Página en
+  10 pt sin negrita, fecha dd-mm-aaaa (lineamiento 8.8.2). Logos `backend/web/img/logo-dtic-usfx.png` y
+  `logo-redusfx.png`, sacados de los Word (se borraron `logo-usfx.png` y `logo-dtic.png`). El texto "Cabecera" de la
+  configuración de la solicitud ya no se usa (columna queda). El del FORMULARIO ET sí (2026-11-10, como el Word v3): sale
+  DEBAJO de la cabecera, centrado y en negrita ("Universidad Mayor, Real y Pontificia de “San Francisco Xavier” de Chuquisaca"
+  en 13 pt y "D.T.I.C." en 11), de la copia de cada emisión (`EspecificacionEmision.textoCabecera`); se edita en la configuración
+  del formulario ("Universidad y unidad"); la migración `m261110_050000_universidad_con_comillas_en_especificacion` le puso las
+  comillas si nadie lo había cambiado. Al juntar varios documentos en un PDF cada uno sale con su cabecera
   (`PresupuestoPdfGenerator::empezarDocumento()`)
 - Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
-  aprobado. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
+  aprobado. Datos generales: la línea del proyecto (`Proyecto::lineaDocumento()`, ver PARTE 5c; del 2026-11-05 al 06
+  "Proyecto: RD-PI-PT-028 — Nombre") con el oficio a la derecha. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
   usan los mismos anchos, 2026-10-21) y "TOTAL GENERAL Bs." al final; N.° corrido
   entre categorías y en cada línea el nombre DTIC con su observación (columnas como la solicitud
   de cotización, más Partida). Desde el 2026-10-21 el nombre DTIC lleva al lado, entre paréntesis, el código NET de la emisión
@@ -372,8 +574,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   página nueva), dos firmas lado a lado
   (prefijo opcional como "V°B°", nombre con tratamiento, cargo guardado en MAYÚSCULAS); desde el
   2026-10-22 son el "control de elaboración" del lineamiento: rotuladas "ELABORADO POR" (firma 1) y
-  "APROBADO POR" (firma 2, V°B°), SIN tabla (decidido el 2026-10-22: el 8.12 pide el contenido, no una
-  tabla), y debajo "Versión: 01 · Fecha de aprobación" (`Presupuesto.fechaAprobacion`, la pone
+  "APROBADO POR" (firma 2, V°B°), EN TABLA desde el 2026-11-09 (del 22-10 al 09-11 sin tabla: "el 8.12 pide el
+  contenido, no una tabla"; ver PIES DE FIRMA EN TABLA), y debajo "Versión: 01 · Fecha de aprobación" (`Presupuesto.fechaAprobacion`, la pone
   `PresupuestoService::cambiarEstado()` al aprobar; sin fecha, una raya). SIN pie de página desde el
   2026-10-30 (paso 9: "si es sistema de gestión documental no tiene pie de página"; los contactos están en el
   membrete de la carta; migración `m261030_162507_quitar_pie_de_configuracion_presupuesto` quitó sus columnas;
@@ -433,12 +635,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
     desarrollador el 2026-10-30): lleva el CÓDIGO DEL PROYECTO (RD-PI-PT-NNN, "Proceso:" = PI), porque cada proyecto
     tiene una sola lista y ese código no cambia. "Enviar a cotización" APRUEBA la versión siguiente
     (`ListaItemsService::enviarACotizacion()` → `aprobarVersion()`): `redes.ListaMaterialesAprobacion`, una fila por
-    versión (01 la primera vez, +1 después de cada orden de cambio), nunca se modifica: fecha, usuario y COPIA de
+    versión (01 la primera vez, +1 después de cada reapertura de la lista), nunca se modifica: fecha, usuario y COPIA de
     las firmas de "Configuración del PDF" del presupuesto (trait `FirmasDeControl`); se anota en el historial
     (`HistorialProyecto::ACCION_LISTA_APROBADA`). No guarda copia de la lista (mientras está aprobada no cambia).
     `ListaItemsService::documento()`: en edición imprime la versión SIGUIENTE con marca BORRADOR y las firmas de
     hoy; enviada o cerrada, la última aprobada. La "Fecha" de la cabecera es la de CREACIÓN de la versión (paso 9):
-    la v01 nace con el proyecto (`Proyecto.fechaCreacion`), cada una siguiente con la orden de cambio que reabrió
+    la v01 nace con el proyecto (`Proyecto.fechaCreacion`), cada una siguiente con la reapertura que reabrió
     la lista (la 1.ª orden crea la v02…); la de aprobación va abajo. Las 4 listas ya enviadas recibieron su v01 sin
     fecha de aprobación. La versión sale también en la pantalla de la lista y en la ficha técnica.
     Sin "documentos relacionados" (opcional en el nivel D: cada ítem ya cita su ET)
@@ -461,7 +663,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   sin ninguno, el marcador desaparece). El
   adjunto por defecto es "…Nro: {numeroPresupuesto}, especificaciones técnicas {especificaciones} y
   cotización.".
-  Cargo sugerido "DECANO/DECANA DE LA <FACULTAD>" según el tratamiento (`web/js/carta.js`). PDF
+  Cargo sugerido "DECANO/DECANA DE LA <FACULTAD>" según el tratamiento (`web/js/carta.js`). TRATAMIENTOS
+  (2026-11-04; antes 4 fijos en `CartaPresupuesto::TRATAMIENTOS`): lista `redes.TratamientoCarta` (nombre único,
+  "cargo en femenino" = DECANA, orden; migración `m261104_233000_crear_tratamiento_carta`) editada en la tabla
+  "Tratamientos" de "Configuración de la carta" (`ConfiguracionCarta::$tratamientos`, se reemplaza entera en
+  `CartaService::guardarConfiguracion()`, al menos uno, sin repetidos). Una carta nueva toma el primero; la carta
+  guarda COPIA del texto y conserva uno ya quitado de la lista (`CartaPresupuesto::tratamientosElegibles()`). PDF
   oficio con el membrete `backend/web/img/fondo-carta.png` de fondo (@page background) y márgenes
   4,75 / 4,5 / 3 / 3 cm. El PDF del presupuesto muestra el oficio con el MISMO formato que la carta
   ("DTIC Of. Nº 602/2026"; el año es el de la fecha de la carta si ya existe, si no el de creación del presupuesto,
@@ -499,10 +706,11 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 ## Entorno de desarrollo — comandos útiles
 - Levantar consultas de migración: `php yii migrate` (desde la raíz del proyecto)
 - Crear una migración nueva: `php yii migrate/create nombre_descriptivo`
-- El PATH de Windows ya está configurado para que `php` (sin ruta completa) use el
-  de Laragon (8.2.33, con el driver sqlsrv) por defecto. Si alguna terminal nueva
-  muestra una versión distinta, verificar con `php -v` antes de correr comandos.
-- Tests unitarios: `php vendor/bin/codecept run Unit -c backend`. Usan la base LOCAL de
+- El PATH de Windows (del SISTEMA, no del usuario) debe apuntar al PHP 8.3.33 de Laragon (con el driver
+  sqlsrv). Con el 8.2 todo comando se detiene: "Composer detected issues in your platform ... >= 8.3.0".
+  Verificar con `php -v` antes de correr comandos.
+- Tests: `php vendor/bin/codecept run -c backend` (Unit y Functional; la Functional `LoginCest` prueba el
+  ingreso con `redes.Usuario` desde el 2026-11-02). Solo los unitarios: `php vendor/bin/codecept run Unit -c backend`. Usan la base LOCAL de
   desarrollo (`common/config/test-local.php`, no se sube a git); cada test corre en una
   transacción que se deshace al terminar, así que no dejan datos
 - Análisis estático: `composer static` (PHPStan, nivel 5; correrlo antes de cada PR, como los tests;
@@ -523,7 +731,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 
 ## Riesgos y pendientes activos
 - RESUELTO: las migraciones están aplicadas (verificado con `php yii migrate/history` el
-  2026-10-19; la última es `m261030_200322_instrucciones_solicitud_de_proforma`, aplicada el 2026-10-30), incluida `m260831_014824_create_schema_redes`, las dos de partida
+  2026-10-19; la última es `m261110_060000_especificacion_sin_anio`, aplicada el 2026-11-10), incluida `m260831_014824_create_schema_redes`, las dos de partida
   (`m261005_033949_add_partida_to_subcatalogo_item`,
   `m261005_034753_add_partida_observacion_to_presupuesto_detalle`) y las de especificaciones
   (`m261015_035448_libreria_especificaciones`, `m261017_231816_versiones_y_emisiones_especificacion`).
@@ -613,7 +821,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   `codigoAnterior`, `EspecificacionEmision.versionDocumento` (2026-10-24: reemitir = mismo código, versión + 1),
   `Presupuesto.firma1Prefijo…firma2Cargo` {congelado al aprobar} (2026-10-24), se quita
   `ConfiguracionEspecificacion.siguienteNet`, caso de uso "Configurar codificación de documentos"; 2026-10-29:
-  `EspecificacionEmision.proceso` {congelado} y `CorrelativoDocumento.anio` (ET por año); resumen
+  `EspecificacionEmision.proceso` {congelado} (`CorrelativoDocumento.anio` se agregó el 2026-10-29 y se quitó el
+  2026-11-10: la ET ya no lleva año); resumen
   en `docs/cambios-codificacion-lineamiento.md`
 - PENDIENTE (tutor): secciones sin precio (2026-10-29): `PresupuestoComplemento` (2026-10-23) ya NO existe; nuevas
   clases `ProyectoMaterialDtic` (composición 0..* desde Proyecto, asociación 0..1 a SubcatalogoItem),
@@ -636,8 +845,21 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   y una copia del código para sobrevivir a la eliminación; usuario {copia}); caso de uso "Consultar historial del
   proyecto"; las secuencias que cambian datos, precios o estados terminan registrando el hecho
 - PENDIENTE (Ing. de DTIC / Desarrollo): ¿seguir leyendo las tablas de UsfxGEO o usar vistas? ¿qué son
-  los estados E, C, D, R? Confirmar el texto del lugar de entrega por defecto (hoy vacío: llenarlo en la
-  configuración del formulario) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
+  los estados E, C, D, R? Confirmar el lugar de entrega habitual de los proyectos que no son de una facultad
+  (Rectorado, Canal, DTIC) para el texto por defecto de la configuración del formulario (hoy vacío) y las preguntas abiertas de la propuesta (nota de solicitud, reportes)
+- PENDIENTE (tutor): agregar `Proyecto.lugarEntrega` (2026-11-03) al diagrama de clases
+- PENDIENTE (tutor): revisión del 2026-11-05 (partes 1 a 5d): `Proyecto.numeroProyecto` (común a las fases; cada fila es
+  una fase, asociación "fases" por el número), `Proyecto.codigoLista`, `Proyecto.codigo` = código de la ficha (solo fase 1),
+  `ListaMaterialesAprobacion` = versión emitida (no aprobada), tipos NP y LM del correlativo; caso de uso "Agregar fase"
+  (reemplaza "Crear fase siguiente"); secuencias y actividades. Resumen en `docs/cambios-revision-2026-11-05.md`
+- PENDIENTE (tutor): `SolicitudCotizacion.codigoDocumento` y el tipo SC del correlativo (2026-11-09) en el diagrama de
+  clases; informar al Ing. que la solicitud tomó código propio RD-PI-SC-NNN como en los formatos corregidos v3
+- PENDIENTE (tutor): orden de cambio (2026-11-09, parte 6b): en el diagrama de clases, auto-asociación de Proyecto
+  "ordenesCambio" 0..* (idFaseOrigen) y los atributos numeroOrdenCambio, descripcionCambio, motivoCambio, tipoCambio; caso de
+  uso "Registrar orden de cambio" (extiende Consultar proyecto, sobre una fase aprobada) y "Eliminar orden de cambio";
+  clase `TipoOrdenCambio` (catálogo, asociación 1 tipo → 0..* órdenes) y caso de uso "Gestionar tipos de orden de cambio"
+- PENDIENTE (tutor): agregar `TratamientoCarta` (2026-11-04; catálogo sin asociación: la carta copia el nombre) al
+  diagrama de clases; "Configurar carta de entrega" incluye la lista de tratamientos
 - PENDIENTE (tutor): agregar la clase `Proceso` (2026-10-29; catálogo, asociación 1 proceso → 0..* proyectos)
   al diagrama de clases y el caso de uso "Gestionar procesos"
 - PENDIENTE (tutor): agregar `TipoProyecto` (2026-10-19) al diagrama de clases, asociado a

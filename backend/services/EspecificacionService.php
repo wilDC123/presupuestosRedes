@@ -6,6 +6,7 @@ namespace backend\services;
 
 use backend\components\ArchivoSubido;
 use backend\components\EspecificacionMetadataExtractor;
+use backend\components\NumeracionEspecificacion;
 use backend\models\CotizacionDetalle;
 use backend\models\Especificacion;
 use backend\models\EspecificacionCaracteristica;
@@ -437,13 +438,13 @@ class EspecificacionService
      *  - emisiones: en cuantos formularios NET se uso la version actual (si
      *    es mas de 0, guardar cambios creara la version siguiente).
      *
-     * @return array{version: EspecificacionVersion, filas: array<int, array{nombre: ?string, valor: string}>, emisiones: int}
+     * @return array{version: EspecificacionVersion, filas: array<int, array{nombre: ?string, valor: string, esSubtitulo: bool, nivel: int}>, emisiones: int}
      */
     public function formulario(Especificacion $especificacion): array
     {
         $actual = $especificacion->isNewRecord ? null : $especificacion->getVersionActual()->one();
 
-        if ($actual === null) {
+        if (!$actual instanceof EspecificacionVersion) {
             return ['version' => new EspecificacionVersion(), 'filas' => [], 'emisiones' => 0];
         }
 
@@ -476,7 +477,7 @@ class EspecificacionService
      * Devuelve, ademas de si se guardo, lo necesario para volver a mostrar el
      * formulario con lo que escribio el usuario si algo no es valido.
      *
-     * @return array{guardado: bool, version: EspecificacionVersion, filas: array<int, array{nombre: ?string, valor: ?string}>, nueva: bool, errores: string[]}
+     * @return array{guardado: bool, version: EspecificacionVersion, filas: array<int, array{nombre: ?string, valor: ?string, esSubtitulo?: mixed, nivel?: mixed}>, nueva: bool, errores: string[]}
      */
     public function guardar(Especificacion $especificacion, array $datosFormulario, ?UploadedFile $archivo): array
     {
@@ -600,7 +601,7 @@ class EspecificacionService
      * La ficha tiene que estar guardada (necesita su id).
      *
      * @param array{modeloSugerido?: ?string, garantia?: ?string, adjuntoRuta?: ?string, notaCambio?: ?string} $datos
-     * @param array<int, array{nombre?: ?string, valor?: ?string}>|null $filas en el orden en que se imprimen
+     * @param array<int, array{nombre?: ?string, valor?: ?string, esSubtitulo?: mixed, nivel?: mixed}>|null $filas en el orden en que se imprimen
      * @return array{version: ?EspecificacionVersion, nueva: bool, errores: string[]}
      */
     public function guardarVersion(Especificacion $especificacion, array $datos, ?array $filas = null): array
@@ -667,6 +668,8 @@ class EspecificacionService
                     'orden' => $orden + 1,
                     'nombre' => $fila['nombre'],
                     'valor' => $fila['valor'],
+                    'esSubtitulo' => $fila['esSubtitulo'],
+                    'nivel' => $fila['nivel'],
                 ]))->save(false);
             }
 
@@ -684,23 +687,28 @@ class EspecificacionService
     /**
      * Las caracteristicas de una version como filas simples.
      *
-     * @return array<int, array{nombre: ?string, valor: string}>
+     * @return array<int, array{nombre: ?string, valor: string, esSubtitulo: bool, nivel: int}>
      */
     private function filasDe(EspecificacionVersion $version): array
     {
         return array_map(static fn (EspecificacionCaracteristica $c) => [
             'nombre' => $c->nombre,
             'valor' => $c->valor,
-        ], $version->getCaracteristicas()->all());
+            'esSubtitulo' => (bool) $c->esSubtitulo,
+            'nivel' => (int) $c->nivel,
+        ], $version->caracteristicas);
     }
 
     /**
      * Limpia las filas del formulario: recorta espacios, descarta las que
      * vienen completamente vacias (la tabla del formulario siempre deja una
-     * fila en blanco) y exige valor en las que tienen nombre.
+     * fila en blanco), exige valor en las que tienen nombre y corrige el nivel
+ * (ver NumeracionEspecificacion::niveles()). Un subtitulo es
+     * un solo texto: si se escribio en "Característica", pasa al valor; si
+     * tiene los dos, es un error.
      *
-     * @param array<int, array{nombre?: ?string, valor?: ?string}> $filas
-     * @return array{0: array<int, array{nombre: ?string, valor: string}>, 1: string[]}
+     * @param array<int, array{nombre?: ?string, valor?: ?string, esSubtitulo?: mixed, nivel?: mixed}> $filas
+     * @return array{0: array<int, array{nombre: ?string, valor: string, esSubtitulo: bool, nivel: int}>, 1: string[]}
      */
     private function normalizarFilas(array $filas): array
     {
@@ -710,9 +718,19 @@ class EspecificacionService
         foreach (array_values($filas) as $i => $fila) {
             $nombre = $this->textoONull($fila['nombre'] ?? null);
             $valor = $this->textoONull($fila['valor'] ?? null);
+            $esSubtitulo = !empty($fila['esSubtitulo']);
 
             if ($nombre === null && $valor === null) {
                 continue;
+            }
+
+            if ($esSubtitulo) {
+                if ($nombre !== null && $valor !== null) {
+                    $errores[] = 'Fila ' . ($i + 1) . " (\"$nombre\"): un subtítulo es un solo texto; deje vacía la característica o el valor.";
+                    continue;
+                }
+                $valor ??= $nombre;
+                $nombre = null;
             }
 
             if ($valor === null) {
@@ -725,7 +743,13 @@ class EspecificacionService
                 continue;
             }
 
-            $limpias[] = ['nombre' => $nombre, 'valor' => $valor];
+            $limpias[] = ['nombre' => $nombre, 'valor' => $valor, 'esSubtitulo' => $esSubtitulo, 'nivel' => $fila['nivel'] ?? 1];
+        }
+
+        // El nivel se corrige igual que al numerar (sin saltos, de 1 a 3), asi
+        // se guarda lo mismo que se ve. Despues de quitar las filas vacias.
+        foreach (NumeracionEspecificacion::niveles(array_column($limpias, 'nivel')) as $i => $nivel) {
+            $limpias[$i]['nivel'] = $nivel;
         }
 
         return [$limpias, $errores];
@@ -735,9 +759,9 @@ class EspecificacionService
      * true si guardar no cambiaria nada del contenido tecnico. notaCambio no
      * cuenta: no es parte del documento que ve el proveedor.
      *
-     * @param array<int, array{nombre: ?string, valor: string}> $filasActuales
+     * @param array<int, array{nombre: ?string, valor: string, esSubtitulo: bool, nivel: int}> $filasActuales
      * @param array<string, ?string> $contenido
-     * @param array<int, array{nombre: ?string, valor: string}> $filasNuevas
+     * @param array<int, array{nombre: ?string, valor: string, esSubtitulo: bool, nivel: int}> $filasNuevas
      */
     private function mismoContenido(EspecificacionVersion $actual, array $filasActuales, array $contenido, array $filasNuevas): bool
     {

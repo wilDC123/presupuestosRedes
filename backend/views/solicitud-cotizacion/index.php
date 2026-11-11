@@ -36,7 +36,7 @@ if ($editable) {
 
 $this->title = 'Solicitudes de cotización';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
-$this->params['breadcrumbs'][] = ['label' => $proyecto->codigo ?: '#' . $proyecto->id, 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
+$this->params['breadcrumbs'][] = ['label' => $proyecto->identificador(), 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
 $this->params['breadcrumbs'][] = 'Solicitudes de cotización';
 
 $formato = Yii::$app->formatter;
@@ -179,6 +179,9 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                             <div class="rd-card-titulo">
                                 <span class="mono"><?= Html::encode($solicitud->codigoCorto()) ?></span>
                                 · <?= Html::encode($solicitud->nombre) ?>
+                                <?php if ($solicitud->codigoDocumento !== null): ?>
+                                    · <span class="mono"><?= Html::encode($solicitud->codigoDocumento) ?></span>
+                                <?php endif; ?>
                             </div>
                             <?php if (!empty($solicitud->nota)): ?>
                                 <div class="rd-celda-sub"><?= Html::encode($solicitud->nota) ?></div>

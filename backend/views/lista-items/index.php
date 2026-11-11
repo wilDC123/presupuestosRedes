@@ -51,13 +51,15 @@ use yii\web\JqueryAsset;
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
  * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>, subcatalogos: array<int, int>, sugeridasPorItem: array<int, int[]>} $especificaciones Ver EspecificacionService::selector()
  * @var array<string, array{opciones: array, grupos: array}> $opcionesPorItem Ver EspecificacionService::opcionesPorItem() (vacio si la lista no se edita)
- * @var backend\models\OrdenCambio[] $ordenes ordenes de cambio del proyecto
+ * @var backend\models\OrdenCambio[] $ordenes reaperturas de la lista (en pantalla ya no se llaman "orden de cambio", 2026-11-09)
  * @var array<int, array{emision: ?backend\models\EspecificacionEmision, avisos: string[]}> $emisiones Ver EspecificacionEmisionService::estadoPorItem()
  * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
  * @var int $totalFormularios formularios de especificación vigentes de la lista (boton "Imprimir especificaciones")
  * @var backend\models\ConfiguracionEspecificacion $configuracion
- * @var string|null $lugarEntregaPorDefecto texto de ejemplo del "Lugar de entrega" al reemitir (null = no hay)
- * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001/26)
+ * @var string|null $lugarEntregaPorDefecto texto de ejemplo del "Lugar de entrega" de cada fila y al reemitir (null = no hay)
+ * @var string $lugarEntregaProyecto valor del campo "Lugar de entrega" de arriba de la lista (2026-11-10)
+ * @var string|null $lugarEntregaConfiguracion el de la configuracion del formulario (si el de arriba queda vacio)
+ * @var string $proximoCodigo codigo que recibira la proxima especificacion emitida (RD-PI-ET-001)
  * @var array<int, array<string, string>> $materiales otros materiales de la DTIC (los guardados o lo enviado)
  * @var string[] $categorias nombres de las categorias, subtitulos de los materiales escritos a mano
  * @var array<string, string> $unidades [abreviatura => "Metro (m)"]
@@ -77,7 +79,7 @@ $this->registerJsFile('@web/js/especificacion-emision.js', ['depends' => [Jquery
 
 $this->title = 'Lista de ítems del proyecto';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
-$this->params['breadcrumbs'][] = ['label' => $proyecto->codigo ?: '#' . $proyecto->id, 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
+$this->params['breadcrumbs'][] = ['label' => $proyecto->identificador(), 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
 $this->params['breadcrumbs'][] = 'Lista de ítems';
 
 $formato = Yii::$app->formatter;
@@ -186,12 +188,50 @@ $selectorEspecificacion = static function (string $n, string $seleccionada, stri
  * Fila editable de un item. $n es su indice en items[n][...]; el JS usa
  * "__n__" como marcador y lo reemplaza por un numero nuevo.
  */
-$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '', string $emision = '') use ($selectorEspecificacion): string {
+$fila = static function (string $n, string $id, string $idSubcatalogo, string $nombre, string $unidad, string $cantidad, string $observacion, string $idEspecificacion = '', string $idCategoria = '', string $emision = '', string $lugar = '') use ($selectorEspecificacion, $lugarEntregaPorDefecto): string {
+    // El lugar propio de la fila: vacio si no tiene o si es el mismo que el de arriba.
+    $propio = trim($lugar) !== '' && trim($lugar) !== trim((string) $lugarEntregaPorDefecto) ? trim($lugar) : '';
+
     return '<tr class="lista-item">'
         . '<td>'
         . Html::hiddenInput("items[$n][id]", $id)
         . Html::hiddenInput("items[$n][idSubcatalogo]", $idSubcatalogo, ['class' => 'lista-item-subcatalogo'])
+        . '<div class="d-flex align-items-baseline gap-2">'
         . '<div class="lista-item-nombre">' . Html::encode($nombre) . '</div>'
+        // "Cambiar ítem" (solo filas ya guardadas): otro item del subcatalogo en la MISMA fila,
+        // para corregir un error sin anular su formulario de especificacion (lista-items.js).
+        . ($id !== '' ? Html::button('Cambiar ítem', [
+            'class' => 'btn btn-link btn-sm p-0 text-nowrap lista-item-cambiar',
+            'title' => 'Elegir otro ítem del subcatálogo para esta fila (ej. el mismo cable en cajas en vez de metros). Su formulario de especificación se corrige con el mismo código.',
+        ]) : '')
+        // Lugar de entrega de ESTA especificacion (revision del 2026-11-05: cada una puede tener uno
+        // distinto), PLEGADO en la misma linea que "Cambiar ítem" (2026-11-10, ocupaba mucho en cada
+        // fila): si es el mismo que el de arriba de la lista (o no tiene), solo el enlace "Otro lugar de
+        // entrega"; si es otro, "Entrega: ... · Cambiar". El campo aparece debajo al hacer clic. Solo con
+        // especificacion elegida (lista-items.js). Uno igual al de arriba se envia vacio: en un formulario
+        // ya emitido vacio no cambia nada (no se reemite), en uno nuevo toma el de arriba; cambiarlo en uno
+        // ya emitido lo reemite al guardar (ListaItemsService).
+        . '<span class="rd-celda-sub text-nowrap lista-item-lugar lista-lugar-resumen' . ($idEspecificacion === '' ? ' d-none' : '') . '">'
+        . ($propio !== ''
+            ? '· Entrega: <strong>' . Html::encode($propio) . '</strong> '
+                . Html::button('Cambiar', ['class' => 'btn btn-link btn-sm p-0 align-baseline lista-lugar-abrir'])
+            : Html::button('Otro lugar de entrega', [
+                'class' => 'btn btn-link btn-sm p-0 align-baseline lista-lugar-abrir',
+                'title' => 'Solo si esta especificación se entrega en un lugar distinto al de arriba de la lista',
+            ]))
+        . '</span>'
+        . '</div>'
+        . '<div class="d-flex align-items-center gap-2 mt-1 lista-lugar-campo d-none">'
+        . '<label class="rd-celda-sub text-nowrap mb-0" for="lista-lugar-' . $n . '">Lugar de entrega</label>'
+        . Html::textInput("items[$n][lugarEntrega]", $propio, [
+            'id' => 'lista-lugar-' . $n,
+            'class' => 'form-control form-control-sm',
+            'maxlength' => 300,
+            'placeholder' => (string) ($lugarEntregaPorDefecto ?? 'Sin lugar de entrega'),
+            'title' => 'Si se cambia en un formulario ya emitido, al guardar se reemite (mismo código, versión siguiente).',
+        ])
+        . '</div>'
+        . '<div class="rd-celda-sub text-warning-emphasis lista-item-cambio d-none"></div>'
         . Html::textInput("items[$n][observacion]", $observacion, ['class' => 'form-control lista-item-obs', 'maxlength' => 300, 'placeholder' => 'Observación (opcional): de 1 metro, 12 mm x 4 m...'])
         . $selectorEspecificacion($n, $idEspecificacion, $idCategoria, $idSubcatalogo)
         . $emision
@@ -223,15 +263,15 @@ $grupoCierra = static fn (int $cantidad): string =>
                 <span class="<?= $proyecto->estadoListaBadgeClass() ?>"><?= Html::encode($proyecto->estadoListaLabel()) ?></span>
             </h1>
             <div class="rd-pagehead-sub"><?= Html::encode($proyecto->etiqueta()) ?></div>
-            <?php // El documento impreso lleva el codigo del proyecto y su version (paso 8b, 2026-10-30). ?>
+            <?php // El documento impreso lleva su codigo (RD-PI-LM-NNN) y su version; no se aprueba (2026-11-05). ?>
             <div class="rd-nota mt-1">
-                Lista de materiales <?= Html::encode($proyecto->codigo ?: '') ?> versión <?= Html::encode($documento['version']) ?>:
+                Lista de materiales <?= Html::encode($proyecto->codigoLista ?: '') ?> versión <?= Html::encode($documento['version']) ?>:
                 <?php if ($documento['borrador']): ?>
-                    borrador; se aprueba al enviar a cotización.
+                    borrador; se emite al enviar a cotización.
                 <?php elseif ($documento['aprobacion']->fechaAprobacion !== null): ?>
-                    aprobada el <?= Html::encode($documento['aprobacion']->fechaAprobacionFormateada()) ?><?= $documento['aprobacion']->usuario ? ' por ' . Html::encode($documento['aprobacion']->usuario) : '' ?>.
+                    enviada a cotización el <?= Html::encode($documento['aprobacion']->fechaAprobacionFormateada()) ?><?= $documento['aprobacion']->usuario ? ' por ' . Html::encode($documento['aprobacion']->usuario) : '' ?>.
                 <?php else: ?>
-                    aprobada (antes de que el sistema registrara la fecha).
+                    enviada a cotización (antes de que el sistema registrara la fecha).
                 <?php endif; ?>
             </div>
         </div>
@@ -256,7 +296,7 @@ $grupoCierra = static fn (int $cantidad): string =>
                     'id' => 'lista-enviar',
                     // La confirmacion la pide lista-items.js (no data-confirm de Yii, que
                     // envia el formulario por su cuenta y pierde el name/value del boton).
-                    'data' => ['mensaje' => 'Al enviar a cotización la lista queda bloqueada: para modificarla después hará falta una orden de cambio. ¿Continuar?'],
+                    'data' => ['mensaje' => 'Al enviar a cotización la lista queda bloqueada: para modificarla después habrá que reabrirla, explicando el motivo. ¿Continuar?'],
                 ]) ?>
                 <?= Html::submitButton('Guardar lista', ['class' => 'btn btn-primary', 'name' => 'accion', 'value' => 'guardar']) ?>
             <?php endif; ?>
@@ -283,6 +323,29 @@ $grupoCierra = static fn (int $cantidad): string =>
             (el próximo será el <?= Html::encode($proximoCodigo) ?>). Cambiarla o quitarla anula el anterior.
         </p>
     <?php endif; ?>
+
+    <?php // Lugar de entrega por defecto (2026-11-10: aqui y no al crear el proyecto). Cada fila puede poner otro. ?>
+    <div class="card rd-card-pad mb-3">
+        <?php if ($editable): ?>
+            <label for="lista-lugar-entrega"><strong>Lugar de entrega de los materiales</strong> <span class="rd-nota">— se usa en todas las especificaciones; si alguna se entrega en otro lugar, escríbalo en su fila.</span></label>
+            <?= Html::textInput('lugarEntregaProyecto', $lugarEntregaProyecto, [
+                'id' => 'lista-lugar-entrega',
+                'class' => 'form-control',
+                'maxlength' => 300,
+                'placeholder' => (string) ($lugarEntregaConfiguracion ?? 'Ej. Administración de la Facultad de Ciencias Agrarias'),
+                'data-configuracion' => (string) ($lugarEntregaConfiguracion ?? ''),
+            ]) ?>
+            <div class="rd-nota mt-1">
+                Cambiar este lugar no cambia los formularios ya emitidos.
+                <?php if ($proyecto->lugarEntrega === null && $lugarEntregaProyecto !== ''): ?>
+                    Sugerido por la unidad / dependencia: se guarda al guardar la lista.
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <strong>Lugar de entrega de los materiales:</strong> <?= Html::encode($proyecto->lugarEntrega ?: ($lugarEntregaConfiguracion ?? '—')) ?>
+            <span class="rd-nota">(salvo las especificaciones que dicen otro en su fila)</span>
+        <?php endif; ?>
+    </div>
     <div class="alert alert-danger d-none" id="lista-error-cliente">Revise las cantidades marcadas: en la lista, números mayores o iguales a 0; en los materiales de la DTIC, mayores que 0.</div>
 
     <div class="rd-cols">
@@ -293,6 +356,11 @@ $grupoCierra = static fn (int $cantidad): string =>
                     <div class="rd-card-titulo mb-2">Subcatálogo de redes</div>
                     <input type="text" class="form-control" id="lista-buscar" placeholder="Buscar ítem...">
                     <div class="kicker mt-2"><?= count($subcatalogo) ?> ítems activos en el subcatálogo</div>
+                    <?php // Aviso de "Cambiar ítem": mientras se ve, el "+" reemplaza el item de esa fila en vez de agregar uno. ?>
+                    <div class="notice mt-2 mb-0 d-none" id="lista-cambiando">
+                        Elija con <strong>+</strong> el ítem que reemplaza a <strong id="lista-cambiando-nombre"></strong>.
+                        <button type="button" class="btn btn-link btn-sm p-0" id="lista-cambiando-cancelar">Cancelar</button>
+                    </div>
                 </div>
                 <div class="rd-lista-scroll" id="lista-subcatalogo">
                     <?php if ($subcatalogo === []): ?>
@@ -308,12 +376,24 @@ $grupoCierra = static fn (int $cantidad): string =>
                              data-unidad="<?= Html::encode((string) $itemSubcatalogo->abreviaturaUnidad()) ?>"
                              data-categoria="<?= $itemSubcatalogo->idCategoria ?>"
                              data-categoria-nombre="<?= Html::encode($itemSubcatalogo->categoria->nombre ?? 'Sin clasificación') ?>">
-                            <div>
+                            <?php
+                            // Linea SIGMA: a que item generico de SIGMA apunta y su partida, para
+                            // elegir sin ir al subcatalogo. Solo se muestra: el buscador sigue
+                            // buscando por el nombre DTIC. Nombre largo = recortado con "…" (CSS),
+                            // completo en el title.
+                            $sigma = $itemSubcatalogo->catalogoSigma;
+                            $lineaSigma = $sigma !== null ? 'SIGMA: ' . $sigma->Descripcion : 'Sin ítem SIGMA';
+                            if ($itemSubcatalogo->partida) {
+                                $lineaSigma .= ' · Partida ' . $itemSubcatalogo->partida;
+                            }
+                            ?>
+                            <div class="rd-row-item-texto">
                                 <div class="rd-celda-titulo"><?= Html::encode($itemSubcatalogo->descripcion) ?></div>
                                 <div class="rd-celda-sub">
                                     <?= Html::encode($itemSubcatalogo->categoria->nombre ?? '') ?>
                                     <?= $itemSubcatalogo->unidad ? ' · Unidad: ' . Html::encode($itemSubcatalogo->unidad->abreviatura) : '' ?>
                                 </div>
+                                <div class="rd-celda-sub rd-linea-sigma" title="<?= Html::encode($lineaSigma) ?>"><?= Html::encode($lineaSigma) ?></div>
                             </div>
                             <button type="button" class="addbtn" aria-label="Agregar a la lista">+</button>
                         </div>
@@ -324,7 +404,7 @@ $grupoCierra = static fn (int $cantidad): string =>
 
         <div class="card rd-col-2">
             <div class="rd-card-head">
-                <div class="rd-card-titulo">Ítems del proyecto — <?= Html::encode($proyecto->codigo ?: '#' . $proyecto->id) ?></div>
+                <div class="rd-card-titulo">Ítems del proyecto — <?= Html::encode($proyecto->identificador()) ?></div>
                 <div class="kicker">
                     <span id="lista-total"><?= $totalItems ?></span> ítems en
                     <span id="lista-total-grupos"><?= count($grupos) ?></span> clasificaciones ·
@@ -356,7 +436,9 @@ $grupoCierra = static fn (int $cantidad): string =>
                                 (string) $item->observacion,
                                 (string) $item->idEspecificacion,
                                 (string) $item->idCategoria,
-                                $infoEmision($item)
+                                $infoEmision($item),
+                                // Lo enviado (si el guardado fallo) o el del formulario vigente.
+                                (string) ($item->lugarEntregaPedido ?? ($emisiones[$item->id]['emision'] ?? null)->lugarEntrega ?? '')
                             ) ?>
                         <?php endforeach; ?>
                         <?= $grupoCierra(count($grupo['items'])) ?>
@@ -508,22 +590,22 @@ $grupoCierra = static fn (int $cantidad): string =>
         <div class="card rd-card-pad mt-3">
             <div class="rd-card-titulo mb-2">Lista enviada a cotización</div>
             <p class="rd-nota">
-                La lista está bloqueada para que lo cotizado coincida con lo pedido. Para modificarla registre una
-                orden de cambio: la lista vuelve a edición y la orden queda abierta hasta que la envíe otra vez a cotización.
+                La lista está bloqueada para que lo cotizado coincida con lo pedido. Para corregirla, reábrala con el
+                motivo: vuelve a edición hasta que la envíe otra vez a cotización (y se emite la versión siguiente).
             </p>
             <?= Html::beginForm(['solicitar-cambio', 'id' => $proyecto->id], 'post', ['id' => 'orden-cambio-form']) ?>
                 <div class="form-group">
-                    <label for="orden-motivo">Motivo del cambio</label>
+                    <label for="orden-motivo">Motivo para reabrir la lista</label>
                     <?= Html::textarea('OrdenCambio[motivo]', '', ['id' => 'orden-motivo', 'class' => 'form-control', 'rows' => 2, 'maxlength' => 500, 'required' => true]) ?>
                 </div>
-                <?= Html::submitButton('Solicitar cambio', ['class' => 'btn btn-primary']) ?>
+                <?= Html::submitButton('Reabrir lista', ['class' => 'btn btn-primary']) ?>
             <?= Html::endForm() ?>
         </div>
     <?php else: ?>
         <div class="card rd-card-pad mt-3">
             <p class="rd-nota mb-0">
-                Esta lista ya no se modifica. Una ampliación se registra como un proyecto nuevo de fase siguiente,
-                con su propia lista.
+                Esta lista ya no se modifica. Si piden algo más, desde la vista del proyecto se registra una orden de
+                cambio (presupuesto adicional de esta fase aprobada) o se agrega una fase, cada una con su propia lista.
             </p>
         </div>
     <?php endif; ?>
@@ -531,7 +613,7 @@ $grupoCierra = static fn (int $cantidad): string =>
     <?php if ($ordenes !== []): ?>
         <div class="card mt-3">
             <div class="rd-card-head">
-                <div class="rd-card-titulo">Órdenes de cambio</div>
+                <div class="rd-card-titulo">Reaperturas de la lista</div>
                 <div class="kicker"><?= count($ordenes) ?> registradas</div>
             </div>
             <table class="table">

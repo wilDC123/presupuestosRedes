@@ -46,6 +46,19 @@ class ConfiguracionCarta extends ActiveRecord
 {
     use FirmasDeCarta;
 
+    /**
+     * Filas de la tabla "Tratamientos" del formulario (no es una columna:
+     * van a redes.TratamientoCarta). null = no llegaron y no se tocan; si
+     * llegan, la validacion las deja como lista de
+     * ['nombre' => string, 'femenino' => bool], sin las filas en blanco.
+     * Ver CartaService::guardarConfiguracion().
+     *
+     * Sin tipo en PHP: load() le puede poner '' (la tabla sin filas).
+     *
+     * @var array<int|string, mixed>|string|null
+     */
+    public $tratamientos = null;
+
     private const TEXTOS = ['ciudad', 'formatoOficio', 'saludo', 'plantillaReferencia', 'plantillaCuerpo', 'despedida', 'copia', 'plantillaAdjunto'];
 
     public static function tableName(): string
@@ -82,6 +95,7 @@ class ConfiguracionCarta extends ActiveRecord
             [['plantillaCuerpo'], 'string', 'max' => 4000],
             [['copia'], 'string', 'max' => 200],
             [['plantillaAdjunto'], 'string', 'max' => 300],
+            [['tratamientos'], 'validarTratamientos', 'skipOnEmpty' => false],
         ], $this->reglasFirmas());
     }
 
@@ -96,6 +110,64 @@ class ConfiguracionCarta extends ActiveRecord
             'despedida' => 'Despedida',
             'copia' => 'Copia',
             'plantillaAdjunto' => 'Adjunto',
+            'tratamientos' => 'Tratamientos',
         ] + self::etiquetasFirmas();
+    }
+
+    /**
+     * Las filas actuales de redes.TratamientoCarta, para llenar el formulario.
+     */
+    public function cargarTratamientos(): void
+    {
+        $this->tratamientos = [];
+        foreach (TratamientoCarta::lista() as $tratamiento) {
+            $this->tratamientos[] = ['nombre' => $tratamiento->nombre, 'femenino' => (bool) $tratamiento->femenino];
+        }
+    }
+
+    /**
+     * Normaliza las filas (sin espacios de mas, sin las vacias, en el orden
+     * en que llegaron) y exige al menos uno, sin repetidos (sin importar
+     * mayusculas) y de hasta 20 caracteres (el largo de
+     * CartaPresupuesto.tratamiento).
+     */
+    public function validarTratamientos(string $atributo): void
+    {
+        if ($this->tratamientos === null) {
+            return;
+        }
+
+        $filas = [];
+        $vistos = [];
+        foreach (is_array($this->tratamientos) ? $this->tratamientos : [] as $fila) {
+            if (!is_array($fila)) {
+                continue;
+            }
+            $nombre = trim(preg_replace('/\s+/u', ' ', (string) ($fila['nombre'] ?? '')));
+            if ($nombre === '') {
+                continue;
+            }
+            if (mb_strlen($nombre, 'UTF-8') > 20) {
+                $this->addError($atributo, "\"{$nombre}\" es muy largo: un tratamiento tiene hasta 20 caracteres.");
+
+                return;
+            }
+            $clave = mb_strtolower($nombre, 'UTF-8');
+            if (isset($vistos[$clave])) {
+                $this->addError($atributo, "\"{$nombre}\" está repetido.");
+
+                return;
+            }
+            $vistos[$clave] = true;
+            $filas[] = ['nombre' => $nombre, 'femenino' => !empty($fila['femenino'])];
+        }
+
+        if ($filas === []) {
+            $this->addError($atributo, 'Escriba al menos un tratamiento.');
+
+            return;
+        }
+
+        $this->tratamientos = $filas;
     }
 }

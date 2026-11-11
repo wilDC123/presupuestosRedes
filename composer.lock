@@ -4,14 +4,14 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b093c5d7cc2a28d077ecc973a4f2177d",
+    "content-hash": "fc15d085c2c29e9cef198a92e6f9ac4b",
     "packages": [
         {
             "name": "bower-asset/inputmask",
             "version": "5.0.10",
             "source": {
                 "type": "git",
-                "url": "git@github.com:RobinHerbots/Inputmask.git",
+                "url": "https://github.com/RobinHerbots/Inputmask.git",
                 "reference": "325dde43365b7638393e5dc1a2b6463114ef14dd"
             },
             "dist": {
@@ -6758,7 +6758,7 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": ">=8.2"
+        "php": ">=8.3"
     },
     "platform-dev": {},
     "plugin-api-version": "2.6.0"

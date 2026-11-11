@@ -13,9 +13,13 @@ use yii\helpers\Html;
  * @var array<int, array{titulo: string, estado: string, url: array|null}> $pasos Ver ProyectoService::pasos()
  * @var string|null $nombreTipo
  * @var float|null $monto total del presupuesto (null si no tiene)
+ * @var array{total: float, partes: array<int, array{rotulo: string, monto: float}>} $costo Ver ProyectoService::costoTotal()
  * @var array $urlPresupuesto Ver ProyectoService::urlPresupuesto()
  * @var bool $puedeEditarse
  * @var bool $estaAprobado
+ * @var bool $puedeAgregarFase la ultima fase del proyecto (aprobada o no): se le puede agregar la siguiente
+ * @var array<int, array<int, array{id: int, texto: string, presupuesto: ?backend\models\Presupuesto, monto: ?float, actual: bool}>> $franjaFases Ver ProyectoService::franjaFases()
+ * @var bool $puedeRegistrarOrden una fase con su presupuesto aprobado: se le puede registrar una orden de cambio (parte 6)
  * @var int $totalItems items en la lista del proyecto
  * @var bool $listaEditable Ver ListaItemsService::puedeEditarse()
  * @var array{creacion: string|null, revision: string|null, aprobacion: string|null, ultimaModificacion: string|null, ultimoUsuario: string|null} $fechas Ver HistorialService::fechas()
@@ -24,7 +28,7 @@ use yii\helpers\Html;
 
 $this->title = $model->nombre;
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = $model->codigo ?: '#' . $model->id;
+$this->params['breadcrumbs'][] = $model->identificador();
 
 $presupuesto = $model->presupuesto;
 $formato = Yii::$app->formatter;
@@ -35,28 +39,70 @@ $formato = Yii::$app->formatter;
         <div>
             <h1>
                 <?= Html::encode($this->title) ?>
-                <span class="pill-fase">Fase <?= (int) $model->numeroFase ?></span>
+                <?php // Con fase unica no se muestra "Fase" (revision del 2026-11-05, punto 3). ?>
+                <?php if ($model->tieneVariasFases()): ?>
+                    <span class="pill-fase">Fase <?= (int) $model->numeroFase ?></span>
+                <?php endif; ?>
+                <?php if ($model->esOrdenCambio()): ?>
+                    <span class="pill-fase"><?= Html::encode($model->textoOrdenCambio()) ?></span>
+                <?php endif; ?>
             </h1>
-            <div class="rd-pagehead-sub mono"><?= Html::encode($model->codigo ?: 'Sin código') ?></div>
+            <?php // El numero es del proyecto; el codigo RD-PI-PT-NNN, de su ficha tecnica (2026-11-06). ?>
+            <div class="rd-pagehead-sub"><strong><?= Html::encode($model->identificador()) ?></strong><?= $model->codigoFicha() ? ' · ficha técnica <span class="mono">' . Html::encode((string) $model->codigoFicha()) . '</span>' : '' ?></div>
         </div>
         <div class="rd-acciones">
             <?php if ($puedeEditarse): ?>
                 <?= Html::a('Editar datos', ['update', 'id' => $model->id], ['class' => 'btn btn-outline']) ?>
             <?php endif; ?>
-            <?php if ($estaAprobado): ?>
-                <?= Html::a('Crear fase siguiente →', ['create', 'idAnterior' => $model->id], ['class' => 'btn btn-primary']) ?>
+            <?php if ($puedeRegistrarOrden): ?>
+                <?= Html::a('Registrar orden de cambio', ['orden-cambio', 'idFase' => $model->id], [
+                    'class' => 'btn btn-outline',
+                    'title' => 'Un presupuesto adicional de esta fase aprobada, solo con lo que se agrega (formato RD-GD-FR-006)',
+                ]) ?>
             <?php endif; ?>
-            <?= Html::a('Eliminar', ['delete', 'id' => $model->id], [
-                'class' => 'btn btn-danger',
-                'data' => [
-                    'confirm' => '¿Eliminar el proyecto ' . ($model->codigo ?: $model->nombre) . '?',
-                    'method' => 'post',
-                ],
-            ]) ?>
+            <?php // Con varias fases (o con ordenes de cambio) "Agregar fase" va en la franja FASES, no aqui. ?>
+            <?php if ($puedeAgregarFase && $franjaFases === []): ?>
+                <?= Html::a('Agregar fase ' . ((int) $model->numeroFase + 1) . ' →', ['create', 'idAnterior' => $model->id], [
+                    'class' => 'btn btn-primary',
+                    'title' => 'La fase siguiente del mismo proyecto (mismo número), con su propia área, equipo y carpeta económica',
+                ]) ?>
+            <?php endif; ?>
+            <?php // Una orden de cambio aprobada no se elimina; una que no se aprobo, si (con sus documentos). ?>
+            <?php if (!$model->esOrdenCambio() || !$estaAprobado): ?>
+                <?= Html::a('Eliminar', ['delete', 'id' => $model->id], [
+                    'class' => 'btn btn-danger',
+                    'data' => [
+                        'confirm' => $model->esOrdenCambio()
+                            ? '¿Eliminar la ' . mb_strtolower($model->textoOrdenCambio(), 'UTF-8') . ' con su lista, solicitudes, cotizaciones y presupuesto? Sus especificaciones emitidas quedarán anuladas.'
+                            : '¿Eliminar el ' . $model->identificador() . ' (' . $model->nombre . ')?',
+                        'method' => 'post',
+                    ],
+                ]) ?>
+            <?php endif; ?>
         </div>
     </div>
 
+    <?php if ($franjaFases !== []): ?>
+        <?= $this->render('_franja-fases', ['model' => $model, 'grupos' => $franjaFases, 'puedeAgregarFase' => $puedeAgregarFase]) ?>
+    <?php endif; ?>
+
     <?= $this->render('_pasos', ['pasos' => $pasos]) ?>
+
+    <?php if ($model->esOrdenCambio()): ?>
+        <?php // Lo que el sistema guarda del FR-006 (parte 6). ?>
+        <div class="card rd-card-pad mb-3">
+            <div class="rd-card-head-simple mb-2">
+                <div class="rd-card-titulo"><?= Html::encode($model->textoOrdenCambio()) ?> de la <?= Html::a(Html::encode($model->faseOrigen->identificador()), ['view', 'id' => $model->idFaseOrigen]) ?></div>
+            </div>
+            <div class="rd-dato"><strong>Tipo de cambio:</strong> <?= Html::encode($model->tipoCambioLabel()) ?></div>
+            <div class="rd-dato"><strong>Descripción del cambio:</strong> <?= nl2br(Html::encode((string) $model->descripcionCambio)) ?></div>
+            <div class="rd-dato"><strong>Motivo:</strong> <?= nl2br(Html::encode((string) $model->motivoCambio)) ?></div>
+            <div class="rd-nota mt-1">
+                Un presupuesto adicional de la fase, solo con lo que se agrega. El área, el equipo y los datos del proyecto
+                son los de la fase. El formulario FR-006 se hace en Word y se le adjunta este presupuesto.
+            </div>
+        </div>
+    <?php endif; ?>
 
     <div class="rd-cols">
 
@@ -189,24 +235,32 @@ $formato = Yii::$app->formatter;
                 </div>
             </div>
 
+            <?php // Todas las fases del proyecto (mismo numero), con el estado de su presupuesto. ?>
             <div class="card rd-card-pad">
-                <div class="kicker mb-2">Continuidad de fases</div>
-                <div class="rd-dato">
-                    <strong>Fase anterior:</strong>
-                    <?= $model->proyectoAnterior === null
-                        ? 'ninguna (fase 1)'
-                        : Html::a(Html::encode($model->proyectoAnterior->etiqueta()), ['view', 'id' => $model->proyectoAnterior->id]) ?>
-                </div>
-                <div class="rd-dato">
-                    <strong>Fases siguientes:</strong>
-                    <?php if ($model->fasesSiguientes === []): ?>
-                        ninguna
-                    <?php else: ?>
-                        <?php foreach ($model->fasesSiguientes as $siguiente): ?>
-                            <div><?= Html::a(Html::encode($siguiente->etiqueta()), ['view', 'id' => $siguiente->id]) ?></div>
-                        <?php endforeach; ?>
+                <div class="kicker mb-2">Fases del proyecto <?= Html::encode($model->numeroTexto()) ?></div>
+                <?php $fases = $model->numeroProyecto !== null ? $model->fases : [$model]; ?>
+                <?php // Cada fase con sus ordenes de cambio debajo (parte 6). ?>
+                <?php foreach ($fases as $fase): ?>
+                    <?php foreach (array_merge([$fase], $fase->ordenesCambio) as $fila): ?>
+                        <div class="rd-dato<?= $fila->esOrdenCambio() ? ' ms-3' : '' ?>">
+                            <?php $texto = $fila->esOrdenCambio() ? $fila->textoOrdenCambio() : 'Fase ' . (int) $fila->numeroFase; ?>
+                            <?= (int) $fila->id === (int) $model->id ? '<strong>' . Html::encode($texto) . '</strong> (esta)' : Html::a(Html::encode($texto), ['view', 'id' => $fila->id]) ?>
+                            · <?= $fila->presupuesto === null ? 'sin presupuesto' : Html::encode($fila->presupuesto->estadoLabel()) ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endforeach; ?>
+                <?php // Costo total del proyecto: un solo total, de los presupuestos aprobados (parte 6c). ?>
+                <div class="rd-dato mt-2">
+                    <strong>Costo total del proyecto:</strong> Bs. <?= $formato->asDecimal($costo['total'], 2) ?>
+                    <?php if (count($costo['partes']) > 1): ?>
+                        <div class="rd-nota"><?= Html::encode(implode(' + ', array_map(static fn (array $p) => $p['rotulo'] . ': ' . $formato->asDecimal($p['monto'], 2), $costo['partes']))) ?></div>
+                    <?php elseif ($costo['partes'] === []): ?>
+                        <div class="rd-nota">Todavía no hay presupuestos aprobados.</div>
                     <?php endif; ?>
                 </div>
+                <?php if (count($fases) === 1): ?>
+                    <div class="rd-nota mt-1">Fase única. La siguiente se agrega con "Agregar fase"; con el presupuesto aprobado, lo que falte se pide con una orden de cambio.</div>
+                <?php endif; ?>
             </div>
         </div>
 

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\components\VersionDocumento;
 use backend\models\CorrelativoDocumento;
 use backend\models\EspecificacionEmision;
 use backend\models\HistorialProyecto;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
+use backend\models\Proceso;
 use backend\models\Proyecto;
 use backend\models\ProyectoAreaIntervencion;
 use backend\models\ProyectoParticipante;
@@ -33,7 +35,8 @@ use yii\db\IntegrityException;
  *    infraestructura de la universidad (UsfxGEO); se guarda su referencia y
  *    una copia de los nombres (el tipo lo valida el modelo contra
  *    redes.TipoProyecto),
- *  - una fase nueva es un proyecto NUEVO enlazado a uno ya aprobado,
+ *  - una fase nueva es un proyecto NUEVO enlazado a la ultima fase (varias
+ *    fases pueden estar en elaboracion a la vez),
  *  - un proyecto con presupuesto aprobado o cancelado no se modifica.
  */
 class ProyectoService
@@ -68,7 +71,10 @@ class ProyectoService
     public function listar(): ActiveDataProvider
     {
         return new ActiveDataProvider([
-            'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto', 'proceso'])->orderBy(['fechaCreacion' => SORT_DESC, 'id' => SORT_DESC]),
+            // Por proyecto (el mas nuevo arriba) y, dentro, sus fases en orden: cada proyecto con sus fases juntas.
+            // Las ordenes de cambio (parte 6) van debajo de su fase: en SQL Server NULL (la fase) va primero.
+            'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto', 'proceso'])
+                ->orderBy(['numeroProyecto' => SORT_DESC, 'numeroFase' => SORT_ASC, 'numeroOrdenCambio' => SORT_ASC, 'id' => SORT_DESC]),
             'pagination' => [
                 'pageSize' => 20,
             ],
@@ -82,13 +88,15 @@ class ProyectoService
 
     /**
      * Proyecto vacio para el formulario "Nuevo proyecto". Si llega el id de
-     * un proyecto aprobado, se prepara como su FASE SIGUIENTE: queda
-     * enlazado a el y hereda tipo, proceso, unidades, areas de intervencion
-     * y el EQUIPO con su responsable (todo se puede cambiar). No hereda los
-     * items: la lista de la fase nueva empieza vacia. Un proyecto nuevo sin
-     * fase anterior trae marcado el proceso PI (ProcesoService::idPorDefecto())
-     * y una fila de equipo con el rol Proyectista, marcada como responsable,
-     * para elegir a la persona.
+     * la ultima fase de un proyecto ("Agregar fase", revision del
+     * 2026-11-05), se prepara como su FASE SIGUIENTE: mismo numero de
+     * proyecto, los datos del proyecto (Proyecto::ATRIBUTOS_COMUNES, que no se
+     * cambian en la fase) y, para empezar, el EQUIPO con su responsable y el
+     * lugar de entrega por defecto (se pueden cambiar). El area de
+     * intervencion y la carpeta economica empiezan vacias: son de cada fase.
+     * Un proyecto nuevo sin fase anterior trae marcado el proceso PI
+     * (ProcesoService::idPorDefecto()) y una fila de equipo con el rol
+     * Proyectista, marcada como responsable, para elegir a la persona.
      */
     public function nuevo(?int $idProyectoAnterior = null): Proyecto
     {
@@ -96,14 +104,12 @@ class ProyectoService
         $proyecto->idProceso = (new ProcesoService())->idPorDefecto();
         $anterior = $idProyectoAnterior === null ? null : $this->obtener($idProyectoAnterior);
 
-        if ($anterior !== null && $this->estaAprobado($anterior)) {
+        if ($anterior !== null && $this->puedeAgregarFase($anterior)) {
             $proyecto->idProyectoAnterior = $anterior->id;
             $proyecto->numeroFase = $anterior->numeroFase + 1;
-            $proyecto->idTipoProyecto = $anterior->idTipoProyecto;
-            $proyecto->idProceso = $anterior->idProceso ?? $proyecto->idProceso;
-            $proyecto->unidadDependencia = $anterior->unidadDependencia;
-            $proyecto->unidadSolicitante = $anterior->unidadSolicitante;
-            $proyecto->areas = array_map(static fn (ProyectoAreaIntervencion $area) => $area->claves(), $anterior->areasIntervencion);
+            $proyecto->numeroProyecto = $anterior->numeroProyecto;
+            $this->copiarDatosComunes($anterior, $proyecto);
+            $proyecto->lugarEntrega = $anterior->lugarEntrega;
             $this->copiarEquipo($anterior, $proyecto);
         } else {
             $proyecto->numeroFase = 1;
@@ -189,9 +195,15 @@ class ProyectoService
      */
     public function eliminar(Proyecto $proyecto): ?string
     {
+        // Una orden de cambio no aprobada se elimina con sus documentos (parte 6).
+        if ($proyecto->esOrdenCambio()) {
+            return (new OrdenCambioFaseService())->eliminar($proyecto);
+        }
+
         $usos = array_filter([
             'presupuesto' => Presupuesto::find()->andWhere(['idProyecto' => $proyecto->id])->exists() ? 1 : 0,
             'fase(s) siguiente(s)' => (int) Proyecto::find()->andWhere(['idProyectoAnterior' => $proyecto->id])->count(),
+            'orden(es) de cambio' => (int) Proyecto::find()->andWhere(['idFaseOrigen' => $proyecto->id])->count(),
             'especificación(es) emitida(s)' => (int) EspecificacionEmision::find()->andWhere(['idProyecto' => $proyecto->id])->count(),
         ]);
 
@@ -244,6 +256,93 @@ class ProyectoService
     }
 
     /**
+     * REGLA DE NEGOCIO: una fase nueva se agrega desde la ULTIMA fase del
+     * proyecto, este o no aprobada. El Ing. de DTIC dijo el 2026-11-09 que se
+     * pueden empezar varias fases a la vez (del 06 al 09-11 se exigia la
+     * anterior aprobada). "Reabrir" la ficha tecnica de un proyecto aprobado
+     * sigue siendo agregarle una fase.
+     */
+    public function puedeAgregarFase(Proyecto $proyecto): bool
+    {
+        return $proyecto->esUltimaFase();
+    }
+
+    /**
+     * Los DATOS DEL PROYECTO (Proyecto::ATRIBUTOS_COMUNES) son los mismos en
+     * todas las fases y se escriben SOLO en la fase 1: en una fase 2+ van
+     * fijos. En la fase 1 tambien quedan fijos cuando OTRA fase del proyecto
+     * ya esta aprobada (la ficha tecnica del proyecto aprobada los muestra);
+     * si la fase 1 esta aprobada, el proyecto entero ya no se edita
+     * (puedeEditarse()).
+     */
+    public function datosComunesFijos(Proyecto $proyecto): bool
+    {
+        // Una fase 2+ y una orden de cambio los toman de su fase.
+        if ($proyecto->idProyectoAnterior !== null || $proyecto->esOrdenCambio()) {
+            return true;
+        }
+
+        if ($proyecto->isNewRecord || $proyecto->numeroProyecto === null) {
+            return false;
+        }
+
+        $otrasFases = Proyecto::find()
+            ->select('id')
+            ->andWhere(['numeroProyecto' => $proyecto->numeroProyecto])
+            ->andWhere(['<>', 'id', $proyecto->id]);
+
+        return Presupuesto::find()
+            ->andWhere(['idProyecto' => $otrasFases, 'estado' => Presupuesto::ESTADO_APROBADO])
+            ->exists();
+    }
+
+    /** Los datos del proyecto (iguales en todas sus fases) de una fase a otra. */
+    private function copiarDatosComunes(Proyecto $desde, Proyecto $hacia): void
+    {
+        foreach (Proyecto::ATRIBUTOS_COMUNES as $atributo) {
+            $hacia->$atributo = $desde->$atributo;
+        }
+    }
+
+    /**
+     * La franja "FASES" de la vista del proyecto (2026-11-10), encima de la
+     * barra de pasos: un grupo por fase, cada uno con la fase y despues sus
+     * ordenes de cambio, con el presupuesto y su total. Asi se pasa de una
+     * fase a otra sin bajar hasta el recuadro "Fases del proyecto". En una
+     * orden de cambio, las fases de su fase de origen. VACIA (no se muestra)
+     * con fase unica y sin ordenes de cambio.
+     *
+     * @return array<int, array<int, array{id: int, texto: string, presupuesto: ?Presupuesto, monto: ?float, actual: bool}>>
+     */
+    public function franjaFases(Proyecto $proyecto): array
+    {
+        $base = $proyecto->esOrdenCambio() ? $proyecto->faseOrigen : $proyecto;
+        /** @var Proyecto[] $fases */
+        $fases = $base->numeroProyecto !== null && $base->fases !== [] ? $base->fases : [$base];
+
+        if (count($fases) === 1 && $fases[0]->ordenesCambio === []) {
+            return [];
+        }
+
+        $grupos = [];
+        foreach ($fases as $fase) {
+            $grupo = [];
+            foreach (array_merge([$fase], $fase->ordenesCambio) as $fila) {
+                $grupo[] = [
+                    'id' => (int) $fila->id,
+                    'texto' => $fila->esOrdenCambio() ? $fila->textoOrdenCambio() : 'Fase ' . (int) $fila->numeroFase,
+                    'presupuesto' => $fila->presupuesto,
+                    'monto' => $this->montoPresupuesto($fila),
+                    'actual' => (int) $fila->id === (int) $proyecto->id,
+                ];
+            }
+            $grupos[] = $grupo;
+        }
+
+        return $grupos;
+    }
+
+    /**
      * Total del presupuesto del proyecto (null si aun no tiene presupuesto).
      */
     public function montoPresupuesto(Proyecto $proyecto): ?float
@@ -258,27 +357,143 @@ class ProyectoService
     }
 
     /**
-     * Lo que imprime la ficha tecnica del proyecto (revision del 2026-10-29,
-     * paso 7; formato PROVISIONAL hasta que el Ing. de DTIC pase el suyo):
-     * los datos del proyecto (van en la vista con el modelo), sus fechas y
-     * los documentos de su carpeta economica.
+     * Lo que imprime la FICHA TECNICA DEL PROYECTO: UNA por proyecto, con
+     * TODAS sus fases (revision del 2026-11-05, punto 2; parte 5d): arriba lo
+     * del proyecto (la vista lo toma del modelo) y despues un bloque por fase
+     * con su area, equipo, fechas y documentos de su carpeta economica. Sale
+     * igual desde cualquier fase.
+     *
+     * Version y aprobacion se CALCULAN (no hay tabla): cada fase que se aprueba
+     * es una version, contadas en el ORDEN EN QUE SE APROBARON (la primera
+     * aprobada da 1.0, la segunda 1.1..., sea la fase 1 o la 2: desde el
+     * 2026-11-09 varias fases se elaboran a la vez). "Reabrir la ficha tecnica"
+     * es agregar una fase; una ORDEN DE CAMBIO no cambia la version. Mientras
+     * ALGUNA fase tenga su presupuesto sin aprobar, la ficha tecnica del
+     * proyecto es la version siguiente en BORRADOR (marca de agua). Una fase
+     * con el presupuesto CANCELADO no cuenta como pendiente (nunca se
+     * aprobara). La fecha de la cabecera es la de creacion de la fase mas
+     * nueva: "arriba va la fecha de creacion del documento". Desde el
+     * 2026-11-09 (formatos corregidos v3, parte 6c) la ficha NO lleva firmas.
+     *
+     * Cada fase trae su CARPETA ECONOMICA (carpeta()) y, dentro, la de cada
+     * una de sus ORDENES DE CAMBIO ('ordenes'). 'costo' es el TOTAL UNICO del
+     * proyecto (costoTotal()).
      *
      * @return array{
-     *   fechas: array{creacion: string|null, revision: string|null, aprobacion: string|null, ultimaModificacion: string|null, ultimoUsuario: string|null},
-     *   monto: float|null,
-     *   especificaciones: EspecificacionEmision[],
-     *   solicitudes: SolicitudCotizacion[]
+     *   codigo: string|null,
+     *   fases: array<int, array<string, mixed>>,
+     *   variasFases: bool,
+     *   costo: array{total: float, partes: array<int, array{rotulo: string, monto: float}>},
+     *   version: string,
+     *   fechaDocumento: string|null,
+     *   aprobada: bool,
+     *   fechaAprobacion: string
      * }
      */
     public function datosFicha(Proyecto $proyecto): array
     {
+        /** @var Proyecto[] $fases */
+        $fases = $proyecto->numeroProyecto !== null ? $proyecto->fases : [$proyecto];
+        $fases = $fases === [] ? [$proyecto] : $fases;
+        $aprobadas = array_values(array_filter($fases, fn (Proyecto $fase) => $this->estaAprobado($fase)));
+        $pendientes = array_filter(
+            $fases,
+            fn (Proyecto $fase) => !$this->estaAprobado($fase) && ($fase->presupuesto->estado ?? null) !== Presupuesto::ESTADO_CANCELADO
+        );
+        $todasAprobadas = $aprobadas !== [] && $pendientes === [];
+        // La aprobada mas reciente (a igual fecha, la de fase mayor) da la fecha de aprobacion.
+        usort($aprobadas, static fn (Proyecto $a, Proyecto $b) => [(string) $a->presupuesto->fechaAprobacion, (int) $a->numeroFase]
+            <=> [(string) $b->presupuesto->fechaAprobacion, (int) $b->numeroFase]);
+        $presupuesto = $todasAprobadas ? end($aprobadas)->presupuesto : null;
+        $creaciones = array_map(static fn (Proyecto $fase) => (string) $fase->fechaCreacion, $fases);
+
+        $porFase = [];
+        foreach ($fases as $fase) {
+            $porFase[] = $this->carpeta($fase) + [
+                'fechas' => $this->historial->fechas($fase),
+                'ordenes' => array_map(fn (Proyecto $orden) => $this->carpeta($orden), $fase->ordenesCambio),
+            ];
+        }
+
         return [
-            'fechas' => $this->historial->fechas($proyecto),
+            'codigo' => $fases[0]->codigo,
+            'fases' => $porFase,
+            'variasFases' => count($fases) > 1,
+            'costo' => $this->costoTotal($proyecto),
+            'version' => VersionDocumento::texto(max(1, $todasAprobadas ? count($aprobadas) : count($aprobadas) + 1)),
+            'fechaDocumento' => max($creaciones) === '' ? null : max($creaciones),
+            'aprobada' => $todasAprobadas,
+            'fechaAprobacion' => $presupuesto !== null ? $presupuesto->fechaAprobacionFormateada() : '',
+        ];
+    }
+
+    /**
+     * La CARPETA ECONOMICA de una fase o de una orden de cambio, para la ficha
+     * tecnica: lista de materiales, presupuesto (y su total), especificaciones
+     * vigentes, solicitudes con sus proformas recibidas. 'reemisiones' =
+     * [id de la emision vigente => motivo] de las ET reemitidas (el motivo
+     * queda en la emision anterior, la "reemplazada por" la vigente).
+     *
+     * @return array{proyecto: Proyecto, monto: float|null, especificaciones: EspecificacionEmision[], reemisiones: array<int, string>, solicitudes: SolicitudCotizacion[], lista: array}
+     */
+    private function carpeta(Proyecto $proyecto): array
+    {
+        $especificaciones = (new EspecificacionEmisionService())->vigentesDelProyecto($proyecto);
+        $reemitidas = array_map(
+            static fn (EspecificacionEmision $e): int => (int) $e->id,
+            array_filter($especificaciones, static fn (EspecificacionEmision $e): bool => (int) $e->versionDocumento > 1)
+        );
+
+        return [
+            'proyecto' => $proyecto,
             'monto' => $this->montoPresupuesto($proyecto),
-            'especificaciones' => (new EspecificacionEmisionService())->vigentesDelProyecto($proyecto),
+            'especificaciones' => $especificaciones,
+            'reemisiones' => $reemitidas === [] ? [] : EspecificacionEmision::find()
+                ->select(['motivo', 'idReemplazadaPor'])
+                ->andWhere(['idReemplazadaPor' => $reemitidas])
+                ->indexBy('idReemplazadaPor')
+                ->column(),
             'solicitudes' => (new SolicitudCotizacionService())->listar($proyecto),
             'lista' => (new ListaItemsService())->documento($proyecto),
         ];
+    }
+
+    /**
+     * COSTO TOTAL DEL PROYECTO (parte 6c, formatos corregidos v3): UN solo
+     * total, la suma de los presupuestos APROBADOS de todas sus fases y de sus
+     * ordenes de cambio, en orden (cada fase seguida de sus ordenes). Las
+     * partes, para el detalle "Fase 1: 5,732.50 + orden de cambio N.° 1:
+     * 1,870.00 + fase 2: 3,026.00"; con fase unica, la fase se llama
+     * "Presupuesto".
+     *
+     * @return array{total: float, partes: array<int, array{rotulo: string, monto: float}>}
+     */
+    public function costoTotal(Proyecto $proyecto): array
+    {
+        $base = $proyecto->esOrdenCambio() ? $proyecto->faseOrigen : $proyecto;
+        /** @var Proyecto[] $fases */
+        $fases = $base->numeroProyecto !== null && $base->fases !== [] ? $base->fases : [$base];
+        $variasFases = count($fases) > 1;
+        $partes = [];
+
+        foreach ($fases as $fase) {
+            foreach (array_merge([$fase], $fase->ordenesCambio) as $fila) {
+                if (!$this->estaAprobado($fila)) {
+                    continue;
+                }
+                $rotulo = $fila->esOrdenCambio()
+                    ? 'orden de cambio N.° ' . (int) $fila->numeroOrdenCambio
+                    : ($variasFases ? 'fase ' . (int) $fila->numeroFase : 'presupuesto');
+                $partes[] = ['rotulo' => $rotulo, 'monto' => (float) $this->montoPresupuesto($fila)];
+            }
+        }
+
+        // La primera parte con mayuscula: "Fase 1: ... + orden de cambio N.° 1: ...".
+        if ($partes !== []) {
+            $partes[0]['rotulo'] = mb_strtoupper(mb_substr($partes[0]['rotulo'], 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($partes[0]['rotulo'], 1, null, 'UTF-8');
+        }
+
+        return ['total' => array_sum(array_column($partes, 'monto')), 'partes' => $partes];
     }
 
     /**
@@ -426,38 +641,6 @@ class ProyectoService
         ];
     }
 
-    /**
-     * Proyectos que pueden ser "fase anterior" de otro: SOLO los que tienen
-     * presupuesto aprobado. Para cada uno devuelve el texto de la opcion y
-     * el resumen que se muestra en "Proyecto vinculado".
-     *
-     * @param int|null $excluirId el propio proyecto, que no puede ser su fase anterior
-     * @return array<int, array{etiqueta: string, codigo: string, resumen: string}> indexado por id
-     */
-    public function proyectosAprobados(?int $excluirId = null): array
-    {
-        $proyectos = Proyecto::find()
-            ->alias('p')
-            ->innerJoin(['pr' => Presupuesto::tableName()], 'pr.idProyecto = p.id')
-            ->andWhere(['pr.estado' => Presupuesto::ESTADO_APROBADO])
-            ->andFilterWhere(['<>', 'p.id', $excluirId])
-            ->orderBy(['p.codigo' => SORT_ASC])
-            ->all();
-
-        $opciones = [];
-
-        foreach ($proyectos as $proyecto) {
-            $monto = Yii::$app->formatter->asDecimal((float) $this->montoPresupuesto($proyecto), 2);
-
-            $opciones[$proyecto->id] = [
-                'etiqueta' => $proyecto->etiqueta() . " (Fase {$proyecto->numeroFase}, aprobado)",
-                'codigo' => (string) $proyecto->codigo,
-                'resumen' => "Fase {$proyecto->numeroFase} — Aprobado — Bs. $monto",
-            ];
-        }
-
-        return $opciones;
-    }
 
     /**
      * El paso "Presupuesto" del proyecto: la pantalla unica donde se elabora
@@ -533,6 +716,14 @@ class ProyectoService
      */
     private function guardar(Proyecto $proyecto, array $datosFormulario): bool
     {
+        // Una orden de cambio tiene su propio formulario (OrdenCambioFaseService):
+        // por aqui se copiaria como si fuera una fase 1.
+        if ($proyecto->esOrdenCambio()) {
+            $proyecto->addError('nombre', 'Una orden de cambio se edita desde su propio formulario.');
+
+            return false;
+        }
+
         // Como estaba antes, para anotar en el historial solo lo que cambio.
         $antes = $proyecto->isNewRecord ? null : $this->historial->foto(Proyecto::findOne($proyecto->id));
 
@@ -543,6 +734,23 @@ class ProyectoService
         foreach (['idTipoProyecto', 'idProceso', 'idProyectoAnterior'] as $atributo) {
             if ($proyecto->$atributo === '') {
                 $proyecto->$atributo = null;
+            }
+        }
+
+        // La fase de un proyecto no se cambia al editarla (se agrega con "Agregar fase").
+        if (!$proyecto->isNewRecord) {
+            $proyecto->idProyectoAnterior = $proyecto->getOldAttribute('idProyectoAnterior');
+        }
+
+        // Una fase siguiente lleva los datos del proyecto tal como estan en la anterior;
+        // una fase 1 con otra fase aprobada, los que ya tenia. Lo que llegue del
+        // formulario para ellos no cuenta (los campos van deshabilitados).
+        $anteriorDatos = $proyecto->idProyectoAnterior === null ? null : Proyecto::findOne((int) $proyecto->idProyectoAnterior);
+        if ($anteriorDatos !== null) {
+            $this->copiarDatosComunes($anteriorDatos, $proyecto);
+        } elseif ($this->datosComunesFijos($proyecto)) {
+            foreach (Proyecto::ATRIBUTOS_COMUNES as $atributo) {
+                $proyecto->$atributo = $proyecto->getOldAttribute($atributo);
             }
         }
 
@@ -565,11 +773,13 @@ class ProyectoService
                 $this->insertarConCodigo($proyecto);
             } else {
                 $proyecto->save(false);
+                $this->ajustarProcesoDeLaLista($proyecto);
             }
 
             $this->reemplazarAreas($proyecto, $areas);
             $this->reemplazarEquipo($proyecto, $equipo);
             $this->anotarEnHistorial($proyecto, $antes);
+            $this->llevarDatosComunesALasFases($proyecto);
 
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -737,8 +947,8 @@ class ProyectoService
     }
 
     /**
-     * Calcula numeroFase a partir del proyecto de la fase anterior. Solo se
-     * acepta como fase anterior un proyecto con presupuesto APROBADO.
+     * Calcula numeroFase a partir del proyecto de la fase anterior (que no
+     * tiene que estar aprobada: varias fases pueden elaborarse a la vez).
      */
     private function aplicarFase(Proyecto $proyecto): void
     {
@@ -750,13 +960,71 @@ class ProyectoService
 
         $anterior = $this->obtener((int) $proyecto->idProyectoAnterior);
 
-        if ($anterior === null || (!$proyecto->isNewRecord && $anterior->id === $proyecto->id) || !$this->estaAprobado($anterior)) {
-            $proyecto->addError('idProyectoAnterior', 'Solo un proyecto con presupuesto aprobado puede ser la fase anterior.');
+        if ($anterior === null || $anterior->esOrdenCambio() || (!$proyecto->isNewRecord && $anterior->id === $proyecto->id)) {
+            $proyecto->addError('idProyectoAnterior', 'No se encontró la fase anterior del proyecto.');
+
+            return;
+        }
+
+        // Al editar una fase ya creada su anterior no cambia: solo se revisa al crearla.
+        if (!$proyecto->isNewRecord) {
+            $proyecto->numeroFase = $anterior->numeroFase + 1;
 
             return;
         }
 
         $proyecto->numeroFase = $anterior->numeroFase + 1;
+
+        // Una fase no se repite dentro del proyecto (la base tambien lo impide).
+        $ocupada = $anterior->numeroProyecto !== null && Proyecto::find()
+            ->andWhere(['numeroProyecto' => $anterior->numeroProyecto, 'numeroFase' => $proyecto->numeroFase])
+            ->andFilterWhere(['<>', 'id', $proyecto->id])
+            ->exists();
+
+        if ($ocupada) {
+            $proyecto->addError('idProyectoAnterior', $anterior->identificador() . ' ya tiene una fase ' . $proyecto->numeroFase . '.');
+        }
+    }
+
+    /**
+     * Con varias fases a la vez, la fase 1 se puede editar cuando ya existen
+     * las siguientes: sus DATOS DEL PROYECTO se copian a las demas fases en la
+     * misma transaccion (si no, cada fase diria otro nombre). Cada fase anota
+     * lo que cambio en su historial; si cambio el proceso, su lista cambia de
+     * codigo como en la fase 1 (solo si aun no se envio a cotizacion).
+     */
+    private function llevarDatosComunesALasFases(Proyecto $fase1): void
+    {
+        if ($fase1->idProyectoAnterior !== null || $fase1->numeroProyecto === null) {
+            return;
+        }
+
+        $otras = Proyecto::find()
+            ->andWhere(['numeroProyecto' => $fase1->numeroProyecto])
+            ->andWhere(['<>', 'id', $fase1->id])
+            ->all();
+
+        /** @var Proyecto $fase */
+        foreach ($otras as $fase) {
+            $nuevos = [];
+            foreach (Proyecto::ATRIBUTOS_COMUNES as $atributo) {
+                if ((string) $fase->$atributo !== (string) $fase1->$atributo) {
+                    $nuevos[$atributo] = $fase1->$atributo;
+                }
+            }
+
+            if ($nuevos === []) {
+                continue;
+            }
+
+            $antes = $this->historial->foto($fase);
+            $fase->updateAttributes($nuevos);
+            $this->ajustarProcesoDeLaLista($fase);
+            $cambios = $this->historial->cambios($antes, $this->historial->foto(Proyecto::findOne($fase->id)));
+            if ($cambios !== '') {
+                $this->historial->registrar($fase, HistorialProyecto::ACCION_PROYECTO_MODIFICADO, "Desde la fase 1:\n" . $cambios);
+            }
+        }
     }
 
     /**
@@ -770,7 +1038,7 @@ class ProyectoService
     {
         if ($antes === null) {
             $detalle = $proyecto->nombre
-                . ($proyecto->idProyectoAnterior === null ? '' : "\nFase " . (int) $proyecto->numeroFase . ' de ' . ($proyecto->proyectoAnterior->codigo ?? ''));
+                . ($proyecto->idProyectoAnterior === null ? '' : "\nFase " . (int) $proyecto->numeroFase . ' del proyecto ' . $proyecto->numeroTexto());
             $this->historial->registrar($proyecto, HistorialProyecto::ACCION_PROYECTO_CREADO, $detalle);
 
             return;
@@ -874,16 +1142,63 @@ class ProyectoService
 
     /**
      * Inserta el proyecto con el siguiente codigo del correlativo PT
-     * (RD-PI-PT-005, ver CorrelativoDocumento::codigo()). Se llama dentro de la
-     * transaccion de guardar(): si el INSERT falla, el numero tomado vuelve
-     * atras con todo lo demas. El indice unico de la base impide igual
-     * cualquier codigo repetido.
+     * (RD-PI-PT-005, ver CorrelativoDocumento::codigo()) y el de su lista de
+     * materiales (RD-<proceso>-LM-005, revision del 2026-11-05: cada proyecto
+     * tiene una sola lista, que conserva su codigo en todas sus versiones). Se
+     * llama dentro de la transaccion de guardar(): si el INSERT falla, los
+     * numeros tomados vuelven atras con todo lo demas. Los indices unicos de
+     * la base impiden igual cualquier codigo repetido.
      */
     private function insertarConCodigo(Proyecto $proyecto): void
     {
-        $numero = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_PROYECTO);
-        $proyecto->codigo = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, $numero);
+        $codificacion = new CodificacionService();
+        // Una fase siguiente lleva el MISMO numero de proyecto que la anterior; un proyecto nuevo, el siguiente.
+        $this->asignarNumero($proyecto, $codificacion);
+        // Codigo PT = el de la FICHA TECNICA, UNA por proyecto (parte 5d): solo la fase 1 lo toma; una fase
+        // siguiente usa el de su proyecto (Proyecto::codigoFicha()) y no gasta un numero.
+        $proyecto->codigo = $proyecto->idProyectoAnterior === null
+            ? CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_PROYECTO, $codificacion->tomar(CorrelativoDocumento::TIPO_PROYECTO))
+            : null;
+        $proyecto->codigoLista = CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_LISTA, $codificacion->tomar(CorrelativoDocumento::TIPO_LISTA), $this->codigoProceso($proyecto));
         $proyecto->save(false);
+    }
+
+    /**
+     * Si se cambio el proceso del proyecto y su lista todavia no se envio a
+     * cotizacion (ninguna version emitida), el codigo de la lista cambia a ese
+     * proceso con el MISMO numero (RD-PI-LM-005 -> RD-GR-LM-005). Una lista ya
+     * enviada conserva su codigo, como el presupuesto.
+     */
+    private function ajustarProcesoDeLaLista(Proyecto $proyecto): void
+    {
+        $partes = CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_LISTA, $proyecto->codigoLista);
+        $proceso = $this->codigoProceso($proyecto);
+
+        if ($partes === null || $partes['proceso'] === $proceso || $proyecto->ultimaAprobacionLista() !== null) {
+            return;
+        }
+
+        $proyecto->updateAttributes(['codigoLista' => CorrelativoDocumento::codigo(CorrelativoDocumento::TIPO_LISTA, $partes['numero'], $proceso)]);
+    }
+
+    /**
+     * Numero de proyecto (revision del 2026-11-05): el de la fase anterior si
+     * es una fase siguiente; si no, el siguiente del correlativo NP. Se llama
+     * dentro de la transaccion de guardar().
+     */
+    private function asignarNumero(Proyecto $proyecto, CodificacionService $codificacion): void
+    {
+        $anterior = $proyecto->idProyectoAnterior === null ? null : Proyecto::findOne((int) $proyecto->idProyectoAnterior);
+
+        $proyecto->numeroProyecto = $anterior->numeroProyecto ?? $codificacion->tomar(CorrelativoDocumento::TIPO_NUMERO_PROYECTO);
+    }
+
+    /** Codigo de 2 letras del proceso del proyecto (PI si no tiene). */
+    private function codigoProceso(Proyecto $proyecto): string
+    {
+        $codigo = $proyecto->idProceso === null ? null : Proceso::find()->select('codigo')->where(['id' => (int) $proyecto->idProceso])->scalar();
+
+        return is_string($codigo) && $codigo !== '' ? $codigo : CorrelativoDocumento::PROCESO;
     }
 
     /**

@@ -144,8 +144,8 @@ class AreaIntervencionTest extends Unit
         $this->assertSame('Edificio Prueba · Bloque A · Piso 1: B101 Laboratorio', $areas[0]->texto());
         $this->assertSame('B101', $areas[0]->codigoAmbiente);
         $this->assertSame('Edificio Prueba', $areas[2]->texto());
-        // Los laboratorios del mismo bloque salen en una sola linea.
-        $this->assertSame('Edificio Prueba · Bloque A: B101 Laboratorio, B102 Laboratorio; Edificio Prueba', $proyecto->areaIntervencionTexto());
+        // Los laboratorios del mismo piso salen en una sola linea, con el edificio una sola vez.
+        $this->assertSame('Edificio Prueba, Bloque A, Piso 1: B101 Laboratorio y B102 Laboratorio', $proyecto->areaIntervencionTexto());
     }
 
     public function testRechazaUnAreaQueNoExisteOSeSaltaUnNivel(): void
@@ -217,8 +217,8 @@ class AreaIntervencionTest extends Unit
         $this->assertSame('Bloque Ingeniería Civil', $formulario[0]['edificio']);
 
         $this->assertTrue($this->service->actualizar($proyecto, ['Proyecto' => ['areas' => $proyecto->areas]]), json_encode($proyecto->errors));
-        // En los documentos sale igual que las demas (el resumen nombra el espacio sin el piso).
-        $this->assertSame('Bloque Ingeniería Civil: Sala de servidores; Edificio Prueba', Proyecto::findOne($proyecto->id)->areaIntervencionTexto());
+        // En los documentos sale igual que las demas: una linea por edificio.
+        $this->assertSame('Bloque Ingeniería Civil, Planta baja: Sala de servidores | Edificio Prueba', Proyecto::findOne($proyecto->id)->areaIntervencionTexto());
 
         // Un nombre demasiado largo no se guarda.
         $datos['Proyecto']['areas'] = [['manual' => '1', 'edificio' => str_repeat('x', 201)]];
@@ -245,7 +245,7 @@ class AreaIntervencionTest extends Unit
         // Editar otro dato no la pierde ni da error: conserva su nombre de entonces.
         $datos = ['Proyecto' => ['nombre' => 'Proyecto test renombrado', 'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'Carrera test', 'unidadSolicitante' => 'Facultad test', 'areas' => $proyecto->areas]];
         $this->assertTrue($this->service->actualizar($proyecto, $datos), json_encode($proyecto->errors));
-        $this->assertSame('Edificio Prueba · Bloque A', Proyecto::findOne($proyecto->id)->areaIntervencionTexto());
+        $this->assertSame('Edificio Prueba, Bloque A', Proyecto::findOne($proyecto->id)->areaIntervencionTexto());
 
         // Pero no se puede agregar una nueva de ese edificio.
         $datos['Proyecto']['areas'][] = ['idEdificio' => 'E1'];
@@ -308,11 +308,44 @@ class AreaIntervencionTest extends Unit
     {
         $area = static fn (array $datos) => new ProyectoAreaIntervencion($datos);
 
-        $this->assertSame('Edificio X · Bloque B: Piso 2; Edificio Y', ProyectoAreaIntervencion::resumen([
+        $this->assertSame('Edificio X, Bloque B, Piso 2 | Edificio Y', ProyectoAreaIntervencion::resumen([
             $area(['edificio' => 'Edificio X', 'bloque' => 'Bloque B', 'nivel' => 'Piso 2']),
             $area(['edificio' => 'Edificio Y']),
             $area(['edificio' => 'Edificio X', 'bloque' => 'Bloque B', 'nivel' => 'Piso 2']),
         ]));
+    }
+
+    /**
+     * Revision del 2026-11-05, punto 5: una casilla por edificio, sin repetirlo,
+     * con sus bloques, pisos y espacios en el mismo texto.
+     */
+    public function testUnaLineaPorEdificioConTodoSuDetalle(): void
+    {
+        $area = static fn (array $datos) => new ProyectoAreaIntervencion($datos);
+        $medicina = ['edificio' => 'Edificio Facultad de Medicina', 'bloque' => 'Bloque A', 'nivel' => 'Piso 1'];
+
+        $this->assertSame([
+            'Edificio Facultad de Medicina, Bloque A, Piso 1: Anfiteatro de Anatomía y A-104 Sala de preparación; '
+                . 'Piso 2: A-201, A-202 y A-203; Bloque C y Bloque D; Bloque B, Piso 1',
+            'Edificio Trabajo Social, Bloque A y Bloque B',
+            'Edificio Central',
+        ], ProyectoAreaIntervencion::lineasPorEdificio([
+            $area($medicina + ['ambiente' => 'Anfiteatro de Anatomía']),
+            $area($medicina + ['ambiente' => 'A-104 Sala de preparación']),
+            $area(['edificio' => 'Edificio Trabajo Social', 'bloque' => 'Bloque A']),
+            $area(['ambiente' => 'A-201', 'nivel' => 'Piso 2'] + $medicina),
+            $area(['ambiente' => 'A-202', 'nivel' => 'Piso 2'] + $medicina),
+            $area(['ambiente' => 'A-203', 'nivel' => 'Piso 2'] + $medicina),
+            // Bloques enteros: juntos, donde aparece el primero.
+            $area(['edificio' => 'Edificio Facultad de Medicina', 'bloque' => 'Bloque C']),
+            $area(['edificio' => 'Edificio Facultad de Medicina', 'bloque' => 'Bloque B', 'nivel' => 'Piso 1']),
+            $area(['edificio' => 'Edificio Facultad de Medicina', 'bloque' => 'Bloque D']),
+            $area(['edificio' => 'Edificio Trabajo Social', 'bloque' => 'Bloque B']),
+            // Repetida: una vez.
+            $area($medicina + ['ambiente' => 'Anfiteatro de Anatomía']),
+            $area(['edificio' => 'Edificio Central']),
+        ]));
+        $this->assertSame([], ProyectoAreaIntervencion::lineasPorEdificio([]));
     }
 
     public function testElGrupoMuestraElNombreDeUsfxGeoSinRotulo(): void

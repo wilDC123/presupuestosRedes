@@ -29,7 +29,7 @@ $hayFiltros = implode('', $filtros) !== '';
         <div>
             <h1><?= Html::encode($this->title) ?></h1>
             <div class="rd-pagehead-sub">
-                Todos los formularios de especificación técnica (RD-PI-ET-001/26, RD-PI-ET-002/26…). Los emitidos antes del
+                Todos los formularios de especificación técnica (RD-PI-ET-001, RD-PI-ET-002…). Los emitidos antes del
                 22/10/2026 con código NET muestran debajo su código anterior, que es el que lleva el documento ya entregado. Se emiten y reemiten desde la lista de ítems de cada proyecto; los reemplazados y anulados se conservan.
             </div>
         </div>
@@ -58,7 +58,7 @@ $hayFiltros = implode('', $filtros) !== '';
         ]) ?>
         <?= Html::textInput('buscar', $filtros['buscar'], [
             'class' => 'form-control',
-            'placeholder' => 'Código (RD-PI-ET-007/26, 7 o NET:880/26), título o código de proyecto...',
+            'placeholder' => 'Código (RD-PI-ET-007, 7 o NET:880/26), título o código de proyecto...',
         ]) ?>
         <?= Html::submitButton('Filtrar', ['class' => 'btn btn-outline']) ?>
         <?php if ($hayFiltros): ?>
@@ -109,7 +109,7 @@ $hayFiltros = implode('', $filtros) !== '';
                 'format' => 'raw',
                 'value' => static fn (EspecificacionEmision $e) => $e->proyecto === null
                     ? '—'
-                    : Html::a(Html::encode($e->proyecto->codigo ?: '#' . $e->idProyecto), ['/lista-items/index', 'id' => $e->idProyecto])
+                    : Html::a(Html::encode($e->proyecto->identificador()), ['/lista-items/index', 'id' => $e->idProyecto])
                         . ($e->proyectoItem !== null
                             ? '<div class="rd-celda-sub">' . Html::encode($e->proyectoItem->subcatalogoItem->descripcion ?? '') . '</div>'
                             : '<div class="rd-celda-sub">Ítem quitado de la lista</div>'),

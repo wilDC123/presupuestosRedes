@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
+use backend\components\VersionDocumento;
 use backend\models\ConfiguracionEspecificacion;
 use backend\models\CorrelativoDocumento;
 use backend\models\Especificacion;
@@ -26,8 +27,9 @@ use yii\data\ActiveDataProvider;
  *  - enlazar una especificacion a un item de la lista ES emitir: se le asigna
  *    el siguiente numero del correlativo ET (CodificacionService),
  *  - el correlativo lo fija el encargado (Codificación de documentos), sube
- *    de 1 en 1 y vuelve a 001 cada 1 de enero (el codigo lleva el año:
- *    RD-PI-ET-001/27); un codigo nunca se reutiliza,
+ *    de 1 en 1 y no se reinicia: el codigo NO lleva el año (2026-11-10; del
+ *    29-10 al 10-11 era RD-PI-ET-001/26 y volvia a 001 cada 1 de enero); un
+ *    codigo nunca se reutiliza,
  *  - una emision no cambia nunca: guarda copias de todo lo que imprime y
  *    apunta a una version que ya no se puede modificar,
  *  - un error se corrige REEMITIENDO: el MISMO codigo con la version del
@@ -70,8 +72,8 @@ class EspecificacionEmisionService
      * documento, con su mismo codigo; no se toma numero del correlativo.
      *
      * $condiciones puede traer lugarEntrega, validezOfertaDias y
-     * tiempoEntregaDias; lo que no venga sale de la configuracion (tambien el
-     * lugar: ver lugarEntregaPorDefecto()).
+     * tiempoEntregaDias; lo que no venga sale de la configuracion. El lugar,
+     * si no viene, es el del proyecto (ver lugarEntregaDe()).
      *
      * Lanza DomainException con un mensaje para el usuario si no se puede.
      * Usa su propia transaccion; dentro de otra (la de guardar la lista) se
@@ -95,7 +97,7 @@ class EspecificacionEmisionService
         $hoy = new DateTimeImmutable('today');
 
         $emision = new EspecificacionEmision([
-            // Año y proceso forman parte del codigo: RD-GR-ET-001/27.
+            // El proceso forma parte del codigo (RD-GR-ET-001); el año ya no (2026-11-10), queda como dato.
             'anio' => (int) $hoy->format('y'),
             'proceso' => $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO,
             'idVersion' => $version->id,
@@ -109,7 +111,7 @@ class EspecificacionEmisionService
             'unidad' => $item->unidadMedida,
             // La unidad / dependencia (la beneficiaria), tal como se escribio en el proyecto.
             'dependencia' => $this->textoONull($proyecto->unidadDependencia),
-            'lugarEntrega' => $this->textoONull($condiciones['lugarEntrega'] ?? null) ?? self::lugarEntregaPorDefecto(),
+            'lugarEntrega' => $this->textoONull($condiciones['lugarEntrega'] ?? null) ?? self::lugarEntregaDe($proyecto, $configuracion),
             'validezOfertaDias' => $this->textoONull($condiciones['validezOfertaDias'] ?? null) ?? $configuracion->validezOfertaDias,
             'tiempoEntregaDias' => $this->textoONull($condiciones['tiempoEntregaDias'] ?? null) ?? $configuracion->tiempoEntregaDias,
             'elaboradoPor' => $this->textoONull($usuario),
@@ -129,9 +131,9 @@ class EspecificacionEmisionService
 
         if ($corrige !== null) {
             // Mismo documento: mismo codigo y la version siguiente. Conserva
-            // su año y su proceso, que son parte del codigo, aunque se
-            // reemita en enero o el proyecto haya cambiado de proceso
-            // (RD-PI-ET-850/26 v01 -> RD-PI-ET-850/26 v02).
+            // su proceso, que es parte del codigo, aunque el proyecto haya
+            // cambiado de proceso (RD-PI-ET-850 v1.0 -> RD-PI-ET-850 v1.1), y
+            // su año de emision.
             $emision->serie = $corrige->serie;
             $emision->numeroNet = $corrige->numeroNet;
             $emision->versionDocumento = (int) $corrige->versionDocumento + 1;
@@ -153,11 +155,10 @@ class EspecificacionEmisionService
 
         try {
             if ($corrige === null) {
-                // El del año de la emision: el primero del 1 de enero es el 001.
-                $emision->numeroNet = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION, (int) $emision->anio);
+                $emision->numeroNet = (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_ESPECIFICACION);
             }
             // Si otro usuario reemitio el mismo documento al mismo tiempo, el
-            // indice unico (serie, anio, numeroNet, versionDocumento) lo rechaza.
+            // indice unico (numeroNet, versionDocumento de las ET) lo rechaza.
             $emision->save(false);
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -338,12 +339,13 @@ class EspecificacionEmisionService
      *    guarda: es una vigente cuya fecha + vigencia ya paso, y "vigente"
      *    aqui son solo las que todavia no vencieron,
      *  - dependencia: texto exacto,
-     *  - buscar: "RD-PI-ET-007/26" o "NET:880/26" busca ese codigo, todas sus
-     *    versiones ("RD-PI-ET-007/26 v02": solo esa version) (el NET
-     *    tambien en el codigo anterior de las que se pasaron a ET); sin el
-     *    año ("RD-PI-ET-007"), la 007 de todos los años; un numero solo ("7",
-     *    "880", "7/26") lo busca en los dos; cualquier otro texto busca en el
-     *    titulo y en el codigo del proyecto.
+     *  - buscar: "RD-PI-ET-007" o "NET:880/26" busca ese codigo, todas sus
+     *    versiones ("RD-PI-ET-007 v1.1": solo esa version) (el NET
+     *    tambien en el codigo anterior de las que se pasaron a ET). Tambien
+     *    entiende el año de los formularios impresos del 29-10 al 10-11
+     *    ("RD-PI-ET-007/26"); un numero solo ("7", "880", "7/26") lo busca en
+     *    los dos; cualquier otro texto busca en el titulo y en el codigo del
+     *    proyecto.
      *
      * @param array{anio?: string, estado?: string, dependencia?: string, buscar?: string} $filtros
      * @param int|false $porPagina false = todas (para exportar)
@@ -384,14 +386,15 @@ class EspecificacionEmisionService
         }
 
         $buscar = trim((string) ($filtros['buscar'] ?? ''));
-        // "RD-PI-ET-007/26 v02", como lo muestran las pantallas.
-        if (preg_match('/^(.+?)\s+v(\d+)$/i', $buscar, $conVersion) === 1
+        // "RD-PI-ET-007 v1.1", como lo muestran las pantallas (o "v02", como se escribia antes).
+        if (preg_match('/^(.+?)\s+v([\d.]+)$/i', $buscar, $conVersion) === 1
+            && ($numeroVersion = VersionDocumento::numeroDe($conVersion[2])) !== null
             && CorrelativoDocumento::numeroDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($conVersion[1])) !== null) {
             $buscar = $conVersion[1];
-            $query->andWhere(['e.versionDocumento' => (int) $conVersion[2]]);
+            $query->andWhere(['e.versionDocumento' => $numeroVersion]);
         }
-        // Con cualquier proceso (el numero no se repite entre procesos) y, si
-        // no trae el año, de cualquier año.
+        // Con cualquier proceso (el numero no se repite entre procesos). El
+        // año, solo si lo trae (los impresos del 29-10 al 10-11).
         $et = CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($buscar));
         if ($et !== null) {
             $query->andWhere(['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $et['numero']]);
@@ -477,7 +480,7 @@ class EspecificacionEmisionService
                 $formato->asDecimal($emision->cantidad, 2),
                 $emision->unidad,
                 $emision->version->modeloSugerido,
-                $emision->proyecto->codigo ?? '',
+                $emision->proyecto->identificador(),
                 $emision->estadoLabel(),
                 $emision->motivo,
                 $emision->reemplazadaPor?->codigoConVersion() ?? '',
@@ -512,7 +515,7 @@ class EspecificacionEmisionService
     {
         return [
             'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $this->marcaDeAgua($emision)),
-            // "RD-PI-ET-007_26_v02.pdf" (o "NET_880_26_v01.pdf"): codigo + version es unico.
+            // "RD-PI-ET-007_26_v1_1.pdf" (o "NET_880_26_v1_0.pdf"): codigo + version es unico.
             'nombreArchivo' => preg_replace('/[^A-Za-z0-9_-]/', '_', $emision->codigoConVersion()) . '.pdf',
         ];
     }
@@ -553,7 +556,7 @@ class EspecificacionEmisionService
     {
         return [
             'contenido' => (new PresupuestoPdfGenerator())->generarVarios($this->documentosPdf($formularios)),
-            'nombreArchivo' => 'especificaciones_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $proyecto->codigo ?: (string) $proyecto->id) . '.pdf',
+            'nombreArchivo' => 'especificaciones_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $proyecto->codigoLista ?: (string) $proyecto->id) . '.pdf',
         ];
     }
 
@@ -588,11 +591,26 @@ class EspecificacionEmisionService
     }
 
     /**
-     * Lugar de entrega cuando no se escribe otro: el texto de la
-     * configuracion del formulario (null = no sale). Desde el 2026-10-28 ya no
-     * se arma con la facultad ("Administración de la …"): el proyecto tiene
-     * una unidad solicitante en texto libre, que puede ser una oficina o una
-     * persona. Se congela al emitir: las emisiones anteriores conservan el suyo.
+     * Lugar de entrega de los formularios de un proyecto cuando no se escribe
+     * otro al emitir: el del PROYECTO (Proyecto.lugarEntrega, 2026-11-03: no
+     * todo se entrega en la administracion de una facultad) y, si el proyecto
+     * no tiene, el de la configuracion del formulario (null = no sale). Se
+     * congela al emitir: las emisiones anteriores conservan el suyo.
+     *
+     * $configuracion: la que ya tenga quien llama (asi no se consulta dos veces).
+     */
+    public static function lugarEntregaDe(Proyecto $proyecto, ?ConfiguracionEspecificacion $configuracion = null): ?string
+    {
+        $lugar = trim((string) $proyecto->lugarEntrega);
+
+        return $lugar !== '' ? $lugar : self::lugarEntregaPorDefecto($configuracion);
+    }
+
+    /**
+     * El texto de la configuracion del formulario, para los proyectos sin
+     * lugar de entrega (null = no sale). Del 2026-10-26 al 28 se armaba con la
+     * facultad; ahora la sugerencia "Administración de la …" la hace el
+     * formulario del proyecto (Proyecto::lugarEntregaSugerido()).
      *
      * $configuracion: la que ya tenga quien llama (asi no se consulta dos veces).
      */

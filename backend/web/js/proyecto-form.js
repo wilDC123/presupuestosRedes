@@ -44,7 +44,6 @@ $(function () {
     var $resultados = $('#proyecto-resultados-ambiente');
     var $equipo = $('#proyecto-equipo tbody');
     var siguienteFila = parseInt($('#proyecto-equipo').data('siguiente'), 10) || 0;
-    var $faseAnterior = $('#proyecto-fase-anterior');
     var siguienteArea = parseInt($areas.data('siguiente'), 10) || 0;
 
     // Minusculas y sin tildes: "Tecnología" y "tecnologia" son lo mismo.
@@ -623,30 +622,10 @@ $(function () {
         asegurarResponsable();
     });
 
-    // ---- Chips de las areas y fase ----
+    // ---- Chips de las areas ----
 
     // Delegado en el formulario: tambien funciona con los chips agregados despues.
     $form.on('click', '.chip .x', function () {
         $(this).closest('.chip').remove();
-    });
-
-    $faseAnterior.on('change', function () {
-        var $opcion = $faseAnterior.find('option:selected');
-        var resumen = $opcion.data('resumen');
-        var fase = 1;
-
-        if ($faseAnterior.val() !== '' && resumen) {
-            // El resumen empieza con "Fase N": la fase nueva es N + 1.
-            var partes = /^Fase (\d+)/.exec(resumen);
-            fase = partes ? parseInt(partes[1], 10) + 1 : 2;
-
-            $('#proyecto-vinculado-codigo').text($opcion.data('codigo'));
-            $('#proyecto-vinculado-resumen').text(resumen);
-            $('#proyecto-vinculado').removeClass('d-none');
-        } else {
-            $('#proyecto-vinculado').addClass('d-none');
-        }
-
-        $('#proyecto-fase').text(fase);
     });
 });

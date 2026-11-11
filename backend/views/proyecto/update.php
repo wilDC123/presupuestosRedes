@@ -10,11 +10,12 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model
+ * @var bool $datosComunesFijos ver ProyectoService::datosComunesFijos()
  */
 
 $this->title = 'Editar proyecto';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['index']];
-$this->params['breadcrumbs'][] = ['label' => $model->codigo ?: '#' . $model->id, 'url' => ['view', 'id' => $model->id]];
+$this->params['breadcrumbs'][] = ['label' => $model->identificador(), 'url' => ['view', 'id' => $model->id]];
 $this->params['breadcrumbs'][] = 'Editar';
 ?>
 <div class="proyecto-update">
@@ -36,7 +37,7 @@ $this->params['breadcrumbs'][] = 'Editar';
         'areas' => $areas,
         'personal' => $personal,
         'roles' => $roles,
-        'proyectosAprobados' => $proyectosAprobados,
+        'datosComunesFijos' => $datosComunesFijos,
     ]) ?>
 
 </div>

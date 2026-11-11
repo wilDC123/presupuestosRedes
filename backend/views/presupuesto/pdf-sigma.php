@@ -101,7 +101,7 @@ $numero = 0;
     }
     .marca {
         font-weight: bold;
-        background-color: #fde2c4;
+        background-color: #bfbfbf;
     }
     .sin-sigma {
         font-style: italic;
@@ -129,8 +129,8 @@ $numero = 0;
 <table class="datos-generales">
     <tr>
         <td><strong>Presupuesto:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?></td>
-        <td><strong>Código de proyecto:</strong> <?= Html::encode($proyecto->codigo ?: '—') ?> (Fase <?= (int) $proyecto->numeroFase ?>)</td>
-        <td><strong>Proyecto:</strong> <?= Html::encode($proyecto->nombre ?? '—') ?></td>
+        <?php // La misma linea que el presupuesto (Proyecto::lineaDocumento()). ?>
+        <td colspan="2"><?= Html::encode($proyecto->lineaDocumento()) ?></td>
         <td><strong>Emitido:</strong> <?= date('d/m/Y') ?></td>
     </tr>
 </table>

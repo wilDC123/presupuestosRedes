@@ -11,7 +11,7 @@ use yii\web\Controller;
 /**
  * Codificacion de documentos (capa de Presentacion): el encargado fija desde
  * que numero siguen los codigos de proyectos (RD-PI-PT), presupuestos
- * (RD-PI-PR) y especificaciones tecnicas (RD-PI-ET-.../26), segun el
+ * (RD-PI-PR) y especificaciones tecnicas (RD-PI-ET-...), segun el
  * lineamiento de la DTIC RD-GD-LI-001. Las reglas viven en CodificacionService.
  */
 class CodificacionController extends Controller

@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use backend\components\NumeracionEspecificacion;
+use backend\models\ConfiguracionEspecificacion;
+use backend\models\UnidadMedida;
 use yii\helpers\Html;
 
 /**
@@ -17,8 +20,10 @@ use yii\helpers\Html;
  * formularios del banco de especificaciones de DTIC: instrucciones, titulo,
  * cantidad y dependencia, y la tabla "Especificaciones tecnicas | Propuesta |
  * Cumple | No cumple" con las secciones I (requisitos), II (garantia) y III
- * (condiciones). Al final, el "control de elaboracion" del lineamiento (8.12):
- * version, elaborado por, aprobado por, firmas y como fecha de aprobacion la
+ * (condiciones). Cada fila lleva su numero (1.1, 1.2... 2.1... y 1.4.1 debajo
+ * de un subtitulo; 2026-11-03), calculado por NumeracionEspecificacion: no se
+ * guarda, sale del orden y del nivel de las filas. Al final, el "control
+ * de elaboracion" del lineamiento (8.12): version, elaborado por, aprobado por, firmas y como fecha de aprobacion la
  * de emision (las firmas son la copia que guardo la emision).
  *
  * TODO lo que se imprime sale de la EMISION (sus copias congeladas) y de su
@@ -46,17 +51,33 @@ $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agost
 $fecha = new DateTimeImmutable($emision->fechaEmision);
 $fechaLarga = $fecha->format('d') . ' de ' . $meses[(int) $fecha->format('n') - 1] . ' de ' . $fecha->format('Y');
 
-// Una fila de la tabla: la especificacion en la primera columna y las tres
-// columnas que llenan el proveedor y el convocante, vacias.
-$fila = static fn (string $contenido): string =>
-    '<tr><td class="espec">' . $contenido . '</td><td></td><td></td><td></td></tr>';
+// Una fila de la tabla: el numero y la especificacion en la primera columna y
+// las tres columnas que llenan el proveedor y el convocante, vacias. $nivel:
+// 2 o 3 (1.4.1, 1.4.1.1) llevan sangria.
+$fila = static fn (string $numero, string $contenido, int $nivel = 1): string =>
+    '<tr><td class="espec' . ($nivel > 1 ? ' nivel-' . $nivel : '') . '">'
+    . ($numero !== '' ? '<span class="numero">' . Html::encode($numero) . '</span> ' : '')
+    . $contenido . '</td><td></td><td></td><td></td></tr>';
 $seccion = static fn (string $titulo): string =>
     '<tr><td class="seccion">' . Html::encode($titulo) . '</td><td class="seccion"></td><td class="seccion"></td><td class="seccion"></td></tr>';
 $texto = static fn (?string $valor): string => nl2br(Html::encode((string) $valor));
 
-// Las dos primeras lineas de la cabecera: la copia congelada del texto de
-// cabecera de la emision ("Universidad..." / "D.T.I.C."); sin texto, las de siempre.
-$lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/', (string) $emision->textoCabecera)), static fn (string $l) => $l !== ''));
+// Debajo de la cabecera, como el Word v3 (2026-11-10): la universidad y "D.T.I.C.", de la COPIA congelada
+// del texto de cabecera de la emision (una linea por renglon); sin texto, las de siempre.
+$lineasUniversidad = array_values(array_filter(
+    array_map('trim', preg_split('/\R/', (string) $emision->textoCabecera)),
+    static fn (string $linea): bool => $linea !== ''
+)) ?: [ConfiguracionEspecificacion::UNIVERSIDAD, 'D.T.I.C.'];
+
+// Secciones: I siempre; II la garantia, solo si tiene; la siguiente, las condiciones.
+$garantia = NumeracionEspecificacion::lineas($emision->garantia);
+$numeroCondiciones = $garantia !== [] ? 3 : 2;
+$condiciones = array_values(array_filter([
+    $emision->validezOfertaDias !== null ? '<strong>Validez de la oferta:</strong> ' . (int) $emision->validezOfertaDias . ' días como mínimo.' : null,
+    $emision->tiempoEntregaDias !== null ? '<strong>Tiempo de entrega:</strong> ' . (int) $emision->tiempoEntregaDias . ' días.' : null,
+    !empty($emision->lugarEntrega) ? '<strong>Lugar de entrega:</strong> ' . Html::encode($emision->lugarEntrega) . '.' : null,
+]));
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -75,9 +96,23 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
         margin-header: 5mm;
         margin-top: 37mm;
     }
+    /* Nada por debajo de 11 (revision del Ing. de DTIC del 2026-11-05: "las
+       letras estan muy pequenas"; antes instrucciones y tabla en 10 y 9). */
+    /* Universidad y D.T.I.C., debajo de la cabecera (Word v3): centradas, en negrita, 13 y 11 pt. */
+    .universidad {
+        text-align: center;
+        font-weight: bold;
+        font-size: 13pt;
+    }
+    .unidad {
+        text-align: center;
+        font-weight: bold;
+        font-size: 11pt;
+        margin-bottom: 6px;
+    }
     .instrucciones {
         text-align: justify;
-        font-size: 10pt;
+        font-size: 11pt;
         margin-bottom: 8px;
     }
     .bien {
@@ -100,16 +135,22 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
         vertical-align: top;
     }
     table.especificaciones td {
-        font-size: 10pt;
+        font-size: 11pt;
     }
     table.especificaciones th {
         background-color: #d9d9d9;
-        font-size: 9pt;
+        font-size: 11pt;
         text-align: center;
         vertical-align: middle;
     }
     td.espec {
         width: 55%;
+    }
+    table.especificaciones td.nivel-2 {
+        padding-left: 18px;
+    }
+    table.especificaciones td.nivel-3 {
+        padding-left: 34px;
     }
     td.seccion {
         background-color: #eeeeee;
@@ -129,16 +170,19 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
     'version' => $numeroVersion,
     'proceso' => $proceso,
     'fecha' => $fecha->format('d/m/Y'),
-    'institucion' => $lineasCabecera[0] ?? null,
-    'unidad' => $lineasCabecera[1] ?? null,
 ]) ?>
 
 <?php if (!empty($emision->textoInstrucciones)): ?>
+    <?php foreach ($lineasUniversidad as $i => $linea): ?>
+        <div class="<?= $i === 0 ? 'universidad' : 'unidad' ?>"><?= Html::encode($linea) ?></div>
+    <?php endforeach; ?>
     <div class="instrucciones"><?= $texto($emision->textoInstrucciones) ?></div>
 <?php endif; ?>
 
 <div class="bien"><?= Html::encode($emision->titulo) ?></div>
-<div class="dato"><strong>Cantidad:</strong> <?= Html::encode(trim($cantidad . ' ' . $emision->unidad)) ?></div>
+<?php // La unidad con su NOMBRE ("24 Unidad", no "24 u"; 2026-11-10): la emision guarda la abreviatura; si no esta en el catalogo, sale esa. ?>
+<?php $unidad = UnidadMedida::nombresPorAbreviatura()[(string) $emision->unidad] ?? (string) $emision->unidad; ?>
+<div class="dato"><strong>Cantidad:</strong> <?= Html::encode(trim($cantidad . ' ' . $unidad)) ?></div>
 <?php if (!empty($emision->dependencia)): ?>
     <div class="dato"><strong>Dependencia:</strong> <?= Html::encode($emision->dependencia) ?></div>
 <?php endif; ?>
@@ -159,31 +203,39 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
         <?= $seccion('I. REQUISITOS NECESARIOS') ?>
 
         <?= $fila(
+            '1.1',
             '<strong>Especifique marca y modelo a ofertar:</strong> El proveedor debe describir la marca y modelo del bien ofrecido.'
             . (!empty($version->modeloSugerido)
                 ? '<br>Se sugiere: ' . Html::encode($version->modeloSugerido) . ' o similar/superior.'
                 : '')
         ) ?>
 
-        <?= $fila('<strong>URL:</strong> Enlace a la página web o folletería oficial del fabricante que contemple todas las especificaciones técnicas solicitadas (obligatorio).') ?>
+        <?= $fila('1.2', '<strong>URL:</strong> Enlace a la página web o folletería oficial del fabricante que contemple todas las especificaciones técnicas solicitadas (obligatorio).') ?>
 
-        <?php foreach ($version->caracteristicas as $caracteristica): ?>
-            <?= $fila($caracteristica->nombre !== null
-                ? '<strong>' . Html::encode($caracteristica->nombre) . ':</strong> ' . $texto($caracteristica->valor)
-                : $texto($caracteristica->valor)) ?>
+        <?php foreach ($version->caracteristicasNumeradas() as $caracteristica): ?>
+            <?php if ($caracteristica['esSubtitulo']): ?>
+                <?= $fila($caracteristica['numero'], '<strong>' . Html::encode($caracteristica['valor']) . '</strong>', $caracteristica['nivel']) ?>
+            <?php else: ?>
+                <?= $fila($caracteristica['numero'], $caracteristica['nombre'] !== null
+                    ? '<strong>' . Html::encode($caracteristica['nombre']) . ':</strong> ' . $texto($caracteristica['valor'])
+                    : $texto($caracteristica['valor']), $caracteristica['nivel']) ?>
+            <?php endif; ?>
         <?php endforeach; ?>
 
-        <?php if (!empty($emision->garantia)): ?>
+        <?php if ($garantia !== []): ?>
             <?= $seccion('II. GARANTÍA TÉCNICA') ?>
-            <?= $fila($texto($emision->garantia)) ?>
+            <?php foreach ($garantia as $n => $linea): ?>
+                <?= $fila('2.' . ($n + 1), $texto($linea)) ?>
+            <?php endforeach; ?>
         <?php endif; ?>
 
-        <?= $seccion((!empty($emision->garantia) ? 'III' : 'II') . '. CONDICIONES COMPLEMENTARIAS') ?>
-        <?= $fila(implode('<br>', array_filter([
-            $emision->validezOfertaDias !== null ? '<strong>Validez de la oferta:</strong> ' . (int) $emision->validezOfertaDias . ' días como mínimo.' : null,
-            $emision->tiempoEntregaDias !== null ? '<strong>Tiempo de entrega:</strong> ' . (int) $emision->tiempoEntregaDias . ' días.' : null,
-            !empty($emision->lugarEntrega) ? '<strong>Lugar de entrega:</strong> ' . Html::encode($emision->lugarEntrega) . '.' : null,
-        ]))) ?>
+        <?= $seccion(NumeracionEspecificacion::romano($numeroCondiciones) . '. CONDICIONES COMPLEMENTARIAS') ?>
+        <?php if ($condiciones === []): ?>
+            <?= $fila('', '') ?>
+        <?php endif; ?>
+        <?php foreach ($condiciones as $n => $condicion): ?>
+            <?= $fila($numeroCondiciones . '.' . ($n + 1), $condicion) ?>
+        <?php endforeach; ?>
     </tbody>
 </table>
 
@@ -202,6 +254,8 @@ $lineasCabecera = array_values(array_filter(array_map('trim', preg_split('/\R/',
     'elaborado' => $emision->firma(1),
     'aprobado' => $emision->firma(2),
     'fechaAprobacion' => $fecha->format('d/m/Y'),
+    // Nada por debajo de 11 en el formulario (revision del 2026-11-05).
+    'letraGrande' => true,
 ]) ?>
 
 </body>

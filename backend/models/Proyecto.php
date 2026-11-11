@@ -16,7 +16,10 @@ use yii\db\ActiveRecord;
  * aprobado nunca se modifica.
  *
  * @property int $id
- * @property string|null $codigo Generado por ProyectoService al crear (RD-PI-PT-NN).
+ * @property string|null $codigo Codigo de la FICHA TECNICA (RD-PI-PT-NNN): solo la fase 1 lo tiene (una ficha por
+ *           proyecto, desde el 2026-11-06); NULL en las fases siguientes. Ver codigoFicha().
+ * @property string|null $codigoLista Codigo de su lista de materiales (RD-PI-LM-NNN, revision del 2026-11-05),
+ *           tambien lo pone ProyectoService al crear; el proceso es el del proyecto.
  * @property string $nombre
  * @property string|null $descripcion
  * @property int|null $idTipoProyecto FK a redes.TipoProyecto.
@@ -26,12 +29,25 @@ use yii\db\ActiveRecord;
  *                                         Es la que sale en los documentos ("Dependencia").
  * @property string|null $unidadSolicitante Quien pide, en texto libre tal como dice la nota. Puede
  *                                         ser otra (el Rector pide para el Canal Universitario).
+ * @property string|null $lugarEntrega LUGAR DE ENTREGA POR DEFECTO (texto libre, 2026-11-03): el que toma una
+ *                                    especificacion si su fila de la lista no dice otro; vacio = el de la
+ *                                    configuracion del formulario. Desde el 2026-11-10 se escribe ARRIBA DE LA
+ *                                    LISTA DE ITEMS (ListaItemsService::guardar()), no en el formulario del
+ *                                    proyecto (sin regla aqui). Ver lugarEntregaSugerido().
  * @property string|null $codigoFacultad Ubicacion ANTERIOR al 2026-10-28 (ya no se escribe).
  * @property string|null $facultad       Idem: los proyectos nuevos usan las unidades
  * @property string|null $codigoEdificio y las areas de intervencion.
  * @property string|null $edificio
  * @property int|null $idProyectoAnterior
  * @property int $numeroFase
+ * @property int|null $numeroProyecto Numero del proyecto (revision del 2026-11-05): lo comparten TODAS sus
+ *           fases (cada fila de esta tabla es una fase). Lo pone ProyectoService al crear; ver numeroTexto().
+ * @property int|null $idFaseOrigen ORDEN DE CAMBIO (parte 6, 2026-11-09): la fase a la que pertenece la orden.
+ *           NULL = la fila es una fase. Ver esOrdenCambio().
+ * @property int|null $numeroOrdenCambio 1, 2... dentro de su fase (NULL en una fase).
+ * @property string|null $descripcionCambio Orden de cambio: descripcion del cambio solicitado (FR-006).
+ * @property string|null $motivoCambio Orden de cambio: motivo.
+ * @property int|null $idTipoOrdenCambio Orden de cambio: FK a redes.TipoOrdenCambio (catalogo, FR-006 7.1.1).
  * @property int|null $idPlantillaOrigen Plantilla de la que partio la lista (solo informativo).
  * @property bool $listaIniciada true si el paso "Plantilla" ya se resolvio (se uso una o se omitio).
  * @property string $estadoLista Estado de la lista de items: ver las constantes LISTA_*.
@@ -44,6 +60,10 @@ use yii\db\ActiveRecord;
  * @property-read ProyectoParticipante[] $participantes Equipo del proyecto, en orden.
  * @property-read Proyecto|null $proyectoAnterior
  * @property-read Proyecto[] $fasesSiguientes
+ * @property-read Proyecto[] $fases Todas las fases del proyecto (mismo numeroProyecto), en orden; sin las ordenes de cambio.
+ * @property-read Proyecto|null $faseOrigen La fase de una orden de cambio.
+ * @property-read Proyecto[] $ordenesCambio Las ordenes de cambio de esta fase, en orden.
+ * @property-read TipoOrdenCambio|null $tipoOrdenCambio
  * @property-read Presupuesto|null $presupuesto
  * @property-read Plantilla|null $plantillaOrigen
  * @property-read ProyectoItem[] $items
@@ -104,9 +124,34 @@ class Proyecto extends ActiveRecord
      * un atributo sin reglas no es "seguro" y load() lo ignora, asi que no
      * se pueden enviar desde el formulario. Los calcula ProyectoService.
      */
+    /**
+     * Escenario del formulario de una ORDEN DE CAMBIO: solo descripcion,
+     * motivo y tipo llegan del formulario (lo demas lo copia ProyectoService
+     * de la fase). Ver scenarios().
+     */
+    public const SCENARIO_ORDEN_CAMBIO = 'ordenCambio';
+
+    /**
+     * Las reglas sin 'on' valen en todos los escenarios: por eso el de la
+     * orden de cambio se declara a mano, con SOLO sus tres campos (asi el
+     * formulario de la orden no puede cambiar el nombre ni nada del proyecto).
+     */
+    public function scenarios(): array
+    {
+        $escenarios = parent::scenarios();
+        $escenarios[self::SCENARIO_ORDEN_CAMBIO] = ['descripcionCambio', 'motivoCambio', 'idTipoOrdenCambio'];
+
+        return $escenarios;
+    }
+
     public function rules(): array
     {
         return [
+            [['descripcionCambio', 'motivoCambio'], 'trim', 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            [['descripcionCambio', 'motivoCambio', 'idTipoOrdenCambio'], 'required', 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            [['descripcionCambio', 'motivoCambio'], 'string', 'max' => 1000, 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            [['idTipoOrdenCambio'], 'integer', 'on' => self::SCENARIO_ORDEN_CAMBIO],
+            TipoOrdenCambio::reglaElegible(self::SCENARIO_ORDEN_CAMBIO),
             [['nombre'], 'required'],
             [['nombre'], 'string', 'max' => 300],
             [['descripcion'], 'string', 'max' => 1000],
@@ -134,12 +179,17 @@ class Proyecto extends ActiveRecord
         return [
             'id' => 'ID',
             'codigo' => 'Código de proyecto',
+            'codigoLista' => 'Código de la lista de materiales',
             'nombre' => 'Nombre del proyecto',
             'descripcion' => 'Descripción',
             'idTipoProyecto' => 'Tipo de proyecto',
             'idProceso' => 'Proceso',
             'unidadDependencia' => 'Unidad / dependencia',
             'unidadSolicitante' => 'Unidad solicitante',
+            'lugarEntrega' => 'Lugar de entrega por defecto',
+            'descripcionCambio' => 'Descripción del cambio',
+            'motivoCambio' => 'Motivo',
+            'idTipoOrdenCambio' => 'Tipo de cambio',
             'areas' => 'Área de intervención',
             'codigoFacultad' => 'Facultad',
             'facultad' => 'Facultad',
@@ -149,6 +199,7 @@ class Proyecto extends ActiveRecord
             'equipo' => 'Equipo del proyecto',
             'idProyectoAnterior' => 'Proyecto de fase anterior (opcional)',
             'numeroFase' => 'Fase',
+            'numeroProyecto' => 'N.° de proyecto',
             'fechaCreacion' => 'Fecha de creación',
         ];
     }
@@ -201,6 +252,56 @@ class Proyecto extends ActiveRecord
     public function getProyectoAnterior(): ActiveQuery
     {
         return $this->hasOne(self::class, ['id' => 'idProyectoAnterior']);
+    }
+
+    /** La fase de una orden de cambio (null en una fase). */
+    public function getFaseOrigen(): ActiveQuery
+    {
+        return $this->hasOne(self::class, ['id' => 'idFaseOrigen']);
+    }
+
+    /** Las ordenes de cambio de esta fase, la 1 primero. */
+    public function getOrdenesCambio(): ActiveQuery
+    {
+        return $this->hasMany(self::class, ['idFaseOrigen' => 'id'])->orderBy(['numeroOrdenCambio' => SORT_ASC]);
+    }
+
+    /**
+     * true si la fila es una ORDEN DE CAMBIO (parte 6): un presupuesto
+     * adicional de una fase aprobada, con su propia lista, ET, solicitudes,
+     * presupuesto y carta. No es una fase: no cuenta en las fases, en la
+     * version de la ficha tecnica ni en "Agregar fase".
+     */
+    public function esOrdenCambio(): bool
+    {
+        return $this->idFaseOrigen !== null;
+    }
+
+    /** "Orden de cambio N.° 1" (vacio en una fase). */
+    public function textoOrdenCambio(): string
+    {
+        return $this->esOrdenCambio() ? 'Orden de cambio N.° ' . (int) $this->numeroOrdenCambio : '';
+    }
+
+    public function getTipoOrdenCambio(): ActiveQuery
+    {
+        return $this->hasOne(TipoOrdenCambio::class, ['id' => 'idTipoOrdenCambio']);
+    }
+
+    /**
+     * El nombre del tipo de cambio ("Nuevas solicitudes de los usuarios").
+     * Se lee de la base cada vez (no de la relacion): al editar la orden, el
+     * historial compara el de antes con el de despues.
+     */
+    public function tipoCambioLabel(): string
+    {
+        if (empty($this->idTipoOrdenCambio)) {
+            return '';
+        }
+
+        $nombre = TipoOrdenCambio::find()->select('nombre')->where(['id' => (int) $this->idTipoOrdenCambio])->scalar();
+
+        return is_string($nombre) ? $nombre : '';
     }
 
     /**
@@ -290,8 +391,9 @@ class Proyecto extends ActiveRecord
     }
 
     /**
-     * Area de intervencion para documentos y pantallas ("Edificio X – Bloque B
-     * – B101, B102"). Un proyecto registrado antes del 2026-10-28 no tiene
+     * Area de intervencion en un solo texto, para el historial: una linea por
+     * edificio (ProyectoAreaIntervencion::lineasPorEdificio()) separadas por
+     * " | ". Un proyecto registrado antes del 2026-10-28 no tiene
      * areas: muestra su ubicacion anterior (edificio y bloques). '' si no hay
      * ninguna de las dos.
      */
@@ -316,10 +418,150 @@ class Proyecto extends ActiveRecord
     }
 
     /**
-     * "RD-PI-PT-05 — Nombre" para listas desplegables y enlaces.
+     * "001 — Nombre" para listas desplegables, enlaces y la linea del
+     * proyecto de los documentos (sin la fase: la agrega quien la necesita).
+     * Antes del 2026-11-06, "RD-PI-PT-028 — Nombre": ese codigo es de la ficha.
      */
     public function etiqueta(): string
     {
-        return ($this->codigo ? $this->codigo . ' — ' : '') . $this->nombre;
+        return ($this->numeroProyecto !== null ? $this->numeroTexto() . ' — ' : '') . $this->nombre;
+    }
+
+    /**
+     * La UNICA linea del proyecto en los documentos (revision del Ing. de DTIC
+     * del 2026-11-05, punto 6): "PROYECTO: 001 – INSTALACIÓN DE CÁMARAS DE
+     * SEGURIDAD (FASE 2)". Numero, guion largo y el nombre en mayusculas
+     * ("como en las notas"); "(FASE n)" solo si el proyecto tiene mas de una
+     * fase (fase unica: no se pone). Sin negrilla (a confirmar con el Ing.:
+     * la vista decide como la muestra). Antes cada documento armaba la suya.
+     */
+    public function lineaDocumento(): string
+    {
+        $linea = 'PROYECTO: ' . ($this->numeroProyecto !== null ? $this->numeroTexto() . ' – ' : '')
+            . mb_strtoupper(trim((string) $this->nombre), 'UTF-8');
+
+        $linea = $this->tieneVariasFases() ? $linea . ' (FASE ' . (int) $this->numeroFase . ')' : $linea;
+
+        // Una orden de cambio: "PROYECTO: 001 – NOMBRE (FASE 1) – ORDEN DE CAMBIO N.° 1" (propuesta del 2026-11-09).
+        return $this->esOrdenCambio() ? $linea . ' – ' . mb_strtoupper($this->textoOrdenCambio(), 'UTF-8') : $linea;
+    }
+
+    /**
+     * El numero del proyecto como se escribe: "001" (3 cifras, decidido con
+     * el desarrollador el 2026-11-06 mientras el Ing. de DTIC confirma el
+     * formato; es el UNICO lugar que lo decide). '—' si no tiene.
+     */
+    public function numeroTexto(): string
+    {
+        return $this->numeroProyecto === null ? '—' : CorrelativoDocumento::numeroTexto((int) $this->numeroProyecto);
+    }
+
+    /**
+     * Datos del PROYECTO, iguales en todas sus fases (revision del 2026-11-05,
+     * punto 2: "primero lo que es del proyecto y no cambia por fase"). Se
+     * escriben en la fase 1; una fase siguiente los copia y no los cambia
+     * (ProyectoService). Lo demas (area, equipo, lugar de entrega por
+     * defecto, carpeta economica) es de cada fase.
+     */
+    public const ATRIBUTOS_COMUNES = ['nombre', 'descripcion', 'idTipoProyecto', 'idProceso', 'unidadDependencia', 'unidadSolicitante'];
+
+    /**
+     * Todas las fases del proyecto (las filas con su mismo numero), de la 1 en
+     * adelante; incluye esta si es una fase. Sin las ordenes de cambio (parte
+     * 6): son filas con el mismo numero, pero no fases. Vacio si no tiene
+     * numero (filas de prueba).
+     */
+    public function getFases(): ActiveQuery
+    {
+        return $this->hasMany(self::class, ['numeroProyecto' => 'numeroProyecto'])
+            ->andOnCondition(['numeroOrdenCambio' => null])
+            ->orderBy(['numeroFase' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /**
+     * Codigo de la FICHA TECNICA del proyecto (RD-PI-PT-NNN): UNA por proyecto,
+     * la que se codifico con su fase 1 (parte 5d). Las fases siguientes no
+     * tienen codigo propio (Proyecto.codigo NULL). null si no tiene.
+     */
+    public function codigoFicha(): ?string
+    {
+        if (((int) $this->numeroFase <= 1 && !$this->esOrdenCambio()) || $this->numeroProyecto === null) {
+            return $this->codigo;
+        }
+
+        $codigo = self::find()->select('codigo')
+            ->andWhere(['numeroProyecto' => $this->numeroProyecto])
+            ->andWhere(['not', ['codigo' => null]])
+            ->orderBy(['numeroFase' => SORT_ASC])
+            ->scalar();
+
+        return is_string($codigo) ? $codigo : $this->codigo;
+    }
+
+    /** true si ninguna fase del proyecto viene despues de esta (una orden de cambio no es una fase: false). */
+    public function esUltimaFase(): bool
+    {
+        if ($this->esOrdenCambio()) {
+            return false;
+        }
+
+        if ($this->numeroProyecto === null) {
+            return !self::find()->andWhere(['idProyectoAnterior' => $this->id])->exists();
+        }
+
+        return !self::find()
+            ->andWhere(['numeroProyecto' => $this->numeroProyecto])
+            ->andWhere(['>', 'numeroFase', (int) $this->numeroFase])
+            ->exists();
+    }
+
+    /** @var bool|null cache de tieneVariasFases() */
+    private ?bool $variasFases = null;
+
+    /**
+     * true si el proyecto tiene mas de una fase (esta es la 2 o siguiente, u
+     * otra fila tiene su mismo numero). Con fase unica no se muestra "Fase"
+     * (revision del 2026-11-05, punto 3: "no poner Fase 1, porque da a
+     * entender que hay fase 2").
+     */
+    public function tieneVariasFases(): bool
+    {
+        if ($this->variasFases === null) {
+            $this->variasFases = (int) $this->numeroFase > 1
+                || ($this->numeroProyecto !== null && self::find()
+                    ->andWhere(['numeroProyecto' => $this->numeroProyecto, 'numeroOrdenCambio' => null])
+                    ->andWhere(['<>', 'numeroFase', (int) $this->numeroFase])
+                    ->exists());
+        }
+
+        return $this->variasFases;
+    }
+
+    /**
+     * "Proyecto 001", o "Proyecto 001 · Fase 2" si tiene varias fases: el
+     * rotulo corto de migas de pan, titulos y avisos.
+     */
+    public function identificador(): string
+    {
+        $texto = $this->numeroProyecto !== null ? 'Proyecto ' . $this->numeroTexto() : 'Proyecto #' . $this->id;
+
+        $texto = $this->tieneVariasFases() ? $texto . ' · Fase ' . (int) $this->numeroFase : $texto;
+
+        return $this->esOrdenCambio() ? $texto . ' · ' . $this->textoOrdenCambio() : $texto;
+    }
+
+    /**
+     * Lugar de entrega que se sugiere para una unidad / dependencia: si es una
+     * facultad, "Administración de la Facultad de …" (pedido del Ing. de DTIC,
+     * 2026-10-26); si no (Rectorado, Canal Universitario, la DTIC), null: el
+     * encargado lo escribe o queda el de la configuracion del formulario. Es
+     * solo una sugerencia: el campo acepta cualquier texto. La misma regla
+     * esta en web/js/proyecto-form.js y en la migracion m261104_020312.
+     */
+    public static function lugarEntregaSugerido(?string $unidadDependencia): ?string
+    {
+        $unidad = trim((string) $unidadDependencia);
+
+        return preg_match('/^facultad(\s|$)/iu', $unidad) === 1 ? 'Administración de la ' . $unidad : null;
     }
 }

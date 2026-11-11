@@ -73,7 +73,7 @@ $formato = Yii::$app->formatter;
                     <tbody>
                         <?php foreach ($proyectosRecientes as $fila): ?>
                             <tr>
-                                <td class="mono"><?= Html::encode($fila['proyecto']->codigo ?: '—') ?></td>
+                                <td class="mono"><?= Html::encode($fila['proyecto']->numeroTexto()) ?></td>
                                 <td><?= Html::a(Html::encode($fila['proyecto']->nombre), ['/proyecto/view', 'id' => $fila['proyecto']->id]) ?></td>
                                 <td>Fase <?= (int) $fila['proyecto']->numeroFase ?></td>
                                 <td>
@@ -109,7 +109,7 @@ $formato = Yii::$app->formatter;
                             <div class="rd-nota"><?= Html::encode($grupo['nota']) ?></div>
                             <?php foreach ($grupo['filas'] as $fila): ?>
                                 <div class="rd-pend-fila">
-                                    <span class="mono"><?= Html::encode($fila['proyecto']->codigo ?: '—') ?></span>
+                                    <span class="mono"><?= Html::encode($fila['proyecto']->numeroTexto()) ?></span>
                                     <?= Html::a(Html::encode($fila['proyecto']->nombre), $fila['url']) ?>
                                     <div class="rd-nota"><?= Html::encode($fila['detalle']) ?></div>
                                 </div>

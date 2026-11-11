@@ -6,7 +6,9 @@ namespace backend\services;
 
 use backend\components\PresupuestoPdfGenerator;
 use backend\models\ConfiguracionSolicitudCotizacion;
+use backend\models\CorrelativoDocumento;
 use backend\models\Cotizacion;
+use backend\models\CotizacionDetalle;
 use backend\models\EspecificacionEmision;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
@@ -296,6 +298,18 @@ class SolicitudCotizacionService
     }
 
     /**
+     * true si el item de la lista ya tiene precios de proveedores: una linea
+     * de cotizacion suya, o esta en una solicitud que ya recibio cotizaciones.
+     * Con eso ya no se le cambia el item del subcatalogo (los precios eran de
+     * otro producto): ver ListaItemsService, "Cambiar ítem".
+     */
+    public function itemTieneCotizaciones(int $idProyectoItem): bool
+    {
+        return CotizacionDetalle::find()->andWhere(['idProyectoItem' => $idProyectoItem])->exists()
+            || $this->contarEnSolicitudesCotizadas([$idProyectoItem]) > 0;
+    }
+
+    /**
      * Cuantos de esos items estan en una solicitud que ya tiene cotizaciones.
      *
      * @param int[] $idsProyectoItem
@@ -446,7 +460,9 @@ class SolicitudCotizacionService
      */
     public function generarPdf(SolicitudCotizacion $solicitud, string $html, array $formularios = []): array
     {
-        $referencia = ($solicitud->proyecto->codigo ?: (string) $solicitud->idProyecto) . '_' . $solicitud->codigoCorto();
+        // El codigo del lineamiento (2026-11-09); una solicitud sin el, la referencia de antes.
+        $referencia = $solicitud->codigoDocumento
+            ?? ($solicitud->proyecto->numeroProyecto !== null ? 'proyecto_' . $solicitud->proyecto->numeroTexto() . '_fase' . (int) $solicitud->proyecto->numeroFase : (string) $solicitud->idProyecto) . '_' . $solicitud->codigoCorto();
         $documentos = array_merge(
             [['html' => $html, 'marcaDeAgua' => null]],
             (new EspecificacionEmisionService())->documentosPdf($formularios)
@@ -459,12 +475,21 @@ class SolicitudCotizacionService
     }
 
     /**
-     * Guarda la solicitud nueva con el siguiente numero del proyecto.
+     * Guarda la solicitud nueva con el siguiente numero del proyecto (SC-01,
+     * SC-02... en las pantallas) y su codigo del lineamiento RD-<proceso>-SC-NNN
+     * (un solo correlativo para todo el sistema, con el proceso del proyecto,
+     * como el presupuesto). Se llama dentro de una transaccion: el correlativo
+     * se toma con UPDLOCK.
      */
     private function insertar(Proyecto $proyecto, SolicitudCotizacion $solicitud): void
     {
         $solicitud->idProyecto = $proyecto->id;
         $solicitud->numero = 1 + (int) SolicitudCotizacion::find()->andWhere(['idProyecto' => $proyecto->id])->max('numero');
+        $solicitud->codigoDocumento = CorrelativoDocumento::codigo(
+            CorrelativoDocumento::TIPO_SOLICITUD,
+            (new CodificacionService())->tomar(CorrelativoDocumento::TIPO_SOLICITUD),
+            $proyecto->proceso->codigo ?? CorrelativoDocumento::PROCESO
+        );
         $solicitud->save(false);
     }
 

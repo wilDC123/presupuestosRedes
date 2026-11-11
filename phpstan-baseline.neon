@@ -193,12 +193,6 @@ parameters:
 			path: backend/services/EspecificacionImportacionService.php
 
 		-
-			message: '#^Access to an undefined property yii\\db\\ActiveRecord\:\:\$notaCambio\.$#'
-			identifier: property.notFound
-			count: 1
-			path: backend/services/EspecificacionService.php
-
-		-
 			message: '#^Cannot access property \$adjuntoRuta on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
 			identifier: property.nonObject
 			count: 1
@@ -241,18 +235,6 @@ parameters:
 			path: backend/services/EspecificacionService.php
 
 		-
-			message: '#^Cannot call method getEmisiones\(\) on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: backend/services/EspecificacionService.php
-
-		-
-			message: '#^Method backend\\services\\EspecificacionService\:\:formulario\(\) should return array\{version\: backend\\models\\EspecificacionVersion, filas\: array\<int, array\{nombre\: string\|null, valor\: string\}\>, emisiones\: int\} but returns array\{version\: yii\\db\\ActiveRecord, filas\: array\<int, array\{nombre\: string\|null, valor\: string\}\>, emisiones\: int\}\.$#'
-			identifier: return.type
-			count: 1
-			path: backend/services/EspecificacionService.php
-
-		-
 			message: '#^Method backend\\services\\EspecificacionService\:\:guardarVersion\(\) should return array\{version\: backend\\models\\EspecificacionVersion\|null, nueva\: bool, errores\: array\<string\>\} but returns array\{version\: array\<mixed\>\|yii\\db\\ActiveRecord, nueva\: bool, errores\: array\{\}\}\.$#'
 			identifier: return.type
 			count: 1
@@ -277,12 +259,6 @@ parameters:
 			path: backend/services/EspecificacionService.php
 
 		-
-			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(array\<mixed\>\|yii\\db\\ActiveRecord\)\: mixed\)\|null, Closure\(backend\\models\\EspecificacionCaracteristica\)\: array\{nombre\: string\|null, valor\: string\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: backend/services/EspecificacionService.php
-
-		-
 			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(array\<mixed\>\|yii\\db\\ActiveRecord\)\: mixed\)\|null, Closure\(backend\\models\\EspecificacionVersion\)\: array\{version\: backend\\models\\EspecificacionVersion, emisiones\: int\} given\.$#'
 			identifier: argument.type
 			count: 1
@@ -297,7 +273,7 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$version of method backend\\services\\EspecificacionService\:\:filasDe\(\) expects backend\\models\\EspecificacionVersion, array\<mixed\>\|yii\\db\\ActiveRecord given\.$#'
 			identifier: argument.type
-			count: 2
+			count: 1
 			path: backend/services/EspecificacionService.php
 
 		-
@@ -405,7 +381,7 @@ parameters:
 		-
 			message: '#^Property backend\\models\\Proyecto\:\:\$areas \(array\<int, array\<string, string\>\>\|string\) does not accept array\<array\<string, bool\|int\|string\|null\>\>\.$#'
 			identifier: assign.propertyType
-			count: 2
+			count: 1
 			path: backend/services/ProyectoService.php
 
 		-
@@ -709,12 +685,6 @@ parameters:
 			path: backend/views/proyecto/create.php
 
 		-
-			message: '#^Variable \$proyectosAprobados might not be defined\.$#'
-			identifier: variable.undefined
-			count: 1
-			path: backend/views/proyecto/create.php
-
-		-
 			message: '#^Variable \$roles might not be defined\.$#'
 			identifier: variable.undefined
 			count: 1
@@ -764,12 +734,6 @@ parameters:
 
 		-
 			message: '#^Variable \$procesos might not be defined\.$#'
-			identifier: variable.undefined
-			count: 1
-			path: backend/views/proyecto/update.php
-
-		-
-			message: '#^Variable \$proyectosAprobados might not be defined\.$#'
 			identifier: variable.undefined
 			count: 1
 			path: backend/views/proyecto/update.php

@@ -39,7 +39,7 @@ if ($borrador) {
 
 $this->title = 'Presupuesto';
 $this->params['breadcrumbs'][] = ['label' => 'Proyectos', 'url' => ['/proyecto/index']];
-$this->params['breadcrumbs'][] = ['label' => $proyecto->codigo ?: '#' . $proyecto->id, 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
+$this->params['breadcrumbs'][] = ['label' => $proyecto->identificador(), 'url' => ['/proyecto/view', 'id' => $proyecto->id]];
 $this->params['breadcrumbs'][] = 'Presupuesto';
 
 $formato = Yii::$app->formatter;

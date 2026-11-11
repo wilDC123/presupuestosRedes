@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace backend\models;
 
 use backend\components\ArchivoSubido;
+use backend\components\NumeracionEspecificacion;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\helpers\Url;
@@ -118,5 +119,22 @@ class EspecificacionVersion extends ActiveRecord
         return ArchivoSubido::esEnlaceExterno($ruta)
             ? $ruta
             : Url::to(['/especificacion/adjunto', 'id' => $this->id]);
+    }
+
+    /**
+     * Las caracteristicas con el numero que llevan en el formulario de
+     * especificacion (1.3, 1.4, 1.4.1...): lo mismo en la ficha, en "Ver
+     * detalle" y en el PDF. Ver NumeracionEspecificacion.
+     *
+     * @return array<int, array{numero: string, nivel: int, esSubtitulo: bool, nombre: ?string, valor: string}>
+     */
+    public function caracteristicasNumeradas(): array
+    {
+        return NumeracionEspecificacion::caracteristicas(array_map(static fn (EspecificacionCaracteristica $c) => [
+            'nombre' => $c->nombre,
+            'valor' => $c->valor,
+            'esSubtitulo' => (bool) $c->esSubtitulo,
+            'nivel' => (int) $c->nivel,
+        ], $this->caracteristicas));
     }
 }

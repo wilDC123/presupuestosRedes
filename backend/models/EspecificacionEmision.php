@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\models;
 
+use backend\components\VersionDocumento;
 use DateTimeImmutable;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
@@ -24,17 +25,19 @@ use yii\db\ActiveRecord;
  * EspecificacionEmisionService.
  *
  * @property int $id
- * @property string $serie SERIE_ET (las de ahora: RD-PI-ET-001/26) o SERIE_NET (las de antes del 2026-10-22: NET:880/26).
- * @property int $numeroNet Correlativo de su serie; en ET vuelve a 1 cada año (2026-10-29), en
- *           NET no se reiniciaba. Las versiones de un mismo documento repiten el numero.
+ * @property string $serie SERIE_ET (las de ahora: RD-PI-ET-001) o SERIE_NET (las de antes del 2026-10-22: NET:880/26).
+ * @property int $numeroNet Correlativo de su serie; no se reinicia (del 2026-10-29 al 11-10 las ET
+ *           volvian a 1 cada año). Las versiones de un mismo documento repiten el numero.
  * @property string $proceso Codigo del proceso del proyecto al emitirla (PI, GR...), CONGELADO:
  *           cambiar despues el proceso del proyecto no cambia el codigo. Las de antes, PI.
  * @property int $versionDocumento Version del DOCUMENTO (1, 2...): sube al reemitir. No confundir
  *           con getVersion(), la version de la FICHA de la libreria que imprime.
  * @property string|null $codigoAnterior El NET que tenia antes de pasar a RD-PI-ET (migracion
  *           m261022_144239): el documento ya entregado lo lleva impreso. NULL en las emitidas como ET.
- * @property int $anio Dos digitos del año de emision (26), parte del codigo (/26). Una reemision
- *           conserva el del documento aunque se haga al año siguiente.
+ * @property int $anio Dos digitos del año de emision (26). Desde el 2026-11-10 NO va en el codigo
+ *           de las ET (RD-PI-ET-033, ya no RD-PI-ET-033/26): queda como dato, para el filtro "Año"
+ *           del registro y para el codigo de los NET de antes (NET:880/26). Una reemision conserva
+ *           el del documento.
  * @property int $idVersion Version de la ficha (EspecificacionVersion).
  * @property int $idProyecto
  * @property int|null $idProyectoItem NULL si el item se borro despues de emitir.
@@ -85,8 +88,8 @@ class EspecificacionEmision extends ActiveRecord
 
     /**
      * Serie del codigo. Desde el 2026-10-22 se emite con el codigo del
-     * lineamiento de la DTIC RD-GD-LI-001 (RD-PI-ET-001/26, correlativo nuevo
-     * desde 1, por año). Las emitidas antes son documentos ya firmados y entregados:
+     * lineamiento de la DTIC RD-GD-LI-001 (RD-PI-ET-001, correlativo nuevo
+     * desde 1, sin año desde el 2026-11-10). Las emitidas antes son documentos ya firmados y entregados:
      * conservan su codigo NET de siempre.
      */
     public const SERIE_ET = 'ET';
@@ -173,7 +176,7 @@ class EspecificacionEmision extends ActiveRecord
     }
 
     /**
-     * Como se imprime y se cita: "RD-PI-ET-001/26" (ver CorrelativoDocumento::codigo()) o,
+     * Como se imprime y se cita: "RD-PI-ET-001", sin año (ver CorrelativoDocumento::codigo()) o,
      * si es de las de antes, "NET:880/26" (tres digitos como minimo, igual
      * que el banco de DTIC: "NET:013/23"). Sin la version: es el mismo en
      * todas las versiones del documento (la carta, la solicitud y el
@@ -188,8 +191,7 @@ class EspecificacionEmision extends ActiveRecord
         return CorrelativoDocumento::codigo(
             CorrelativoDocumento::TIPO_ESPECIFICACION,
             (int) $this->numeroNet,
-            $this->codigoProceso(),
-            (int) $this->anio
+            $this->codigoProceso()
         );
     }
 
@@ -205,16 +207,16 @@ class EspecificacionEmision extends ActiveRecord
     }
 
     /**
-     * "02": como sale en la casilla "Versión" de la cabecera y en el control
-     * de elaboracion del formulario.
+     * "1.1": como sale en la casilla "Versión" de la cabecera y en el control
+     * de elaboracion del formulario (la versionDocumento 2; ver VersionDocumento).
      */
     public function versionTexto(): string
     {
-        return sprintf('%02d', (int) ($this->versionDocumento ?? 1));
+        return VersionDocumento::texto((int) ($this->versionDocumento ?? 1));
     }
 
     /**
-     * "RD-PI-ET-015/26 v02": para las pantallas y el registro, donde se ven
+     * "RD-PI-ET-015 v1.1": para las pantallas y el registro, donde se ven
      * juntas las versiones de un mismo documento.
      */
     public function codigoConVersion(): string
