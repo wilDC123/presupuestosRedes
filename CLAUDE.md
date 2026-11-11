@@ -559,12 +559,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   (`PresupuestoPdfGenerator::empezarDocumento()`)
 - Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
   aprobado. Datos generales: la línea del proyecto (`Proyecto::lineaDocumento()`, ver PARTE 5c; del 2026-11-05 al 06
-  "Proyecto: RD-PI-PT-028 — Nombre") con el oficio a la derecha. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
+  "Proyecto: RD-PI-PT-028 — Nombre"), a todo el ancho: SIN el oficio de la DTIC desde el 2026-11-11 (antes a la derecha). Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
   usan los mismos anchos, 2026-10-21) y "TOTAL GENERAL Bs." al final; N.° corrido
   entre categorías y en cada línea el nombre DTIC con su observación (columnas como la solicitud
-  de cotización, más Partida). Desde el 2026-10-21 el nombre DTIC lleva al lado, entre paréntesis, el código NET de la emisión
-  VIGENTE del ítem (sin emisión vigente no sale), y en el mismo paréntesis el modelo sugerido:
-  "(NET:897/26 – Dahua DH-PFS3110-8P-96)" (`ProyectoItem::modeloSugerido()`: de la versión EMITIDA, o de la actual de la ficha si
+  de cotización, más Partida). Del 2026-10-21 al 11-11 el nombre DTIC llevaba al lado, entre paréntesis, el código de la emisión
+  VIGENTE del ítem y el modelo sugerido; desde el 2026-11-11 SOLO el modelo sugerido (sin el código ET):
+  "(Dahua DH-PFS3110-8P-96)" (`ProyectoItem::modeloSugerido()`: de la versión EMITIDA, o de la actual de la ficha si
   aún no se emitió; también en el paso Presupuesto, junto a "Especificación técnica: NET…"). Desde el 2026-10-20 NO lleva nombre SIGMA,
   proveedor por línea, resumen por partida, anexo (cuadro comparativo y justificaciones), área
   de intervención ni estado

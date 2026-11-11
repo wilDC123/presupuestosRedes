@@ -17,8 +17,8 @@ use yii\helpers\Html;
  * la primera tabla lleva los títulos de las columnas (N.°, Descripción...):
  * las demás tienen los mismos anchos, así que se leen igual y se gana
  * espacio. La numeración (N.°) sigue corrida entre categorías. En cada línea, el nombre
- * DTIC con su observación debajo y, si tiene especificación técnica emitida, el código NET vigente entre
- * paréntesis (sin nombre SIGMA).
+ * DTIC con su observación debajo y, entre paréntesis, el modelo sugerido (sin nombre SIGMA; sin el código
+ * de la especificación ni el oficio de la DTIC desde el 2026-11-11).
  * Si el presupuesto lleva mano de obra de la DTIC (Presupuesto::$manoDeObra),
  * va en la categoría "Mano de obra" (al final si no existe), con precios en
  * 0.00 (cantidad también 0.00). Después del total (fila "TOTAL (Bs.)" en azul claro): la nota, centrada.
@@ -41,8 +41,6 @@ use yii\helpers\Html;
  *            ubicada por PresupuestoService::ubicarManoDeObra() (clave 'manoDeObra' de cada grupo)
  * @var float $totalGeneral
  * @var backend\models\ConfiguracionPresupuesto $configuracion nota y firmas (editables)
- * @var string $oficio "DTIC Of. Nº 598/2026" (formato de la configuracion de la carta,
- *             CartaService::formatearOficio(); año de la carta o de creacion); vacio si aun no tiene oficio
  * @var string $proceso nombre del proceso para la cabecera (Proceso::nombreDe($presupuesto->codigoProceso()),
  *             lo calcula el controlador)
  */
@@ -162,9 +160,8 @@ $numero = 0;
 // técnica del proyecto). ?>
 <table class="datos-generales">
     <tr>
-        <?php // El nombre del proyecto suele ser largo: mas ancho que el oficio. ?>
-        <td style="width: 72%"><?= Html::encode($proyecto->lineaDocumento()) ?></td>
-        <td style="width: 28%; text-align: right"><strong><?= Html::encode($oficio !== '' ? $oficio : 'Oficio DTIC: —') ?></strong></td>
+        <?php // Sin el oficio de la DTIC desde el 2026-11-11 (va en la carta de entrega). ?>
+        <td><?= Html::encode($proyecto->lineaDocumento()) ?></td>
     </tr>
 </table>
 
@@ -199,10 +196,9 @@ $numero = 0;
                         <td width="45%">
                             <?= Html::encode($linea->subcatalogoItem->descripcion ?? '') ?>
                             <?php
-                            // Entre parentesis, en la misma linea: el NET de la emision
-                            // VIGENTE (sin emision, o anulada, no sale) y el modelo sugerido.
+                            // Entre parentesis, en la misma linea: el modelo sugerido. Sin el
+                            // codigo de la especificacion (RD-PI-ET-NNN) desde el 2026-11-11.
                             $referencia = array_filter([
-                                $linea->proyectoItem?->emisionVigente?->codigo(),
                                 $linea->proyectoItem?->modeloSugerido(),
                             ]);
                             ?>
