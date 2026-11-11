@@ -82,7 +82,11 @@ class PresupuestoPdfTest extends Unit
             ]);
 
             $this->assertSame(1, preg_match_all('/<td width="45%">\s*MANO DE OBRA\s*<br>/', $html), 'La fila de la DTIC sale una vez.');
-            $this->assertSame(1, preg_match_all('/<div class="categoria-titulo[^"]*">Mano de obra<\/div>/', $html), 'Una sola tabla de mano de obra.');
+            $this->assertSame(1, preg_match_all('/<td colspan="7" class="categoria">Mano de obra<\/td>/', $html), 'Una sola categoría de mano de obra.');
+            // UNA sola tabla (2026-11-11), con la primera categoria arriba de los titulos y el total al final.
+            $this->assertSame(1, substr_count($html, '<table class="items">'));
+            $this->assertMatchesRegularExpression('/class="categoria">[^<]*<\/td><\/tr>\s*<tr>\s*<th>N\.°<\/th>/u', $html);
+            $this->assertStringContainsString('<tr class="total-general">', $html);
         }
     }
 

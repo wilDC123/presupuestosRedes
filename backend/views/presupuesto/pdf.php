@@ -13,10 +13,9 @@ use yii\helpers\Html;
  * CSS deliberadamente simple: mPDF interpreta un subconjunto de CSS pensado
  * para documentos, no un layout de aplicación web.
  *
- * Una tabla por categoría, con su subtotal, y el total general al final. Solo
- * la primera tabla lleva los títulos de las columnas (N.°, Descripción...):
- * las demás tienen los mismos anchos, así que se leen igual y se gana
- * espacio. La numeración (N.°) sigue corrida entre categorías. En cada línea, el nombre
+ * UNA sola tabla (2026-11-11; antes una por categoría): cada categoría es una
+ * banda gris sin líneas, la primera ARRIBA de los títulos de columnas (N.°,
+ * Descripción...), cada una con su subtotal, y el TOTAL como última fila. La numeración (N.°) sigue corrida entre categorías. En cada línea, el nombre
  * DTIC con su observación debajo y, entre paréntesis, el modelo sugerido (sin nombre SIGMA; sin el código
  * de la especificación ni el oficio de la DTIC desde el 2026-11-11).
  * Si el presupuesto lleva mano de obra de la DTIC (Presupuesto::$manoDeObra),
@@ -103,33 +102,21 @@ $numero = 0;
         font-size: 9pt;
         color: #333;
     }
-    /* Las categorias van pegadas, como una sola tabla: el titulo no tiene
-       margen y usa los mismos bordes que las celdas. Sin borde arriba (ya
-       esta el de la tabla anterior), salvo el de la primera categoria. */
-    .categoria-titulo {
+    /* Fila de categoria dentro de la tabla: banda gris SIN lineas de celda
+       (2026-11-11, como la lista de materiales); las de las filas vecinas se quedan. */
+    table.items td.categoria {
         background-color: #d0d0d0;
         font-style: italic;
         font-weight: bold;
-        padding: 4px;
-        border: 1px solid #666;
-        border-top: none;
-    }
-    .categoria-titulo.primera {
-        border-top: 1px solid #666;
+        border: none;
     }
     tr.subtotal td {
         font-weight: bold;
         text-align: right;
         background-color: #f2f2f2;
     }
-    /* Fila de total pegada a la ultima categoria, con los mismos bordes. */
-    table.total-general {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    table.total-general td {
-        border: 1px solid #666;
-        border-top: none;
+    /* Ultima fila de la tabla: el total. */
+    table.items tr.total-general td {
         background-color: #e0e0e0;
         font-size: 11pt;
         font-weight: bold;
@@ -168,13 +155,18 @@ $numero = 0;
 <?php if (empty($grupos)): ?>
     <p>Este presupuesto todavía no tiene líneas cargadas.</p>
 <?php else: ?>
-    <?php foreach ($grupos as $nombreCategoria => $grupo): ?>
-        <div class="categoria-titulo<?= $nombreCategoria === array_key_first($grupos) ? ' primera' : '' ?>"><?= Html::encode($nombreCategoria) ?></div>
-        <table class="items">
-            <?php // Anchos fijos en TODAS las tablas: asi las columnas coinciden
-            // con las de la primera, la unica que lleva los titulos. ?>
-            <?php if ($nombreCategoria === array_key_first($grupos)): ?>
-                <thead>
+    <?php // UNA sola tabla (2026-11-11, como la lista de materiales): cada categoria es una banda gris sin
+    // lineas; la PRIMERA va arriba de los titulos de columnas y las demas entre las lineas. Cada categoria
+    // conserva su subtotal (es dinero) y el TOTAL es la ultima fila. Los titulos no van en <thead>, asi que
+    // no se repiten en cada pagina. ?>
+    <table class="items">
+        <colgroup>
+            <col width="5%"><col width="45%"><col width="8%"><col width="8%"><col width="10%"><col width="12%"><col width="12%">
+        </colgroup>
+        <tbody>
+            <?php foreach ($grupos as $nombreCategoria => $grupo): ?>
+                <tr><td colspan="7" class="categoria"><?= Html::encode($nombreCategoria) ?></td></tr>
+                <?php if ($nombreCategoria === array_key_first($grupos)): ?>
                     <tr>
                         <th>N.°</th>
                         <th>Descripción</th>
@@ -184,12 +176,7 @@ $numero = 0;
                         <th>Precio unitario</th>
                         <th>Precio total</th>
                     </tr>
-                </thead>
-            <?php endif; ?>
-            <colgroup>
-                <col width="5%"><col width="45%"><col width="8%"><col width="8%"><col width="10%"><col width="12%"><col width="12%">
-            </colgroup>
-            <tbody>
+                <?php endif; ?>
                 <?php foreach ($grupo['lineas'] as $linea): ?>
                     <tr>
                         <td class="numero" width="5%"><?= ++$numero ?></td>
@@ -230,21 +217,16 @@ $numero = 0;
                         <td class="numero" width="12%"><?= Yii::$app->formatter->asDecimal(0, 2) ?></td>
                     </tr>
                 <?php endif; ?>
-            </tbody>
-            <tfoot>
                 <tr class="subtotal">
                     <td colspan="6">Subtotal <?= Html::encode($nombreCategoria) ?>:</td>
                     <td class="numero"><?= Yii::$app->formatter->asDecimal($grupo['subtotal'], 2) ?></td>
                 </tr>
-            </tfoot>
-        </table>
-    <?php endforeach; ?>
-
-    <table class="total-general">
-        <tr>
-            <td width="88%">TOTAL (Bs.)</td>
-            <td width="12%"><?= Yii::$app->formatter->asDecimal($totalGeneral, 2) ?></td>
-        </tr>
+            <?php endforeach; ?>
+            <tr class="total-general">
+                <td colspan="6">TOTAL (Bs.)</td>
+                <td class="numero"><?= Yii::$app->formatter->asDecimal($totalGeneral, 2) ?></td>
+            </tr>
+        </tbody>
     </table>
 <?php endif; ?>
 
