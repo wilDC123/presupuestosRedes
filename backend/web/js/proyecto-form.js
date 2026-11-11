@@ -488,6 +488,17 @@ $(function () {
         }
     });
 
+    // Los campos de "escribirla a mano" no tienen name: solo llegan al servidor
+    // si se pulsa "+ Agregar área escrita a mano". Si se guarda con el edificio
+    // escrito sin pulsarlo, el area se perdia sin aviso (2026-11-03); ahora se
+    // agrega sola antes de enviar (cerrarManual() vacia los campos, asi que el
+    // texto que queda es uno que todavia no se agrego).
+    $form.on('submit', function () {
+        if (!$manual.hasClass('d-none') && $.trim(manual.edificio.val()) !== '') {
+            $('#proyecto-agregar-manual').trigger('click');
+        }
+    });
+
     // ---- Buscador de edificios y ambientes ----
 
     var espera = null;
