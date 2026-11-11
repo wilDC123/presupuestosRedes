@@ -248,15 +248,21 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   las partes 4 y 5d): `proyecto/ficha-pdf.php` + `ProyectoService::datosFicha()`. 1. INFORMACIÓN GENERAL (n.° de proyecto,
   nombre EN MAYÚSCULAS, descripción, tipo, proceso, "Fases" si hay varias, COSTO TOTAL DEL PROYECTO y las FECHAS en el mismo
   cuadro: con fase única filas "Fecha de creación / revisión / aprobación / última modificación", con varias un subcuadro
-  "Fechas | Fase 1 | Fase 2"), 2. UNIDADES / DEPENDENCIA (título desde el 2026-11-10), y después con fase única 3 área, 4 equipo, 5 CARPETA ECONÓMICA; con varias "3. FASE
-  1" (3.1 área, 3.2 equipo, 3.3 carpeta), "4. FASE 2"… CARPETA = tabla Documento | Código | Detalle | Versión
+  "Fechas | Fase 1 | Fase 2"), 2. UNIDADES / DEPENDENCIA (título desde el 2026-11-10), y después con fase única 3 área, 4 equipo, 5 CARPETA ECONÓMICA; con varias,
+  desde el 2026-11-11, "3. FASES" y dentro "3.1 FASE 1" (3.1.1 área, 3.1.2 equipo, 3.1.3 carpeta), "3.2 FASE 2" (3.2.1…)… (del 09 al
+  11-11 "3. FASE 1" (3.1, 3.2, 3.3), "4. FASE 2"…). Desde el 2026-11-11 los títulos de PRIMER nivel ("1. INFORMACIÓN GENERAL",
+  "2. UNIDADES / DEPENDENCIA", "3. FASES" o, con fase única, "3. ÁREA DE INTERVENCIÓN"…) y los de cada fase ("3.1 FASE 1") van
+  en MAYÚSCULAS; los de tercer nivel ("3.1.1 Área de intervención") no CARPETA = tabla Documento | Código | Detalle | Versión
   (`ProyectoService::carpeta()`): lista de materiales (rótulo "Lista de materiales y condiciones previas (BoM)" desde el 2026-11-10; "Elaborada el …"), presupuesto ("Aprobado el … · Total Bs." o su estado),
   especificaciones vigentes (con "Reemitida el …: motivo" si se reemitieron; el motivo está en la emisión reemplazada), solicitudes
   de proforma (rubro · fecha) y PROFORMAS RECIBIDAS (una fila por cotización: proveedor · fecha; solo si hay). Las ÓRDENES DE
   CAMBIO de la fase van dentro de su carpeta: barra gris "Orden de cambio N.° 1 · solicitada el … · aprobada el …" + "Motivo: …"
   y sus documentos. COSTO TOTAL = `ProyectoService::costoTotal()`: suma de los presupuestos APROBADOS de fases y órdenes, con el
   detalle "Fase 1: 5,732.50 + orden de cambio N.° 1: 1,870.00 + fase 2: 3,026.00 (presupuestos aprobados)" (fase única:
-  "Presupuesto aprobado"); también en la vista del proyecto (recuadro de fases). SIN FIRMAS (sale el control de elaboración que
+  "Presupuesto aprobado"); también en la vista del proyecto (recuadro de fases). En la FICHA, desde el 2026-11-11
+  (sugerencia del Ing.), con varias fases (o con órdenes de cambio aprobadas) ese detalle va en FILAS dentro de la misma
+  columna: "Fase 1 | Bs. 1,000.00", "Fase 2 | Bs. 2,500.00" (cada orden después de su fase) y al final "Total (presupuestos
+  aprobados) | Bs. 3,500.00"; el rótulo "Costo total del proyecto" ocupa todas esas filas (rowspan). SIN FIRMAS (sale el control de elaboración que
   tenía desde la parte 4); sigue la marca BORRADOR mientras alguna fase esté sin aprobar. Fechas dd-mm-aaaa; carpeta en 10 pt;
   al pie "Impresa el … por …"
 - REABRIR LA LISTA (PARTE 6a, 2026-11-09): lo que el sistema llamaba "orden de cambio" (reabrir una lista enviada a
@@ -363,8 +369,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   a la lista: quitar un ítem borra su línea y la cantidad se vuelve a copiar (el precio no)
 - El número (`numeroPresupuesto`) es el código RD-PI-PR-NNN que el sistema le da al crear el
   presupuesto (`ElaborarPresupuestoService::delProyecto()`; ya no se escribe; los de antes, como "690",
-  se convirtieron a RD-PI-PR y guardan el número viejo en `Presupuesto.numeroAnterior`). La cabecera (oficio y área) se exige recién al "Enviar a revisión" (escenario
-  `Presupuesto::SCENARIO_ENVIAR`), junto con que todos los ítems tengan precio. Los estados se
+  se convirtieron a RD-PI-PR y guardan el número viejo en `Presupuesto.numeroAnterior`). "Enviar a revisión" exige el código (escenario
+  `Presupuesto::SCENARIO_ENVIAR`) y que todos los ítems tengan precio; desde el 2026-11-11 NO pide nada (antes el oficio y
+  el área): el oficio DTIC se escribe en la carta de entrega. Los estados se
   cambian en la misma pantalla. FECHAS (revisión del 2026-10-29, paso 9; "arriba va la fecha de creación del
   documento", abajo la de aprobación): la "Fecha" de la cabecera del PDF, de la pantalla y del listado es
   `Presupuesto.fechaCreacion` (cuando se empezó a elaborar, `Presupuesto::fechaFormateada()`); desde el 2026-10-30 ya
@@ -553,12 +560,12 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   (`PresupuestoPdfGenerator::empezarDocumento()`)
 - Generación de PDF consolidado del presupuesto: marca de agua "BORRADOR" mientras no esté
   aprobado. Datos generales: la línea del proyecto (`Proyecto::lineaDocumento()`, ver PARTE 5c; del 2026-11-05 al 06
-  "Proyecto: RD-PI-PT-028 — Nombre") con el oficio a la derecha. Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
+  "Proyecto: RD-PI-PT-028 — Nombre"), a todo el ancho: SIN el oficio de la DTIC desde el 2026-11-11 (antes a la derecha). Una tabla por categoría con su subtotal (solo la primera lleva los títulos de columnas; las demás
   usan los mismos anchos, 2026-10-21) y "TOTAL GENERAL Bs." al final; N.° corrido
   entre categorías y en cada línea el nombre DTIC con su observación (columnas como la solicitud
-  de cotización, más Partida). Desde el 2026-10-21 el nombre DTIC lleva al lado, entre paréntesis, el código NET de la emisión
-  VIGENTE del ítem (sin emisión vigente no sale), y en el mismo paréntesis el modelo sugerido:
-  "(NET:897/26 – Dahua DH-PFS3110-8P-96)" (`ProyectoItem::modeloSugerido()`: de la versión EMITIDA, o de la actual de la ficha si
+  de cotización, más Partida). Del 2026-10-21 al 11-11 el nombre DTIC llevaba al lado, entre paréntesis, el código de la emisión
+  VIGENTE del ítem y el modelo sugerido; desde el 2026-11-11 SOLO el modelo sugerido (sin el código ET):
+  "(Dahua DH-PFS3110-8P-96)" (`ProyectoItem::modeloSugerido()`: de la versión EMITIDA, o de la actual de la ficha si
   aún no se emitió; también en el paso Presupuesto, junto a "Especificación técnica: NET…"). Desde el 2026-10-20 NO lleva nombre SIGMA,
   proveedor por línea, resumen por partida, anexo (cuadro comparativo y justificaciones), área
   de intervención ni estado
@@ -650,7 +657,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   entrega" en el paso Presupuesto): la nota con membrete que acompaña al presupuesto. UNA por
   presupuesto (`redes.CartaPresupuesto`, índice único, FK CASCADE). Se escribe y guarda en CUALQUIER
   estado; para imprimir solo se exige la carta guardada y que el presupuesto tenga `oficioDtic` y
-  `numeroPresupuesto` (NO que esté aprobado). Sin marca de agua. GUARDA su texto (copiado de
+  `numeroPresupuesto` (NO que esté aprobado). Desde el 2026-11-11 el OFICIO DTIC se escribe en la pantalla de la carta (campo
+  "Oficio DTIC" arriba, se guarda en `Presupuesto.oficioDtic` con el mismo botón, en cualquier estado, `CartaService::guardar()`);
+  antes se pedía al enviar a revisión. El PDF del presupuesto ya no lo muestra. Sin marca de agua. GUARDA su texto (copiado de
   `redes.ConfiguracionCarta` al crearla: textos por defecto y 3 firmas propias, la 3.ª el V°B° del
   jefe, editables en "Configuración de la carta"); cambiar la configuración no altera las ya
   escritas, salvo ciudad y formato del oficio. Marcadores: {proyecto}, {unidad} (= unidad solicitante: la carta responde a quien

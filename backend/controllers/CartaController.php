@@ -39,7 +39,7 @@ class CartaController extends Controller
         $presupuesto = $this->findPresupuesto($proyecto);
         $carta = $this->service->delPresupuesto($presupuesto);
 
-        if (Yii::$app->request->isPost && $this->service->guardar($carta, Yii::$app->request->post())) {
+        if (Yii::$app->request->isPost && $this->service->guardar($carta, Yii::$app->request->post(), $presupuesto)) {
             Yii::$app->session->setFlash('success', 'Carta guardada.');
 
             return $this->redirect(['index', 'idProyecto' => $proyecto->id]);

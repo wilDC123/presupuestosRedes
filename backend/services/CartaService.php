@@ -123,11 +123,48 @@ class CartaService
     }
 
     /**
-     * Guarda la carta (nueva o ya existente) con lo que llega del formulario.
+     * Guarda la carta (nueva o ya existente) con lo que llega del formulario
+     * y, si llega (Presupuesto[oficioDtic]), el numero de oficio DTIC del
+     * presupuesto: desde el 2026-11-11 se escribe aqui y no al enviar a
+     * revision. Las dos cosas juntas, en una transaccion; si una no es valida
+     * no se guarda ninguna. Se puede cambiar en cualquier estado del
+     * presupuesto (el PDF del presupuesto ya no lo muestra).
      */
-    public function guardar(CartaPresupuesto $carta, array $datosFormulario): bool
+    public function guardar(CartaPresupuesto $carta, array $datosFormulario, ?Presupuesto $presupuesto = null): bool
     {
-        return $carta->load($datosFormulario) && $carta->save();
+        $cargada = $carta->load($datosFormulario);
+        $oficio = $datosFormulario['Presupuesto']['oficioDtic'] ?? null;
+        $conOficio = $presupuesto !== null && is_string($oficio);
+
+        if (!$cargada && !$conOficio) {
+            return false;
+        }
+        if ($conOficio) {
+            $presupuesto->oficioDtic = $oficio;
+        }
+
+        $valida = $carta->validate();
+        // Las dos, para que se vean todos los errores a la vez.
+        $valida = ($conOficio ? $presupuesto->validate(['oficioDtic']) : true) && $valida;
+        if (!$valida) {
+            return false;
+        }
+
+        $transaccion = Yii::$app->db->beginTransaction();
+        try {
+            $carta->save(false);
+            if ($conOficio) {
+                // trim deja '' en un campo vacio: se guarda como "sin oficio".
+                $presupuesto->oficioDtic = $presupuesto->oficioDtic === '' ? null : $presupuesto->oficioDtic;
+                $presupuesto->save(false, ['oficioDtic']);
+            }
+            $transaccion->commit();
+        } catch (\Throwable $e) {
+            $transaccion->rollBack();
+            throw $e;
+        }
+
+        return true;
     }
 
     /**
@@ -144,7 +181,7 @@ class CartaService
             $falta[] = 'Guarde la carta.';
         }
         if (trim((string) $presupuesto->oficioDtic) === '') {
-            $falta[] = 'El presupuesto todavía no tiene número de oficio DTIC (se pone al enviarlo a revisión).';
+            $falta[] = 'Escriba el número de oficio DTIC (arriba, en «Oficio DTIC») y guarde.';
         }
         if (trim((string) $presupuesto->numeroPresupuesto) === '') {
             $falta[] = 'El presupuesto todavía no tiene código (se asigna al entrar al paso Presupuesto).';
@@ -207,8 +244,8 @@ class CartaService
 
     /**
      * El oficio con el formato de la configuracion de la carta ("DTIC Of. Nº
-     * {oficio}/{anio}"): lo usan la carta (con su fecha) y el PDF del
-     * presupuesto (con la del presupuesto). Sin fecha, el año actual. Si el
+     * {oficio}/{anio}"): lo usa la carta (con su fecha); el PDF del
+     * presupuesto ya no lo muestra (2026-11-11). Sin fecha, el año actual. Si el
      * oficio ya trae su año ("598/2026"), no se repite. Vacio si no hay oficio.
      *
      * @param string $fecha aaaa-mm-dd

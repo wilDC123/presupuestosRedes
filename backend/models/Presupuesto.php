@@ -186,7 +186,9 @@ class Presupuesto extends ActiveRecord
             [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'manoDeObra'], 'trim'],
             // Sin area de intervencion desde el 2026-11-05: va en la ficha tecnica del proyecto, no en el
             // presupuesto (revision del Ing., punto 5). La columna queda con lo de los ya enviados.
-            [['numeroPresupuesto', 'oficioDtic'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
+            // Sin oficio DTIC desde el 2026-11-11: ya no se pide al enviar a revision; se escribe en la
+            // carta de entrega, que lo exige para imprimirse (CartaService::faltaParaImprimir()).
+            [['numeroPresupuesto'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
             [['idProyecto'], 'integer'],
             // Mensaje claro en vez del error de la base por el indice unico.
             [['idProyecto'], 'unique', 'message' => 'Este proyecto ya tiene un presupuesto.'],

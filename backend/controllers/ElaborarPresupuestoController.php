@@ -144,8 +144,8 @@ class ElaborarPresupuestoController extends Controller
     }
 
     /**
-     * "Enviar a revision" con la cabecera (numero, oficio, area, fecha). Si
-     * falta algo, vuelve a la pantalla con el panel abierto y los mensajes.
+     * "Enviar a revision" (sin campos desde el 2026-11-11: el oficio va en la
+     * carta). Si falta algo, vuelve a la pantalla con el panel abierto y los mensajes.
      */
     public function actionEnviar(int $idProyecto)
     {
@@ -153,7 +153,7 @@ class ElaborarPresupuestoController extends Controller
         $presupuesto = $this->service->delProyecto($proyecto);
         $errores = [];
 
-        if ($this->service->enviarARevision($presupuesto, (array) Yii::$app->request->post('Presupuesto', []), $errores)) {
+        if ($this->service->enviarARevision($presupuesto, $errores)) {
             Yii::$app->session->setFlash('success', 'Presupuesto enviado a revisión.');
             $this->avisarVencidas($presupuesto);
 
