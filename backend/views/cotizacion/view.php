@@ -47,8 +47,9 @@ $this->params['breadcrumbs'][] = $this->title;
                 'label' => 'Documento',
                 'format' => 'raw',
                 'value' => empty($model->documentoRuta)
-                    ? 'Sin archivo adjunto'
-                    : Html::a('Ver / descargar PDF', $model->urlDocumento(), ['target' => '_blank']),
+                    ? 'Sin proforma adjunta'
+                    : Html::a($model->tieneEnlace() ? 'Abrir enlace' : 'Ver / descargar PDF', $model->urlDocumento(), ['target' => '_blank', 'rel' => 'noopener'])
+                        . ($model->tieneEnlace() ? '<br><small class="text-muted">' . Html::encode($model->documentoRuta) . '</small>' : ''),
             ],
         ],
     ]) ?>

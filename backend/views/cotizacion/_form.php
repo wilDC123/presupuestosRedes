@@ -30,12 +30,16 @@ use yii\widgets\ActiveForm;
 
     <?php if (!$model->isNewRecord && !empty($model->documentoRuta)): ?>
         <p>
-            Archivo actual:
-            <?= Html::a('Ver PDF', $model->urlDocumento(), ['target' => '_blank']) ?>
+            Proforma actual:
+            <?= Html::a($model->textoDocumento(), $model->urlDocumento(), ['target' => '_blank', 'rel' => 'noopener']) ?>
         </p>
     <?php endif; ?>
 
-    <?= $form->field($model, 'documentoFile')->fileInput()->hint('Solo archivos PDF, máximo 10 MB. Dejar vacío para no cambiar el archivo actual.') ?>
+    <?php // La proforma: el enlace donde esta guardada (Drive) O el PDF subido, 2026-11-11. ?>
+    <?= $form->field($model, 'documentoEnlace')->textInput(['maxlength' => 500, 'placeholder' => 'https://drive.google.com/…'])
+        ->hint('Si la proforma está en el Drive, pegue aquí su enlace. Bórrelo para quitarlo.') ?>
+
+    <?= $form->field($model, 'documentoFile')->fileInput()->hint('O suba el PDF (máximo 10 MB). Use una sola de las dos. Dejar vacío para no cambiar el archivo actual.') ?>
 
     <?php if ($modelsDetalle !== null): ?>
         <?= $this->render('_detalle-form', [

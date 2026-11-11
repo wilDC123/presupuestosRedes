@@ -92,9 +92,19 @@ $formato = Yii::$app->formatter;
                 <?= $form->field($cotizacion, 'validezDias')->textInput(['type' => 'number', 'min' => 0]) ?>
             </div>
         </div>
-        <?= $form->field($cotizacion, 'documentoFile')->fileInput(['accept' => '.pdf'])
-            ->hint('PDF de la cotización del proveedor (opcional, máximo 10 MB).'
-                . (!empty($cotizacion->documentoRuta) ? ' Archivo actual: ' . Html::a('ver PDF', $cotizacion->urlDocumento(), ['target' => '_blank']) . '. Déjelo vacío para conservarlo.' : '')) ?>
+        <?php // La proforma: el PDF subido O el enlace donde esta guardada (Drive), 2026-11-11. ?>
+        <div class="row">
+            <div class="col-md-6">
+                <?= $form->field($cotizacion, 'documentoEnlace')->textInput(['maxlength' => 500, 'placeholder' => 'https://drive.google.com/…'])
+                    ->hint('Si la proforma está en el Drive, pegue aquí su enlace.'
+                        . ($cotizacion->tieneEnlace() ? ' ' . Html::a('Abrir el enlace actual', $cotizacion->urlDocumento(), ['target' => '_blank', 'rel' => 'noopener']) . '. Bórrelo para quitarlo.' : '')) ?>
+            </div>
+            <div class="col-md-6">
+                <?= $form->field($cotizacion, 'documentoFile')->fileInput(['accept' => '.pdf'])
+                    ->hint('O suba el PDF (máximo 10 MB). Use una sola de las dos.'
+                        . (!empty($cotizacion->documentoRuta) && !$cotizacion->tieneEnlace() ? ' Archivo actual: ' . Html::a('ver PDF', $cotizacion->urlDocumento(), ['target' => '_blank']) . '. Déjelo vacío para conservarlo.' : '')) ?>
+            </div>
+        </div>
     </div>
 
     <div class="card">

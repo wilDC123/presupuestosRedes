@@ -87,7 +87,7 @@ class CotizacionService
     /**
      * Registra o corrige la cotizacion de un proveedor a la solicitud, todo
      * en UNA transaccion. Formulario:
-     *   Cotizacion[idProveedor|numeroReferencia|fecha|validezDias] (+ PDF aparte)
+     *   Cotizacion[idProveedor|numeroReferencia|fecha|validezDias|documentoEnlace] (+ PDF aparte)
      *   filas[idProyectoItem][marcaModelo]
      *   filas[idProyectoItem][precioUnitario]   '' = el proveedor no cotizo ese item
      *
@@ -182,7 +182,7 @@ class CotizacionService
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            $ruta = $this->asignarRutaDelArchivo($cotizacion);
+            $ruta = $this->asignarDocumento($cotizacion);
             $cotizacion->save(false);
 
             if ($aBorrar !== []) {
@@ -284,7 +284,7 @@ class CotizacionService
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            $ruta = $this->asignarRutaDelArchivo($cotizacion);
+            $ruta = $this->asignarDocumento($cotizacion);
             $cotizacion->save(false);
             $this->escribirArchivo($cotizacion, $ruta);
             $transaccion->commit();
@@ -372,7 +372,7 @@ class CotizacionService
         $transaccion = Yii::$app->db->beginTransaction();
 
         try {
-            $ruta = $this->asignarRutaDelArchivo($cotizacion);
+            $ruta = $this->asignarDocumento($cotizacion);
             $guardado = $cotizacion->save(false);
 
             if ($guardado && !empty($idsBorrados)) {
@@ -473,24 +473,35 @@ class CotizacionService
      */
 
     /**
-     * Si el usuario adjunto un PDF nuevo, le da su ruta en
-     * backend/uploads/cotizaciones (fuera de la carpeta publica, ver
-     * ArchivoSubido) y la pone en documentoRuta, SIN escribirlo todavia. Si no
-     * adjunto nada, documentoRuta queda como estaba y devuelve null.
+     * Pone en documentoRuta lo que el usuario adjunto:
+     *  - un PDF nuevo: le da su ruta en backend/uploads/cotizaciones (fuera de
+     *    la carpeta publica, ver ArchivoSubido) SIN escribirlo todavia, y la
+     *    devuelve;
+     *  - un enlace (Drive): lo guarda tal cual (2026-11-11);
+     *  - nada: queda como estaba, salvo que tenia un enlace y lo borraron del
+     *    campo (se quita). Un PDF ya subido se conserva.
+     * Devuelve la ruta del PDF a escribir, o null si no hay que escribir nada.
      */
-    private function asignarRutaDelArchivo(Cotizacion $cotizacion): ?string
+    private function asignarDocumento(Cotizacion $cotizacion): ?string
     {
-        if ($cotizacion->documentoFile === null) {
-            return null;
+        if ($cotizacion->documentoFile !== null) {
+            $cotizacion->documentoRuta = ArchivoSubido::rutaNueva(self::CARPETA_DOCUMENTOS, 'cot_', $cotizacion->documentoFile->extension);
+
+            return $cotizacion->documentoRuta;
         }
 
-        $cotizacion->documentoRuta = ArchivoSubido::rutaNueva(self::CARPETA_DOCUMENTOS, 'cot_', $cotizacion->documentoFile->extension);
+        $enlace = trim((string) $cotizacion->documentoEnlace);
+        if ($enlace !== '') {
+            $cotizacion->documentoRuta = $enlace;
+        } elseif ($cotizacion->tieneEnlace()) {
+            $cotizacion->documentoRuta = null;
+        }
 
-        return $cotizacion->documentoRuta;
+        return null;
     }
 
     /**
-     * Escribe el PDF en la ruta que le dio asignarRutaDelArchivo(). Se llama
+     * Escribe el PDF en la ruta que le dio asignarDocumento(). Se llama
      * al final, dentro de la transaccion (ver arriba).
      */
     private function escribirArchivo(Cotizacion $cotizacion, ?string $ruta): void
