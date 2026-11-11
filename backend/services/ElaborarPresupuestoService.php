@@ -469,19 +469,19 @@ class ElaborarPresupuestoService
     /**
      * "Enviar a revision": en proceso -> en revision, solo si
      *  - todos los items de la lista tienen precio (control()), y
-     *  - la cabecera esta completa (escenario Presupuesto::SCENARIO_ENVIAR).
+     *  - tiene su codigo (escenario Presupuesto::SCENARIO_ENVIAR).
      * Las cotizaciones vencidas no bloquean (el controlador avisa).
      *
-     * $cabecera es lo que llega del formulario (Presupuesto[...]); se copian
-     * SOLO el oficio (el area de intervencion ya no, 2026-11-05): nunca el estado, el proyecto ni el codigo
-     * (RD-PI-PR, lo asigna el sistema). La fecha del documento es la de
-     * creacion (desde el 2026-10-30 ya no se escribe).
+     * Ya no se escribe nada al enviar: el codigo (RD-PI-PR) lo asigna el
+     * sistema, la fecha del documento es la de creacion (desde el 2026-10-30),
+     * el area de intervencion ya no va (2026-11-05) y el oficio DTIC se
+     * escribe en la carta de entrega (desde el 2026-11-11).
      * Devuelve false con los mensajes en $errores; los errores de cada campo
      * quedan ademas en $presupuesto->errors.
      *
      * @param string[] $errores (por referencia)
      */
-    public function enviarARevision(Presupuesto $presupuesto, array $cabecera, array &$errores = []): bool
+    public function enviarARevision(Presupuesto $presupuesto, array &$errores = []): bool
     {
         $errores = [];
 
@@ -489,12 +489,6 @@ class ElaborarPresupuestoService
             $errores[] = 'Solo se envía a revisión un presupuesto "En proceso".';
 
             return false;
-        }
-
-        foreach (['oficioDtic'] as $atributo) {
-            if (array_key_exists($atributo, $cabecera) && is_string($cabecera[$atributo])) {
-                $presupuesto->$atributo = $cabecera[$atributo];
-            }
         }
 
         $presupuesto->scenario = Presupuesto::SCENARIO_ENVIAR;

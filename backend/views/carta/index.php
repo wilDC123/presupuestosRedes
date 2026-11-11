@@ -10,7 +10,9 @@ use yii\widgets\ActiveForm;
 /**
  * Carta de entrega del presupuesto: se escribe en cualquier momento (no hace
  * falta que el presupuesto este aprobado) y se imprime cuando el presupuesto
- * ya tiene numero de oficio y numero de presupuesto. Ver CartaService.
+ * ya tiene numero de oficio y numero de presupuesto. El numero de oficio DTIC
+ * se escribe aqui desde el 2026-11-11 (antes al enviar a revision) y se guarda
+ * en el presupuesto con el mismo boton. Ver CartaService::guardar().
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
@@ -81,10 +83,15 @@ $marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los
         <div class="rd-card-pad">
             <div class="row g-3">
                 <div class="col-md-3">
+                    <?php // Es del presupuesto (Presupuesto[oficioDtic]); se guarda con la carta. ?>
+                    <?= $form->field($presupuesto, 'oficioDtic')->textInput(['maxlength' => 100, 'placeholder' => 'ej. 602'])
+                        ->hint('Sale en el título de la carta. Obligatorio para imprimirla.') ?>
+                </div>
+                <div class="col-md-3">
                     <?php // type="date": calendario del navegador; envia aaaa-mm-dd, que el modelo guarda tal cual. ?>
                     <?= $form->field($carta, 'fecha')->input('date') ?>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-6">
                     <?= $form->field($carta, 'tratamiento')->dropDownList($opcionesTratamiento, ['id' => 'carta-tratamiento', 'options' => $atributosTratamiento])
                         ->hint('Sale como "Señora:" sobre el nombre. La lista se cambia en ' . Html::a('Configuración de la carta', ['configuracion', 'proyecto' => $proyecto->id]) . '.') ?>
                 </div>
@@ -92,7 +99,7 @@ $marcadores = 'Al imprimir, {oficio} y {numeroPresupuesto} se reemplazan con los
                     <?= $form->field($carta, 'destinatarioNombre')->textInput(['maxlength' => 150, 'placeholder' => 'ej. Msc. María Esther Santos Parraga'])
                         ->hint('Con su grado: Ing., Lic., Msc., Dr.…') ?>
                 </div>
-                <div class="col-12">
+                <div class="col-md-6">
                     <?= $form->field($carta, 'destinatarioCargo')->textInput(['maxlength' => 200, 'id' => 'carta-cargo'])
                         ->hint('Se guarda en mayúsculas. Al cambiar el tratamiento, DECANO/DECANA cambia solo.') ?>
                 </div>

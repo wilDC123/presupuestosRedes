@@ -7,7 +7,7 @@ use yii\helpers\Html;
 
 /**
  * Pie de la pantalla del presupuesto: lo que se puede hacer segun su estado.
- *  - en proceso: "Enviar a revision", con la cabecera (obligatoria recien aqui),
+ *  - en proceso: "Enviar a revision" (sin campos: el oficio DTIC se escribe en la carta desde el 2026-11-11),
  *  - los demas cambios de estado: un boton por cada estado de
  *    $estadosConBoton (sale de Presupuesto::transicionesPermitidas(), la
  *    unica fuente de verdad del ciclo de vida; esta vista solo decide el
@@ -54,19 +54,12 @@ $botones = [
                     </div>
                 <?php endif; ?>
 
-                <p class="rd-nota">Para enviarlo, complete los datos de cabecera del presupuesto. Después de enviarlo los precios ya no se cambian.
-                    El código (<strong class="mono"><?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?></strong>) lo asigna el sistema.</p>
+                <p class="rd-nota">Después de enviarlo los precios ya no se cambian.
+                    El código (<strong class="mono"><?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?></strong>) lo asigna el sistema;
+                    el número de oficio DTIC se escribe en la carta de entrega.</p>
 
                 <?= Html::beginForm(['enviar', 'idProyecto' => $proyecto->id], 'post', ['id' => 'enviar-form']) ?>
-                    <div class="row g-2">
-                        <div class="col-md-4">
-                            <?= Html::activeLabel($presupuesto, 'oficioDtic', ['class' => 'form-label']) ?>
-                            <?= Html::activeTextInput($presupuesto, 'oficioDtic', ['class' => 'form-control', 'maxlength' => 100, 'required' => true]) ?>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <?= Html::submitButton('Enviar a revisión', ['class' => 'btn btn-primary']) ?>
-                    </div>
+                    <?= Html::submitButton('Enviar a revisión', ['class' => 'btn btn-primary']) ?>
                 <?= Html::endForm() ?>
             </div>
         </details>

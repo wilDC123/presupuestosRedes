@@ -144,6 +144,37 @@ class CartaPresupuestoTest extends Unit
         $this->assertSame('Sucre, 16 de octubre de 2026', $this->service->lugarYFecha($presupuesto->carta, ConfiguracionCarta::obtener()));
     }
 
+    public function testElOficioSeEscribeEnLaCartaYNoAlEnviarARevision(): void
+    {
+        // Enviar a revision ya no pide oficio (2026-11-11): basta el codigo.
+        $presupuesto = $this->crearPresupuesto(Presupuesto::ESTADO_EN_PROCESO);
+        $presupuesto->numeroPresupuesto = 'RD-PI-PR-999';
+        $presupuesto->scenario = Presupuesto::SCENARIO_ENVIAR;
+        $this->assertTrue($presupuesto->validate(), implode(' ', $presupuesto->getFirstErrors()));
+
+        // Se escribe en la carta y se guarda en el presupuesto con el mismo boton, en cualquier estado.
+        $presupuesto = $this->crearPresupuesto(Presupuesto::ESTADO_APROBADO);
+        $carta = $this->service->nueva($presupuesto);
+        $datos = ['CartaPresupuesto' => ['fecha' => '16/10/2026', 'tratamiento' => 'Señora', 'destinatarioNombre' => 'Lic. Ana Pérez'], 'Presupuesto' => ['oficioDtic' => '  602 ']];
+        $this->assertTrue($this->service->guardar($carta, $datos, $presupuesto), implode(' ', $carta->getFirstErrors() + $presupuesto->getFirstErrors()));
+        $this->assertSame('602', Presupuesto::findOne($presupuesto->id)->oficioDtic);
+        $this->assertStringNotContainsString('oficio DTIC', implode(' ', $this->service->faltaParaImprimir(Presupuesto::findOne($presupuesto->id))));
+
+        // Uno demasiado largo no se guarda, ni la carta.
+        $datos['Presupuesto']['oficioDtic'] = str_repeat('9', 101);
+        $datos['CartaPresupuesto']['destinatarioNombre'] = 'No se guarda';
+        $this->assertFalse($this->service->guardar($carta, $datos, $presupuesto));
+        $this->assertNotNull($presupuesto->getFirstError('oficioDtic'));
+        $this->assertNotSame('No se guarda', CartaPresupuesto::findOne($carta->id)->destinatarioNombre);
+
+        // Vaciarlo lo quita: la carta vuelve a pedirlo para imprimir.
+        $datos['Presupuesto']['oficioDtic'] = '';
+        $datos['CartaPresupuesto']['destinatarioNombre'] = 'Lic. Ana Pérez';
+        $this->assertTrue($this->service->guardar($carta, $datos, $presupuesto));
+        $this->assertNull(Presupuesto::findOne($presupuesto->id)->oficioDtic);
+        $this->assertStringContainsString('oficio DTIC', implode(' ', $this->service->faltaParaImprimir(Presupuesto::findOne($presupuesto->id))));
+    }
+
     public function testUnOficioConAnioNoRepiteElAnio(): void
     {
         $presupuesto = $this->crearPresupuesto(Presupuesto::ESTADO_APROBADO);

@@ -179,7 +179,8 @@ class PresupuestoService
 
     /**
      * REGLA DE NEGOCIO: a "en revision" solo se llega con la cabecera completa
-     * (escenario Presupuesto::SCENARIO_ENVIAR: numero, oficio, area y fecha)
+     * (escenario Presupuesto::SCENARIO_ENVIAR: el codigo; el oficio, el area y
+     * la fecha ya no)
      * y con todos los items de la lista con precio.
      *
      * ElaborarPresupuestoService::enviarARevision() revisa lo mismo ANTES, para

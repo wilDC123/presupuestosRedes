@@ -369,8 +369,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   a la lista: quitar un ítem borra su línea y la cantidad se vuelve a copiar (el precio no)
 - El número (`numeroPresupuesto`) es el código RD-PI-PR-NNN que el sistema le da al crear el
   presupuesto (`ElaborarPresupuestoService::delProyecto()`; ya no se escribe; los de antes, como "690",
-  se convirtieron a RD-PI-PR y guardan el número viejo en `Presupuesto.numeroAnterior`). La cabecera (oficio y área) se exige recién al "Enviar a revisión" (escenario
-  `Presupuesto::SCENARIO_ENVIAR`), junto con que todos los ítems tengan precio. Los estados se
+  se convirtieron a RD-PI-PR y guardan el número viejo en `Presupuesto.numeroAnterior`). "Enviar a revisión" exige el código (escenario
+  `Presupuesto::SCENARIO_ENVIAR`) y que todos los ítems tengan precio; desde el 2026-11-11 NO pide nada (antes el oficio y
+  el área): el oficio DTIC se escribe en la carta de entrega. Los estados se
   cambian en la misma pantalla. FECHAS (revisión del 2026-10-29, paso 9; "arriba va la fecha de creación del
   documento", abajo la de aprobación): la "Fecha" de la cabecera del PDF, de la pantalla y del listado es
   `Presupuesto.fechaCreacion` (cuando se empezó a elaborar, `Presupuesto::fechaFormateada()`); desde el 2026-10-30 ya
@@ -656,7 +657,9 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   entrega" en el paso Presupuesto): la nota con membrete que acompaña al presupuesto. UNA por
   presupuesto (`redes.CartaPresupuesto`, índice único, FK CASCADE). Se escribe y guarda en CUALQUIER
   estado; para imprimir solo se exige la carta guardada y que el presupuesto tenga `oficioDtic` y
-  `numeroPresupuesto` (NO que esté aprobado). Sin marca de agua. GUARDA su texto (copiado de
+  `numeroPresupuesto` (NO que esté aprobado). Desde el 2026-11-11 el OFICIO DTIC se escribe en la pantalla de la carta (campo
+  "Oficio DTIC" arriba, se guarda en `Presupuesto.oficioDtic` con el mismo botón, en cualquier estado, `CartaService::guardar()`);
+  antes se pedía al enviar a revisión. El PDF del presupuesto ya no lo muestra. Sin marca de agua. GUARDA su texto (copiado de
   `redes.ConfiguracionCarta` al crearla: textos por defecto y 3 firmas propias, la 3.ª el V°B° del
   jefe, editables en "Configuración de la carta"); cambiar la configuración no altera las ya
   escritas, salvo ciudad y formato del oficio. Marcadores: {proyecto}, {unidad} (= unidad solicitante: la carta responde a quien
