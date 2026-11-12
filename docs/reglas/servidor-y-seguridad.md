@@ -30,7 +30,7 @@ La instalación paso a paso está en `docs/guia-instalacion-dtic.md`.
 - Historial de migraciones en `redes.migration` (`console/controllers/MigrateController.php`).
 - `assetManager.appendTimestamp`: CSS y JS salen con `?v=<fecha>`.
 - **UsfxGEO** (conexión `dbGeo`) es de otra unidad: si no responde, el formulario del proyecto abre con un aviso y el área
-  se escribe a mano (`ProyectoService::consultarInfraestructura()`).
+  se escribe a mano (`AreaIntervencionService::consultarInfraestructura()`).
 
 ## Base de datos
 

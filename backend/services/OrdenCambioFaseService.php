@@ -47,19 +47,17 @@ use Yii;
  */
 class OrdenCambioFaseService
 {
-    private ProyectoService $proyectos;
     private HistorialService $historial;
 
     public function __construct()
     {
-        $this->proyectos = new ProyectoService();
         $this->historial = new HistorialService();
     }
 
     /** Solo sobre una fase (no otra orden) con su presupuesto aprobado. */
     public function puedeRegistrar(Proyecto $fase): bool
     {
-        return !$fase->esOrdenCambio() && $this->proyectos->estaAprobado($fase);
+        return !$fase->esOrdenCambio() && $fase->tienePresupuestoAprobado();
     }
 
     /** La orden vacia para el formulario "Registrar orden de cambio". */
@@ -130,7 +128,7 @@ class OrdenCambioFaseService
      */
     public function actualizar(Proyecto $orden, array $datosFormulario): bool
     {
-        if (!$orden->esOrdenCambio() || !$this->proyectos->puedeEditarse($orden)) {
+        if (!$orden->esOrdenCambio() || !$orden->esEditable()) {
             $orden->addError('descripcionCambio', 'Esta orden de cambio ya no se modifica.');
 
             return false;
@@ -179,7 +177,7 @@ class OrdenCambioFaseService
             return 'No es una orden de cambio.';
         }
 
-        if ($this->proyectos->estaAprobado($orden)) {
+        if ($orden->tienePresupuestoAprobado()) {
             return 'Una orden de cambio aprobada no se elimina.';
         }
 

@@ -16,7 +16,7 @@ use yii\widgets\ActiveForm;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
- * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
+ * @var array $pasos barra de pasos del proyecto, ver NavegacionProyectoService::pasos()
  * @var backend\models\Presupuesto $presupuesto
  * @var backend\models\CartaPresupuesto $carta guardada, o nueva ya llena sin guardar
  * @var string[] $falta lo que falta para imprimir (vacio = se puede)

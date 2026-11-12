@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace backend\tests\Unit;
 
+use backend\services\AreaIntervencionService;
 use backend\services\contracts\InfraestructuraProvider;
-use backend\services\ProyectoService;
 use Codeception\Test\Unit;
 use yii\db\Exception as DbException;
 
@@ -16,7 +16,7 @@ use yii\db\Exception as DbException;
  */
 class InfraestructuraCaidaTest extends Unit
 {
-    private ProyectoService $service;
+    private AreaIntervencionService $service;
 
     protected function _before(): void
     {
@@ -30,7 +30,7 @@ class InfraestructuraCaidaTest extends Unit
             public function buscarAmbientes(string $texto, int $limite = 30): array { throw new DbException('UsfxGEO no responde'); }
             public function ruta(string $idEdificio, ?int $idBloqueArea, ?string $numeroNivel, ?string $idEspacio): ?array { throw new DbException('UsfxGEO no responde'); }
         };
-        $this->service = new ProyectoService(null, $caida);
+        $this->service = new AreaIntervencionService($caida);
     }
 
     public function testElFormularioAbreSinEdificios(): void
@@ -44,7 +44,7 @@ class InfraestructuraCaidaTest extends Unit
 
         $this->assertSame([], $resultado['edificios']);
         $this->assertSame([], $resultado['ambientes']);
-        $this->assertSame(ProyectoService::AVISO_INFRAESTRUCTURA, $resultado['error']);
+        $this->assertSame(AreaIntervencionService::AVISO_INFRAESTRUCTURA, $resultado['error']);
     }
 
     public function testElPasoAPasoDevuelveNull(): void

@@ -19,6 +19,7 @@ use backend\services\EspecificacionService;
 use backend\services\ListaItemsService;
 use backend\services\MaterialDticService;
 use backend\services\OrdenCambioService;
+use backend\services\NavegacionProyectoService;
 use backend\services\ProyectoService;
 use backend\services\SubcatalogoItemService;
 use backend\services\TipoCondicionPreviaService;
@@ -137,7 +138,7 @@ class ListaItemsController extends Controller
 
         return [
             'proyecto' => $proyecto,
-            'pasos' => (new ProyectoService())->pasos($proyecto),
+            'pasos' => (new NavegacionProyectoService())->pasos($proyecto),
             'grupos' => $grupos,
             // Formulario de especificación vigente y avisos de cada item con especificacion.
             'emisiones' => $emisiones->estadoPorItem($itemsDeLaLista),

@@ -8,6 +8,7 @@ use backend\models\Personal;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
 use backend\models\TipoOrdenCambio;
+use backend\services\FichaTecnicaService;
 use backend\services\OrdenCambioFaseService;
 use backend\services\ProcesoService;
 use backend\services\ProyectoService;
@@ -25,10 +26,12 @@ use Yii;
 class FichaProyectoTest extends Unit
 {
     private ProyectoService $proyectos;
+    private FichaTecnicaService $ficha;
 
     protected function _before(): void
     {
         $this->proyectos = new ProyectoService();
+        $this->ficha = new FichaTecnicaService();
         (new Personal(['nombre' => 'Ing. Test Ficha']))->save(false);
     }
 
@@ -36,7 +39,7 @@ class FichaProyectoTest extends Unit
     {
         $proyecto = $this->crear(null, 'Edificio en construcción test');
 
-        $datos = $this->proyectos->datosFicha($proyecto);
+        $datos = $this->ficha->datosFicha($proyecto);
         $this->assertCount(1, $datos['fases']);
         $this->assertNull($datos['fases'][0]['monto']);
         $this->assertSame([], $datos['fases'][0]['especificaciones']);
@@ -75,7 +78,7 @@ class FichaProyectoTest extends Unit
     {
         $fase1 = $this->crear(null, 'Edificio test fase 1');
         $this->aprobar($fase1, '2026-10-23');
-        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase1->id));
+        $datos = $this->ficha->datosFicha(Proyecto::findOne($fase1->id));
         $this->assertSame(['1.0', true, '23/10/2026'], [$datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
 
         $fase2 = $this->crear($fase1->id, 'Edificio test fase 2');
@@ -85,7 +88,7 @@ class FichaProyectoTest extends Unit
 
         // Desde cualquier fase, la misma ficha: version 1.1 en borrador, con las dos fases.
         foreach ([$fase1->id, $fase2->id] as $id) {
-            $datos = $this->proyectos->datosFicha(Proyecto::findOne($id));
+            $datos = $this->ficha->datosFicha(Proyecto::findOne($id));
             $this->assertSame([$fase1->codigo, '1.1', false, ''], [$datos['codigo'], $datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
             $html = $this->html(Proyecto::findOne($id), $datos);
             $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Fechas', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. UNIDADES / DEPENDENCIA', '3. FASES', '3.1 FASE 1', '3.1.1 Área', 'Edificio test fase 1', '3.1.3 Carpeta económica', '3.2 FASE 2', '3.2.1 Área', 'Edificio test fase 2']);
@@ -95,7 +98,7 @@ class FichaProyectoTest extends Unit
 
         // Al aprobarse la fase 2, la 1.1 queda aprobada con su fecha.
         $this->aprobar($fase2, '2026-11-04');
-        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase2->id));
+        $datos = $this->ficha->datosFicha(Proyecto::findOne($fase2->id));
         $this->assertSame(['1.1', true, '04/11/2026'], [$datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
     }
 
@@ -108,23 +111,23 @@ class FichaProyectoTest extends Unit
     {
         $fase1 = $this->crear(null, 'Edificio test simultánea 1');
         $fase2 = $this->crear($fase1->id, 'Edificio test simultánea 2');
-        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase1->id));
+        $datos = $this->ficha->datosFicha(Proyecto::findOne($fase1->id));
         $this->assertSame(['1.0', false], [$datos['version'], $datos['aprobada']]);
 
         // Se aprueba primero la fase 2: es la 1.0, pero la ficha sigue en borrador (falta la fase 1).
         $this->aprobar($fase2, '2026-11-04');
-        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase1->id));
+        $datos = $this->ficha->datosFicha(Proyecto::findOne($fase1->id));
         $this->assertSame(['1.1', false, ''], [$datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
 
         // Con la fase 1 aprobada despues, la 1.1 queda aprobada con la fecha mas reciente.
         $this->aprobar($fase1, '2026-11-08');
-        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase2->id));
+        $datos = $this->ficha->datosFicha(Proyecto::findOne($fase2->id));
         $this->assertSame(['1.1', true, '08/11/2026'], [$datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
 
         // Una fase 3 cancelada no deja la ficha en borrador.
         $fase3 = $this->crear($fase2->id, 'Edificio test simultánea 3');
         (new Presupuesto(['idProyecto' => $fase3->id, 'estado' => Presupuesto::ESTADO_CANCELADO]))->save(false);
-        $datos = $this->proyectos->datosFicha(Proyecto::findOne($fase3->id));
+        $datos = $this->ficha->datosFicha(Proyecto::findOne($fase3->id));
         $this->assertSame(['1.1', true], [$datos['version'], $datos['aprobada']]);
     }
 
@@ -146,12 +149,12 @@ class FichaProyectoTest extends Unit
         ]]), json_encode($orden->errors));
 
         // Sin aprobar: el costo total es solo el de la fase.
-        $this->assertSame(['Presupuesto'], array_column($this->proyectos->costoTotal($fase1)['partes'], 'rotulo'));
+        $this->assertSame(['Presupuesto'], array_column($this->ficha->costoTotal($fase1)['partes'], 'rotulo'));
 
         $this->aprobar(Proyecto::findOne($orden->id), '2026-11-09');
         // Leida de nuevo: la de arriba ya tiene en cache sus ordenes sin aprobar (como un pedido nuevo del navegador).
         $fase1 = Proyecto::findOne($fase1->id);
-        $datos = $this->proyectos->datosFicha($fase1);
+        $datos = $this->ficha->datosFicha($fase1);
         // La orden no cambia la version ni cuenta como fase.
         $this->assertSame(['1.0', false], [$datos['version'], $datos['variasFases']]);
         $this->assertCount(1, $datos['fases'][0]['ordenes']);

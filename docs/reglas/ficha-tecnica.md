@@ -1,7 +1,7 @@
 # Ficha técnica del proyecto
 
 PDF oficio desde el botón "Imprimir ficha técnica" de la tarjeta "Datos generales" (`proyecto/ficha`,
-`ProyectoController::actionFicha()`, vista `proyecto/ficha-pdf.php`, datos de `ProyectoService::datosFicha()`). Se abre
+`ProyectoController::actionFicha()`, vista `proyecto/ficha-pdf.php`, datos de `FichaTecnicaService::datosFicha()`). Se abre
 en el navegador para imprimir.
 
 ## Una sola ficha por proyecto
@@ -16,7 +16,7 @@ en el navegador para imprimir.
    **costo total del proyecto** y las fechas.
    - Fechas: con fase única, filas "Fecha de creación / revisión / aprobación / última modificación"; con varias, un
      subcuadro "Fechas | Fase 1 | Fase 2".
-   - Costo total (`ProyectoService::costoTotal()`): suma de los presupuestos **aprobados** de fases y órdenes de cambio.
+   - Costo total (`FichaTecnicaService::costoTotal()`): suma de los presupuestos **aprobados** de fases y órdenes de cambio.
      Con varias fases (u órdenes aprobadas), una fila por parte ("Fase 1 | Bs. 1,000.00", cada orden después de su fase)
      y al final "Total (presupuestos aprobados)".
 2. **UNIDADES / DEPENDENCIA**.
@@ -26,7 +26,7 @@ en el navegador para imprimir.
 
 ## Carpeta económica
 
-Tabla Documento | Código | Detalle | Versión (`ProyectoService::carpeta()`):
+Tabla Documento | Código | Detalle | Versión (`FichaTecnicaService::carpeta()`):
 
 - Lista de materiales y condiciones previas (BoM): "Elaborada el …".
 - Presupuesto: "Aprobado el … · Total Bs." o su estado.

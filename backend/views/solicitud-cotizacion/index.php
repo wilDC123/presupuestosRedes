@@ -18,7 +18,7 @@ use yii\web\JqueryAsset;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
- * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
+ * @var array $pasos barra de pasos del proyecto, ver NavegacionProyectoService::pasos()
  * Cada solicitud muestra las cotizaciones que respondieron los proveedores
  * ("+ Registrar cotización recibida") y el enlace a su comparativo. Una
  * solicitud con cotizaciones ya no se elimina ni cambia sus items.
