@@ -116,58 +116,191 @@ $formato = Yii::$app->formatter;
                 ]) ?>
             </div>
 
-            <div class="rd-dato"><strong>Tipo:</strong> <?= Html::encode($nombreTipo ?? '—') ?></div>
-            <div class="rd-dato"><strong>Proceso:</strong> <?= Html::encode($model->proceso?->etiqueta() ?? '—') ?></div>
-            <div class="rd-dato"><strong>Unidad / dependencia:</strong> <?= Html::encode($model->unidadDependencia ?: '—') ?></div>
-            <div class="rd-dato"><strong>Unidad solicitante:</strong> <?= Html::encode($model->unidadSolicitante ?: '—') ?></div>
-            <div class="rd-dato">
-                <strong>Área de intervención:</strong>
-                <?php if ($model->areasIntervencion !== []): ?>
-                    <?php // Agrupadas por edificio y bloque, como en el formulario: el grupo arriba y un chip por area.
-                    // Las escritas a mano (no estan en UsfxGEO) llevan la marca, solo en pantalla. ?>
-                    <?php
-                    $grupos = [];
-                    foreach ($model->areasIntervencion as $area) {
-                        $grupos[$area->grupo()][] = $area;
+            <?php
+            // Rediseño del 2026-11-11: arriba lo del PROYECTO (descripcion y datos comunes a todas las fases,
+            // en una cuadricula de 2 columnas) y abajo lo de ESTA FASE (area de intervencion y equipo).
+            // Todo sale de $model y de sus relaciones; la vista no hace consultas propias.
+
+            // Una orden de cambio no tiene area ni equipo propios a la vista: usa los de su fase.
+            $esOrden = $model->esOrdenCambio();
+            $deLaFase = $esOrden && $model->faseOrigen !== null ? $model->faseOrigen : $model;
+            $variasFases = $deLaFase->tieneVariasFases();
+
+            // Descripcion: una corta sale entera; solo una LARGA (mas de 240 caracteres o con saltos de linea)
+            // se corta en 2 lineas con "Ver descripcion completa", que la despliega en el mismo lugar (sin repetirla).
+            $descripcion = trim((string) $model->descripcion);
+            $descripcionLarga = mb_strlen($descripcion) > 240 || str_contains($descripcion, "\n");
+
+            // Las dos unidades iguales (sin espacios de mas ni mayusculas) van en una sola celda.
+            $normalizar = static fn (?string $texto): string => mb_strtolower((string) preg_replace('/\s+/u', ' ', trim((string) $texto)), 'UTF-8');
+            $unidadesIguales = $normalizar($model->unidadDependencia) !== '' && $normalizar($model->unidadDependencia) === $normalizar($model->unidadSolicitante);
+
+            // Fase 2 en adelante: los datos comunes se editan en la fase 1 (se busca entre las fases ya cargadas).
+            $faseUno = null;
+            if ($model->tieneVariasFases() && (int) $model->numeroFase > 1) {
+                foreach ($model->fases as $fase) {
+                    if ((int) $fase->numeroFase === 1) {
+                        $faseUno = $fase;
+                        break;
                     }
-                    ?>
-                    <?php foreach ($grupos as $grupo => $areasDelGrupo): ?>
-                        <div class="rd-area-grupo mt-1">
-                            <div class="rd-area-titulo"><?= Html::encode($grupo) ?></div>
-                            <?php foreach ($areasDelGrupo as $area): ?>
-                                <span class="chip"><?= Html::encode($area->detalle()) ?>
-                                    <?php if ($area->esManual()): ?><span class="rd-area-marca" title="Escrita a mano: no está en la infraestructura de la universidad (UsfxGEO)">a mano</span><?php endif; ?>
-                                </span>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endforeach; ?>
-                <?php elseif ($model->ubicacionAnterior() !== ''): ?>
-                    <?php // Proyectos registrados antes del 2026-10-28: edificio y bloques del JSON de entonces. ?>
-                    <?= Html::encode($model->ubicacionAnterior()) ?>
-                    <span class="rd-nota">(ubicación registrada antes del cambio; al editar el proyecto puede elegir sus áreas)</span>
-                <?php else: ?>
-                    —
+                }
+            }
+
+            // Areas agrupadas por edificio y bloque: las 3 primeras a la vista, el resto en "Ver todas".
+            $gruposArea = [];
+            foreach ($deLaFase->areasIntervencion as $area) {
+                $gruposArea[$area->grupo()][] = $area;
+            }
+            $lineaArea = static function (string $grupo, array $areas): string {
+                $detalles = array_map(static fn ($area): string => Html::encode($area->detalle())
+                    . ($area->esManual() ? ' <span class="rd-area-marca" title="Escrita a mano: no está en la infraestructura de la universidad (UsfxGEO)">a mano</span>' : ''), $areas);
+
+                return '<div class="rd-dg-area"><span class="rd-dg-grupo">' . Html::encode($grupo) . '</span> — ' . implode(', ', $detalles) . '</div>';
+            };
+            $gruposVisibles = array_slice($gruposArea, 0, 3, true);
+            $gruposOcultos = array_slice($gruposArea, 3, null, true);
+
+            // Equipo: la responsable primero y las demas en su orden (se ordena aqui, sin volver a la base).
+            $equipo = $deLaFase->participantes;
+            $responsables = array_values(array_filter($equipo, static fn ($persona) => (bool) $persona->esResponsable));
+            $demas = array_values(array_filter($equipo, static fn ($persona) => !$persona->esResponsable));
+            // 5 a la vista contando a la responsable; el resto en "Ver todo el equipo".
+            $demasVisibles = array_slice($demas, 0, max(0, 5 - count($responsables)));
+            $demasOcultas = array_slice($demas, count($demasVisibles));
+            $personaEnLista = static fn ($persona): string => '<div>' . Html::encode($persona->nombre)
+                . ' <span class="rd-nota">· ' . Html::encode($persona->rol->nombre ?? '') . '</span></div>';
+
+            // Los enlaces a "Editar datos" solo si se puede editar (en una orden de cambio el area es de su fase).
+            $puedeEditarArea = $puedeEditarse && !$esOrden;
+            ?>
+
+            <?php if ($descripcion !== ''): ?>
+                <p class="rd-dg-desc<?= $descripcionLarga ? ' rd-dg-desc-corta' : '' ?>"><?= nl2br(Html::encode($descripcion)) ?></p>
+                <?php if ($descripcionLarga): ?>
+                    <?php // Vacio a proposito: al abrirlo, el CSS despliega el parrafo de arriba (redes.css, .rd-dg-desc-mas). ?>
+                    <details class="rd-dg-mas rd-dg-desc-mas">
+                        <summary><span class="rd-dg-ver">Ver descripción completa</span><span class="rd-dg-ocultar">Ver menos</span></summary>
+                    </details>
                 <?php endif; ?>
-            </div>
-            <div class="rd-dato">
-                <strong>Equipo del proyecto:</strong>
-                <?php if ($model->participantes === []): ?>
-                    —
+            <?php endif; ?>
+
+            <dl class="rd-dg-datos">
+                <div>
+                    <dt>Tipo</dt>
+                    <dd><?= Html::encode($nombreTipo ?? '—') ?></dd>
+                </div>
+                <div>
+                    <dt>Proceso</dt>
+                    <dd><?= Html::encode($model->proceso?->etiqueta() ?? '—') ?></dd>
+                </div>
+                <?php if ($unidadesIguales): ?>
+                    <div class="rd-dg-ancho">
+                        <dt>Unidad / dependencia y unidad solicitante</dt>
+                        <dd><?= Html::encode($model->unidadDependencia) ?></dd>
+                    </div>
                 <?php else: ?>
-                    <?php foreach ($model->participantes as $persona): ?>
-                        <div class="mt-1">
-                            <?= Html::encode($persona->nombre) ?>
-                            <span class="rd-nota">· <?= Html::encode($persona->rol->nombre ?? '') ?></span>
-                            <?php if ($persona->esResponsable): ?><span class="badge b-activo">Responsable</span><?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
+                    <div>
+                        <dt>Unidad / dependencia</dt>
+                        <dd><?= Html::encode($model->unidadDependencia ?: '—') ?></dd>
+                    </div>
+                    <div>
+                        <dt>Unidad solicitante</dt>
+                        <dd><?= Html::encode($model->unidadSolicitante ?: '—') ?></dd>
+                    </div>
+                <?php endif; ?>
+            </dl>
+
+            <?php if ($faseUno !== null): ?>
+                <div class="rd-nota rd-dg-comunes">
+                    Estos datos son comunes a todas las fases y se editan en la <?= Html::a('Fase 1', ['view', 'id' => $faseUno->id]) ?>.
+                </div>
+            <?php endif; ?>
+
+            <?php // Separador entre lo del proyecto y lo de la fase. Con fase unica no se dice "Fase". ?>
+            <div class="rd-dg-separador">
+                <?php if ($esOrden): ?>
+                    <span class="kicker">De la fase</span>
+                    <?php if ($variasFases): ?>
+                        <?= Html::a('Fase ' . (int) $deLaFase->numeroFase, ['view', 'id' => $deLaFase->id], ['class' => 'pill-fase']) ?>
+                        <span class="rd-nota">· la orden de cambio usa el área y el equipo de su fase</span>
+                    <?php else: ?>
+                        <span class="rd-nota">· la orden de cambio usa el área y el equipo del <?= Html::a('proyecto', ['view', 'id' => $deLaFase->id]) ?></span>
+                    <?php endif; ?>
+                <?php elseif ($variasFases): ?>
+                    <span class="kicker">De esta fase</span>
+                    <span class="pill-fase">Fase <?= (int) $model->numeroFase ?></span>
                 <?php endif; ?>
             </div>
 
-            <?php if (!empty($model->descripcion)): ?>
-                <div class="rd-dato mt-3"><strong>Descripción</strong></div>
-                <div class="rd-nota"><?= nl2br(Html::encode($model->descripcion)) ?></div>
-            <?php endif; ?>
+            <div class="rd-dg-fila">
+                <div class="rd-dg-rot">Área de intervención</div>
+                <div>
+                    <?php if ($gruposArea !== []): ?>
+                        <?php foreach ($gruposVisibles as $grupo => $areas): ?>
+                            <?= $lineaArea((string) $grupo, $areas) ?>
+                        <?php endforeach; ?>
+                        <?php if ($gruposOcultos !== []): ?>
+                            <details class="rd-dg-mas">
+                                <summary>Ver todas las áreas (<?= count($gruposArea) ?>)</summary>
+                                <?php foreach ($gruposOcultos as $grupo => $areas): ?>
+                                    <?= $lineaArea((string) $grupo, $areas) ?>
+                                <?php endforeach; ?>
+                            </details>
+                        <?php endif; ?>
+                    <?php elseif ($deLaFase->ubicacionAnterior() !== ''): ?>
+                        <?php // Proyectos registrados antes del 2026-10-28: edificio y bloques del JSON de entonces. ?>
+                        <div>
+                            <?= Html::encode($deLaFase->ubicacionAnterior()) ?>
+                            <span class="badge b-inactivo">ubicación anterior</span>
+                        </div>
+                        <div class="rd-nota">
+                            Registrada antes del cambio. Al <?= $puedeEditarArea ? Html::a('editar los datos', ['update', 'id' => $model->id]) : 'editar los datos' ?> puede elegir sus áreas.
+                        </div>
+                    <?php else: ?>
+                        <div>Sin área registrada.</div>
+                        <?php if ($puedeEditarArea): ?>
+                            <div class="rd-nota">Se elige en <?= Html::a('Editar datos', ['update', 'id' => $model->id]) ?>.</div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="rd-dg-fila">
+                <div class="rd-dg-rot">Equipo del proyecto</div>
+                <div>
+                    <?php if ($equipo === []): ?>
+                        <div>Sin equipo registrado.</div>
+                        <?php if ($puedeEditarArea): ?>
+                            <div class="rd-nota">Se agrega en <?= Html::a('Editar datos', ['update', 'id' => $model->id]) ?>.</div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <?php foreach ($responsables as $persona): ?>
+                            <div class="rd-dg-responsable">
+                                <span class="rd-dg-grupo"><?= Html::encode($persona->nombre) ?></span>
+                                <span class="rd-nota">· <?= Html::encode($persona->rol->nombre ?? '') ?></span>
+                                <span class="badge b-activo">Responsable</span>
+                            </div>
+                        <?php endforeach; ?>
+                        <?php if ($demasVisibles !== []): ?>
+                            <div class="rd-dg-equipo">
+                                <?php foreach ($demasVisibles as $persona): ?>
+                                    <?= $personaEnLista($persona) ?>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($demasOcultas !== []): ?>
+                            <details class="rd-dg-mas">
+                                <summary>Ver todo el equipo (<?= count($equipo) ?>)</summary>
+                                <div class="rd-dg-equipo">
+                                    <?php foreach ($demasOcultas as $persona): ?>
+                                        <?= $personaEnLista($persona) ?>
+                                    <?php endforeach; ?>
+                                </div>
+                            </details>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
 
         <div class="rd-col-1 rd-pila">

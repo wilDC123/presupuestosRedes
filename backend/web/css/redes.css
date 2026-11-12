@@ -610,3 +610,41 @@ td.esp-nivel-3 { padding-left: 3.25rem; }
 .rd .rd-franja-pastilla.es-actual { border: 2px solid var(--rd-azul); background: var(--rd-azul-claro); font-weight: 700; padding: 0 9px; }
 .rd .rd-franja-viendo { font-weight: 400; color: var(--rd-texto-suave); }
 .rd .rd-franja-pastilla.rd-franja-agregar { border-style: dashed; color: var(--rd-azul); }
+
+/* Tarjeta "Datos generales" de la vista del proyecto (2026-11-11): arriba lo del proyecto, abajo lo de la fase. */
+.rd-dg-desc { margin: 0 0 4px; line-height: 1.5; color: var(--rd-texto); }
+/* Descripcion LARGA: cortada en 2 lineas con "..."; "Ver descripción completa" (un <details> vacio debajo)
+   la despliega en el mismo parrafo: :has() mira si el <details> de al lado esta abierto. Sin JavaScript. */
+.rd-dg-desc-corta { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rd-dg-desc-corta:has(+ .rd-dg-desc-mas[open]) { display: block; overflow: visible; -webkit-line-clamp: unset; }
+.rd-dg-desc-mas .rd-dg-ocultar, .rd-dg-desc-mas[open] .rd-dg-ver { display: none; }
+.rd-dg-desc-mas[open] .rd-dg-ocultar { display: inline; }
+.rd-dg-mas.rd-dg-desc-mas[open] > summary { margin-bottom: 0; }
+.rd-dg-mas { margin: 4px 0 8px; font-size: 13px; }
+.rd-dg-mas > summary { width: fit-content; color: var(--rd-azul); cursor: pointer; }
+.rd-dg-mas[open] > summary { margin-bottom: 6px; }
+.rd-dg-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; margin: 12px 0 0; }
+.rd-dg-datos > div { min-width: 0; }
+.rd-dg-datos .rd-dg-ancho { grid-column: 1 / -1; }
+.rd-dg-datos dt, .rd-dg-rot {
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--rd-etiqueta);
+}
+.rd-dg-datos dt { margin-bottom: 2px; }
+.rd-dg-datos dd { margin: 0; font-weight: 500; color: var(--rd-texto); overflow-wrap: anywhere; }
+.rd-dg-comunes { margin-top: 10px; }
+.rd-dg-separador { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rd-borde); }
+.rd .rd-dg-separador .kicker { margin: 0; color: var(--rd-etiqueta); }
+.rd a.pill-fase { color: #fff; text-decoration: none; }
+.rd a.pill-fase:hover { background: var(--rd-azul); }
+.rd-dg-fila { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; padding: 10px 0; }
+.rd-dg-fila + .rd-dg-fila { border-top: 1px solid var(--rd-borde); }
+.rd-dg-rot { padding-top: 3px; }
+.rd-dg-area { margin-bottom: 4px; overflow-wrap: anywhere; }
+.rd-dg-grupo { font-weight: 500; }
+.rd-dg-responsable { margin-bottom: 6px; }
+.rd-dg-equipo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 24px; }
+@media (max-width: 899.98px) {
+    .rd-dg-datos, .rd-dg-equipo { grid-template-columns: minmax(0, 1fr); }
+    /* La etiqueta de cada fila va arriba de su contenido. */
+    .rd-dg-fila { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
