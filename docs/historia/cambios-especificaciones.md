@@ -1,7 +1,7 @@
 # Cambio de modelo: especificaciones técnicas con versiones y formularios NET
 
 Resumen para revisión con el tutor académico. Fecha: 2026-10-18.
-Plan detallado y decisiones: `docs/plan-especificaciones.md`.
+Plan detallado y decisiones: `docs/historia/plan-especificaciones.md`.
 
 ## Qué cambió y por qué
 
@@ -28,7 +28,7 @@ PDF lo genera el sistema con el formato institucional.
 - **Una emisión no cambia nunca.** Es un documento oficial firmado y sellado. Un error (por ejemplo,
   la facultad equivocada) se corrige **reemitiendo**: se emite la versión siguiente del mismo
   documento (mismo código, versión + 1; desde el 2026-10-24, ver
-  `docs/cambios-codificacion-lineamiento.md`; antes era un NET nuevo) y la anterior queda
+  `docs/historia/cambios-codificacion-lineamiento.md`; antes era un NET nuevo) y la anterior queda
   "reemplazada por" la nueva. Nada se borra.
 - **Los cambios técnicos entran solo en emisiones nuevas.** Una versión de la ficha que ya se usó en
   una emisión no se modifica: editarla crea la versión siguiente. Las emisiones nuevas usan siempre

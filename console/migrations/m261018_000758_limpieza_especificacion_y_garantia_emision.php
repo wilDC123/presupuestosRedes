@@ -3,7 +3,7 @@
 use yii\db\Migration;
 
 /**
- * Limpieza de las especificaciones (docs/plan-especificaciones.md, paso 4).
+ * Limpieza de las especificaciones (docs/historia/plan-especificaciones.md, paso 4).
  *
  *  - redes.Especificacion deja de ser "un documento emitido" y pasa a ser
  *    solo la ficha de la libreria: se quitan codigoNet, dependencia y
