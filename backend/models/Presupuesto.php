@@ -331,16 +331,6 @@ class Presupuesto extends ActiveRecord
     }
 
     /**
-     * aaaa-mm-dd de la que sale el año del oficio en el PDF ("DTIC Of. Nº
-     * 602/2026"): la de la carta de entrega si ya tiene una (el oficio es el
-     * de la carta), si no la de creacion.
-     */
-    public function fechaParaOficio(): string
-    {
-        return (string) ($this->carta->fecha ?? substr((string) $this->fechaCreacion, 0, 10));
-    }
-
-    /**
      * fechaAprobacion para mostrar (dd/mm/aaaa); vacio si no tiene.
      */
     public function fechaAprobacionFormateada(): string

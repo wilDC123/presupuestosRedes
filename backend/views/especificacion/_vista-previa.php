@@ -32,7 +32,7 @@ $urlAdjunto = $version?->urlAdjunto();
         <table class="table mb-2">
             <tbody>
                 <tr>
-                    <th style="width: 30%">Modelo sugerido</th>
+                    <th class="rd-ancho-30">Modelo sugerido</th>
                     <td><?= Html::encode($version->modeloSugerido ?: '—') ?></td>
                 </tr>
                 <tr>

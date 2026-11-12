@@ -17,28 +17,28 @@ use yii\helpers\Html;
 <?php if ($resumenPartidas === []): ?>
     <p class="text-muted">Este presupuesto todavía no tiene líneas.</p>
 <?php else: ?>
-    <table class="table" style="max-width: 520px">
+    <table class="table rd-max-520">
         <thead>
             <tr>
                 <th>Partida</th>
-                <th style="text-align:right">N.° de líneas</th>
-                <th style="text-align:right">Subtotal</th>
+                <th class="text-end">N.° de líneas</th>
+                <th class="text-end">Subtotal</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($resumenPartidas as $fila): ?>
                 <tr>
                     <td><?= Html::encode($fila['partida']) ?></td>
-                    <td style="text-align:right"><?= $fila['lineas'] ?></td>
-                    <td style="text-align:right"><?= Yii::$app->formatter->asDecimal($fila['subtotal'], 2) ?></td>
+                    <td class="text-end"><?= $fila['lineas'] ?></td>
+                    <td class="text-end"><?= Yii::$app->formatter->asDecimal($fila['subtotal'], 2) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
         <tfoot>
             <tr>
                 <th>Total</th>
-                <th style="text-align:right"><?= array_sum(array_column($resumenPartidas, 'lineas')) ?></th>
-                <th style="text-align:right"><?= Yii::$app->formatter->asDecimal(array_sum(array_column($resumenPartidas, 'subtotal')), 2) ?></th>
+                <th class="text-end"><?= array_sum(array_column($resumenPartidas, 'lineas')) ?></th>
+                <th class="text-end"><?= Yii::$app->formatter->asDecimal(array_sum(array_column($resumenPartidas, 'subtotal')), 2) ?></th>
             </tr>
         </tfoot>
     </table>

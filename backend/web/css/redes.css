@@ -142,7 +142,6 @@ body.rd {
     flex-shrink: 0;
 }
 .rd-usuario-nombre { color: #fff; font-size: 12.5px; font-weight: 500; }
-.rd-usuario-rol { color: var(--rd-texto-tenue); font-size: 10.5px; }
 .rd-usuario a, .rd-usuario .rd-salir {
     color: var(--rd-texto-tenue);
     font-size: 10.5px;
@@ -377,7 +376,6 @@ body.rd {
 .esp-numero { color: var(--rd-texto-suave); }
 td.esp-nivel-2 { padding-left: 1.75rem; }
 td.esp-nivel-3 { padding-left: 3.25rem; }
-.rd-item-borde { padding: 10px; border: 1px solid var(--rd-borde); border-radius: 6px; }
 .rd-pila { display: flex; flex-direction: column; gap: 10px; }
 .rd-dato { font-size: 12.5px; color: var(--rd-etiqueta); margin-bottom: 6px; }
 .rd-dato strong { color: var(--rd-texto); }
@@ -425,8 +423,6 @@ td.esp-nivel-3 { padding-left: 3.25rem; }
 }
 .rd .chip .x { color: var(--rd-texto-tenue); font-weight: 700; background: none; border: 0; padding: 0; line-height: 1; cursor: pointer; }
 .rd .chip .x:hover { color: #991b1b; }
-.rd-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.rd-chips:not(:empty) { margin-bottom: 10px; }
 .rd-vinculado { background: var(--rd-fila-hover); border: 1px solid var(--rd-borde); border-radius: 6px; padding: 12px 14px; }
 .rd-pagehead h1 .pill-fase { vertical-align: middle; margin-left: 8px; letter-spacing: 0; }
 
@@ -654,3 +650,17 @@ td.esp-nivel-3 { padding-left: 3.25rem; }
     /* La etiqueta de cada fila va arriba de su contenido. */
     .rd-dg-fila { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
+
+/* Anchos de columnas de tablas y de cajas, para no escribir style="..." en las vistas de pantalla (los PDF sí los
+   necesitan: mPDF entiende poco CSS). Alinear a la derecha: la clase "text-end" de Bootstrap. */
+.rd-ancho-12 { width: 12%; }
+.rd-ancho-16 { width: 16%; }
+.rd-ancho-22 { width: 22%; }
+.rd-ancho-25 { width: 25%; }
+.rd-ancho-30 { width: 30%; }
+.rd-ancho-220 { width: 220px; }
+.rd-ancho-numero { width: 4.5rem; }   /* N.° de las características (1.4.1.1) */
+.rd-ancho-casilla { width: 5.5rem; }  /* una casilla con su rótulo ("Subtítulo") */
+.rd-ancho-boton { width: 40px; }      /* el botón × de quitar una fila */
+.rd-max-520 { max-width: 520px; }
+.rd-max-560 { max-width: 560px; }

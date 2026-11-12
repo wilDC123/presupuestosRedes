@@ -94,6 +94,9 @@ lineamiento RD-GD-LI-001, historial, catálogos.
 - Comentarios: explicar el **porqué** técnico de las decisiones
 - Atributos que pone un servicio: sin regla en `rules()` o con "!" (no deben llegar de un formulario)
 - Textos de pantalla en español, sin abreviar; fechas dd/mm/aaaa (pantallas) y dd-mm-aaaa (impresos)
+- Sin `style="..."` en las vistas de pantalla: clases de `backend/web/css/redes.css` (`rd-*`; anchos `rd-ancho-*`,
+  `rd-max-*`) o de Bootstrap (`text-end`…). Los PDF sí usan estilos en línea (mPDF entiende poco CSS). Ojo al buscar
+  si una clase se usa: algunas se arman por partes (`'rd-paso-' . $estado` en `proyecto/_pasos.php`)
 
 ## Entorno de desarrollo — comandos útiles
 - El PATH de Windows (del SISTEMA) debe apuntar al PHP 8.3.33 de Laragon; con el 8.2 todo comando se detiene

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace backend\tests\Unit;
 
-use backend\models\CartaPresupuesto;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
 use Codeception\Test\Unit;
@@ -12,8 +11,8 @@ use Codeception\Test\Unit;
 /**
  * Fechas del presupuesto (revision del Ing. de DTIC del 2026-10-29, paso 9):
  * arriba la de CREACION del documento (no la escrita a mano al enviar a
- * revision, que ya no se pide) y abajo la de aprobacion. El año del oficio
- * sale de la carta de entrega si la hay, si no de la creacion.
+ * revision, que ya no se pide) y abajo la de aprobacion. (El año del oficio
+ * lo calcula la carta de entrega: ver CartaPresupuestoTest.)
  *
  * Usa la base local; el modulo Yii2 deshace cada test al terminar.
  */
@@ -25,23 +24,6 @@ class PresupuestoFechasTest extends Unit
         $presupuesto->fecha = '2026-01-15';
 
         $this->assertSame(date('d/m/Y'), $presupuesto->fechaFormateada());
-        $this->assertSame(date('Y-m-d'), $presupuesto->fechaParaOficio());
-    }
-
-    public function testElAnioDelOficioSaleDeLaCartaSiExiste(): void
-    {
-        $presupuesto = $this->presupuesto();
-        (new CartaPresupuesto([
-            'idPresupuesto' => $presupuesto->id,
-            'fecha' => '2027-01-05',
-            'tratamiento' => 'Señor',
-            'destinatarioNombre' => 'X',
-            'destinatarioCargo' => 'X',
-            'referencia' => 'X',
-            'cuerpo' => 'X',
-        ]))->save(false);
-
-        $this->assertSame('2027-01-05', Presupuesto::findOne($presupuesto->id)->fechaParaOficio());
     }
 
     public function testEnviarARevisionYaNoPideFecha(): void

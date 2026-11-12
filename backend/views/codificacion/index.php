@@ -43,7 +43,7 @@ $this->params['breadcrumbs'][] = $this->title;
                     <tr>
                         <th>Documento</th>
                         <th>Último usado</th>
-                        <th style="width: 220px;">Siguiente número</th>
+                        <th class="rd-ancho-220">Siguiente número</th>
                         <th>El próximo será</th>
                     </tr>
                 </thead>

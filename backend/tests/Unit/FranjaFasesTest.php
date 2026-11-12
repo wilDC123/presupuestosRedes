@@ -67,6 +67,25 @@ class FranjaFasesTest extends Unit
         $this->assertSame([false, true], array_column($grupos[0], 'actual'));
     }
 
+    public function testElListadoCalculaLasFasesEnUnaConsultaConElMismoResultado(): void
+    {
+        $fase1 = $this->fase(1);
+        $fase2 = $this->fase(2, $fase1);
+        $orden = $this->ordenDeCambio($fase1);
+        $unica = new Proyecto(['nombre' => 'Proyecto test fase única', 'numeroProyecto' => self::NUMERO + 1, 'numeroFase' => 1, 'estadoLista' => Proyecto::LISTA_EDICION]);
+        $unica->save(false);
+        $ids = [$fase1->id, $fase2->id, $orden->id, $unica->id];
+
+        // Lo de siempre: una consulta por proyecto.
+        $esperado = array_map(static fn (int $id) => Proyecto::findOne($id)->tieneVariasFases(), $ids);
+        // Lo del listado: todos juntos.
+        $proyectos = array_map(static fn (int $id) => Proyecto::findOne($id), $ids);
+        Proyecto::precargarVariasFases($proyectos);
+
+        $this->assertSame([true, true, true, false], $esperado);
+        $this->assertSame($esperado, array_map(static fn (Proyecto $p) => $p->tieneVariasFases(), $proyectos));
+    }
+
     private function fase(int $numero, ?Proyecto $anterior = null): Proyecto
     {
         $fase = new Proyecto([
