@@ -303,7 +303,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   encima de la barra de pasos de la vista del proyecto, una pastilla por fase (estado y total de su presupuesto), sus órdenes
   de cambio después ("›"), la que se ve marcada ("· está viendo") y al final "Agregar fase N →"; con varias fases (o con
   órdenes de cambio) el botón "Agregar fase" de la cabecera se quita y queda solo esa pastilla. Con fase única y sin órdenes
-  no sale y todo queda como antes. El recuadro "Fases del proyecto" de abajo sigue igual. La fase nueva copia los DATOS DEL PROYECTO (`Proyecto::ATRIBUTOS_COMUNES`: nombre,
+  no sale y todo queda como antes. El recuadro "Fases del proyecto" de abajo: con la franja visible, desde el 2026-11-11 ("es doble información") ya no lista las fases y queda solo "Costo del proyecto 001" con el costo total y su detalle; con fase única, igual que antes. La fase nueva copia los DATOS DEL PROYECTO (`Proyecto::ATRIBUTOS_COMUNES`: nombre,
   descripción, tipo, proceso y las dos unidades), que en una fase 2+ van DESHABILITADOS y el servidor siempre toma de la fase
   anterior. Se escriben SOLO en la fase 1: al guardarla se COPIAN a las demás fases en la misma transacción, con su historial
   ("Desde la fase 1: …") y el cambio de código LM si cambió el proceso (`ProyectoService::llevarDatosComunesALasFases()`);
