@@ -620,6 +620,12 @@ td.esp-nivel-3 { padding-left: 3.25rem; }
 .rd-dg-desc-mas .rd-dg-ocultar, .rd-dg-desc-mas[open] .rd-dg-ver { display: none; }
 .rd-dg-desc-mas[open] .rd-dg-ocultar { display: inline; }
 .rd-dg-mas.rd-dg-desc-mas[open] > summary { margin-bottom: 0; }
+/* Navegador sin :has() (p. ej. Firefox anterior al 121): la descripcion sale entera y sin boton, para que
+   nunca quede texto escondido sin forma de verlo (revision de codigo del 2026-11-11). */
+@supports not selector(:has(*)) {
+    .rd-dg-desc-corta { display: block; overflow: visible; -webkit-line-clamp: unset; }
+    .rd-dg-desc-mas { display: none; }
+}
 .rd-dg-mas { margin: 4px 0 8px; font-size: 13px; }
 .rd-dg-mas > summary { width: fit-content; color: var(--rd-azul); cursor: pointer; }
 .rd-dg-mas[open] > summary { margin-bottom: 6px; }

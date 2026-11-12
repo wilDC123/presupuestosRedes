@@ -102,6 +102,8 @@ class ProyectoController extends Controller
             'franjaFases' => $this->service->franjaFases($model),
             // "Registrar orden de cambio": en una fase con su presupuesto aprobado (parte 6).
             'puedeRegistrarOrden' => (new OrdenCambioFaseService())->puedeRegistrar($model),
+            // Fases 2+: la fase 1, solo si hoy deja cambiar los datos comunes (nota de "Datos generales").
+            'faseDatosComunes' => (int) $model->numeroFase > 1 ? $this->service->faseParaDatosComunes($model) : null,
         ]);
     }
 

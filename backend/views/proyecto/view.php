@@ -20,6 +20,7 @@ use yii\helpers\Html;
  * @var bool $puedeAgregarFase la ultima fase del proyecto (aprobada o no): se le puede agregar la siguiente
  * @var array<int, array<int, array{id: int, texto: string, presupuesto: ?backend\models\Presupuesto, monto: ?float, actual: bool}>> $franjaFases Ver ProyectoService::franjaFases()
  * @var bool $puedeRegistrarOrden una fase con su presupuesto aprobado: se le puede registrar una orden de cambio (parte 6)
+ * @var backend\models\Proyecto|null $faseDatosComunes la fase 1 si hoy deja cambiar los datos comunes (solo en fases 2+). Ver ProyectoService::faseParaDatosComunes()
  * @var int $totalItems items en la lista del proyecto
  * @var bool $listaEditable Ver ListaItemsService::puedeEditarse()
  * @var array{creacion: string|null, revision: string|null, aprobacion: string|null, ultimaModificacion: string|null, ultimoUsuario: string|null} $fechas Ver HistorialService::fechas()
@@ -135,18 +136,14 @@ $formato = Yii::$app->formatter;
             $normalizar = static fn (?string $texto): string => mb_strtolower((string) preg_replace('/\s+/u', ' ', trim((string) $texto)), 'UTF-8');
             $unidadesIguales = $normalizar($model->unidadDependencia) !== '' && $normalizar($model->unidadDependencia) === $normalizar($model->unidadSolicitante);
 
-            // Fase 2 en adelante: los datos comunes se editan en la fase 1 (se busca entre las fases ya cargadas).
-            $faseUno = null;
-            if ($model->tieneVariasFases() && (int) $model->numeroFase > 1) {
-                foreach ($model->fases as $fase) {
-                    if ((int) $fase->numeroFase === 1) {
-                        $faseUno = $fase;
-                        break;
-                    }
-                }
-            }
+            // Fase 2 en adelante: nota de que los datos son comunes; con enlace a la fase 1 solo si alli se
+            // pueden cambiar hoy ($faseDatosComunes, ver ProyectoService::faseParaDatosComunes()).
+            $notaDatosComunes = $model->tieneVariasFases() && (int) $model->numeroFase > 1;
 
-            // Areas agrupadas por edificio y bloque: las 3 primeras a la vista, el resto en "Ver todas".
+            // "Ver 3 áreas más" / "Ver 1 persona más": cuenta lo que aparece al abrir el desplegable.
+            $verMas = static fn (int $cuantos, string $uno, string $varios): string => 'Ver ' . $cuantos . ' ' . ($cuantos === 1 ? $uno : $varios) . ' más';
+
+            // Areas agrupadas por edificio y bloque: los 3 primeros grupos a la vista, el resto en "Ver N áreas más".
             $gruposArea = [];
             foreach ($deLaFase->areasIntervencion as $area) {
                 $gruposArea[$area->grupo()][] = $area;
@@ -164,7 +161,7 @@ $formato = Yii::$app->formatter;
             $equipo = $deLaFase->participantes;
             $responsables = array_values(array_filter($equipo, static fn ($persona) => (bool) $persona->esResponsable));
             $demas = array_values(array_filter($equipo, static fn ($persona) => !$persona->esResponsable));
-            // 5 a la vista contando a la responsable; el resto en "Ver todo el equipo".
+            // 5 a la vista contando a la responsable; el resto en "Ver N personas más".
             $demasVisibles = array_slice($demas, 0, max(0, 5 - count($responsables)));
             $demasOcultas = array_slice($demas, count($demasVisibles));
             $personaEnLista = static fn ($persona): string => '<div>' . Html::encode($persona->nombre)
@@ -210,9 +207,13 @@ $formato = Yii::$app->formatter;
                 <?php endif; ?>
             </dl>
 
-            <?php if ($faseUno !== null): ?>
+            <?php if ($notaDatosComunes): ?>
                 <div class="rd-nota rd-dg-comunes">
-                    Estos datos son comunes a todas las fases y se editan en la <?= Html::a('Fase 1', ['view', 'id' => $faseUno->id]) ?>.
+                    <?php if ($faseDatosComunes !== null): ?>
+                        Estos datos son comunes a todas las fases y se editan en la <?= Html::a('Fase 1', ['view', 'id' => $faseDatosComunes->id]) ?>.
+                    <?php else: ?>
+                        Estos datos son comunes a todas las fases y ya no se pueden cambiar (hay una fase aprobada).
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
 
@@ -241,7 +242,7 @@ $formato = Yii::$app->formatter;
                         <?php endforeach; ?>
                         <?php if ($gruposOcultos !== []): ?>
                             <details class="rd-dg-mas">
-                                <summary>Ver todas las áreas (<?= count($gruposArea) ?>)</summary>
+                                <summary><?= $verMas(array_sum(array_map('count', $gruposOcultos)), 'área', 'áreas') ?></summary>
                                 <?php foreach ($gruposOcultos as $grupo => $areas): ?>
                                     <?= $lineaArea((string) $grupo, $areas) ?>
                                 <?php endforeach; ?>
@@ -290,7 +291,7 @@ $formato = Yii::$app->formatter;
                         <?php endif; ?>
                         <?php if ($demasOcultas !== []): ?>
                             <details class="rd-dg-mas">
-                                <summary>Ver todo el equipo (<?= count($equipo) ?>)</summary>
+                                <summary><?= $verMas(count($demasOcultas), 'persona', 'personas') ?></summary>
                                 <div class="rd-dg-equipo">
                                     <?php foreach ($demasOcultas as $persona): ?>
                                         <?= $personaEnLista($persona) ?>
@@ -377,17 +378,17 @@ $formato = Yii::$app->formatter;
                     <div class="kicker mb-2">Costo del proyecto <?= Html::encode($model->numeroTexto()) ?></div>
                 <?php else: ?>
                     <div class="kicker mb-2">Fases del proyecto <?= Html::encode($model->numeroTexto()) ?></div>
-                <?php endif; ?>
-                <?php // Cada fase con sus ordenes de cambio debajo (parte 6). ?>
-                <?php foreach ($franjaFases === [] ? $fases : [] as $fase): ?>
-                    <?php foreach (array_merge([$fase], $fase->ordenesCambio) as $fila): ?>
-                        <div class="rd-dato<?= $fila->esOrdenCambio() ? ' ms-3' : '' ?>">
-                            <?php $texto = $fila->esOrdenCambio() ? $fila->textoOrdenCambio() : 'Fase ' . (int) $fila->numeroFase; ?>
-                            <?= (int) $fila->id === (int) $model->id ? '<strong>' . Html::encode($texto) . '</strong> (esta)' : Html::a(Html::encode($texto), ['view', 'id' => $fila->id]) ?>
-                            · <?= $fila->presupuesto === null ? 'sin presupuesto' : Html::encode($fila->presupuesto->estadoLabel()) ?>
-                        </div>
+                    <?php // Cada fase con sus ordenes de cambio debajo (parte 6). ?>
+                    <?php foreach ($fases as $fase): ?>
+                        <?php foreach (array_merge([$fase], $fase->ordenesCambio) as $fila): ?>
+                            <div class="rd-dato<?= $fila->esOrdenCambio() ? ' ms-3' : '' ?>">
+                                <?php $texto = $fila->esOrdenCambio() ? $fila->textoOrdenCambio() : 'Fase ' . (int) $fila->numeroFase; ?>
+                                <?= (int) $fila->id === (int) $model->id ? '<strong>' . Html::encode($texto) . '</strong> (esta)' : Html::a(Html::encode($texto), ['view', 'id' => $fila->id]) ?>
+                                · <?= $fila->presupuesto === null ? 'sin presupuesto' : Html::encode($fila->presupuesto->estadoLabel()) ?>
+                            </div>
+                        <?php endforeach; ?>
                     <?php endforeach; ?>
-                <?php endforeach; ?>
+                <?php endif; ?>
                 <?php // Costo total del proyecto: un solo total, de los presupuestos aprobados (parte 6c). ?>
                 <div class="rd-dato<?= $franjaFases === [] ? ' mt-2' : '' ?>">
                     <strong>Costo total del proyecto:</strong> Bs. <?= $formato->asDecimal($costo['total'], 2) ?>

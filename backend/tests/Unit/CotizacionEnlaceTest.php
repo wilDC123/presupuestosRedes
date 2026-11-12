@@ -55,6 +55,8 @@ class CotizacionEnlaceTest extends Unit
         $this->assertSame(self::DRIVE, $leida->urlDocumento());
         $this->assertSame(self::DRIVE, $leida->documentoEnlace, 'Al leerla, el campo trae el enlace guardado.');
         $this->assertSame('Abrir enlace', $leida->textoDocumento());
+        $this->assertSame('Enlace', $leida->textoDocumento(true));
+        $this->assertSame('Abrir la proforma en el Drive', $leida->ayudaDocumento());
         $this->assertSame([], array_values(array_diff($this->archivos(), $this->antes)));
     }
 
