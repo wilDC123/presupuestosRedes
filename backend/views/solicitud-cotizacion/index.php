@@ -326,7 +326,7 @@ $destinos['nueva'] = '+ Nueva solicitud...';
                                             <td class="rd-num mono"><?= $formato->asDecimal($cotizacion->total(), 2) ?></td>
                                             <td class="rd-num">
                                                 <?php if (!empty($cotizacion->documentoRuta)): ?>
-                                                    <?= Html::a($cotizacion->tieneEnlace() ? 'Enlace' : 'PDF', $cotizacion->urlDocumento(), ['class' => 'btn btn-outline btn-sm', 'target' => '_blank', 'rel' => 'noopener', 'title' => $cotizacion->tieneEnlace() ? 'Abrir la proforma en el Drive' : 'Ver el PDF de la proforma']) ?>
+                                                    <?= Html::a($cotizacion->textoDocumento(true), $cotizacion->urlDocumento(), ['class' => 'btn btn-outline btn-sm', 'target' => '_blank', 'rel' => 'noopener', 'title' => $cotizacion->ayudaDocumento()]) ?>
                                                 <?php endif; ?>
                                                 <?php if ($editable): ?>
                                                     <?= Html::a('Corregir', ['editar-cotizacion', 'id' => $cotizacion->id], ['class' => 'btn btn-outline btn-sm']) ?>

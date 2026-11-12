@@ -116,11 +116,25 @@ class Cotizacion extends ActiveRecord
     }
 
     /**
-     * Texto del boton que abre la proforma: "Ver PDF" o "Abrir enlace".
+     * Texto del boton que abre la proforma: "Ver PDF" o "Abrir enlace"; corto
+     * ("PDF" / "Enlace") en los botones chicos de la lista de solicitudes. Es
+     * el UNICO lugar de esos textos.
      */
-    public function textoDocumento(): string
+    public function textoDocumento(bool $corto = false): string
     {
+        if ($corto) {
+            return $this->tieneEnlace() ? 'Enlace' : 'PDF';
+        }
+
         return $this->tieneEnlace() ? 'Abrir enlace' : 'Ver PDF';
+    }
+
+    /**
+     * Ayuda (title) del boton: a donde lleva.
+     */
+    public function ayudaDocumento(): string
+    {
+        return $this->tieneEnlace() ? 'Abrir la proforma en el Drive' : 'Ver el PDF de la proforma';
     }
 
     /**

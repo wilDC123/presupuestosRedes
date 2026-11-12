@@ -250,6 +250,29 @@ class ProyectoService
         return $presupuesto === null || $presupuesto->puedeEditarse();
     }
 
+    /**
+     * La FASE 1 del proyecto, si hoy deja cambiar los datos comunes a todas las
+     * fases; null si no (su presupuesto esta aprobado o cancelado, u otra fase
+     * esta aprobada: datosComunesFijos()). La usa la vista del proyecto en las fases
+     * 2+ para decir "se editan en la Fase 1" solo cuando es verdad (revision de
+     * codigo del 2026-11-11).
+     */
+    public function faseParaDatosComunes(Proyecto $proyecto): ?Proyecto
+    {
+        $base = $proyecto->esOrdenCambio() ? $proyecto->faseOrigen : $proyecto;
+        if ($base === null || $base->numeroProyecto === null) {
+            return null;
+        }
+
+        foreach ($base->fases as $fase) {
+            if ((int) $fase->numeroFase === 1) {
+                return $this->puedeEditarse($fase) && !$this->datosComunesFijos($fase) ? $fase : null;
+            }
+        }
+
+        return null;
+    }
+
     public function estaAprobado(Proyecto $proyecto): bool
     {
         return ($proyecto->presupuesto->estado ?? null) === Presupuesto::ESTADO_APROBADO;
