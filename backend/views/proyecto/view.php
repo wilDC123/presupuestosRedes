@@ -235,12 +235,18 @@ $formato = Yii::$app->formatter;
                 </div>
             </div>
 
-            <?php // Todas las fases del proyecto (mismo numero), con el estado de su presupuesto. ?>
+            <?php // Todas las fases del proyecto (mismo numero), con el estado de su presupuesto. Con la franja
+            // FASES arriba (varias fases u ordenes de cambio) la lista ya esta ahi: el recuadro queda solo con el
+            // costo total (2026-11-11, "es doble informacion en una misma pantalla"). ?>
             <div class="card rd-card-pad">
-                <div class="kicker mb-2">Fases del proyecto <?= Html::encode($model->numeroTexto()) ?></div>
                 <?php $fases = $model->numeroProyecto !== null ? $model->fases : [$model]; ?>
+                <?php if ($franjaFases !== []): ?>
+                    <div class="kicker mb-2">Costo del proyecto <?= Html::encode($model->numeroTexto()) ?></div>
+                <?php else: ?>
+                    <div class="kicker mb-2">Fases del proyecto <?= Html::encode($model->numeroTexto()) ?></div>
+                <?php endif; ?>
                 <?php // Cada fase con sus ordenes de cambio debajo (parte 6). ?>
-                <?php foreach ($fases as $fase): ?>
+                <?php foreach ($franjaFases === [] ? $fases : [] as $fase): ?>
                     <?php foreach (array_merge([$fase], $fase->ordenesCambio) as $fila): ?>
                         <div class="rd-dato<?= $fila->esOrdenCambio() ? ' ms-3' : '' ?>">
                             <?php $texto = $fila->esOrdenCambio() ? $fila->textoOrdenCambio() : 'Fase ' . (int) $fila->numeroFase; ?>
@@ -250,7 +256,7 @@ $formato = Yii::$app->formatter;
                     <?php endforeach; ?>
                 <?php endforeach; ?>
                 <?php // Costo total del proyecto: un solo total, de los presupuestos aprobados (parte 6c). ?>
-                <div class="rd-dato mt-2">
+                <div class="rd-dato<?= $franjaFases === [] ? ' mt-2' : '' ?>">
                     <strong>Costo total del proyecto:</strong> Bs. <?= $formato->asDecimal($costo['total'], 2) ?>
                     <?php if (count($costo['partes']) > 1): ?>
                         <div class="rd-nota"><?= Html::encode(implode(' + ', array_map(static fn (array $p) => $p['rotulo'] . ': ' . $formato->asDecimal($p['monto'], 2), $costo['partes']))) ?></div>
