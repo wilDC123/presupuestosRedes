@@ -779,8 +779,14 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   - mPDF escribe sus temporales en `@runtime/mpdf`, no en `vendor/`.
   - `assetManager.appendTimestamp` (2026-10-28): CSS y JS salen con `?v=<fecha>`, así el navegador
     no se queda con una versión vieja después de un cambio.
-  - Probado: las 29 migraciones desde cero y los tests, sobre una base temporal con
-    compatibilidad 110 (SQL Server 2012). La base local es SQL Server 2022 (compatibilidad 160).
+  - Probado en compatibilidad 110 (SQL Server 2012; la base local es SQL Server 2022, compatibilidad 160). Última
+    vez el 2026-11-11 (hallazgo 1 de la auditoría), con las 70 migraciones: en una base vacía con `YII_ENV=prod` se
+    aplican todas, se deshacen 67 (la del esquema `redes` no: ahí vive `redes.migration`, es esperable) y se vuelven a
+    aplicar sin errores; y con una copia de la base local en nivel 110, los 246 tests pasan. Cómo repetirlo: base nueva
+    con `ALTER DATABASE … SET COMPATIBILITY_LEVEL = 110` + copia de `dbo.CatalogoSigma` (`SELECT … INTO`), un `yii`
+    con otro `dsn` para las migraciones, y `common/config/test-local.php` apuntando a la copia para los tests. Ojo: el
+    nivel 110 en un 2022 no es un 2012 real (algunas funciones nuevas funcionan igual); la prueba final es en el
+    servidor de la DTIC
 - OJO con `sqlcmd` a mano: usar `-I` (QUOTED_IDENTIFIER ON). Sin eso, los DELETE/UPDATE sobre
   tablas con columnas calculadas (ej. `CotizacionDetalle.precioTotal`) fallan con el error 1934.
 - OJO con los tipos en migraciones: Yii2 traduce "char" a "nchar" en SQL Server aunque se
