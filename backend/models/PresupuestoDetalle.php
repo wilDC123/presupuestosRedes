@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\models;
 
+use backend\components\Monto;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 
@@ -62,7 +63,8 @@ class PresupuestoDetalle extends ActiveRecord
             // ElaborarPresupuestoService::elegir(); que tenga una sola linea,
             // reemplazarLinea() (borra la anterior) y el indice unico filtrado.
             [['idPresupuesto', 'idSubcatalogo', 'idCotizacionDetalle', 'idProyectoItem'], 'integer'],
-            [['cantidad'], 'number', 'min' => 0],
+            // Que quepan en decimal(10,2), con hasta 2 decimales y sin "1e5" (Monto, auditoria 2026-11-11).
+            Monto::regla(['cantidad']),
             [['unidadMedida'], 'string', 'max' => 20],
             // La unidad se guarda como texto (la abreviatura, congelada), pero
             // solo se acepta una unidad ACTIVA del catalogo redes.UnidadMedida.
@@ -78,7 +80,10 @@ class PresupuestoDetalle extends ActiveRecord
                 'required',
                 'when' => static fn (self $model) => empty($model->idCotizacionDetalle),
             ],
-            [['precioUnitario'], 'number', 'min' => 0],
+            Monto::regla(['precioUnitario']),
+            [['precioUnitario'], function (string $atributo): void {
+                Monto::validarTotal($this, $atributo);
+            }],
             [['observacion'], 'trim'],
             [['observacion'], 'string', 'max' => 300],
             [['justificacion'], 'trim'],

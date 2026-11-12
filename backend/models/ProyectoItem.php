@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\models;
 
+use backend\components\Monto;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 
@@ -51,7 +52,8 @@ class ProyectoItem extends ActiveRecord
         return [
             [['idProyecto', 'idSubcatalogo', 'idCategoria', 'cantidad'], 'required'],
             [['idProyecto', 'idSubcatalogo', 'idCategoria', 'orden', 'idEspecificacion'], 'integer'],
-            [['cantidad'], 'number', 'min' => 0, 'max' => 99999999.99],
+            // decimal(10,2), hasta 2 decimales y sin "1e5" (Monto, auditoria 2026-11-11).
+            Monto::regla(['cantidad']),
             [['unidadMedida'], 'string', 'max' => 20],
             [['observacion'], 'trim'],
             [['observacion'], 'string', 'max' => 300],

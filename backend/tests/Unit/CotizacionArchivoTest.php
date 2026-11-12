@@ -15,7 +15,10 @@ use backend\models\SubcatalogoItem;
 use backend\services\CotizacionService;
 use Codeception\Test\Unit;
 use Throwable;
+use RuntimeException;
 use Yii;
+use yii\base\Event;
+use yii\db\ActiveRecord;
 use yii\web\UploadedFile;
 
 /**
@@ -28,8 +31,13 @@ use yii\web\UploadedFile;
  */
 class CotizacionArchivoTest extends Unit
 {
-    /** No cabe en precioUnitario (decimal 10,2) pero pasa la validacion (numero >= 0). */
-    private const PRECIO_QUE_NO_CABE = '1000000000';
+    /**
+     * Un precio normal: la falla de la base se SIMULA al guardar la linea (ver
+     * assertFallaSinArchivo()). Hasta el 2026-11-12 se usaba un precio que no
+     * cabia en decimal(10,2), pero desde la auditoria (hallazgo 3) la
+     * validacion lo detiene antes de llegar a la base.
+     */
+    private const PRECIO = '20';
 
     private CotizacionService $service;
     private Proveedor $proveedor;
@@ -65,7 +73,7 @@ class CotizacionArchivoTest extends Unit
         $detalle->save(false);
         $cotizacion = Cotizacion::findOne($cotizacion->id);
         $detalle = CotizacionDetalle::findOne($detalle->id);
-        $detalle->precioUnitario = self::PRECIO_QUE_NO_CABE;
+        $detalle->precioUnitario = self::PRECIO;
 
         $this->assertFallaSinArchivo(fn () => $this->service->actualizar($cotizacion, [$detalle], ['Cotizacion' => ['idProveedor' => (string) $this->proveedor->id]], $this->pdf()));
     }
@@ -88,7 +96,7 @@ class CotizacionArchivoTest extends Unit
             return $this->service->guardarDesdeSolicitud(
                 $solicitud,
                 $this->service->nuevaDesdeSolicitud($solicitud),
-                ['Cotizacion' => ['idProveedor' => (string) $this->proveedor->id], 'filas' => [$itemLista->id => ['precioUnitario' => self::PRECIO_QUE_NO_CABE, 'marcaModelo' => '']]],
+                ['Cotizacion' => ['idProveedor' => (string) $this->proveedor->id], 'filas' => [$itemLista->id => ['precioUnitario' => self::PRECIO, 'marcaModelo' => '']]],
                 $this->pdf(),
                 $filas,
                 $errores
@@ -110,11 +118,21 @@ class CotizacionArchivoTest extends Unit
 
     private function assertFallaSinArchivo(callable $guardar): void
     {
+        // Falla de la base al guardar una linea, despues de validar todo (como un error de SQL Server).
+        $falla = static function (): void {
+            throw new RuntimeException('Falla simulada de la base al guardar la línea.');
+        };
+        Event::on(CotizacionDetalle::class, ActiveRecord::EVENT_BEFORE_INSERT, $falla);
+        Event::on(CotizacionDetalle::class, ActiveRecord::EVENT_BEFORE_UPDATE, $falla);
+
         try {
             $guardar();
             $this->fail('El guardado debía fallar en la base.');
         } catch (Throwable $e) {
             $this->assertNotInstanceOf(\PHPUnit\Framework\AssertionFailedError::class, $e, $e->getMessage());
+        } finally {
+            Event::off(CotizacionDetalle::class, ActiveRecord::EVENT_BEFORE_INSERT, $falla);
+            Event::off(CotizacionDetalle::class, ActiveRecord::EVENT_BEFORE_UPDATE, $falla);
         }
 
         $this->assertSame([], array_values(array_diff($this->archivos(), $this->antes)), 'Quedó un PDF huérfano en uploads/cotizaciones.');

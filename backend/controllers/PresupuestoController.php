@@ -20,9 +20,10 @@ use yii\web\Response;
  * firmas).
  *
  * El presupuesto se ELABORA en el paso "Presupuesto" de cada proyecto
- * (ElaborarPresupuestoController). Las rutas que antes servian para eso
- * (ver, lineas, armar, crear, editar, cambiar estado) redirigen ahi, para
- * que ningun enlace guardado quede roto.
+ * (ElaborarPresupuestoController). Las rutas que antes servian para eso (ver,
+ * lineas, armar, crear, editar, cambiar estado) solo redirigian ahi; se
+ * quitaron el 2026-11-12 (auditoria, hallazgo 19), antes de instalar en la
+ * DTIC: nadie tiene enlaces guardados a ellas.
  */
 class PresupuestoController extends Controller
 {
@@ -52,49 +53,6 @@ class PresupuestoController extends Controller
             'dataProvider' => $this->service->listar(),
             'totales' => $this->service->totalesPorPresupuesto(),
         ]);
-    }
-
-    /**
-     * Rutas anteriores (presupuesto/view, detalle, update, cambiar-estado):
-     * llevan al paso Presupuesto del proyecto.
-     */
-    public function actionView(int $id): Response
-    {
-        return $this->alProyecto($this->findModel($id)->idProyecto);
-    }
-
-    public function actionDetalle(int $id): Response
-    {
-        return $this->actionView($id);
-    }
-
-    public function actionUpdate(int $id): Response
-    {
-        return $this->actionView($id);
-    }
-
-    public function actionCambiarEstado(int $id): Response
-    {
-        return $this->actionView($id);
-    }
-
-    /**
-     * Rutas anteriores con ?idProyecto= (presupuesto/create y armar).
-     */
-    public function actionCreate(?int $idProyecto = null): Response
-    {
-        if ($idProyecto === null) {
-            Yii::$app->session->setFlash('info', 'El presupuesto se elabora desde cada proyecto: abra el proyecto y entre al paso "Presupuesto".');
-
-            return $this->redirect(['/proyecto/index']);
-        }
-
-        return $this->alProyecto($idProyecto);
-    }
-
-    public function actionArmar(int $idProyecto): Response
-    {
-        return $this->alProyecto($idProyecto);
     }
 
     public function actionDelete(int $id): Response
@@ -186,11 +144,6 @@ class PresupuestoController extends Controller
             'configuracion' => $configuracion,
             'proyecto' => $proyecto,
         ]);
-    }
-
-    private function alProyecto(int $idProyecto): Response
-    {
-        return $this->redirect(['/elaborar-presupuesto/index', 'idProyecto' => $idProyecto]);
     }
 
     protected function findModel(int $id): Presupuesto

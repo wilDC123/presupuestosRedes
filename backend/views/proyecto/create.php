@@ -11,6 +11,7 @@ use yii\helpers\Html;
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model
  * @var bool $datosComunesFijos ver ProyectoService::datosComunesFijos()
+ * @var string|null $avisoInfraestructura si UsfxGEO no responde (ver _form.php)
  */
 
 // "Agregar fase" abre este mismo formulario ya preparado como la fase siguiente.
@@ -40,6 +41,7 @@ $this->params['breadcrumbs'][] = $model->idProyectoAnterior !== null ? 'Agregar 
         'personal' => $personal,
         'roles' => $roles,
         'datosComunesFijos' => $datosComunesFijos,
+        'avisoInfraestructura' => $avisoInfraestructura,
     ]) ?>
 
 </div>

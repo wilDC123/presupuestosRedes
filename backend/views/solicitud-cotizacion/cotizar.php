@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\components\Monto;
 use yii\helpers\Html;
 use yii\web\JqueryAsset;
 use yii\widgets\ActiveForm;
@@ -156,8 +157,10 @@ $formato = Yii::$app->formatter;
                             <?= Html::textInput("filas[$idItem][precioUnitario]", $detalle->precioUnitario === null ? '' : (string) $detalle->precioUnitario, [
                                 'class' => 'form-control cotizar-precio text-end',
                                 'type' => 'number',
-                                'step' => 'any',
+                                // Hasta 2 decimales y lo que cabe en decimal(10,2) (backend\components\Monto).
+                                'step' => '0.01',
                                 'min' => '0',
+                                'max' => (string) Monto::MAXIMO,
                                 'placeholder' => 'No cotizó',
                                 'disabled' => !$editable,
                                 'aria-label' => 'Precio unitario',

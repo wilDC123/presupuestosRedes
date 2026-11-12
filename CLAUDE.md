@@ -376,8 +376,10 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   documento", abajo la de aprobación): la "Fecha" de la cabecera del PDF, de la pantalla y del listado es
   `Presupuesto.fechaCreacion` (cuando se empezó a elaborar, `Presupuesto::fechaFormateada()`); desde el 2026-10-30 ya
   no se escribe una fecha al enviar a revisión (`Presupuesto.fecha` queda sin usar, con la de los de antes). El
-  mismo criterio en la lista de materiales. El menú "Presupuestos" es solo un listado de consulta; las rutas
-  viejas (`presupuesto/view`, `detalle`, `armar`, `create`, `update`) redirigen al paso Presupuesto
+  mismo criterio en la lista de materiales. El menú "Presupuestos" es solo un listado de consulta (con PDF, reporte
+  SIGMA, eliminar y configuración); las rutas viejas (`presupuesto/view`, `detalle`, `armar`, `create`, `update`,
+  `cambiar-estado`), que solo redirigían al paso Presupuesto, se QUITARON el 2026-11-12 (auditoría, hallazgo 19: el
+  sistema aún no estaba instalado en la DTIC, nadie tenía enlaces guardados)
 - Una línea solo puede usar una cotización de su mismo ítem, y si la cotización es de una fila de
   la lista (`CotizacionDetalle.idProyectoItem`), solo esa fila puede usarla (las sueltas, sin
   `idProyectoItem`, se ofrecen solo si la fila no tiene cotizaciones propias); cotización vencida
@@ -545,6 +547,14 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   aprobado, cancelado
 - Precio unitario "congelado" en el detalle del presupuesto al momento de crearlo
   (nunca se recalcula retroactivamente si cambia el precio de una cotización nueva)
+- MONTOS (auditoría 2026-11-11, hallazgos 3 y 13): cantidades y precios caben en `decimal(10,2)` (máx. 99,999,999.99),
+  con hasta 2 decimales y sin notación científica, y el total de la línea (cantidad × precio, `precioTotal`) también.
+  Regla única en `backend\components\Monto` (`regla()` para `rules()` de `CotizacionDetalle`, `PresupuestoDetalle` y
+  `ProyectoItem`; `valido()` y `totalCabe()` para el precio directo; `validarTotal()`); los campos del navegador llevan
+  `step 0.01` y `max`, y `elaborar-presupuesto.js` repite la regla. Antes "1e5" o un número enorme pasaban la validación
+  y SQL Server respondía con un error del servidor; "12.345" se redondeaba sin avisar
+- BUSCADORES (hallazgo 12): especificaciones, áreas de UsfxGEO y catálogo SIGMA usan como mucho 10 palabras
+  (`backend\components\Busqueda::palabras()`): SQL Server acepta 2100 parámetros por consulta
 - Tamaño de hoja de TODOS los impresos: OFICIO, 8,5 x 13 pulgadas = 216 x 330 mm (2026-10-21; antes
   A4), la que usa la DTIC. En mPDF se llama "Folio": `PresupuestoPdfGenerator::HOJA_OFICIO` (por
   defecto) y `HOJA_OFICIO_HORIZONTAL` (reporte de relación con SIGMA). Desde el 2026-11-03 todos los
@@ -768,6 +778,11 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Preparado para el servidor de DTIC (2026-10-18; guía en `docs/guia-instalacion-dtic.md`):
   - Toda la aplicación exige sesión (`'as access'` en `backend/config/main.php`); solo
     `site/login` y `site/error` son públicos. Un controlador nuevo queda protegido solo.
+  - Si UsfxGEO no responde (auditoría 2026-11-11, hallazgo 4), el formulario del proyecto abre igual con el aviso
+    `ProyectoService::AVISO_INFRAESTRUCTURA` y el área se escribe a mano; el paso a paso responde 503 con el aviso (lo
+    muestra `proyecto-form.js`) y el buscador lo trae en `error`. Toda consulta a UsfxGEO del formulario pasa por
+    `ProyectoService::consultarInfraestructura()`, que deja el error en el log. Antes no se podía crear ni editar
+    ningún proyecto.
   - Archivos subidos en `backend/uploads/` (FUERA de `backend/web`), entregados por
     `cotizacion/documento` y `especificacion/adjunto`; `ArchivoSubido::rutaAbsoluta()` rechaza
     rutas fuera de esa carpeta (el adjunto se puede escribir a mano).

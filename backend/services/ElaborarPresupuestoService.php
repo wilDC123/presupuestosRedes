@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\components\Monto;
 use backend\models\CorrelativoDocumento;
 use backend\models\CotizacionDetalle;
 use backend\models\HistorialProyecto;
@@ -260,8 +261,14 @@ class ElaborarPresupuestoService
         $justificacion = trim($justificacion);
 
         if ($opcion === self::DIRECTO) {
-            if ($precio === '' || !is_numeric($precio) || (float) $precio < 0) {
-                return 'Escriba un precio directo mayor o igual a 0.';
+            // Numero >= 0 con hasta 2 decimales que quepa en decimal(10,2); antes is_numeric() dejaba
+            // pasar "1e5" y montos enormes, y la base respondia con un error (auditoria 2026-11-11).
+            if (!Monto::valido($precio)) {
+                return 'Escriba un precio directo mayor o igual a 0, con hasta 2 decimales y sin comas (ej. 1250.50), que no pase de 99,999,999.99.';
+            }
+
+            if (!Monto::totalCabe($item->cantidad, $precio)) {
+                return 'El total de la línea (cantidad × precio) no puede pasar de 99,999,999.99.';
             }
 
             $idCotizacionDetalle = null;

@@ -327,12 +327,21 @@ $(function () {
         $select.val('').prop('disabled', !opciones || opciones.length === 0);
     }
 
+    // UsfxGEO no responde (el servidor contesta 503 con {error}): se muestra el aviso arriba del buscador,
+    // en vez de dejar la lista vacia sin decir nada (auditoria 2026-11-11, hallazgo 4).
+    function avisoInfraestructura(xhr) {
+        var texto = (xhr && xhr.responseJSON && xhr.responseJSON.error)
+            || 'No se pudo consultar la infraestructura de la universidad. Puede escribir el área a mano o intentar más tarde.';
+
+        $('#proyecto-aviso-infraestructura').text(texto).removeClass('d-none');
+    }
+
     function cargarSelect($select, url, datos) {
         llenarSelect($select, []);
 
         $.getJSON(url, datos).done(function (opciones) {
             llenarSelect($select, opciones);
-        });
+        }).fail(avisoInfraestructura);
     }
 
     function textoElegido($select) {
@@ -400,7 +409,7 @@ $(function () {
         if ($nivel.val()) {
             $.getJSON($form.data('url-ambientes'), {idBloqueArea: $bloque.val(), numeroNivel: $nivel.val()}).done(function (opciones) {
                 ambiente.cargar(opciones);
-            });
+            }).fail(avisoInfraestructura);
         }
     });
 
@@ -535,6 +544,13 @@ $(function () {
                 }
 
                 $resultados.empty().removeClass('d-none');
+
+                if (respuesta.error) {
+                    avisoInfraestructura({responseJSON: respuesta});
+                    $resultados.append($('<li class="vacio">').text('No se pudo buscar: la infraestructura de la universidad no responde.'));
+
+                    return;
+                }
 
                 if (respuesta.edificios.length === 0 && respuesta.ambientes.length === 0) {
                     $resultados.append($('<li class="vacio">').text('Sin resultados en los edificios y espacios vigentes.'));

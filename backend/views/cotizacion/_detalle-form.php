@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\components\Monto;
 use yii\helpers\Html;
 
 /**
@@ -56,7 +57,7 @@ foreach ($especificaciones['grupos'] as $grupo) {
                 </td>
                 <td><?= Html::activeTextInput($modelDetalle, "[$i]marcaModelo", ['class' => 'form-control', 'maxlength' => 300]) ?></td>
                 <td><?= Html::activeTextInput($modelDetalle, "[$i]cantidad", ['class' => 'form-control', 'type' => 'number', 'step' => 'any']) ?></td>
-                <td><?= Html::activeTextInput($modelDetalle, "[$i]precioUnitario", ['class' => 'form-control', 'type' => 'number', 'step' => 'any']) ?></td>
+                <td><?= Html::activeTextInput($modelDetalle, "[$i]precioUnitario", ['class' => 'form-control', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'max' => (string) Monto::MAXIMO]) ?></td>
                 <td class="precio-total-display">
                     <?= $modelDetalle->isNewRecord ? '—' : Yii::$app->formatter->asDecimal($modelDetalle->precioTotal, 2) ?>
                 </td>

@@ -59,6 +59,22 @@ class PrecioDirectoTest extends Unit
 
         $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, '-1'));
         $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, ''));
+        // Auditoria 2026-11-11 (hallazgos 3 y 13): antes pasaban y la base respondia con un error.
+        $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, '1e5'));
+        $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, '1000000000'));
+        $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, '12.345'));
+        $this->assertNull($this->linea($presupuesto, $item));
+    }
+
+    public function testPrecioDirectoConTotalQueNoCabe(): void
+    {
+        [$presupuesto, $item] = $this->crearConItem(SubcatalogoItem::find()->andWhere(['activo' => true])->one());
+        ProyectoItem::updateAll(['cantidad' => 1000], ['id' => $item->id]);
+
+        // 1000 x 100,000.00 = 100,000,000.00: el precio cabe, el total de la linea no.
+        $error = $this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, '100000');
+
+        $this->assertStringContainsString('total de la línea', (string) $error);
         $this->assertNull($this->linea($presupuesto, $item));
     }
 
