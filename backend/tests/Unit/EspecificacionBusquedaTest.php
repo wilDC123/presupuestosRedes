@@ -66,7 +66,11 @@ class EspecificacionBusquedaTest extends Unit
 
     public function testRecordarPoneElItemSoloSiLaFichaNoTeniaUno(): void
     {
-        [$item1, $item2] = SubcatalogoItem::find()->orderBy(['id' => SORT_ASC])->limit(2)->all();
+        $items = SubcatalogoItem::find()->orderBy(['id' => SORT_ASC])->limit(2)->all();
+        if (count($items) < 2) {
+            $this->markTestSkipped('La base no tiene dos ítems en el subcatálogo.');
+        }
+        [$item1, $item2] = $items;
         $ficha = $this->crearFicha('Ficha Zqx sin referencia');
 
         $this->service->recordarItemDeReferencia($ficha->id, $item1->id);
