@@ -10,15 +10,15 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model
- * @var array<int, array{titulo: string, estado: string, url: array|null}> $pasos Ver ProyectoService::pasos()
+ * @var array<int, array{titulo: string, estado: string, url: array|null}> $pasos Ver NavegacionProyectoService::pasos()
  * @var string|null $nombreTipo
  * @var float|null $monto total del presupuesto (null si no tiene)
- * @var array{total: float, partes: array<int, array{rotulo: string, monto: float}>} $costo Ver ProyectoService::costoTotal()
- * @var array $urlPresupuesto Ver ProyectoService::urlPresupuesto()
+ * @var array{total: float, partes: array<int, array{rotulo: string, monto: float}>} $costo Ver FichaTecnicaService::costoTotal()
+ * @var array $urlPresupuesto Ver NavegacionProyectoService::urlPresupuesto()
  * @var bool $puedeEditarse
  * @var bool $estaAprobado
  * @var bool $puedeAgregarFase la ultima fase del proyecto (aprobada o no): se le puede agregar la siguiente
- * @var array<int, array<int, array{id: int, texto: string, presupuesto: ?backend\models\Presupuesto, monto: ?float, actual: bool}>> $franjaFases Ver ProyectoService::franjaFases()
+ * @var array<int, array<int, array{id: int, texto: string, presupuesto: ?backend\models\Presupuesto, monto: ?float, actual: bool}>> $franjaFases Ver NavegacionProyectoService::franjaFases()
  * @var bool $puedeRegistrarOrden una fase con su presupuesto aprobado: se le puede registrar una orden de cambio (parte 6)
  * @var backend\models\Proyecto|null $faseDatosComunes la fase 1 si hoy deja cambiar los datos comunes (solo en fases 2+). Ver ProyectoService::faseParaDatosComunes()
  * @var int $totalItems items en la lista del proyecto

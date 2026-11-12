@@ -6,11 +6,11 @@ namespace backend\tests\Unit;
 
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
-use backend\services\ProyectoService;
+use backend\services\NavegacionProyectoService;
 use Codeception\Test\Unit;
 
 /**
- * La franja "FASES" de la vista del proyecto (ProyectoService::franjaFases()):
+ * La franja "FASES" de la vista del proyecto (NavegacionProyectoService::franjaFases()):
  * una pastilla por fase, sus ordenes de cambio despues, la que se esta viendo
  * marcada; con fase unica y sin ordenes no sale.
  *
@@ -21,11 +21,11 @@ class FranjaFasesTest extends Unit
     /** Un numero de proyecto que la base local no usa. */
     private const NUMERO = 99903;
 
-    private ProyectoService $service;
+    private NavegacionProyectoService $service;
 
     protected function _before(): void
     {
-        $this->service = new ProyectoService();
+        $this->service = new NavegacionProyectoService();
     }
 
     public function testConFaseUnicaNoSale(): void

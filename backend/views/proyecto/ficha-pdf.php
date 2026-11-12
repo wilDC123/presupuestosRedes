@@ -21,7 +21,7 @@ use yii\helpers\Html;
  * RD-PI-PT-001" de los FORMATOS CORREGIDOS v3:
  *  - Cabecera de todos los documentos: codigo RD-PI-PT-NNN (el de la fase 1),
  *    version (1.0, 1.1 al aprobarse otra fase...), fecha de creacion de esa
- *    version y pagina. Ver ProyectoService::datosFicha().
+ *    version y pagina. Ver FichaTecnicaService::datosFicha().
  *  - 1. INFORMACION GENERAL: datos del proyecto, "Fases" (si hay varias), el
  *    COSTO TOTAL DEL PROYECTO (presupuestos aprobados de fases y ordenes de
  *    cambio; con varias, una fila por cada una y el total al final) y las FECHAS en el mismo cuadro (con varias
@@ -43,7 +43,7 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var Proyecto $model la fase desde la que se imprime (los datos del proyecto son los mismos en todas)
- * @var array $datos Ver ProyectoService::datosFicha()
+ * @var array $datos Ver FichaTecnicaService::datosFicha()
  * @var string|null $usuario quien la imprime
  */
 
@@ -64,7 +64,7 @@ $fila = static fn (string $rotulo, string $codigo, string $detalle, string $vers
 
 /**
  * Las filas de la carpeta economica de una fase o de una orden de cambio
- * (ProyectoService::carpeta()).
+ * (FichaTecnicaService::carpeta()).
  */
 $carpeta = static function (array $c) use ($fila, $texto, $monto, $fecha, $guiones): string {
     /** @var Proyecto $p */

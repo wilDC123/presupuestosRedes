@@ -8,6 +8,7 @@ use backend\models\Personal;
 use backend\models\Proyecto;
 use backend\models\ProyectoAreaIntervencion;
 use backend\models\ProyectoBloque;
+use backend\services\AreaIntervencionService;
 use backend\services\contracts\InfraestructuraProvider;
 use backend\services\ProcesoService;
 use backend\services\ProyectoService;
@@ -32,6 +33,7 @@ class AreaIntervencionTest extends Unit
 {
     private InfraestructuraProvider $fuente;
     private ProyectoService $service;
+    private AreaIntervencionService $areas;
 
     /** Proceso PI: el proyecto lo exige al guardar. */
     private ?int $idProceso;
@@ -112,6 +114,7 @@ class AreaIntervencionTest extends Unit
         };
 
         $this->service = new ProyectoService(null, $this->fuente);
+        $this->areas = new AreaIntervencionService($this->fuente);
     }
 
     public function testGuardaUnidadYAreasConNombresDeLaFuente(): void
@@ -212,7 +215,7 @@ class AreaIntervencionTest extends Unit
         // Al editar se conserva y el formulario la vuelve a mostrar como escrita a mano.
         $proyecto = Proyecto::findOne($proyecto->id);
         $this->service->cargarSeleccion($proyecto);
-        $formulario = $this->service->areasDelFormulario($proyecto);
+        $formulario = $this->areas->areasDelFormulario($proyecto);
         $this->assertTrue($formulario[0]['manual']);
         $this->assertSame('Bloque Ingeniería Civil', $formulario[0]['edificio']);
 
@@ -240,7 +243,7 @@ class AreaIntervencionTest extends Unit
         $this->fuente->vigente = false;
         $proyecto = Proyecto::findOne($proyecto->id);
         $this->service->cargarSeleccion($proyecto);
-        $this->assertSame('Edificio Prueba · Bloque A', $this->service->areasDelFormulario($proyecto)[0]['texto']);
+        $this->assertSame('Edificio Prueba · Bloque A', $this->areas->areasDelFormulario($proyecto)[0]['texto']);
 
         // Editar otro dato no la pierde ni da error: conserva su nombre de entonces.
         $datos = ['Proyecto' => ['nombre' => 'Proyecto test renombrado', 'idProceso' => $this->idProceso, 'equipo' => $this->equipo, 'equipoResponsable' => '0', 'unidadDependencia' => 'Carrera test', 'unidadSolicitante' => 'Facultad test', 'areas' => $proyecto->areas]];
@@ -289,7 +292,7 @@ class AreaIntervencionTest extends Unit
 
     public function testElCampoEdificioSabeCuantosProyectosUsanCadaUno(): void
     {
-        $antes = $this->service->edificiosParaFormulario()[0]['usos'];
+        $antes = $this->areas->edificiosParaFormulario()[0]['usos'];
 
         foreach (['Proyecto test uso 1', 'Proyecto test uso 2'] as $nombre) {
             $this->assertTrue($this->service->crear(new Proyecto(), ['Proyecto' => [
@@ -301,7 +304,7 @@ class AreaIntervencionTest extends Unit
             ]]));
         }
 
-        $this->assertSame([['id' => 'E1', 'nombre' => 'Edificio Prueba', 'usos' => $antes + 2]], $this->service->edificiosParaFormulario());
+        $this->assertSame([['id' => 'E1', 'nombre' => 'Edificio Prueba', 'usos' => $antes + 2]], $this->areas->edificiosParaFormulario());
     }
 
     public function testResumenAgrupaPorEdificioYBloque(): void
@@ -384,9 +387,9 @@ class AreaIntervencionTest extends Unit
         // El edificio sale aunque tenga muchos ambientes, y el guion no importa.
         $this->assertContains('Edificio Facultad de Ciencias y Tecnología', array_column($fuente->buscarEdificios('ciencias y tecnologia'), 'edificio'));
         $this->assertNotEmpty($fuente->buscarAmbientes('E303'));
-        $buscador = (new ProyectoService(null, $fuente))->buscarAreas('ciencias y tecnologia');
+        $buscador = (new AreaIntervencionService($fuente))->buscarAreas('ciencias y tecnologia');
         $this->assertTrue($buscador['hayMas']);
-        $this->assertCount(ProyectoService::MAX_AMBIENTES_BUSCADOS, $buscador['ambientes']);
+        $this->assertCount(AreaIntervencionService::MAX_AMBIENTES_BUSCADOS, $buscador['ambientes']);
 
         $this->assertSame('B101 Laboratorio', UsfxGeoInfraestructuraProvider::nombreAmbiente('B101', ' Laboratorio '));
         $this->assertSame('Laboratorio de Informática E102', UsfxGeoInfraestructuraProvider::nombreAmbiente('E102', 'Laboratorio de Informática E102'));

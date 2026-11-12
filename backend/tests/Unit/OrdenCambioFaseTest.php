@@ -10,6 +10,7 @@ use backend\models\Personal;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
 use backend\models\TipoOrdenCambio;
+use backend\services\FichaTecnicaService;
 use backend\services\OrdenCambioFaseService;
 use backend\services\ProcesoService;
 use backend\services\ProyectoService;
@@ -91,7 +92,7 @@ class OrdenCambioFaseTest extends Unit
 
         // Aprobar la orden no cambia la version de la ficha tecnica del proyecto.
         $this->aprobar($orden);
-        $this->assertSame('1.0', $this->proyectos->datosFicha($fase)['version']);
+        $this->assertSame('1.0', (new FichaTecnicaService())->datosFicha($fase)['version']);
     }
 
     public function testSeEditaSoloSuDescripcionMotivoYTipo(): void

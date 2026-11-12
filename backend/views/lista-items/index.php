@@ -5,7 +5,7 @@ declare(strict_types=1);
 use backend\components\Monto;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
-use backend\services\ProyectoService;
+use backend\services\NavegacionProyectoService;
 use yii\bootstrap5\BootstrapPluginAsset;
 use yii\helpers\Html;
 use yii\helpers\Url;
@@ -44,7 +44,7 @@ use yii\web\JqueryAsset;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
- * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
+ * @var array $pasos barra de pasos del proyecto, ver NavegacionProyectoService::pasos()
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  * @var string[] $errores mensajes si el guardado fallo
  * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string} $documento Ver ListaItemsService::documento()
@@ -304,7 +304,7 @@ $grupoCierra = static fn (int $cantidad): string =>
         </div>
     </div>
 
-    <?= $this->render('/proyecto/_pasos', ['pasos' => $pasos, 'actual' => ProyectoService::PASO_LISTA]) ?>
+    <?= $this->render('/proyecto/_pasos', ['pasos' => $pasos, 'actual' => NavegacionProyectoService::PASO_LISTA]) ?>
 
     <div class="notice mb-3">
         Sin precios todavía — se completan al registrar cotizaciones.

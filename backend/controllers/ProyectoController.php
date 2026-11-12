@@ -7,8 +7,11 @@ namespace backend\controllers;
 use backend\components\PresupuestoPdfGenerator;
 use backend\components\UsuarioActual;
 use backend\models\Proyecto;
+use backend\services\AreaIntervencionService;
+use backend\services\FichaTecnicaService;
 use backend\services\HistorialService;
 use backend\services\ListaItemsService;
+use backend\services\NavegacionProyectoService;
 use backend\services\OrdenCambioFaseService;
 use backend\services\ParametrosProyectoService;
 use backend\services\PlantillaService;
@@ -30,28 +33,32 @@ use yii\web\Response;
  * basicos del proyecto y su pantalla central de navegacion.
  *
  * No consulta la base de datos ni conoce de donde salen los edificios y
- * ambientes: delega en ProyectoService, ParametrosProyectoService y la
- * fuente de infraestructura (InfraestructuraProvider).
+ * ambientes: delega en ProyectoService (datos del proyecto y fases),
+ * AreaIntervencionService (area de intervencion, UsfxGEO), FichaTecnicaService
+ * (ficha tecnica y montos) y NavegacionProyectoService (pasos y franja de fases).
  */
 class ProyectoController extends Controller
 {
     private ProyectoService $service;
-    private ParametrosProyectoService $parametros;
-    private InfraestructuraProvider $infraestructura;
+    private AreaIntervencionService $areas;
+    private FichaTecnicaService $ficha;
+    private NavegacionProyectoService $navegacion;
 
     /**
      * init() es el "constructor" recomendado en Yii2 para componentes: se
      * ejecuta una vez al crear el controlador, antes de cualquier accion.
      *
-     * Yii::$container->get() arma el servicio de parametros con la fuente
-     * configurada en backend/config/main.php ('container').
+     * Yii::$container->get() arma los parametros y la fuente de
+     * infraestructura configurados en backend/config/main.php ('container').
      */
     public function init(): void
     {
         parent::init();
-        $this->parametros = Yii::$container->get(ParametrosProyectoService::class);
-        $this->infraestructura = Yii::$container->get(InfraestructuraProvider::class);
-        $this->service = new ProyectoService($this->parametros, $this->infraestructura);
+        $infraestructura = Yii::$container->get(InfraestructuraProvider::class);
+        $this->service = new ProyectoService(Yii::$container->get(ParametrosProyectoService::class), $infraestructura);
+        $this->areas = new AreaIntervencionService($infraestructura);
+        $this->ficha = new FichaTecnicaService();
+        $this->navegacion = new NavegacionProyectoService();
     }
 
     public function behaviors(): array
@@ -86,20 +93,20 @@ class ProyectoController extends Controller
             'model' => $model,
             'fechas' => $historial->fechas($model),
             'historial' => $historial->delProyecto($model->id),
-            'pasos' => $this->service->pasos($model),
-            'urlPresupuesto' => $this->service->urlPresupuesto($model),
+            'pasos' => $this->navegacion->pasos($model),
+            'urlPresupuesto' => $this->navegacion->urlPresupuesto($model),
             'nombreTipo' => $model->tipoProyecto?->nombre,
-            'monto' => $this->service->montoPresupuesto($model),
+            'monto' => $this->ficha->montoPresupuesto($model),
             // Total unico del proyecto: fases + ordenes de cambio aprobadas (parte 6c).
-            'costo' => $this->service->costoTotal($model),
+            'costo' => $this->ficha->costoTotal($model),
             'totalItems' => (new ListaItemsService())->contar($model),
             'listaEditable' => (new ListaItemsService())->puedeEditarse($model),
-            'puedeEditarse' => $this->service->puedeEditarse($model),
-            'estaAprobado' => $this->service->estaAprobado($model),
+            'puedeEditarse' => $model->esEditable(),
+            'estaAprobado' => $model->tienePresupuestoAprobado(),
             // "Agregar fase": en la ultima fase, aprobada o no (varias fases a la vez, 2026-11-09).
             'puedeAgregarFase' => $this->service->puedeAgregarFase($model),
             // Franja "FASES" encima de los pasos (vacia con fase unica y sin ordenes de cambio).
-            'franjaFases' => $this->service->franjaFases($model),
+            'franjaFases' => $this->navegacion->franjaFases($model),
             // "Registrar orden de cambio": en una fase con su presupuesto aprobado (parte 6).
             'puedeRegistrarOrden' => (new OrdenCambioFaseService())->puedeRegistrar($model),
             // Fases 2+: la fase 1, solo si hoy deja cambiar los datos comunes (nota de "Datos generales").
@@ -111,12 +118,12 @@ class ProyectoController extends Controller
      * Ficha tecnica del proyecto en PDF (boton en "Datos generales" de la
      * vista). Se abre en el navegador ('inline') para imprimirla. Mientras no
      * esta aprobada lleva la marca de agua BORRADOR, como el presupuesto (ver
-     * ProyectoService::datosFicha()).
+     * FichaTecnicaService::datosFicha()).
      */
     public function actionFicha(int $id): Response
     {
         $model = $this->findModel($id);
-        $datos = $this->service->datosFicha($model);
+        $datos = $this->ficha->datosFicha($model);
 
         $html = $this->renderPartial('ficha-pdf', [
             'model' => $model,
@@ -167,7 +174,7 @@ class ProyectoController extends Controller
             return $this->redirect(['update', 'id' => $orden->id]);
         }
 
-        if (!$this->service->puedeEditarse($orden)) {
+        if (!$orden->esEditable()) {
             Yii::$app->session->setFlash('error', 'Esta orden de cambio ya tiene su presupuesto ' . mb_strtolower($orden->presupuesto->estadoLabel()) . ' y no se modifica.');
 
             return $this->redirect(['view', 'id' => $orden->id]);
@@ -216,7 +223,7 @@ class ProyectoController extends Controller
             return $this->redirect(['editar-orden-cambio', 'id' => $model->id]);
         }
 
-        if (!$this->service->puedeEditarse($model)) {
+        if (!$model->esEditable()) {
             Yii::$app->session->setFlash('error', 'Este proyecto ya tiene su presupuesto ' . mb_strtolower($model->presupuesto->estadoLabel()) . ' y no se modifica. Si piden algo más, registre una orden de cambio o agregue una fase.');
 
             return $this->redirect(['view', 'id' => $model->id]);
@@ -248,7 +255,7 @@ class ProyectoController extends Controller
         $lista = new ListaItemsService();
         $plantillas = new PlantillaService();
 
-        if (!$this->service->puedeEditarse($model)) {
+        if (!$model->esEditable()) {
             Yii::$app->session->setFlash('error', 'Este proyecto ya no se modifica: no se le puede cargar una plantilla.');
 
             return $this->redirect(['view', 'id' => $model->id]);
@@ -295,7 +302,7 @@ class ProyectoController extends Controller
 
         return $this->render('plantilla', [
             'model' => $model,
-            'pasos' => $this->service->pasos($model),
+            'pasos' => $this->navegacion->pasos($model),
             'plantillas' => $filas,
             'totalItems' => $lista->contar($model),
         ]);
@@ -331,12 +338,12 @@ class ProyectoController extends Controller
      */
     private function listaDeInfraestructura(callable $consulta): Response
     {
-        $opciones = $this->service->consultarInfraestructura($consulta);
+        $opciones = $this->areas->consultarInfraestructura($consulta);
 
         if ($opciones === null) {
             Yii::$app->response->statusCode = 503;
 
-            return $this->asJson(['error' => ProyectoService::AVISO_INFRAESTRUCTURA]);
+            return $this->asJson(['error' => AreaIntervencionService::AVISO_INFRAESTRUCTURA]);
         }
 
         return $this->asJson(self::lista($opciones));
@@ -345,11 +352,11 @@ class ProyectoController extends Controller
     /**
      * Buscador del area ("ciencias y tecnologia", "lab economicas", "E303"):
      * edificios que coinciden y ambientes con su area completa, listos para
-     * agregarse. Ver ProyectoService::buscarAreas().
+     * agregarse. Ver AreaIntervencionService::buscarAreas().
      */
     public function actionBuscarAmbiente(string $q = ''): Response
     {
-        return $this->asJson($this->service->buscarAreas($q));
+        return $this->asJson($this->areas->buscarAreas($q));
     }
 
     public function actionDelete(int $id)
@@ -383,7 +390,7 @@ class ProyectoController extends Controller
     {
         $equipo = array_filter(is_array($model->equipo) ? $model->equipo : [], 'is_array');
         // null = UsfxGEO no responde: el formulario abre igual, con el aviso y el area escrita a mano.
-        $edificios = $this->service->edificiosParaFormulario();
+        $edificios = $this->areas->edificiosParaFormulario();
 
         return [
             'model' => $model,
@@ -391,8 +398,8 @@ class ProyectoController extends Controller
             'procesos' => (new ProcesoService())->opciones($model->getOldAttribute('idProceso')),
             'sugerenciasUnidad' => $this->service->sugerenciasUnidad(),
             'edificios' => $edificios ?? [],
-            'avisoInfraestructura' => $edificios === null ? ProyectoService::AVISO_INFRAESTRUCTURA : null,
-            'areas' => $this->service->areasDelFormulario($model),
+            'avisoInfraestructura' => $edificios === null ? AreaIntervencionService::AVISO_INFRAESTRUCTURA : null,
+            'areas' => $this->areas->areasDelFormulario($model),
             // Personas y roles activos, mas los que ya estan en el equipo del formulario.
             'personal' => (new PersonalService())->opciones(array_column($equipo, 'nombre')),
             'roles' => (new RolProyectoService())->opciones(array_map('intval', array_filter(array_column($equipo, 'idRol'), 'ctype_digit'))),

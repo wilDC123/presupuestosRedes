@@ -373,18 +373,6 @@ parameters:
 			path: backend/services/PresupuestoService.php
 
 		-
-			message: '#^Call to function is_array\(\) with array\<string, string\> will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 2
-			path: backend/services/ProyectoService.php
-
-		-
-			message: '#^Property backend\\models\\Proyecto\:\:\$areas \(array\<int, array\<string, string\>\>\|string\) does not accept array\<array\<string, bool\|int\|string\|null\>\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: backend/services/ProyectoService.php
-
-		-
 			message: '#^Strict comparison using \=\=\= between int\|null and '''' will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 1

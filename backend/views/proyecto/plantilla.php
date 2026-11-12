@@ -16,7 +16,7 @@ use yii\web\JqueryAsset;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model
- * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
+ * @var array $pasos barra de pasos del proyecto, ver NavegacionProyectoService::pasos()
  * @var array<int, array{plantilla: backend\models\Plantilla, totalItems: int, grupos: array<string, backend\models\PlantillaItem[]>}> $plantillas activas, las del tipo del proyecto primero
  * @var int $totalItems items que la lista del proyecto ya tiene
  */

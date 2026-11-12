@@ -9,6 +9,7 @@ use backend\models\Proyecto;
 use backend\services\ElaborarPresupuestoService;
 use backend\services\EspecificacionEmisionService;
 use backend\services\PresupuestoService;
+use backend\services\NavegacionProyectoService;
 use backend\services\ProyectoService;
 use Yii;
 use yii\filters\VerbFilter;
@@ -238,7 +239,7 @@ class ElaborarPresupuestoController extends Controller
             'erroresEnvio' => [],
             'proyecto' => $proyecto,
             'presupuesto' => $presupuesto,
-            'pasos' => (new ProyectoService())->pasos($proyecto),
+            'pasos' => (new NavegacionProyectoService())->pasos($proyecto),
             'tabla' => $this->service->tabla($presupuesto),
             'control' => $this->service->control($presupuesto),
             'resumenPartidas' => (new PresupuestoService())->resumenPorPartida($presupuesto),

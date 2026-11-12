@@ -12,6 +12,7 @@ use backend\models\Proyecto;
 use backend\models\SolicitudCotizacion;
 use backend\services\CotizacionService;
 use backend\services\ProveedorService;
+use backend\services\NavegacionProyectoService;
 use backend\services\ProyectoService;
 use backend\services\SolicitudCotizacionService;
 use Yii;
@@ -70,7 +71,7 @@ class SolicitudCotizacionController extends Controller
 
         return $this->render('index', [
             'proyecto' => $proyecto,
-            'pasos' => (new ProyectoService())->pasos($proyecto),
+            'pasos' => (new NavegacionProyectoService())->pasos($proyecto),
             'solicitudes' => $solicitudes,
             'sinAsignar' => $this->service->sinAsignar($proyecto),
             'editable' => $this->service->puedeEditarse($proyecto),
@@ -250,7 +251,7 @@ class SolicitudCotizacionController extends Controller
 
         return $this->render('comparativo', [
             'solicitud' => $solicitud,
-            'pasos' => (new ProyectoService())->pasos($solicitud->proyecto),
+            'pasos' => (new NavegacionProyectoService())->pasos($solicitud->proyecto),
             'comparativo' => $this->cotizaciones->comparativo($solicitud),
         ]);
     }
@@ -375,7 +376,7 @@ class SolicitudCotizacionController extends Controller
 
         return $this->render('cotizar', [
             'solicitud' => $solicitud,
-            'pasos' => (new ProyectoService())->pasos($solicitud->proyecto),
+            'pasos' => (new NavegacionProyectoService())->pasos($solicitud->proyecto),
             'cotizacion' => $cotizacion,
             'filas' => $filas,
             // Marca y modelo pedidos en la solicitud, para comparar con lo ofertado.

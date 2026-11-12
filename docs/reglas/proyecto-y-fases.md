@@ -67,11 +67,11 @@
     una **copia congelada** de los nombres: un área guardada se conserva aunque la den de baja.
   - Se puede **escribir a mano** (edificios en construcción o no registrados): sin ningún id (`idEdificio` NULL,
     `esManual()`), edificio obligatorio, sin repetidas. Lleva la marca "a mano" en pantallas, no en documentos.
-  - Formulario: buscador (`ProyectoService::buscarAreas()`: primero los edificios, luego hasta 30 espacios; ignora tildes
+  - Formulario: buscador (`AreaIntervencionService::buscarAreas()`: primero los edificios, luego hasta 30 espacios; ignora tildes
     y guiones, "E303" = "E-303") y paso a paso (edificio y espacio son campos que filtran al escribir; bloque y piso,
     `<select>`; `proyecto-form.js`).
-  - **Si UsfxGEO no responde**, el formulario abre igual con el aviso `ProyectoService::AVISO_INFRAESTRUCTURA` y el
-    área se escribe a mano. Todas sus consultas pasan por `ProyectoService::consultarInfraestructura()`.
+  - **Si UsfxGEO no responde**, el formulario abre igual con el aviso `AreaIntervencionService::AVISO_INFRAESTRUCTURA` y el
+    área se escribe a mano. Todas sus consultas pasan por `AreaIntervencionService::consultarInfraestructura()`.
   - En documentos: **una línea por edificio**, con bloque, piso y espacio juntos
     (`ProyectoAreaIntervencion::lineasPorEdificio()`). En pantallas, agrupadas por "edificio · bloque" (`grupo()`,
     `detalle()`).
@@ -105,11 +105,11 @@
 
 ## Vista del proyecto
 
-- **Barra de pasos** (`ProyectoService::pasos()`): Datos, Plantilla, Lista de ítems y especificaciones, Cotización,
+- **Barra de pasos** (`NavegacionProyectoService::pasos()`): Datos, Plantilla, Lista de ítems y especificaciones, Cotización,
   Presupuesto. Sale en todas las pantallas de un paso.
-- **Franja "FASES"** (`proyecto/_franja-fases.php`, `ProyectoService::franjaFases()`), con varias fases o con órdenes de
+- **Franja "FASES"** (`proyecto/_franja-fases.php`, `NavegacionProyectoService::franjaFases()`), con varias fases o con órdenes de
   cambio: una pastilla por fase (estado y total), sus órdenes después, la que se ve marcada y "Agregar fase N →".
-  Con la franja visible, el recuadro de abajo muestra solo el **costo total** (`ProyectoService::costoTotal()`).
+  Con la franja visible, el recuadro de abajo muestra solo el **costo total** (`FichaTecnicaService::costoTotal()`).
 - **Tarjeta "Datos generales"** (clases `rd-dg-*`): descripción (cortada en 2 líneas solo si es larga), cuadrícula de
   datos del proyecto, nota "se editan en la Fase 1" (con enlace solo si la fase 1 hoy los deja cambiar,
   `ProyectoService::faseParaDatosComunes()`), y "De esta fase": área y equipo (en una orden de cambio, los de su fase).

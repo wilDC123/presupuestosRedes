@@ -23,7 +23,7 @@ use yii\web\JqueryAsset;
  * @var yii\web\View $this
  * @var backend\models\Proyecto $proyecto
  * @var backend\models\Presupuesto $presupuesto
- * @var array $pasos Ver ProyectoService::pasos()
+ * @var array $pasos Ver NavegacionProyectoService::pasos()
  * @var array $tabla Ver ElaborarPresupuestoService::tabla()
  * @var array{sinPrecio: string[], vencidas: int} $control Ver ElaborarPresupuestoService::control()
  * @var array $resumenPartidas Ver PresupuestoService::resumenPorPartida()

@@ -151,23 +151,23 @@ class DashboardService
     public function pendientes(?DateTimeImmutable $hoy = null): array
     {
         $hoy ??= new DateTimeImmutable('today');
-        $proyectoService = new ProyectoService();
+        $navegacion = new NavegacionProyectoService();
 
         $grupos = [
             [
                 'titulo' => 'Presupuestos observados',
                 'nota' => 'Volvieron de revisión con observaciones: corregir y volver a enviar.',
-                'filas' => $this->observados($proyectoService),
+                'filas' => $this->observados($navegacion),
             ],
             [
                 'titulo' => 'Ítems sin precio',
                 'nota' => 'Presupuestos en proceso que todavía no se pueden enviar a revisión.',
-                'filas' => $this->itemsSinPrecio($proyectoService),
+                'filas' => $this->itemsSinPrecio($navegacion),
             ],
             [
                 'titulo' => 'Cotizaciones vencidas',
                 'nota' => 'Líneas con el precio de una proforma cuya validez ya pasó.',
-                'filas' => $this->cotizacionesVencidas($proyectoService, $hoy),
+                'filas' => $this->cotizacionesVencidas($navegacion, $hoy),
             ],
             [
                 'titulo' => 'Especificaciones por reemitir',
@@ -187,7 +187,7 @@ class DashboardService
     /**
      * @return array<int, array{proyecto: Proyecto, detalle: string, url: array}>
      */
-    private function observados(ProyectoService $proyectoService): array
+    private function observados(NavegacionProyectoService $navegacion): array
     {
         $presupuestos = Presupuesto::find()
             ->with('proyecto')
@@ -198,7 +198,7 @@ class DashboardService
         return array_map(static fn (Presupuesto $p) => [
             'proyecto' => $p->proyecto,
             'detalle' => (string) $p->numeroPresupuesto,
-            'url' => $proyectoService->urlPresupuesto($p->proyecto),
+            'url' => $navegacion->urlPresupuesto($p->proyecto),
         ], $presupuestos);
     }
 
@@ -209,7 +209,7 @@ class DashboardService
      *
      * @return array<int, array{proyecto: Proyecto, detalle: string, url: array}>
      */
-    private function itemsSinPrecio(ProyectoService $proyectoService): array
+    private function itemsSinPrecio(NavegacionProyectoService $navegacion): array
     {
         $presupuestos = Presupuesto::find()
             ->with('proyecto')
@@ -242,7 +242,7 @@ class DashboardService
             $filas[] = [
                 'proyecto' => $proyecto,
                 'detalle' => (int) $n === 1 ? '1 ítem sin precio' : "$n ítems sin precio",
-                'url' => $proyectoService->urlPresupuesto($proyecto),
+                'url' => $navegacion->urlPresupuesto($proyecto),
             ];
         }
 
@@ -256,7 +256,7 @@ class DashboardService
      *
      * @return array<int, array{proyecto: Proyecto, detalle: string, url: array}>
      */
-    private function cotizacionesVencidas(ProyectoService $proyectoService, DateTimeImmutable $hoy): array
+    private function cotizacionesVencidas(NavegacionProyectoService $navegacion, DateTimeImmutable $hoy): array
     {
         $lineas = PresupuestoDetalle::find()
             ->alias('d')
@@ -281,7 +281,7 @@ class DashboardService
         return array_values(array_map(static fn (array $dato) => [
             'proyecto' => $dato['proyecto'],
             'detalle' => $dato['lineas'] === 1 ? '1 línea con cotización vencida' : "{$dato['lineas']} líneas con cotización vencida",
-            'url' => $proyectoService->urlPresupuesto($dato['proyecto']),
+            'url' => $navegacion->urlPresupuesto($dato['proyecto']),
         ], $vencidas));
     }
 

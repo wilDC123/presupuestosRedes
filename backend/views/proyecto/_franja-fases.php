@@ -10,7 +10,7 @@ use yii\helpers\Html;
  * presupuesto, sus ordenes de cambio despues (separadas por "›") y, al final,
  * "Agregar fase N →". Asi las fases se ven arriba, sin bajar hasta el
  * recuadro "Fases del proyecto". Solo se muestra con varias fases o con
- * ordenes de cambio (ProyectoService::franjaFases()).
+ * ordenes de cambio (NavegacionProyectoService::franjaFases()).
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model el que se esta viendo

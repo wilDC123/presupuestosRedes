@@ -24,7 +24,7 @@ use yii\widgets\ActiveForm;
  *
  * @var yii\web\View $this
  * @var backend\models\SolicitudCotizacion $solicitud
- * @var array $pasos barra de pasos del proyecto, ver ProyectoService::pasos()
+ * @var array $pasos barra de pasos del proyecto, ver NavegacionProyectoService::pasos()
  * @var backend\models\Cotizacion $cotizacion
  * @var backend\models\CotizacionDetalle[] $filas indexadas por idProyectoItem. Ver CotizacionService::filasDesdeSolicitud()
  * @var array<int, string> $referencias [idProyectoItem => marca y modelo de referencia pedidos en la solicitud]

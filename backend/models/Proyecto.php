@@ -90,11 +90,14 @@ class Proyecto extends ActiveRecord
      *
      * Cada area llega como [idEdificio, idBloqueArea, numeroNivel, idEspacio]
      * (los tres ultimos pueden venir vacios). Los nombres NO vienen del
-     * formulario: ProyectoService los pide a la fuente de infraestructura.
+     * formulario: AreaIntervencionService los pide a la fuente de infraestructura.
      * Salvo el area escrita a mano, que llega como [manual = 1, edificio,
      * bloque, nivel, ambiente] (no esta en UsfxGEO, no tiene id).
      *
-     * @var array<int, array<string, string>>|string
+     * Viene del formulario: puede traer cualquier cosa (por eso
+     * AreaIntervencionService revisa cada elemento con is_array()).
+     *
+     * @var array<int, mixed>|string
      */
     public $areas = [];
 
@@ -496,6 +499,23 @@ class Proyecto extends ActiveRecord
             ->scalar();
 
         return is_string($codigo) ? $codigo : $this->codigo;
+    }
+
+    /**
+     * REGLA DE NEGOCIO: un proyecto (fase u orden de cambio) se edita mientras
+     * su presupuesto se pueda editar (Presupuesto::puedeEditarse(): no aprobado
+     * ni cancelado) o no tenga presupuesto. Una ampliacion de uno aprobado se
+     * registra como fase siguiente u orden de cambio.
+     */
+    public function esEditable(): bool
+    {
+        return $this->presupuesto === null || $this->presupuesto->puedeEditarse();
+    }
+
+    /** true si el presupuesto de esta fase (u orden de cambio) esta aprobado. */
+    public function tienePresupuestoAprobado(): bool
+    {
+        return ($this->presupuesto->estado ?? null) === Presupuesto::ESTADO_APROBADO;
     }
 
     /** true si ninguna fase del proyecto viene despues de esta (una orden de cambio no es una fase: false). */

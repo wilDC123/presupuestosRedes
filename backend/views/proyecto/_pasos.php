@@ -11,7 +11,7 @@ use yii\helpers\Html;
  * comparativo), elaborar-presupuesto y carta.
  *
  * @var yii\web\View $this
- * @var array<int, array{titulo: string, estado: string, url: array|null}> $pasos Ver ProyectoService::pasos()
+ * @var array<int, array{titulo: string, estado: string, url: array|null}> $pasos Ver NavegacionProyectoService::pasos()
  * @var string|null $actual titulo del paso de la pantalla actual (se resalta)
  */
 
