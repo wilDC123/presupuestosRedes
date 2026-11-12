@@ -11,6 +11,7 @@ use yii\helpers\Html;
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model
  * @var bool $datosComunesFijos ver ProyectoService::datosComunesFijos()
+ * @var string|null $avisoInfraestructura si UsfxGEO no responde (ver _form.php)
  */
 
 $this->title = 'Editar proyecto';
@@ -38,6 +39,7 @@ $this->params['breadcrumbs'][] = 'Editar';
         'personal' => $personal,
         'roles' => $roles,
         'datosComunesFijos' => $datosComunesFijos,
+        'avisoInfraestructura' => $avisoInfraestructura,
     ]) ?>
 
 </div>

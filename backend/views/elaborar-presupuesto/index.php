@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\components\Monto;
 use backend\models\Presupuesto;
 use backend\models\PresupuestoDetalle;
 use backend\services\ElaborarPresupuestoService;
@@ -220,8 +221,10 @@ $columnas = 5 + count($proveedores);
                                     <?= Html::textInput('precio', $esDirecto ? (string) (float) $linea->precioUnitario : '', [
                                         'class' => 'qty elaborar-precio',
                                         'type' => 'number',
-                                        'step' => 'any',
+                                        // Hasta 2 decimales y lo que cabe en decimal(10,2) (backend\components\Monto).
+                                        'step' => '0.01',
                                         'min' => '0',
+                                        'max' => (string) Monto::MAXIMO,
                                         'aria-label' => 'Precio unitario directo',
                                         'disabled' => !$borrador,
                                     ]) ?>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\components\Busqueda;
 use backend\components\ArchivoSubido;
 use backend\components\EspecificacionMetadataExtractor;
 use backend\components\NumeracionEspecificacion;
@@ -300,9 +301,10 @@ class EspecificacionService
      */
     public function buscar(string $texto): array
     {
-        $palabras = preg_split('/\s+/u', trim($texto), -1, PREG_SPLIT_NO_EMPTY);
+        // A lo sumo Busqueda::MAX_PALABRAS (SQL Server acepta 2100 parametros; aqui van 6 por palabra).
+        $palabras = Busqueda::palabras($texto);
 
-        if ($palabras === false || $palabras === []) {
+        if ($palabras === []) {
             return [];
         }
 

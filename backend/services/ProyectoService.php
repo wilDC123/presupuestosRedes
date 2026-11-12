@@ -611,10 +611,15 @@ class ProyectoService
      * cuantos proyectos ya lo tienen como area (el formulario pone primero
      * los usados: casi siempre se trabaja en los mismos edificios).
      *
-     * @return array<int, array{id: string, nombre: string, usos: int}> ordenados por nombre
+     * @return array<int, array{id: string, nombre: string, usos: int}>|null ordenados por nombre; null si UsfxGEO no responde
      */
-    public function edificiosParaFormulario(): array
+    public function edificiosParaFormulario(): ?array
     {
+        $vigentes = $this->consultarInfraestructura(static fn (InfraestructuraProvider $geo): array => $geo->edificios());
+        if ($vigentes === null) {
+            return null;
+        }
+
         $usos = ProyectoAreaIntervencion::find()
             ->select(['total' => 'COUNT(DISTINCT idProyecto)', 'idEdificio'])
             ->groupBy('idEdificio')
@@ -623,7 +628,7 @@ class ProyectoService
 
         $edificios = [];
 
-        foreach ($this->infraestructura->edificios() as $id => $nombre) {
+        foreach ($vigentes as $id => $nombre) {
             $edificios[] = ['id' => (string) $id, 'nombre' => $nombre, 'usos' => (int) ($usos[(string) $id] ?? 0)];
         }
 
@@ -642,7 +647,9 @@ class ProyectoService
      *  - 'hayMas': true si hay mas ambientes de los que se muestran (el
      *    formulario pide escribir algo mas preciso).
      *
-     * @return array{edificios: array<int, array{idEdificio: string, edificio: string}>, ambientes: array<int, array<string, mixed>>, hayMas: bool}
+     *  - 'error': solo si UsfxGEO no responde (AVISO_INFRAESTRUCTURA).
+     *
+     * @return array{edificios: array<int, array{idEdificio: string, edificio: string}>, ambientes: array<int, array<string, mixed>>, hayMas: bool, error?: string}
      */
     public function buscarAreas(string $texto): array
     {
@@ -651,10 +658,17 @@ class ProyectoService
         }
 
         // Se pide uno mas de los que se muestran, solo para saber si hay mas.
-        $ambientes = $this->infraestructura->buscarAmbientes($texto, self::MAX_AMBIENTES_BUSCADOS + 1);
+        $encontrado = $this->consultarInfraestructura(static fn (InfraestructuraProvider $geo): array => [
+            'ambientes' => $geo->buscarAmbientes($texto, self::MAX_AMBIENTES_BUSCADOS + 1),
+            'edificios' => $geo->buscarEdificios($texto),
+        ]);
+        if ($encontrado === null) {
+            return ['edificios' => [], 'ambientes' => [], 'hayMas' => false, 'error' => self::AVISO_INFRAESTRUCTURA];
+        }
+        $ambientes = $encontrado['ambientes'];
 
         return [
-            'edificios' => $this->infraestructura->buscarEdificios($texto),
+            'edificios' => $encontrado['edificios'],
             'ambientes' => array_map(static function (array $fila): array {
                 $fila['texto'] = (new ProyectoAreaIntervencion($fila))->texto();
 
@@ -662,6 +676,31 @@ class ProyectoService
             }, array_slice($ambientes, 0, self::MAX_AMBIENTES_BUSCADOS)),
             'hayMas' => count($ambientes) > self::MAX_AMBIENTES_BUSCADOS,
         ];
+    }
+
+    /** Lo que se le dice al usuario cuando UsfxGEO no responde. */
+    public const AVISO_INFRAESTRUCTURA = 'La infraestructura de la universidad (UsfxGEO) no responde en este momento. Puede escribir el área a mano («¿No está en la lista?») o intentar más tarde.';
+
+    /**
+     * Hace una consulta a UsfxGEO (otra base, de Desarrollo) sin que su caida
+     * tumbe la pantalla: si no responde, deja el error en el log y devuelve
+     * null, y quien llama muestra AVISO_INFRAESTRUCTURA (auditoria del
+     * 2026-11-11, hallazgo 4: antes, sin UsfxGEO no se podia crear ni editar
+     * ningun proyecto). Lo usan el formulario, el buscador y el paso a paso.
+     *
+     * @template T
+     * @param callable(InfraestructuraProvider): T $consulta
+     * @return T|null
+     */
+    public function consultarInfraestructura(callable $consulta): mixed
+    {
+        try {
+            return $consulta($this->infraestructura);
+        } catch (DbException $e) {
+            Yii::error('UsfxGEO no responde: ' . $e->getMessage(), __METHOD__);
+
+            return null;
+        }
     }
 
 

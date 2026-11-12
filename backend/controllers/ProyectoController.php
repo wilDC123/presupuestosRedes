@@ -310,17 +310,36 @@ class ProyectoController extends Controller
      */
     public function actionBloques(string $idEdificio): Response
     {
-        return $this->asJson(self::lista($this->infraestructura->bloques($idEdificio)));
+        return $this->listaDeInfraestructura(static fn (InfraestructuraProvider $geo): array => $geo->bloques($idEdificio));
     }
 
     public function actionNiveles(int $idBloqueArea): Response
     {
-        return $this->asJson(self::lista($this->infraestructura->niveles($idBloqueArea)));
+        return $this->listaDeInfraestructura(static fn (InfraestructuraProvider $geo): array => $geo->niveles($idBloqueArea));
     }
 
     public function actionAmbientes(int $idBloqueArea, string $numeroNivel): Response
     {
-        return $this->asJson(self::lista($this->infraestructura->ambientes($idBloqueArea, $numeroNivel)));
+        return $this->listaDeInfraestructura(static fn (InfraestructuraProvider $geo): array => $geo->ambientes($idBloqueArea, $numeroNivel));
+    }
+
+    /**
+     * La lista [{id, nombre}] de una consulta a UsfxGEO, o, si no responde,
+     * error 503 con el aviso (el JS lo muestra; auditoria 2026-11-11, hallazgo 4).
+     *
+     * @param callable(InfraestructuraProvider): array<int|string, string> $consulta
+     */
+    private function listaDeInfraestructura(callable $consulta): Response
+    {
+        $opciones = $this->service->consultarInfraestructura($consulta);
+
+        if ($opciones === null) {
+            Yii::$app->response->statusCode = 503;
+
+            return $this->asJson(['error' => ProyectoService::AVISO_INFRAESTRUCTURA]);
+        }
+
+        return $this->asJson(self::lista($opciones));
     }
 
     /**
@@ -363,13 +382,16 @@ class ProyectoController extends Controller
     private function datosFormulario(Proyecto $model): array
     {
         $equipo = array_filter(is_array($model->equipo) ? $model->equipo : [], 'is_array');
+        // null = UsfxGEO no responde: el formulario abre igual, con el aviso y el area escrita a mano.
+        $edificios = $this->service->edificiosParaFormulario();
 
         return [
             'model' => $model,
             'tipos' => (new TipoProyectoService())->opciones($model->getOldAttribute('idTipoProyecto')),
             'procesos' => (new ProcesoService())->opciones($model->getOldAttribute('idProceso')),
             'sugerenciasUnidad' => $this->service->sugerenciasUnidad(),
-            'edificios' => $this->service->edificiosParaFormulario(),
+            'edificios' => $edificios ?? [],
+            'avisoInfraestructura' => $edificios === null ? ProyectoService::AVISO_INFRAESTRUCTURA : null,
             'areas' => $this->service->areasDelFormulario($model),
             // Personas y roles activos, mas los que ya estan en el equipo del formulario.
             'personal' => (new PersonalService())->opciones(array_column($equipo, 'nombre')),

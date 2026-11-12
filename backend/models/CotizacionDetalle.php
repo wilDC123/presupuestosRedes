@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\models;
 
+use backend\components\Monto;
 use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
@@ -45,7 +46,11 @@ class CotizacionDetalle extends ActiveRecord
         return [
             [['idSubcatalogo', 'cantidad', 'precioUnitario'], 'required'],
             [['idCotizacion', 'idSubcatalogo', 'idEspecificacion'], 'integer'],
-            [['cantidad', 'precioUnitario'], 'number', 'min' => 0],
+            // Que quepan en decimal(10,2), con hasta 2 decimales y sin "1e5" (Monto, auditoria 2026-11-11).
+            Monto::regla(['cantidad', 'precioUnitario']),
+            [['precioUnitario'], function (string $atributo): void {
+                Monto::validarTotal($this, $atributo);
+            }],
             [['marcaModelo'], 'string', 'max' => 300],
             [['idSubcatalogo'], 'exist', 'skipOnError' => true, 'targetClass' => SubcatalogoItem::class, 'targetAttribute' => ['idSubcatalogo' => 'id']],
             [['idEspecificacion'], 'exist', 'skipOnError' => true, 'targetClass' => Especificacion::class, 'targetAttribute' => ['idEspecificacion' => 'id']],

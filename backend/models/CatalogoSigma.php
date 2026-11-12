@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\models;
 
+use backend\components\Busqueda;
 use yii\base\NotSupportedException;
 use yii\db\ActiveRecord;
 
@@ -102,9 +103,9 @@ class CatalogoSigma extends ActiveRecord
      */
     public static function buscar(string $texto): array
     {
-        $palabras = preg_split('/\s+/u', trim($texto), -1, PREG_SPLIT_NO_EMPTY);
+        $palabras = Busqueda::palabras($texto);
 
-        if ($palabras === false || $palabras === []) {
+        if ($palabras === []) {
             return [];
         }
 

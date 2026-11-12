@@ -28,6 +28,9 @@ $(function () {
     var url = $tabla.data('url');
     // Igual que ElaborarPresupuestoService::DIRECTO.
     var DIRECTO = 'directo';
+    // Monto::PATRON y Monto::MAXIMO (backend/components/Monto.php).
+    var PATRON_MONTO = /^\d+(\.\d{1,2})?$/;
+    var MONTO_MAXIMO = 99999999.99;
 
     function estado($fila, texto, clase) {
         $fila.find('.elaborar-estado')
@@ -69,6 +72,13 @@ $(function () {
 
         if (datos.opcion === DIRECTO && datos.precio === '') {
             estado($fila, 'Escriba el precio unitario.', 'text-muted');
+            return;
+        }
+
+        // La misma regla que el servidor (backend\components\Monto): hasta 2 decimales, sin "1e5",
+        // y que quepa en decimal(10,2). El campo numerico del navegador acepta "1e5" tal cual.
+        if (datos.opcion === DIRECTO && (!PATRON_MONTO.test(datos.precio) || parseFloat(datos.precio) > MONTO_MAXIMO)) {
+            estado($fila, 'Precio no válido: hasta 2 decimales, sin comas, hasta 99,999,999.99.', 'text-danger');
             return;
         }
 

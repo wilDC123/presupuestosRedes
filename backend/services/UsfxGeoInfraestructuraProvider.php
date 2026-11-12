@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\services;
 
+use backend\components\Busqueda;
 use backend\services\contracts\InfraestructuraProvider;
 use Yii;
 use yii\db\Connection;
@@ -139,7 +140,7 @@ class UsfxGeoInfraestructuraProvider implements InfraestructuraProvider
      */
     private static function filtrarPorPalabras(Query $query, string $texto, string $columnas): bool
     {
-        $palabras = preg_split('/\s+/u', str_replace('-', '', trim($texto)), -1, PREG_SPLIT_NO_EMPTY);
+        $palabras = Busqueda::palabras(str_replace('-', '', $texto));
 
         if ($palabras === []) {
             return false;

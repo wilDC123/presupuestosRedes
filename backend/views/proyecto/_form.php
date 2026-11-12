@@ -30,6 +30,7 @@ use yii\widgets\ActiveForm;
  * @var array<int, string> $procesos [id => "PI – nombre"] procesos activos (y el que ya tenia)
  * @var string[] $sugerenciasUnidad
  * @var array<int, array{id: string, nombre: string, usos: int}> $edificios vigentes de UsfxGEO, con cuantos proyectos los usan
+ * @var string|null $avisoInfraestructura texto del aviso si UsfxGEO no responde (ProyectoService::AVISO_INFRAESTRUCTURA); null si responde
  * @var array<int, array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string, texto: string, grupo: string, detalle: string}> $areas Ver ProyectoService::areasDelFormulario()
  * @var string[] $personal nombres para el desplegable "Persona" (activos y los ya elegidos)
  * @var array<int, string> $roles [id => nombre] para el desplegable "Rol" (activos y los ya elegidos)
@@ -160,6 +161,10 @@ $hintComun = $esFaseSiguiente
                     </div>
                 <?php endforeach; ?>
             </div>
+
+            <?php // UsfxGEO no responde (o deja de responder mientras se usa el formulario: lo escribe el JS en el
+            // mismo recuadro). El formulario sigue: el area se puede escribir a mano. ?>
+            <div class="alert alert-warning py-2<?= $avisoInfraestructura === null ? ' d-none' : '' ?>" id="proyecto-aviso-infraestructura" role="alert"><?= Html::encode((string) $avisoInfraestructura) ?></div>
 
             <div class="rd-buscar-ambiente">
                 <input type="search" id="proyecto-buscar-ambiente" class="form-control" autocomplete="off"
