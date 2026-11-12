@@ -128,10 +128,10 @@ $fila = static fn (string $n, string $nombre, string $valor, bool $esSubtitulo, 
             <table class="table" id="esp-tabla">
                 <thead>
                     <tr>
-                        <th style="width: 4.5rem">N.°</th>
-                        <th style="width: 30%">Característica</th>
+                        <th class="rd-ancho-numero">N.°</th>
+                        <th class="rd-ancho-30">Característica</th>
                         <th>Valor</th>
-                        <th class="text-center" style="width: 5.5rem">Subtítulo</th>
+                        <th class="text-center rd-ancho-casilla">Subtítulo</th>
                         <th class="rd-num"></th>
                     </tr>
                 </thead>

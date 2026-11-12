@@ -138,9 +138,9 @@ $filaManual = static function (string $n, array $fila) use ($cantidad, $quitar, 
         <thead>
             <tr>
                 <th>Descripción</th>
-                <th style="width: 16%;">Unidad</th>
-                <th class="rd-num" style="width: 12%;">Cantidad</th>
-                <?php if ($editable): ?><th style="width: 40px;"></th><?php endif; ?>
+                <th class="rd-ancho-16">Unidad</th>
+                <th class="rd-num rd-ancho-12">Cantidad</th>
+                <?php if ($editable): ?><th class="rd-ancho-boton"></th><?php endif; ?>
             </tr>
         </thead>
         <?php foreach ($grupos as $nombre => $filas): ?>
@@ -165,7 +165,7 @@ $filaManual = static function (string $n, array $fila) use ($cantidad, $quitar, 
             Todavía no hay. Búsquelo en el subcatálogo aquí abajo; si la DTIC no aporta materiales, deje la sección vacía.
         </div>
         <div class="rd-card-pad border-top d-flex align-items-center gap-3 flex-wrap">
-            <div class="rd-combo flex-grow-1" style="max-width: 520px;">
+            <div class="rd-combo flex-grow-1 rd-max-520">
                 <input type="text" class="form-control material-buscar" autocomplete="off"
                        placeholder="Buscar en el subcatálogo y agregar…" aria-label="Buscar material en el subcatálogo">
                 <ul class="rd-resultados-ambiente d-none material-resultados"></ul>

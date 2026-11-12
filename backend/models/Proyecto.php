@@ -538,6 +538,35 @@ class Proyecto extends ActiveRecord
     }
 
     /**
+     * Calcula tieneVariasFases() de muchos proyectos con UNA consulta (el
+     * listado de proyectos lo pregunta en cada fila: sin esto, una consulta
+     * por fila). Mismo resultado que tieneVariasFases(): mas de una fase con
+     * su numero (las ordenes de cambio no cuentan), o ser la fase 2 o
+     * siguiente.
+     *
+     * @param Proyecto[] $proyectos
+     */
+    public static function precargarVariasFases(array $proyectos): void
+    {
+        $numeros = array_values(array_unique(array_filter(
+            array_map(static fn (self $p) => $p->numeroProyecto, $proyectos),
+            static fn ($numero) => $numero !== null
+        )));
+
+        $fasesPorNumero = $numeros === [] ? [] : self::find()
+            ->select(['fases' => 'COUNT(DISTINCT numeroFase)', 'numeroProyecto'])
+            ->andWhere(['numeroProyecto' => $numeros, 'numeroOrdenCambio' => null])
+            ->groupBy('numeroProyecto')
+            ->indexBy('numeroProyecto')
+            ->column();
+
+        foreach ($proyectos as $proyecto) {
+            $proyecto->variasFases = (int) $proyecto->numeroFase > 1
+                || (int) ($fasesPorNumero[$proyecto->numeroProyecto] ?? 0) > 1;
+        }
+    }
+
+    /**
      * "Proyecto 001", o "Proyecto 001 · Fase 2" si tiene varias fases: el
      * rotulo corto de migas de pan, titulos y avisos.
      */

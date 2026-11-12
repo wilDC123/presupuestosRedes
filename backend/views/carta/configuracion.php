@@ -78,7 +78,7 @@ $volver = $proyecto !== null
             <div class="form-group<?= $configuracion->hasErrors('tratamientos') ? ' has-error' : '' ?>">
                 <?php // Sin filas, "tratamientos" igual llega (vacio) y el servidor avisa que falta uno. ?>
                 <?= Html::hiddenInput($nombreTratamientos, '') ?>
-                <table class="table rd-equipo mb-2" id="carta-tratamientos" data-siguiente="<?= count($tratamientos) ?>" style="max-width: 560px">
+                <table class="table rd-equipo mb-2 rd-max-560" id="carta-tratamientos" data-siguiente="<?= count($tratamientos) ?>">
                     <thead>
                         <tr>
                             <th>Tratamiento</th>

@@ -70,7 +70,7 @@ class ProyectoService
      */
     public function listar(): ActiveDataProvider
     {
-        return new ActiveDataProvider([
+        $listado = new ActiveDataProvider([
             // Por proyecto (el mas nuevo arriba) y, dentro, sus fases en orden: cada proyecto con sus fases juntas.
             // Las ordenes de cambio (parte 6) van debajo de su fase: en SQL Server NULL (la fase) va primero.
             'query' => Proyecto::find()->with(['presupuesto', 'tipoProyecto', 'proceso'])
@@ -79,6 +79,12 @@ class ProyectoService
                 'pageSize' => 20,
             ],
         ]);
+
+        // La columna "Fase" pregunta tieneVariasFases() en cada fila: se calcula para toda la pagina en una
+        // consulta. getModels() carga la pagina una vez; el GridView usa esos mismos modelos.
+        Proyecto::precargarVariasFases($listado->getModels());
+
+        return $listado;
     }
 
     public function obtener(int $id): ?Proyecto

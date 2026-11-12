@@ -24,8 +24,8 @@ $filas = $version->caracteristicasNumeradas();
     <table class="<?= Html::encode($clase) ?>">
         <thead>
             <tr>
-                <th style="width: 4.5rem">N.°</th>
-                <th style="width: 30%">Característica</th>
+                <th class="rd-ancho-numero">N.°</th>
+                <th class="rd-ancho-30">Característica</th>
                 <th>Valor</th>
             </tr>
         </thead>

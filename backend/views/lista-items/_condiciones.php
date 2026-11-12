@@ -93,9 +93,9 @@ $filaEditable = static function (string $n, array $fila) use ($tipos, $tipoPorDe
         <thead>
             <tr>
                 <th>Trabajo complementario</th>
-                <th style="width: 22%;">Tipo</th>
-                <th style="width: 25%;">Unidad encargada</th>
-                <?php if ($editable): ?><th style="width: 40px;"></th><?php endif; ?>
+                <th class="rd-ancho-22">Tipo</th>
+                <th class="rd-ancho-25">Unidad encargada</th>
+                <?php if ($editable): ?><th class="rd-ancho-boton"></th><?php endif; ?>
             </tr>
         </thead>
         <?php foreach ($grupos as $idTipo => $filas): ?>
