@@ -9,7 +9,7 @@ namespace backend\components;
  * areas de UsfxGEO y del catalogo SIGMA): cada palabra es una condicion con
  * sus propios parametros en la consulta.
  *
- * Se usan como mucho MAX_PALABRAS (auditoria del 2026-11-11, hallazgo 12):
+ * Se usan como mucho MAX_PALABRAS:
  * SQL Server acepta hasta 2100 parametros por consulta, y el buscador de
  * especificaciones usa 6 por palabra; pegar un texto largo daba error del
  * servidor (8003). Diez palabras sobran para encontrar algo.

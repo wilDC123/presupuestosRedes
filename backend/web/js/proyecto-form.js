@@ -328,7 +328,7 @@ $(function () {
     }
 
     // UsfxGEO no responde (el servidor contesta 503 con {error}): se muestra el aviso arriba del buscador,
-    // en vez de dejar la lista vacia sin decir nada (auditoria 2026-11-11, hallazgo 4).
+    // en vez de dejar la lista vacia sin decir nada.
     function avisoInfraestructura(xhr) {
         var texto = (xhr && xhr.responseJSON && xhr.responseJSON.error)
             || 'No se pudo consultar la infraestructura de la universidad. Puede escribir el área a mano o intentar más tarde.';

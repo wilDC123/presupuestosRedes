@@ -18,8 +18,7 @@ use Codeception\Test\Unit;
 use DateTimeImmutable;
 
 /**
- * Las reglas de DINERO y de ESTADOS del presupuesto que no tenian test
- * (auditoria del 2026-11-11, hallazgo 2):
+ * Las reglas de DINERO y de ESTADOS del presupuesto:
  *  - al entrar al paso Presupuesto, cada item sin linea recibe el MENOR precio
  *    VIGENTE (si todos estan vencidos, el mas barato igual), y uno que ya tiene
  *    precio no se toca (ElaborarPresupuestoService::completarSinLinea()),

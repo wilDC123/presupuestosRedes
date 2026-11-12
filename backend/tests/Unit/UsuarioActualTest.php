@@ -10,8 +10,7 @@ use Codeception\Test\Unit;
 use Yii;
 
 /**
- * Hallazgo 10 de la auditoria de code smells: el nombre del usuario con
- * sesion sale de un solo lugar.
+ * El nombre del usuario con sesion sale de un solo lugar.
  *
  * Usa la base local; el modulo Yii2 deshace cada test al terminar.
  */

@@ -12,7 +12,7 @@ use yii\db\Exception as DbException;
 /**
  * UsfxGEO (la base de infraestructura de Desarrollo) no responde: el
  * formulario del proyecto y sus busquedas siguen funcionando, con el aviso, en
- * vez de un error del servidor (auditoria del 2026-11-11, hallazgo 4).
+ * vez de un error del servidor.
  */
 class InfraestructuraCaidaTest extends Unit
 {

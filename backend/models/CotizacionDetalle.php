@@ -46,7 +46,7 @@ class CotizacionDetalle extends ActiveRecord
         return [
             [['idSubcatalogo', 'cantidad', 'precioUnitario'], 'required'],
             [['idCotizacion', 'idSubcatalogo', 'idEspecificacion'], 'integer'],
-            // Que quepan en decimal(10,2), con hasta 2 decimales y sin "1e5" (Monto, auditoria 2026-11-11).
+            // Que quepan en decimal(10,2), con hasta 2 decimales y sin "1e5" (ver backend\components\Monto).
             Monto::regla(['cantidad', 'precioUnitario']),
             [['precioUnitario'], function (string $atributo): void {
                 Monto::validarTotal($this, $atributo);

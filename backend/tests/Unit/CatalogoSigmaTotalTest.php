@@ -9,8 +9,8 @@ use Codeception\Test\Unit;
 use Yii;
 
 /**
- * Hallazgo 12 de la auditoria de code smells: el total de items vigentes de
- * SIGMA (inicio y subcatalogo) sale de un solo metodo.
+ * El total de items vigentes de SIGMA (inicio y subcatalogo) sale de un solo
+ * metodo.
  */
 class CatalogoSigmaTotalTest extends Unit
 {

@@ -325,7 +325,7 @@ class ProyectoController extends Controller
 
     /**
      * La lista [{id, nombre}] de una consulta a UsfxGEO, o, si no responde,
-     * error 503 con el aviso (el JS lo muestra; auditoria 2026-11-11, hallazgo 4).
+     * error 503 con el aviso (el JS lo muestra).
      *
      * @param callable(InfraestructuraProvider): array<int|string, string> $consulta
      */

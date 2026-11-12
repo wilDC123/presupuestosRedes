@@ -59,7 +59,7 @@ class PrecioDirectoTest extends Unit
 
         $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, '-1'));
         $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, ''));
-        // Auditoria 2026-11-11 (hallazgos 3 y 13): antes pasaban y la base respondia con un error.
+        // Notacion cientifica, un monto que no cabe en decimal(10,2) y 3 decimales: la base los rechazaria.
         $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, '1e5'));
         $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, '1000000000'));
         $this->assertNotNull($this->service->elegir($presupuesto, $item->id, ElaborarPresupuestoService::DIRECTO, '12.345'));

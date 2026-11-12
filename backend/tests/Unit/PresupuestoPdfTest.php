@@ -16,9 +16,8 @@ use Codeception\Test\Unit;
 use Yii;
 
 /**
- * Lo que los PDF del presupuesto reciben ya armado del servicio (hallazgo 3
- * de la auditoria de code smells): donde va la mano de obra de la DTIC y los
- * conteos del reporte SIGMA.
+ * Lo que los PDF del presupuesto reciben ya armado del servicio: donde va la
+ * mano de obra de la DTIC y los conteos del reporte SIGMA.
  *
  * Usa la base local; el modulo Yii2 deshace cada test al terminar.
  */
