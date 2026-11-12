@@ -15,9 +15,9 @@ use backend\services\ListaItemsService;
 use Codeception\Test\Unit;
 
 /**
- * Lo que ListaItemsService::guardar() hace fuera de la lista (hallazgos 6 y 7
- * de la auditoria de code smells): mientras el presupuesto es un borrador sus
- * lineas siguen a la lista; con el presupuesto en revision, un item con linea
+ * Lo que ListaItemsService::guardar() hace fuera de la lista: mientras el
+ * presupuesto es un borrador sus lineas siguen a la lista; con el presupuesto
+ * en revision, un item con linea
  * no se quita; un item quitado sale de su solicitud de cotizacion.
  *
  * Usa la base local; el modulo Yii2 deshace cada test al terminar.

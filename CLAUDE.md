@@ -378,8 +378,8 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   no se escribe una fecha al enviar a revisión (`Presupuesto.fecha` queda sin usar, con la de los de antes). El
   mismo criterio en la lista de materiales. El menú "Presupuestos" es solo un listado de consulta (con PDF, reporte
   SIGMA, eliminar y configuración); las rutas viejas (`presupuesto/view`, `detalle`, `armar`, `create`, `update`,
-  `cambiar-estado`), que solo redirigían al paso Presupuesto, se QUITARON el 2026-11-12 (auditoría, hallazgo 19: el
-  sistema aún no estaba instalado en la DTIC, nadie tenía enlaces guardados)
+  `cambiar-estado`), que solo redirigían al paso Presupuesto, se QUITARON el 2026-11-12 (el sistema aún no estaba
+  instalado en la DTIC, nadie tenía enlaces guardados)
 - Una línea solo puede usar una cotización de su mismo ítem, y si la cotización es de una fila de
   la lista (`CotizacionDetalle.idProyectoItem`), solo esa fila puede usarla (las sueltas, sin
   `idProyectoItem`, se ofrecen solo si la fila no tiene cotizaciones propias); cotización vencida
@@ -547,13 +547,13 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   aprobado, cancelado
 - Precio unitario "congelado" en el detalle del presupuesto al momento de crearlo
   (nunca se recalcula retroactivamente si cambia el precio de una cotización nueva)
-- MONTOS (auditoría 2026-11-11, hallazgos 3 y 13): cantidades y precios caben en `decimal(10,2)` (máx. 99,999,999.99),
+- MONTOS (2026-11-12): cantidades y precios caben en `decimal(10,2)` (máx. 99,999,999.99),
   con hasta 2 decimales y sin notación científica, y el total de la línea (cantidad × precio, `precioTotal`) también.
   Regla única en `backend\components\Monto` (`regla()` para `rules()` de `CotizacionDetalle`, `PresupuestoDetalle` y
   `ProyectoItem`; `valido()` y `totalCabe()` para el precio directo; `validarTotal()`); los campos del navegador llevan
   `step 0.01` y `max`, y `elaborar-presupuesto.js` repite la regla. Antes "1e5" o un número enorme pasaban la validación
   y SQL Server respondía con un error del servidor; "12.345" se redondeaba sin avisar
-- BUSCADORES (hallazgo 12): especificaciones, áreas de UsfxGEO y catálogo SIGMA usan como mucho 10 palabras
+- BUSCADORES (2026-11-12): especificaciones, áreas de UsfxGEO y catálogo SIGMA usan como mucho 10 palabras
   (`backend\components\Busqueda::palabras()`): SQL Server acepta 2100 parámetros por consulta
 - Tamaño de hoja de TODOS los impresos: OFICIO, 8,5 x 13 pulgadas = 216 x 330 mm (2026-10-21; antes
   A4), la que usa la DTIC. En mPDF se llama "Folio": `PresupuestoPdfGenerator::HOJA_OFICIO` (por
@@ -778,11 +778,19 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
 - Preparado para el servidor de DTIC (2026-10-18; guía en `docs/guia-instalacion-dtic.md`):
   - Toda la aplicación exige sesión (`'as access'` en `backend/config/main.php`); solo
     `site/login` y `site/error` son públicos. Un controlador nuevo queda protegido solo.
-  - Si UsfxGEO no responde (auditoría 2026-11-11, hallazgo 4), el formulario del proyecto abre igual con el aviso
+  - Si UsfxGEO no responde (2026-11-12), el formulario del proyecto abre igual con el aviso
     `ProyectoService::AVISO_INFRAESTRUCTURA` y el área se escribe a mano; el paso a paso responde 503 con el aviso (lo
     muestra `proyecto-form.js`) y el buscador lo trae en `error`. Toda consulta a UsfxGEO del formulario pasa por
     `ProyectoService::consultarInfraestructura()`, que deja el error en el log. Antes no se podía crear ni editar
     ningún proyecto.
+  - INGRESO (2026-11-12): `LoginForm` limita los intentos fallidos: 5 del mismo usuario desde
+    la misma IP (`MAX_INTENTOS`) o 20 desde la misma IP con cualquier usuario (`MAX_INTENTOS_IP`) → esperar 15 minutos
+    (`BLOQUEO_SEGUNDOS`); bloqueado, ni la clave correcta entra. Por usuario + IP para que de afuera no se pueda dejar
+    bloqueado al encargado. Conteo en el cache de Yii (FileCache), sin tabla; un ingreso correcto lo borra. La IP la pone
+    `SiteController` (`request->userIP`): detrás de un proxy habría que leer la real (ver la guía de instalación).
+    "Recordarme" desmarcado por defecto.
+  - PRESUPUESTO SIN ASIGNACIÓN MASIVA (2026-11-12): todos los atributos de `Presupuesto` llevan "!" en `rules()` (se
+    validan pero no son "safe"): `load()` no los asigna; los pone siempre un servicio
   - Archivos subidos en `backend/uploads/` (FUERA de `backend/web`), entregados por
     `cotizacion/documento` y `especificacion/adjunto`; `ArchivoSubido::rutaAbsoluta()` rechaza
     rutas fuera de esa carpeta (el adjunto se puede escribir a mano).
@@ -795,7 +803,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   - `assetManager.appendTimestamp` (2026-10-28): CSS y JS salen con `?v=<fecha>`, así el navegador
     no se queda con una versión vieja después de un cambio.
   - Probado en compatibilidad 110 (SQL Server 2012; la base local es SQL Server 2022, compatibilidad 160). Última
-    vez el 2026-11-11 (hallazgo 1 de la auditoría), con las 70 migraciones: en una base vacía con `YII_ENV=prod` se
+    vez el 2026-11-11, con las 70 migraciones: en una base vacía con `YII_ENV=prod` se
     aplican todas, se deshacen 67 (la del esquema `redes` no: ahí vive `redes.migration`, es esperable) y se vuelven a
     aplicar sin errores; y con una copia de la base local en nivel 110, los 246 tests pasan. Cómo repetirlo: base nueva
     con `ALTER DATABASE … SET COMPATIBILITY_LEVEL = 110` + copia de `dbo.CatalogoSigma` (`SELECT … INTO`), un `yii`

@@ -10,8 +10,7 @@ use yii\validators\NumberValidator;
 /**
  * Cantidades y precios: lo que cabe en las columnas decimal(10,2) de la base
  * (cantidad, precioUnitario y el total calculado precioTotal de
- * CotizacionDetalle y PresupuestoDetalle). Es el UNICO lugar de ese limite
- * (auditoria del 2026-11-11, hallazgos 3 y 13).
+ * CotizacionDetalle y PresupuestoDetalle). Es el UNICO lugar de ese limite.
  *
  * Por que hace falta: la regla 'number' de Yii acepta "1e5" (notacion
  * cientifica) y numeros de cualquier tamano, pero SQL Server rechaza "1e5"

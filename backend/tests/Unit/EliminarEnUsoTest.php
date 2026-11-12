@@ -18,8 +18,7 @@ use backend\services\ProyectoService;
 use Codeception\Test\Unit;
 
 /**
- * Hallazgo 9 de la auditoria de code smells: categoria, plantilla, proveedor
- * y proyecto cuentan sus usos antes de borrar y devuelven el motivo exacto
+ * Categoria, plantilla, proveedor y proyecto cuentan sus usos antes de borrar y devuelven el motivo exacto
  * (como los demas catalogos), en vez de un mensaje fijo que adivina.
  *
  * Usa la base local; el modulo Yii2 deshace cada test al terminar.

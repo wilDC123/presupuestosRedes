@@ -9,8 +9,8 @@ use Codeception\Test\Unit;
 use yii\base\NotSupportedException;
 
 /**
- * Hallazgo 13 de la auditoria de code smells: dbo.CatalogoSigma es de solo
- * lectura tambien para los metodos estaticos que cambian muchas filas.
+ * dbo.CatalogoSigma es de solo lectura tambien para los metodos estaticos
+ * que cambian muchas filas.
  *
  * La condicion no coincide con ningun item (IdSigma es un GUID y el de
  * ceros no existe): aunque la barrera fallara, no se tocaria ningun item.

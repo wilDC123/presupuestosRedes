@@ -22,8 +22,8 @@ use yii\web\Response;
  * El presupuesto se ELABORA en el paso "Presupuesto" de cada proyecto
  * (ElaborarPresupuestoController). Las rutas que antes servian para eso (ver,
  * lineas, armar, crear, editar, cambiar estado) solo redirigian ahi; se
- * quitaron el 2026-11-12 (auditoria, hallazgo 19), antes de instalar en la
- * DTIC: nadie tiene enlaces guardados a ellas.
+ * quitaron el 2026-11-12, antes de instalar en la DTIC: nadie tiene enlaces
+ * guardados a ellas.
  */
 class PresupuestoController extends Controller
 {

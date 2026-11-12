@@ -10,10 +10,9 @@ use backend\services\ProyectoService;
 use Codeception\Test\Unit;
 
 /**
- * La franja "FASES" de la vista del proyecto (ProyectoService::franjaFases(),
- * auditoria del 2026-11-11, hallazgo 2): una pastilla por fase, sus ordenes de
- * cambio despues, la que se esta viendo marcada; con fase unica y sin ordenes
- * no sale.
+ * La franja "FASES" de la vista del proyecto (ProyectoService::franjaFases()):
+ * una pastilla por fase, sus ordenes de cambio despues, la que se esta viendo
+ * marcada; con fase unica y sin ordenes no sale.
  *
  * Usa la base local; el modulo Yii2 deshace cada test al terminar.
  */

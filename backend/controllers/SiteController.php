@@ -89,6 +89,8 @@ class SiteController extends Controller
         $this->layout = 'blank';
 
         $model = new LoginForm();
+        // Para el limite de intentos fallidos (LoginForm::MAX_INTENTOS).
+        $model->ip = (string) Yii::$app->request->userIP;
         if ($model->load(Yii::$app->request->post()) && $model->login()) {
             return $this->goBack();
         }

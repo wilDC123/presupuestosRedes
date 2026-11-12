@@ -179,27 +179,38 @@ class Presupuesto extends ActiveRecord
         );
     }
 
+    /**
+     * TODOS los atributos llevan "!":
+     * se validan igual, pero NO son "safe", es decir, load() / setAttributes()
+     * no los asignan desde un formulario. Los pone siempre un servicio (el
+     * numero ElaborarPresupuestoService, el estado PresupuestoService::
+     * cambiarEstado(), el oficio CartaService...). Asi, aunque alguien agregue
+     * un formulario con load(), nadie puede mandar Presupuesto[estado]=aprobado
+     * y saltarse el flujo de estados y la copia de las firmas. Un atributo es
+     * "safe" si aparece SIN "!" en cualquier regla: va en todas.
+     */
     public function rules(): array
     {
         return [
-            [['idProyecto'], 'required'],
-            [['numeroPresupuesto', 'oficioDtic', 'areaIntervencion', 'manoDeObra'], 'trim'],
+            [['!idProyecto'], 'required'],
+            [['!numeroPresupuesto', '!oficioDtic', '!areaIntervencion', '!manoDeObra'], 'trim'],
             // Sin area de intervencion desde el 2026-11-05: va en la ficha tecnica del proyecto, no en el
             // presupuesto (revision del Ing., punto 5). La columna queda con lo de los ya enviados.
             // Sin oficio DTIC desde el 2026-11-11: ya no se pide al enviar a revision; se escribe en la
             // carta de entrega, que lo exige para imprimirse (CartaService::faltaParaImprimir()).
-            [['numeroPresupuesto'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
-            [['idProyecto'], 'integer'],
+            [['!numeroPresupuesto'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
+            [['!idProyecto'], 'integer'],
             // Mensaje claro en vez del error de la base por el indice unico.
-            [['idProyecto'], 'unique', 'message' => 'Este proyecto ya tiene un presupuesto.'],
-            [['estado'], 'default', 'value' => self::ESTADO_EN_PROCESO],
-            [['estado'], 'required'],
-            [['estado'], 'in', 'range' => array_keys(self::estados())],
-            [['fecha'], 'date', 'format' => 'php:Y-m-d'],
-            [['numeroPresupuesto'], 'string', 'max' => 20],
-            [['oficioDtic'], 'string', 'max' => 100],
-            [['areaIntervencion', 'manoDeObra'], 'string', 'max' => 300],
-            [['idProyecto'], 'exist', 'skipOnError' => true, 'targetClass' => Proyecto::class, 'targetAttribute' => ['idProyecto' => 'id']],
+            [['!idProyecto'], 'unique', 'message' => 'Este proyecto ya tiene un presupuesto.'],
+            [['!estado'], 'default', 'value' => self::ESTADO_EN_PROCESO],
+            [['!estado'], 'required'],
+            [['!estado'], 'in', 'range' => array_keys(self::estados())],
+            // fecha: sin uso desde el 2026-10-30 (la del documento es fechaCreacion); queda la de los de antes.
+            [['!fecha'], 'date', 'format' => 'php:Y-m-d'],
+            [['!numeroPresupuesto'], 'string', 'max' => 20],
+            [['!oficioDtic'], 'string', 'max' => 100],
+            [['!areaIntervencion', '!manoDeObra'], 'string', 'max' => 300],
+            [['!idProyecto'], 'exist', 'skipOnError' => true, 'targetClass' => Proyecto::class, 'targetAttribute' => ['idProyecto' => 'id']],
         ];
     }
 

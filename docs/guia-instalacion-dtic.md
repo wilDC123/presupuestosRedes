@@ -224,6 +224,13 @@ el resto de PHP coincida.
   solo con sesión. Una ruta escrita a mano que intente salir de esa carpeta se rechaza.
 - **Modo producción** (paso 3 de la instalación): sin depuración, sin el generador de código
   (Gii) y con clave de cookies propia del servidor.
+- **Límite de intentos de ingreso.** Después de 5 contraseñas equivocadas del mismo usuario desde la
+  misma dirección IP, o de 20 desde la misma IP con cualquier usuario, hay que esperar 15 minutos. El
+  conteo va en el caché de `backend/runtime` (no hace falta nada más). **Ojo:** se cuenta por la IP
+  que ve PHP (`REMOTE_ADDR`). Si delante del servidor hay un proxy o balanceador, todos los usuarios
+  llegarían con la IP del proxy y compartirían el límite de 20: en ese caso avisar al desarrollador
+  para leer la IP real (cabecera `X-Forwarded-For`, con `trustedHosts` en la configuración de Yii).
+  "Recordarme" viene desmarcado: la sesión no queda abierta en una PC compartida.
 - **No crea tablas en dbo** y solo lee `dbo.CatalogoSigma`.
 - **Respaldo:** la carpeta `backend/uploads` contiene documentos que no están en la base de datos;
   tiene que entrar en el respaldo del servidor.

@@ -684,9 +684,9 @@ class ProyectoService
     /**
      * Hace una consulta a UsfxGEO (otra base, de Desarrollo) sin que su caida
      * tumbe la pantalla: si no responde, deja el error en el log y devuelve
-     * null, y quien llama muestra AVISO_INFRAESTRUCTURA (auditoria del
-     * 2026-11-11, hallazgo 4: antes, sin UsfxGEO no se podia crear ni editar
-     * ningun proyecto). Lo usan el formulario, el buscador y el paso a paso.
+     * null, y quien llama muestra AVISO_INFRAESTRUCTURA (sin esto, si UsfxGEO no
+     * responde no se podria crear ni editar ningun proyecto). Lo usan el
+     * formulario, el buscador y el paso a paso.
      *
      * @template T
      * @param callable(InfraestructuraProvider): T $consulta

@@ -261,8 +261,8 @@ class ElaborarPresupuestoService
         $justificacion = trim($justificacion);
 
         if ($opcion === self::DIRECTO) {
-            // Numero >= 0 con hasta 2 decimales que quepa en decimal(10,2); antes is_numeric() dejaba
-            // pasar "1e5" y montos enormes, y la base respondia con un error (auditoria 2026-11-11).
+            // Numero >= 0 con hasta 2 decimales que quepa en decimal(10,2). is_numeric() no sirve: deja
+            // pasar "1e5" y montos enormes, y la base responderia con un error.
             if (!Monto::valido($precio)) {
                 return 'Escriba un precio directo mayor o igual a 0, con hasta 2 decimales y sin comas (ej. 1250.50), que no pase de 99,999,999.99.';
             }

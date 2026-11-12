@@ -52,7 +52,7 @@ class ProyectoItem extends ActiveRecord
         return [
             [['idProyecto', 'idSubcatalogo', 'idCategoria', 'cantidad'], 'required'],
             [['idProyecto', 'idSubcatalogo', 'idCategoria', 'orden', 'idEspecificacion'], 'integer'],
-            // decimal(10,2), hasta 2 decimales y sin "1e5" (Monto, auditoria 2026-11-11).
+            // decimal(10,2), hasta 2 decimales y sin "1e5" (ver backend\components\Monto).
             Monto::regla(['cantidad']),
             [['unidadMedida'], 'string', 'max' => 20],
             [['observacion'], 'trim'],

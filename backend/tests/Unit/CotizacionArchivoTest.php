@@ -22,9 +22,8 @@ use yii\db\ActiveRecord;
 use yii\web\UploadedFile;
 
 /**
- * Hallazgo 15 de la auditoria de code smells: el PDF de una cotizacion se
- * escribe AL FINAL, dentro de la transaccion: si la base falla, no queda un
- * archivo huerfano en backend/uploads/cotizaciones.
+ * El PDF de una cotizacion se escribe AL FINAL, dentro de la transaccion: si
+ * la base falla, no queda un archivo huerfano en backend/uploads/cotizaciones.
  *
  * La base se deshace sola al terminar cada test; el disco no: _after() borra
  * los archivos que el test haya dejado.
@@ -34,8 +33,8 @@ class CotizacionArchivoTest extends Unit
     /**
      * Un precio normal: la falla de la base se SIMULA al guardar la linea (ver
      * assertFallaSinArchivo()). Hasta el 2026-11-12 se usaba un precio que no
-     * cabia en decimal(10,2), pero desde la auditoria (hallazgo 3) la
-     * validacion lo detiene antes de llegar a la base.
+     * cabia en decimal(10,2), pero ahora la validacion lo detiene antes de
+     * llegar a la base.
      */
     private const PRECIO = '20';
 

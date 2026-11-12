@@ -63,7 +63,7 @@ class PresupuestoDetalle extends ActiveRecord
             // ElaborarPresupuestoService::elegir(); que tenga una sola linea,
             // reemplazarLinea() (borra la anterior) y el indice unico filtrado.
             [['idPresupuesto', 'idSubcatalogo', 'idCotizacionDetalle', 'idProyectoItem'], 'integer'],
-            // Que quepan en decimal(10,2), con hasta 2 decimales y sin "1e5" (Monto, auditoria 2026-11-11).
+            // Que quepan en decimal(10,2), con hasta 2 decimales y sin "1e5" (ver backend\components\Monto).
             Monto::regla(['cantidad']),
             [['unidadMedida'], 'string', 'max' => 20],
             // La unidad se guarda como texto (la abreviatura, congelada), pero

@@ -14,9 +14,8 @@ use Codeception\Test\Unit;
 /**
  * Cantidades y precios que caben en decimal(10,2) (backend\components\Monto)
  * y el limite de palabras de los buscadores (backend\components\Busqueda):
- * hallazgos 3, 12 y 13 de la auditoria del 2026-11-11. Antes, "1e5", un
- * precio enorme o un texto de busqueda muy largo llegaban a la base y el
- * usuario veia un error del servidor.
+ * sin ellos, "1e5", un precio enorme o un texto de busqueda muy largo
+ * llegarian a la base y el usuario veria un error del servidor.
  */
 class MontoTest extends Unit
 {
