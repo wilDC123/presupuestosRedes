@@ -4,7 +4,7 @@ use yii\db\Migration;
 
 /**
  * Especificaciones tecnicas con VERSIONES y EMISIONES NET (ver
- * docs/plan-especificaciones.md, paso 1).
+ * docs/historia/plan-especificaciones.md, paso 1).
  *
  *  - redes.EspecificacionVersion: v1, v2... de una ficha de la libreria. Una
  *    version que ya se uso en una emision no se modifica nunca (lo controla el
