@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\components\Monto;
 use backend\models\CatalogoSigma;
 use yii\helpers\Html;
 
@@ -195,7 +196,7 @@ $numero = 0;
                             <?= $sigma === null ? '—' : Html::encode($partidaSigma ?: '—') . ($partidaSigma !== $partidaLinea ? ' *' : '') ?>
                         </td>
                         <td><?= Html::encode($linea->unidadMedida ?? '') ?></td>
-                        <td class="numero"><?= $formato->asDecimal($linea->cantidad, 2) ?></td>
+                        <td class="numero"><?= Monto::cantidad($linea->cantidad) ?></td>
                         <td class="numero"><?= $formato->asDecimal($linea->precioUnitario, 2) ?></td>
                         <td class="numero"><?= $precioReferencial > 0 ? $formato->asDecimal($precioReferencial, 2) : '—' ?></td>
                         <td>

@@ -62,6 +62,17 @@ class MontoTest extends Unit
         $this->assertTrue($item->validate(['cantidad']));
     }
 
+    public function testUnaCantidadEnteraSeMuestraSinDecimales(): void
+    {
+        // Asi llega de la base (decimal(10,2)).
+        $this->assertSame('2', Monto::cantidad('2.00'));
+        $this->assertSame('0', Monto::cantidad(0));
+        $this->assertSame('1,200', Monto::cantidad('1200.00'));
+        // Con fraccion conserva sus 2 decimales.
+        $this->assertSame('30.50', Monto::cantidad('30.50'));
+        $this->assertSame('0.25', Monto::cantidad('0.25'));
+    }
+
     public function testBusquedaUsaComoMuchoDiezPalabras(): void
     {
         $this->assertSame(['cable', 'utp'], Busqueda::palabras('  cable   utp '));

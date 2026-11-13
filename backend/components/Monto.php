@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace backend\components;
 
+use Yii;
 use yii\base\Model;
 use yii\validators\NumberValidator;
 
@@ -76,6 +77,21 @@ final class Monto
         if (!self::totalCabe($modelo->cantidad ?? null, $modelo->precioUnitario ?? null)) {
             $modelo->addError($atributo, 'El total de la línea (cantidad × precio) no puede pasar de ' . self::texto(self::MAXIMO) . '.');
         }
+    }
+
+    /**
+     * Una cantidad para mostrar: sin decimales si es entera ("2", "1,200") y
+     * con 2 si tiene fraccion ("30.50"). La columna es decimal(10,2), asi que
+     * de la base llega "2.00"; mostrarlo asi en los impresos confundia (dos
+     * unidades no son "2.00"). El formato usa el formatter de Yii, el mismo
+     * separador de miles que los precios.
+     */
+    public static function cantidad(mixed $valor): string
+    {
+        $numero = is_numeric($valor) ? (float) $valor : 0.0;
+        $entera = round($numero, 2) == floor(round($numero, 2));
+
+        return Yii::$app->formatter->asDecimal($numero, $entera ? 0 : 2);
     }
 
     private static function texto(float $valor): string
