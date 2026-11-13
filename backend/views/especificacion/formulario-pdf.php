@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\components\Monto;
 use backend\components\NumeracionEspecificacion;
 use backend\models\ConfiguracionEspecificacion;
 use backend\models\UnidadMedida;
@@ -43,9 +44,7 @@ $version = $emision->version;
 // Version del documento (lineamiento RD-GD-LI-001, 4.2): sube al reemitir.
 $numeroVersion = $emision->versionTexto();
 $formato = Yii::$app->formatter;
-$cantidad = (float) $emision->cantidad == (int) $emision->cantidad
-    ? (string) (int) $emision->cantidad
-    : $formato->asDecimal($emision->cantidad, 2);
+$cantidad = Monto::cantidad($emision->cantidad);
 
 $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 $fecha = new DateTimeImmutable($emision->fechaEmision);

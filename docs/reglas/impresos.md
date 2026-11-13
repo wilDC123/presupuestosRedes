@@ -16,6 +16,9 @@ Todos con **mPDF**, armados por `backend\components\PresupuestoPdfGenerator`. La
   "ELABORADO POR | APROBADO POR", filas Firma (2 cm para firmar), Nombre (prefijo + nombre) y Cargo, y "Fecha de
   aprobación". Con una sola firma (lista, solicitud), a todo el ancho. El formulario ET la pide en 11 pt
   (`letraGrande`). Las firmas salen de su configuración o de la copia congelada del documento.
+- **Cantidades** (`Monto::cantidad()`): enteras sin decimales ("2", "1,200"); con fracción, 2 decimales ("30.50").
+  Así en la lista, la solicitud, el formulario ET, el presupuesto (también la mano de obra: "0") y la relación SIGMA.
+  Los precios siempre con 2 decimales.
 - **Marcas de agua**: BORRADOR (presupuesto sin aprobar, lista en edición, ficha con alguna fase sin aprobar);
   REEMPLAZADO / ANULADO / VENCIDO (formulario ET).
 - Sin pie de página (los contactos van en el membrete de la carta).

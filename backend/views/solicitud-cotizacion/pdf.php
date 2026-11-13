@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\components\Monto;
 use yii\helpers\Html;
 
 /**
@@ -144,7 +145,7 @@ $numero = 0;
                     </td>
                     <?php // El nombre de la unidad ("Metro", no "m"), para que el proveedor entienda; si no esta en el catalogo, la abreviatura. ?>
                     <td><?= Html::encode($unidades[(string) $item->unidadMedida] ?? (string) ($item->unidadMedida ?? '')) ?></td>
-                    <td class="numero"><?= Yii::$app->formatter->asDecimal($item->cantidad ?? 0, 2) ?></td>
+                    <td class="numero"><?= Monto::cantidad($item->cantidad ?? 0) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
