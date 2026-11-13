@@ -82,8 +82,9 @@ final class Monto
     /**
      * Una cantidad para mostrar: sin decimales si es entera ("2", "1,200") y
      * con 2 si tiene fraccion ("30.50"). La columna es decimal(10,2), asi que
-     * de la base llega "2.00"; mostrarlo asi en los impresos confundia (dos
-     * unidades no son "2.00"). El formato usa el formatter de Yii, el mismo
+     * de la base llega "2.00". Se usa en lo que lee el proveedor (solicitud de
+     * proforma y formulario ET), para que no confunda "2.00" con otra cantidad;
+     * los demas impresos dejan las cantidades con 2 decimales, como los precios. El formato usa el formatter de Yii, el mismo
      * separador de miles que los precios.
      */
     public static function cantidad(mixed $valor): string

@@ -185,7 +185,7 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
                             <?php endif; ?>
                         </td>
                         <td><?= Html::encode((string) $item->unidadMedida) ?></td>
-                        <td class="numero"><?= Monto::cantidad($item->cantidad) ?></td>
+                        <td class="numero"><?= Yii::$app->formatter->asDecimal($item->cantidad, 2) ?></td>
                     </tr>
                 <?php endforeach; ?>
             <?php endforeach; ?>
@@ -214,7 +214,7 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
                     <tr>
                         <td><?= Html::encode($fila->descripcion) ?></td>
                         <td><?= Html::encode((string) $fila->unidadMedida) ?></td>
-                        <td class="numero"><?= Monto::cantidad($fila->cantidad) ?></td>
+                        <td class="numero"><?= Yii::$app->formatter->asDecimal($fila->cantidad, 2) ?></td>
                     </tr>
                 <?php endforeach; ?>
             <?php endforeach; ?>
