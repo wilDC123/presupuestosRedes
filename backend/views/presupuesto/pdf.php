@@ -21,7 +21,7 @@ use yii\helpers\Html;
  * de la especificación ni el oficio de la DTIC desde el 2026-11-11).
  * Si el presupuesto lleva mano de obra de la DTIC (Presupuesto::$manoDeObra),
  * va en la categoría "Mano de obra" (al final si no existe), con precios en
- * 0.00 (cantidad 0, sin decimales: Monto::cantidad()). Después del total (fila "TOTAL (Bs.)" en azul claro): la nota, centrada.
+ * 0.00 (cantidad también 0.00). Después del total (fila "TOTAL (Bs.)" en azul claro): la nota, centrada.
  * Desde el 2026-10-29 el presupuesto es SOLO FINANCIERO: lo que provee la DTIC y las condiciones previas
  * (antes "Otros materiales…" y "Trabajos complementarios…" aquí) van en la lista de materiales. Al fondo de la última página, el "control de elaboración" del
  * lineamiento RD-GD-LI-001 (versión, elaborado por, aprobado por, firmas y fecha de aprobación). SIN
@@ -199,7 +199,7 @@ $numero = 0;
                         </td>
                         <td width="8%"><?= Html::encode($linea->partida ?? '') ?></td>
                         <td width="8%"><?= Html::encode($linea->unidadMedida ?? '') ?></td>
-                        <td class="numero" width="10%"><?= Monto::cantidad($linea->cantidad) ?></td>
+                        <td class="numero" width="10%"><?= Yii::$app->formatter->asDecimal($linea->cantidad, 2) ?></td>
                         <td class="numero" width="12%"><?= Yii::$app->formatter->asDecimal($linea->precioUnitario, 2) ?></td>
                         <td class="numero" width="12%"><?= Yii::$app->formatter->asDecimal($linea->precioTotal, 2) ?></td>
                     </tr>
@@ -213,7 +213,7 @@ $numero = 0;
                         </td>
                         <td width="8%"></td>
                         <td width="8%"><?= Html::encode($presupuesto::UNIDAD_MANO_DE_OBRA) ?></td>
-                        <td class="numero" width="10%"><?= Monto::cantidad($presupuesto::CANTIDAD_MANO_DE_OBRA) ?></td>
+                        <td class="numero" width="10%"><?= Yii::$app->formatter->asDecimal($presupuesto::CANTIDAD_MANO_DE_OBRA, 2) ?></td>
                         <td class="numero" width="12%"><?= Yii::$app->formatter->asDecimal(0, 2) ?></td>
                         <td class="numero" width="12%"><?= Yii::$app->formatter->asDecimal(0, 2) ?></td>
                     </tr>
