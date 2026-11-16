@@ -10,6 +10,7 @@ use backend\models\Especificacion;
 use backend\models\EspecificacionVersion;
 use backend\models\Proceso;
 use backend\services\CategoriaService;
+use backend\services\EspecificacionBusquedaService;
 use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionService;
 use backend\services\SubcatalogoItemService;
@@ -114,15 +115,15 @@ class EspecificacionController extends Controller
     /**
      * Busqueda de la ventana "Ver detalle" (?q=24 poe). Responde JSON, no una
      * pagina: asJson() pone la cabecera Content-Type: application/json y
-     * convierte el arreglo. Ver EspecificacionService::buscar().
+     * convierte el arreglo. Ver EspecificacionBusquedaService::buscar().
      */
     public function actionBuscar(string $q = ''): Response
     {
-        $resultados = $this->service->buscar($q);
+        $resultados = (new EspecificacionBusquedaService())->buscar($q);
 
         return $this->asJson([
             'resultados' => $resultados,
-            'limiteAlcanzado' => count($resultados) >= EspecificacionService::LIMITE_BUSQUEDA,
+            'limiteAlcanzado' => count($resultados) >= EspecificacionBusquedaService::LIMITE_BUSQUEDA,
         ]);
     }
 

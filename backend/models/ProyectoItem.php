@@ -139,6 +139,16 @@ class ProyectoItem extends ActiveRecord
     }
 
     /**
+     * "CABLE UTP (m)": nombre DTIC y unidad del item, para mensajes e historial.
+     */
+    public function nombreConUnidad(): string
+    {
+        $nombre = $this->subcatalogoItem->descripcion ?? 'Ítem #' . $this->idSubcatalogo;
+
+        return $this->unidadMedida ? "$nombre ($this->unidadMedida)" : $nombre;
+    }
+
+    /**
      * Agrupa los items por clasificacion, en el orden de las categorias (los
      * items de cada grupo, en el orden en que llegan): el orden de la lista
      * en pantalla y en los impresos. Funcion pura: no consulta la base, salvo

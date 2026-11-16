@@ -19,7 +19,7 @@ use yii\db\ActiveRecord;
  * una fila es la version que se ENVIO a cotizacion, y fechaAprobacion la
  * fecha de ese envio. Cada "Enviar a cotizacion" emite la version siguiente
  * (1.0, y una mas despues de cada orden de cambio); ver
- * ListaItemsService::enviarACotizacion(). Una fila nunca se modifica.
+ * ListaVersionService::emitir(). Una fila nunca se modifica.
  * Las firmas son la COPIA de las de la configuracion del presupuesto ese dia
  * (trait FirmasDeControl, sin reglas: no llegan de formularios); el impreso
  * usa solo la 1 (elaborado por).

@@ -145,6 +145,12 @@ parameters:
 			path: backend/services/ElaborarPresupuestoService.php
 
 		-
+			message: '#^Strict comparison using \!\=\= between int and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: backend/services/EspecificacionBusquedaService.php
+
+		-
 			message: '#^Cannot access property \$id on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
 			identifier: property.nonObject
 			count: 1
@@ -283,12 +289,6 @@ parameters:
 			path: backend/services/EspecificacionService.php
 
 		-
-			message: '#^Strict comparison using \!\=\= between int and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 2
-			path: backend/services/EspecificacionService.php
-
-		-
 			message: '#^Cannot access property \$idCategoria on array\<mixed\>\|yii\\db\\ActiveRecord\.$#'
 			identifier: property.nonObject
 			count: 1
@@ -328,7 +328,7 @@ parameters:
 			message: '#^Using nullsafe property access "\?\-\>version" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
-			path: backend/services/ListaItemsService.php
+			path: backend/services/ListaVersionService.php
 
 		-
 			message: '#^Property backend\\models\\PlantillaItem\:\:\$idCategoria \(int\) does not accept string\.$#'

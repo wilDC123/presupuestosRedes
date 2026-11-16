@@ -7,7 +7,7 @@ namespace backend\tests\Unit;
 use backend\models\Categoria;
 use backend\models\Especificacion;
 use backend\models\SubcatalogoItem;
-use backend\services\EspecificacionService;
+use backend\services\EspecificacionBusquedaService;
 use backend\services\SubcatalogoItemService;
 use Codeception\Test\Unit;
 
@@ -54,7 +54,7 @@ class SubcatalogoInactivoTest extends Unit
         $activo = $this->crearItem('ITEM ACTIVO TEST', true);
         $ficha = new Especificacion(['titulo' => 'Ficha test', 'activo' => true]);
         $ficha->save(false);
-        $service = new EspecificacionService();
+        $service = new EspecificacionBusquedaService();
 
         $service->recordarItemDeReferencia($ficha->id, $inactivo->id);
         $this->assertNull(Especificacion::findOne($ficha->id)->idSubcatalogo);

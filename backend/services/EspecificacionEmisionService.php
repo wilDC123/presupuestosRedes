@@ -247,6 +247,71 @@ class EspecificacionEmisionService
     }
 
     /**
+     * Al GUARDAR LA LISTA (ListaItemsService::guardar()), un item cuya
+     * especificacion cambio: se anula su formulario vigente y, si ahora
+     * tiene una, se emite el suyo (codigo nuevo). El lugar de entrega es el
+     * escrito en la fila ($item->lugarEntregaPedido); vacio = el del
+     * proyecto (ver emitir()). Va dentro de la transaccion de la lista.
+     */
+    public function cambiarEspecificacion(ProyectoItem $item, ?string $usuario): void
+    {
+        $this->anularVigente($item->id, $item->idEspecificacion === null
+            ? 'Se quitó la especificación del ítem.'
+            : 'Se cambió la especificación del ítem.');
+
+        if ($item->idEspecificacion !== null) {
+            $this->emitir($item, $usuario, ['lugarEntrega' => $item->lugarEntregaPedido]);
+        }
+    }
+
+    /**
+     * Al GUARDAR LA LISTA (ListaItemsService::guardar()), el formulario de
+     * especificacion de un item CAMBIADO (misma ficha) o cuyo LUGAR DE
+     * ENTREGA se cambio en la lista: se reemite con el mismo
+     * codigo y la version siguiente, con el nombre y la unidad del item de
+     * hoy. Conserva validez y tiempo de entrega de la anterior; el lugar, el
+     * de la anterior salvo que haya cambiado ($lugarAntes = el que tenia; el
+     * nuevo esta en $item->lugarEntregaPedido). $antes = nombre del item
+     * anterior, o null si el item no cambio. Sin formulario vigente no hace
+     * nada. Devuelve el codigo nuevo ("RD-PI-ET-033 v1.1"), o null si no
+     * habia formulario.
+     *
+     * @throws DomainException si no se pudo reemitir
+     */
+    public function reemitirPorCambio(ProyectoItem $item, ?string $antes, ?string $usuario, ?string $lugarAntes = null): ?string
+    {
+        /** @var EspecificacionEmision|null $anterior */
+        $anterior = $item->getEmisionVigente()->one();
+
+        if ($anterior === null) {
+            return null;
+        }
+
+        $cambios = [];
+        if ($antes !== null) {
+            $cambios[] = 'Se cambió el ítem: ' . $antes . ' → ' . $item->nombreConUnidad() . '.';
+        }
+        if ($lugarAntes !== null) {
+            $cambios[] = 'Se cambió el lugar de entrega: ' . ($lugarAntes !== '' ? $lugarAntes : '(ninguno)') . ' → ' . $item->lugarEntregaPedido . '.';
+        }
+
+        // El motivo admite hasta 300 caracteres; los nombres DTIC pueden ser largos.
+        $motivo = mb_substr(implode(' ', $cambios), 0, 300);
+        $resultado = $this->reemitir($item, [
+            'motivo' => $motivo,
+            'lugarEntrega' => $lugarAntes !== null ? $item->lugarEntregaPedido : $anterior->lugarEntrega,
+            'validezOfertaDias' => $anterior->validezOfertaDias,
+            'tiempoEntregaDias' => $anterior->tiempoEntregaDias,
+        ], $usuario);
+
+        if ($resultado['error'] !== null) {
+            throw new DomainException(($antes ?? $item->nombreConUnidad()) . ': ' . $resultado['error']);
+        }
+
+        return $resultado['emision']->codigoConVersion();
+    }
+
+    /**
      * Mientras el presupuesto no este aprobado ni cancelado (aunque la lista
      * ya este en cotizacion: reemitir no cambia la lista).
      */

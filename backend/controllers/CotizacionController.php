@@ -7,7 +7,7 @@ namespace backend\controllers;
 use backend\components\ArchivoSubido;
 use backend\models\Cotizacion;
 use backend\services\CotizacionService;
-use backend\services\EspecificacionService;
+use backend\services\EspecificacionBusquedaService;
 use backend\services\ProveedorService;
 use backend\services\SubcatalogoItemService;
 use Yii;
@@ -106,7 +106,7 @@ class CotizacionController extends Controller
             // consultan la base. Se incluyen los items y las especificaciones
             // que ya tienen las lineas aunque esten desactivados.
             'items' => (new SubcatalogoItemService())->opciones(ArrayHelper::getColumn($modelsDetalle, 'idSubcatalogo')),
-            'especificaciones' => (new EspecificacionService())->selector(ArrayHelper::getColumn($modelsDetalle, 'idEspecificacion')),
+            'especificaciones' => (new EspecificacionBusquedaService())->selector(ArrayHelper::getColumn($modelsDetalle, 'idEspecificacion')),
         ]);
     }
 

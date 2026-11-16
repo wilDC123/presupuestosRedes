@@ -6,13 +6,14 @@ namespace backend\tests\Unit;
 
 use backend\models\Especificacion;
 use backend\models\SubcatalogoItem;
+use backend\services\EspecificacionBusquedaService;
 use backend\services\EspecificacionService;
 use Codeception\Test\Unit;
 
 /**
  * Buscador de la ventana "Ver detalle" de la lista de items
- * (EspecificacionService::buscar()) y "Recordar como sugerida para este ítem"
- * (EspecificacionService::recordarItemDeReferencia()).
+ * (EspecificacionBusquedaService::buscar()) y "Recordar como sugerida para este ítem"
+ * (EspecificacionBusquedaService::recordarItemDeReferencia()).
  *
  * Usa la base local; el modulo Yii2 deshace cada test al terminar. Los
  * textos llevan una marca rara ("Zqx") para no coincidir con fichas reales.
@@ -20,10 +21,12 @@ use Codeception\Test\Unit;
 class EspecificacionBusquedaTest extends Unit
 {
     private EspecificacionService $service;
+    private EspecificacionBusquedaService $busqueda;
 
     protected function _before(): void
     {
         $this->service = new EspecificacionService();
+        $this->busqueda = new EspecificacionBusquedaService();
     }
 
     public function testTodasLasPalabrasEnCualquierOrdenSinImportarTildes(): void
@@ -73,12 +76,12 @@ class EspecificacionBusquedaTest extends Unit
         [$item1, $item2] = $items;
         $ficha = $this->crearFicha('Ficha Zqx sin referencia');
 
-        $this->service->recordarItemDeReferencia($ficha->id, $item1->id);
+        $this->busqueda->recordarItemDeReferencia($ficha->id, $item1->id);
         $ficha->refresh();
         $this->assertSame($item1->id, (int) $ficha->idSubcatalogo);
 
         // Ya tiene uno: no se pisa.
-        $this->service->recordarItemDeReferencia($ficha->id, $item2->id);
+        $this->busqueda->recordarItemDeReferencia($ficha->id, $item2->id);
         $ficha->refresh();
         $this->assertSame($item1->id, (int) $ficha->idSubcatalogo);
     }
@@ -88,7 +91,7 @@ class EspecificacionBusquedaTest extends Unit
      */
     private function ids(string $texto): array
     {
-        return array_column($this->service->buscar($texto), 'id');
+        return array_column($this->busqueda->buscar($texto), 'id');
     }
 
     /**

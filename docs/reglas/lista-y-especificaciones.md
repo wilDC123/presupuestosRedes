@@ -27,7 +27,7 @@ Historia de las especificaciones: `docs/historia/cambios-especificaciones.md` y 
 - Cada fila puede tener **otro lugar** ("Otro lugar de entrega", plegado junto a "Cambiar ítem"). Se guarda en la
   emisión de su especificación (`EspecificacionEmision.lugarEntrega`). Uno igual al de arriba se envía vacío.
 - Cambiar el lugar de un formulario ya emitido lo **reemite** (motivo "Se cambió el lugar de entrega: A → B"; junto con
-  "Cambiar ítem" es una sola reemisión, `ListaItemsService::reemitirPorCambio()`).
+  "Cambiar ítem" es una sola reemisión, `EspecificacionEmisionService::reemitirPorCambio()`).
 - Si no hay lugar ni en el proyecto ni en la fila, se usa `ConfiguracionEspecificacion.lugarEntregaPorDefecto` (vacío =
   no sale).
 
@@ -46,7 +46,7 @@ tienen filas. El presupuesto **no** las lleva ("el presupuesto es financiero").
 
 - "LISTA DE MATERIALES Y CONDICIONES PREVIAS" (`lista-items/pdf.php`), con su código **LM** propio y la cabecera común.
 - **No se aprueba** (se aprueba el presupuesto). "Enviar a cotización" **emite** una versión
-  (`ListaItemsService::emitirVersion()`): `redes.ListaMaterialesAprobacion` = versión emitida (fecha, usuario, copia de
+  (`ListaVersionService::emitir()`): `redes.ListaMaterialesAprobacion` = versión emitida (fecha, usuario, copia de
   la firma). La primera es 1.0; después de cada reapertura, la siguiente.
 - En edición imprime la versión siguiente con marca BORRADOR y la firma de hoy; enviada o cerrada, la última emitida.
 - La "Fecha" de la cabecera es la de **creación** de la versión.
@@ -79,9 +79,10 @@ Reglas (`EspecificacionEmisionService`):
 - Avisos que no bloquean: cantidad distinta de la emitida, emisión vencida, versión nueva de la ficha.
 - `codigo()` no lleva versión (lo citan carta, solicitud y presupuesto); `codigoConVersion()` ("RD-PI-ET-015 v1.1") en
   pantallas, registro y CSV.
-- Ayudas para elegir: grupo "Sugeridas para este ítem" (fichas con ese ítem de referencia), "Ver detalle"
-  (`especificacion/vista-previa`) y buscador (`EspecificacionService::buscar()`: título, modelo y características, sin
-  importar tildes, como mucho 10 palabras). "Recordar como sugerida para este ítem" pone el ítem de referencia.
+- Ayudas para elegir (`EspecificacionBusquedaService`; la ficha en sí está en `EspecificacionService`): grupo
+  "Sugeridas para este ítem" (fichas con ese ítem de referencia), "Ver detalle" (`especificacion/vista-previa`) y
+  buscador (`EspecificacionBusquedaService::buscar()`: título, modelo y características, sin importar tildes, como mucho
+  10 palabras). "Recordar como sugerida para este ítem" pone el ítem de referencia.
 - Solo se enlazan fichas activas; una en uso o emitida no se elimina, se desactiva.
 - **Registro** de todas las emisiones en el menú "Formularios de especificación", con exportación a CSV.
 

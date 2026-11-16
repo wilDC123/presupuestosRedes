@@ -15,8 +15,9 @@ use backend\services\CategoriaService;
 use backend\services\CodificacionService;
 use backend\services\CondicionPreviaService;
 use backend\services\EspecificacionEmisionService;
-use backend\services\EspecificacionService;
+use backend\services\EspecificacionBusquedaService;
 use backend\services\ListaItemsService;
+use backend\services\ListaVersionService;
 use backend\services\MaterialDticService;
 use backend\services\OrdenCambioService;
 use backend\services\NavegacionProyectoService;
@@ -129,12 +130,12 @@ class ListaItemsController extends Controller
         $grupos = $this->service->agrupar($proyecto, $enviado['items'] ?? null);
         $itemsDeLaLista = array_merge([], ...array_column($grupos, 'items'));
         $emisiones = new EspecificacionEmisionService();
-        $especificaciones = new EspecificacionService();
+        $especificaciones = new EspecificacionBusquedaService();
         $configuracion = ConfiguracionEspecificacion::obtener();
         // Opciones del selector "Especificación técnica": solo si la lista se edita.
         $selector = $editable
             ? $especificaciones->selector($this->service->especificacionesEnlazadas($proyecto))
-            : EspecificacionService::SELECTOR_VACIO;
+            : EspecificacionBusquedaService::SELECTOR_VACIO;
 
         return [
             'proyecto' => $proyecto,
@@ -158,7 +159,7 @@ class ListaItemsController extends Controller
             ),
             'errores' => $errores,
             // Version del documento "Lista de materiales y condiciones previas" (paso 8b).
-            'documento' => $this->service->documento($proyecto),
+            'documento' => (new ListaVersionService())->documento($proyecto),
             'editable' => $editable,
             'subcatalogo' => $editable ? (new SubcatalogoItemService())->activos() : [],
             'especificaciones' => $selector,
@@ -185,7 +186,8 @@ class ListaItemsController extends Controller
     {
         $proyecto = $this->findProyecto($id);
 
-        $documento = $this->service->documento($proyecto);
+        $versiones = new ListaVersionService();
+        $documento = $versiones->documento($proyecto);
 
         $html = $this->renderPartial('pdf', [
             'proyecto' => $proyecto,
@@ -199,7 +201,7 @@ class ListaItemsController extends Controller
             'proceso' => Proceso::nombreDe(CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_LISTA, $proyecto->codigoLista)['proceso'] ?? CorrelativoDocumento::PROCESO),
         ]);
 
-        $pdf = $this->service->generarPdf($proyecto, $html, $documento['borrador']);
+        $pdf = $versiones->generarPdf($proyecto, $html, $documento['borrador']);
 
         return Yii::$app->response->sendContentAsFile(
             $pdf['contenido'],

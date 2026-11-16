@@ -47,11 +47,11 @@ use yii\web\JqueryAsset;
  * @var array $pasos barra de pasos del proyecto, ver NavegacionProyectoService::pasos()
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  * @var string[] $errores mensajes si el guardado fallo
- * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string} $documento Ver ListaItemsService::documento()
+ * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string} $documento Ver ListaVersionService::documento()
  * @var bool $editable Ver ListaItemsService::puedeEditarse()
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
- * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>, subcatalogos: array<int, int>, sugeridasPorItem: array<int, int[]>} $especificaciones Ver EspecificacionService::selector()
- * @var array<string, array{opciones: array, grupos: array}> $opcionesPorItem Ver EspecificacionService::opcionesPorItem() (vacio si la lista no se edita)
+ * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>, subcatalogos: array<int, int>, sugeridasPorItem: array<int, int[]>} $especificaciones Ver EspecificacionBusquedaService::selector()
+ * @var array<string, array{opciones: array, grupos: array}> $opcionesPorItem Ver EspecificacionBusquedaService::opcionesPorItem() (vacio si la lista no se edita)
  * @var backend\models\OrdenCambio[] $ordenes reaperturas de la lista (en pantalla ya no se llaman "orden de cambio", 2026-11-09)
  * @var array<int, array{emision: ?backend\models\EspecificacionEmision, avisos: string[]}> $emisiones Ver EspecificacionEmisionService::estadoPorItem()
  * @var bool $puedeReemitir Ver EspecificacionEmisionService::puedeReemitir()
@@ -152,7 +152,7 @@ $infoEmision = static function (ProyectoItem $item) use ($emisiones, $puedeReemi
  * Selector "Especificación técnica" de una fila. Las opciones llegan YA
  * ordenadas (sugeridas, categoria del item, resto) en $opcionesPorItem, con
  * clave "idCategoria|idSubcatalogo"; la regla vive en
- * EspecificacionService::opcionesPorItem(). La fila modelo usa la clave ''.
+ * EspecificacionBusquedaService::opcionesPorItem(). La fila modelo usa la clave ''.
  */
 $selectorEspecificacion = static function (string $n, string $seleccionada, string $idCategoria, string $idSubcatalogo) use ($especificaciones, $opcionesPorItem, $atributosOpciones): string {
     $opcionesFila = $opcionesPorItem[$idCategoria . '|' . $idSubcatalogo] ?? $opcionesPorItem[''];
@@ -549,7 +549,7 @@ $grupoCierra = static fn (int $cantidad): string =>
         <template id="lista-fila-modelo"><?= $fila('__n__', '', '', '', '', '', '') ?></template>
         <template id="lista-grupo-modelo"><?= $grupoAbre('__cat__', '__nombre__') . $grupoCierra(0) ?></template>
         <span class="d-none" id="lista-siguiente" data-siguiente="<?= $n ?>"></span>
-        <?php // Fichas sugeridas para cada item del subcatalogo (EspecificacionService::selector()): las usa el JS en las filas nuevas y en "Ver detalle". Yii escribe el arreglo como JSON. ?>
+        <?php // Fichas sugeridas para cada item del subcatalogo (EspecificacionBusquedaService::selector()): las usa el JS en las filas nuevas y en "Ver detalle". Yii escribe el arreglo como JSON. ?>
         <?= Html::tag('span', '', ['class' => 'd-none', 'id' => 'lista-sugeridas', 'data' => ['mapa' => $especificaciones['sugeridasPorItem']]]) ?>
 
         <?php // Ventana "Ver detalle" (modal de Bootstrap). El contenido de la ficha lo trae el JS por AJAX. ?>

@@ -13,6 +13,7 @@ use backend\models\SubcatalogoItem;
 use backend\services\CodificacionService;
 use backend\services\CondicionPreviaService;
 use backend\services\ListaItemsService;
+use backend\services\ListaVersionService;
 use backend\services\MaterialDticService;
 use backend\services\ProcesoService;
 use backend\services\ProyectoService;
@@ -89,7 +90,7 @@ class ListaCodigoTest extends Unit
             $html = Yii::$app->view->render('@backend/views/lista-items/pdf.php', [
                 'proyecto' => $proyecto,
                 'grupos' => $this->lista->agrupar($proyecto),
-                'documento' => $this->lista->documento($proyecto),
+                'documento' => (new ListaVersionService())->documento($proyecto),
                 'configuracion' => ConfiguracionPresupuesto::obtener(),
                 'materiales' => (new MaterialDticService())->agrupar($proyecto),
                 'trabajos' => (new CondicionPreviaService())->agrupar($proyecto),
