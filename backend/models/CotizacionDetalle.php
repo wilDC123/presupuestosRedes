@@ -21,15 +21,15 @@ use yii\helpers\ArrayHelper;
  * @property int|null $idProyectoItem Item de la lista que cotiza (NULL = linea suelta, o item ya quitado de la lista).
  * @property int $idCotizacion
  * @property int $idSubcatalogo
- * @property int|null $idEspecificacion
+ * @property int|string|null $idEspecificacion '' si llega vacio del formulario (se guarda null)
  * @property int|null $idEspecificacionEmision Formulario NET contra el que cotizo (solo en lineas que vienen de una solicitud).
  * @property string|null $marcaModelo
  * @property string $cantidad
- * @property string $precioUnitario
+ * @property string|null $precioUnitario null en una linea nueva
  * @property string $precioTotal Columna calculada por SQL Server, solo lectura.
  *
- * @property-read Cotizacion $cotizacion
- * @property-read SubcatalogoItem $subcatalogoItem
+ * @property-read Cotizacion|null $cotizacion
+ * @property-read SubcatalogoItem|null $subcatalogoItem
  * @property-read Especificacion|null $especificacion
  * @property-read EspecificacionEmision|null $especificacionEmision
  * @property-read ProyectoItem|null $proyectoItem
@@ -71,26 +71,41 @@ class CotizacionDetalle extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<Cotizacion>
+     */
     public function getCotizacion(): ActiveQuery
     {
         return $this->hasOne(Cotizacion::class, ['id' => 'idCotizacion']);
     }
 
+    /**
+     * @return ActiveQuery<SubcatalogoItem>
+     */
     public function getSubcatalogoItem(): ActiveQuery
     {
         return $this->hasOne(SubcatalogoItem::class, ['id' => 'idSubcatalogo']);
     }
 
+    /**
+     * @return ActiveQuery<Especificacion>
+     */
     public function getEspecificacion(): ActiveQuery
     {
         return $this->hasOne(Especificacion::class, ['id' => 'idEspecificacion']);
     }
 
+    /**
+     * @return ActiveQuery<EspecificacionEmision>
+     */
     public function getEspecificacionEmision(): ActiveQuery
     {
         return $this->hasOne(EspecificacionEmision::class, ['id' => 'idEspecificacionEmision']);
     }
 
+    /**
+     * @return ActiveQuery<ProyectoItem>
+     */
     public function getProyectoItem(): ActiveQuery
     {
         return $this->hasOne(ProyectoItem::class, ['id' => 'idProyectoItem']);
@@ -120,7 +135,7 @@ class CotizacionDetalle extends ActiveRecord
      * cada fila enviada por POST con su modelo existente (si trae id) o crea
      * uno nuevo (si es una fila agregada con el boton "Anadir linea").
      *
-     * @param string $modelClass
+     * @param class-string<static> $modelClass
      * @param static[] $multipleModels
      * @return static[]
      */

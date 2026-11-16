@@ -22,8 +22,8 @@ use yii\db\ActiveRecord;
  *           tambien lo pone ProyectoService al crear; el proceso es el del proyecto.
  * @property string $nombre
  * @property string|null $descripcion
- * @property int|null $idTipoProyecto FK a redes.TipoProyecto.
- * @property int|null $idProceso FK a redes.Proceso: que proceso lleva adelante el proyecto (PI, DS...).
+ * @property int|string|null $idTipoProyecto FK a redes.TipoProyecto.
+ * @property int|string|null $idProceso FK a redes.Proceso: que proceso lleva adelante el proyecto (PI, DS...).
  *                               Obligatorio al guardar desde el formulario.
  * @property string|null $unidadDependencia Unidad BENEFICIARIA, a donde va el proyecto (texto libre).
  *                                         Es la que sale en los documentos ("Dependencia").
@@ -34,7 +34,7 @@ use yii\db\ActiveRecord;
  *                                    configuracion del formulario. Desde el 2026-11-10 se escribe ARRIBA DE LA
  *                                    LISTA DE ITEMS (ListaItemsService::guardar()), no en el formulario del
  *                                    proyecto (sin regla aqui). Ver lugarEntregaSugerido().
- * @property int|null $idProyectoAnterior
+ * @property int|string|null $idProyectoAnterior
  * @property int $numeroFase
  * @property int|null $numeroProyecto Numero del proyecto (revision del 2026-11-05): lo comparten TODAS sus
  *           fases (cada fila de esta tabla es una fase). Lo pone ProyectoService al crear; ver numeroTexto().
@@ -197,21 +197,33 @@ class Proyecto extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<TipoProyecto>
+     */
     public function getTipoProyecto(): ActiveQuery
     {
         return $this->hasOne(TipoProyecto::class, ['id' => 'idTipoProyecto']);
     }
 
+    /**
+     * @return ActiveQuery<Proceso>
+     */
     public function getProceso(): ActiveQuery
     {
         return $this->hasOne(Proceso::class, ['id' => 'idProceso']);
     }
 
+    /**
+     * @return ActiveQuery<ProyectoAreaIntervencion>
+     */
     public function getAreasIntervencion(): ActiveQuery
     {
         return $this->hasMany(ProyectoAreaIntervencion::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
     }
 
+    /**
+     * @return ActiveQuery<ProyectoParticipante>
+     */
     public function getParticipantes(): ActiveQuery
     {
         return $this->hasMany(ProyectoParticipante::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
@@ -233,18 +245,27 @@ class Proyecto extends ActiveRecord
         return null;
     }
 
+    /**
+     * @return ActiveQuery<Proyecto>
+     */
     public function getProyectoAnterior(): ActiveQuery
     {
         return $this->hasOne(self::class, ['id' => 'idProyectoAnterior']);
     }
 
     /** La fase de una orden de cambio (null en una fase). */
+    /**
+     * @return ActiveQuery<Proyecto>
+     */
     public function getFaseOrigen(): ActiveQuery
     {
         return $this->hasOne(self::class, ['id' => 'idFaseOrigen']);
     }
 
     /** Las ordenes de cambio de esta fase, la 1 primero. */
+    /**
+     * @return ActiveQuery<Proyecto>
+     */
     public function getOrdenesCambio(): ActiveQuery
     {
         return $this->hasMany(self::class, ['idFaseOrigen' => 'id'])->orderBy(['numeroOrdenCambio' => SORT_ASC]);
@@ -267,6 +288,9 @@ class Proyecto extends ActiveRecord
         return $this->esOrdenCambio() ? 'Orden de cambio N.° ' . (int) $this->numeroOrdenCambio : '';
     }
 
+    /**
+     * @return ActiveQuery<TipoOrdenCambio>
+     */
     public function getTipoOrdenCambio(): ActiveQuery
     {
         return $this->hasOne(TipoOrdenCambio::class, ['id' => 'idTipoOrdenCambio']);
@@ -290,6 +314,8 @@ class Proyecto extends ActiveRecord
 
     /**
      * Proyectos que declararon a este como su fase anterior.
+     *
+     * @return ActiveQuery<Proyecto>
      */
     public function getFasesSiguientes(): ActiveQuery
     {
@@ -299,12 +325,17 @@ class Proyecto extends ActiveRecord
     /**
      * hasOne porque cada proyecto tiene un solo presupuesto (indice unico
      * sobre redes.Presupuesto.idProyecto).
+     *
+     * @return ActiveQuery<Presupuesto>
      */
     public function getPresupuesto(): ActiveQuery
     {
         return $this->hasOne(Presupuesto::class, ['idProyecto' => 'id']);
     }
 
+    /**
+     * @return ActiveQuery<Plantilla>
+     */
     public function getPlantillaOrigen(): ActiveQuery
     {
         return $this->hasOne(Plantilla::class, ['id' => 'idPlantillaOrigen']);
@@ -312,6 +343,8 @@ class Proyecto extends ActiveRecord
 
     /**
      * Lista de items del proyecto (sin precios).
+     *
+     * @return ActiveQuery<ProyectoItem>
      */
     public function getItems(): ActiveQuery
     {
@@ -321,6 +354,8 @@ class Proyecto extends ActiveRecord
     /**
      * Trabajos complementarios (condiciones y requerimientos previos): lo que
      * deben hacer otras unidades (2026-10-29), en orden.
+     *
+     * @return ActiveQuery<ProyectoCondicionPrevia>
      */
     public function getCondicionesPrevias(): ActiveQuery
     {
@@ -330,6 +365,8 @@ class Proyecto extends ActiveRecord
     /**
      * Otros materiales y equipamiento que proveera la DTIC (2026-10-29; antes
      * en el presupuesto), en orden.
+     *
+     * @return ActiveQuery<ProyectoMaterialDtic>
      */
     public function getMaterialesDtic(): ActiveQuery
     {
@@ -339,6 +376,8 @@ class Proyecto extends ActiveRecord
     /**
      * Versiones aprobadas de la "Lista de materiales y condiciones previas"
      * (paso 8b, 2026-10-30), de la primera a la ultima.
+     *
+     * @return ActiveQuery<ListaMaterialesAprobacion>
      */
     public function getAprobacionesLista(): ActiveQuery
     {
@@ -437,6 +476,8 @@ class Proyecto extends ActiveRecord
      * adelante; incluye esta si es una fase. Sin las ordenes de cambio (parte
      * 6): son filas con el mismo numero, pero no fases. Vacio si no tiene
      * numero (filas de prueba).
+     *
+     * @return ActiveQuery<Proyecto>
      */
     public function getFases(): ActiveQuery
     {

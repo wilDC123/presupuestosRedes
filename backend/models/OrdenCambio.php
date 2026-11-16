@@ -63,6 +63,9 @@ class OrdenCambio extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<Proyecto>
+     */
     public function getProyecto(): ActiveQuery
     {
         return $this->hasOne(Proyecto::class, ['id' => 'idProyecto']);

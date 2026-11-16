@@ -14,7 +14,7 @@ use yii\db\ActiveRecord;
  * @property string|null $idSigma
  * @property int $idCategoria
  * @property string $descripcion
- * @property int|null $idUnidadMedida
+ * @property int|string|null $idUnidadMedida '' si llega vacio del formulario (se guarda null)
  * @property bool $activo
  * @property string $fechaRegistro
  * @property string|null $partida Partida presupuestaria (5 digitos, ej. 39700).
@@ -74,11 +74,17 @@ class SubcatalogoItem extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<Categoria>
+     */
     public function getCategoria(): ActiveQuery
     {
         return $this->hasOne(Categoria::class, ['id' => 'idCategoria']);
     }
 
+    /**
+     * @return ActiveQuery<UnidadMedida>
+     */
     public function getUnidad(): ActiveQuery
     {
         return $this->hasOne(UnidadMedida::class, ['id' => 'idUnidadMedida']);
@@ -98,6 +104,8 @@ class SubcatalogoItem extends ActiveRecord
      * item no viene de SIGMA). Sirve para mostrar el nombre oficial SIGMA sin
      * copiarlo a redes.SubcatalogoItem. Es una relacion solo a nivel de Yii:
      * en la base NO hay foreign key (referencia logica).
+     *
+     * @return ActiveQuery<CatalogoSigma>
      */
     public function getCatalogoSigma(): ActiveQuery
     {

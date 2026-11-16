@@ -11,7 +11,7 @@ use yii\db\ActiveRecord;
  *
  * @property int $id
  * @property string $nombre
- * @property int $orden
+ * @property int|string|null $orden null o '' si el formulario rapido no lo trae
  */
 class Categoria extends ActiveRecord
 {

@@ -20,7 +20,7 @@ use yii\db\ActiveRecord;
  * @property string|null $marcaModeloReferencia Marca y modelo que la DTIC pide como referencia (texto libre).
  *
  * @property-read SolicitudCotizacion $solicitud
- * @property-read ProyectoItem $proyectoItem
+ * @property-read ProyectoItem|null $proyectoItem
  */
 class SolicitudCotizacionItem extends ActiveRecord
 {
@@ -48,11 +48,17 @@ class SolicitudCotizacionItem extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<SolicitudCotizacion>
+     */
     public function getSolicitud(): ActiveQuery
     {
         return $this->hasOne(SolicitudCotizacion::class, ['id' => 'idSolicitud']);
     }
 
+    /**
+     * @return ActiveQuery<ProyectoItem>
+     */
     public function getProyectoItem(): ActiveQuery
     {
         return $this->hasOne(ProyectoItem::class, ['id' => 'idProyectoItem']);

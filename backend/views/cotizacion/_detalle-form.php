@@ -14,6 +14,7 @@ use yii\helpers\Html;
  * Las opciones de los desplegables llegan del controlador (esta vista no
  * consulta la base). La especificacion es opcional: "(ninguna)".
  *
+ * @var yii\web\View $this
  * @var backend\models\CotizacionDetalle[] $modelsDetalle
  * @var array<int, string> $items Ver SubcatalogoItemService::opciones()
  * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>} $especificaciones Ver EspecificacionBusquedaService::selector()

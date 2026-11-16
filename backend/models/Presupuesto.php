@@ -220,11 +220,17 @@ class Presupuesto extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<Proyecto>
+     */
     public function getProyecto(): ActiveQuery
     {
         return $this->hasOne(Proyecto::class, ['id' => 'idProyecto']);
     }
 
+    /**
+     * @return ActiveQuery<PresupuestoDetalle>
+     */
     public function getPresupuestoDetalles(): ActiveQuery
     {
         return $this->hasMany(PresupuestoDetalle::class, ['idPresupuesto' => 'id']);
@@ -232,6 +238,8 @@ class Presupuesto extends ActiveRecord
 
     /**
      * Carta de entrega (null si aun no se escribio). Como maximo una.
+     *
+     * @return ActiveQuery<CartaPresupuesto>
      */
     public function getCarta(): ActiveQuery
     {

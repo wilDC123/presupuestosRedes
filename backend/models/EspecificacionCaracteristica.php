@@ -68,6 +68,9 @@ class EspecificacionCaracteristica extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<EspecificacionVersion>
+     */
     public function getVersion(): ActiveQuery
     {
         return $this->hasOne(EspecificacionVersion::class, ['id' => 'idVersion']);

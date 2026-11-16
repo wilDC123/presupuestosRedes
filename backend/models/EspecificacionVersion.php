@@ -21,7 +21,7 @@ use yii\helpers\Url;
  *
  * @property int $id
  * @property int $idEspecificacion
- * @property int $numero 1, 2, 3... dentro de la ficha.
+ * @property int|null $numero 1, 2, 3... dentro de la ficha (null en una version nueva sin guardar).
  * @property string|null $modeloSugerido ej. "Cisco C1200-24P-4G o superior".
  * @property string|null $garantia NULL = se usa la garantia por defecto de la configuracion.
  * @property string|null $adjuntoRuta Datasheet o documento original (archivo subido o enlace externo).
@@ -68,17 +68,26 @@ class EspecificacionVersion extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<Especificacion>
+     */
     public function getEspecificacion(): ActiveQuery
     {
         return $this->hasOne(Especificacion::class, ['id' => 'idEspecificacion']);
     }
 
+    /**
+     * @return ActiveQuery<EspecificacionCaracteristica>
+     */
     public function getCaracteristicas(): ActiveQuery
     {
         return $this->hasMany(EspecificacionCaracteristica::class, ['idVersion' => 'id'])
             ->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
     }
 
+    /**
+     * @return ActiveQuery<EspecificacionEmision>
+     */
     public function getEmisiones(): ActiveQuery
     {
         return $this->hasMany(EspecificacionEmision::class, ['idVersion' => 'id']);

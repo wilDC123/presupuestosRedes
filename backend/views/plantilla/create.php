@@ -10,6 +10,11 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var backend\models\Plantilla $model
+ * @var backend\models\PlantillaItem[] $items
+ * @var int[] $idsCategoria
+ * @var array<int, string> $categorias
+ * @var array<int, string> $tipos
+ * @var backend\models\SubcatalogoItem[] $subcatalogo
  */
 
 $this->title = 'Nueva plantilla';

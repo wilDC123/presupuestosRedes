@@ -82,7 +82,7 @@ class ListaVersionService
     {
         $ultima = $proyecto->ultimaAprobacionLista();
         $borrador = $proyecto->estadoLista === Proyecto::LISTA_EDICION || $ultima === null;
-        $version = $borrador ? ($ultima?->version ?? 0) + 1 : (int) $ultima->version;
+        $version = $borrador ? ($ultima->version ?? 0) + 1 : (int) $ultima->version;
 
         if ($version === 1) {
             $creacion = $proyecto->fechaCreacion;

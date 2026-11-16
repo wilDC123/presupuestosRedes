@@ -60,16 +60,25 @@ class SolicitudCotizacion extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<Proyecto>
+     */
     public function getProyecto(): ActiveQuery
     {
         return $this->hasOne(Proyecto::class, ['id' => 'idProyecto']);
     }
 
+    /**
+     * @return ActiveQuery<SolicitudCotizacionItem>
+     */
     public function getItems(): ActiveQuery
     {
         return $this->hasMany(SolicitudCotizacionItem::class, ['idSolicitud' => 'id'])->orderBy(['id' => SORT_ASC]);
     }
 
+    /**
+     * @return ActiveQuery<Cotizacion>
+     */
     public function getCotizaciones(): ActiveQuery
     {
         return $this->hasMany(Cotizacion::class, ['idSolicitudCotizacion' => 'id'])->orderBy(['id' => SORT_ASC]);

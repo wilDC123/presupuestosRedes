@@ -61,11 +61,17 @@ class Plantilla extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<TipoProyecto>
+     */
     public function getTipoProyecto(): ActiveQuery
     {
         return $this->hasOne(TipoProyecto::class, ['id' => 'idTipoProyecto']);
     }
 
+    /**
+     * @return ActiveQuery<PlantillaCategoria>
+     */
     public function getPlantillaCategorias(): ActiveQuery
     {
         return $this->hasMany(PlantillaCategoria::class, ['idPlantilla' => 'id'])->orderBy(['orden' => SORT_ASC]);
@@ -74,12 +80,17 @@ class Plantilla extends ActiveRecord
     /**
      * Las categorias incluidas, pasando por la tabla intermedia
      * redes.PlantillaCategoria (relacion "muchos a muchos": via()).
+     *
+     * @return ActiveQuery<Categoria>
      */
     public function getCategorias(): ActiveQuery
     {
         return $this->hasMany(Categoria::class, ['id' => 'idCategoria'])->via('plantillaCategorias');
     }
 
+    /**
+     * @return ActiveQuery<PlantillaItem>
+     */
     public function getItems(): ActiveQuery
     {
         return $this->hasMany(PlantillaItem::class, ['idPlantilla' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);

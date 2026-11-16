@@ -135,9 +135,9 @@ $infoEmision = static function (ProyectoItem $item) use ($emisiones, $puedeReemi
                 'item' => $item->id,
                 'titulo' => ($item->especificacion?->nombre() ?? '') . ' — ' . ($item->subcatalogoItem->descripcion ?? ''),
                 'net' => $emision?->codigoConVersion() ?? '',
-                'lugar' => $emision?->lugarEntrega ?? '',
-                'validez' => $emision?->validezOfertaDias ?? '',
-                'tiempo' => $emision?->tiempoEntregaDias ?? '',
+                'lugar' => $emision->lugarEntrega ?? '',
+                'validez' => $emision->validezOfertaDias ?? '',
+                'tiempo' => $emision->tiempoEntregaDias ?? '',
             ],
         ]);
     }

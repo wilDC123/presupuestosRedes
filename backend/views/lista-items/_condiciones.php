@@ -25,7 +25,7 @@ use yii\helpers\Html;
  * ignora.
  *
  * @var yii\web\View $this
- * @var array<int, array{idTipo: string, descripcion: string, unidadEncargada: string}> $condiciones
+ * @var array<int, array{idTipo?: string, descripcion: string, unidadEncargada: string}> $condiciones
  * @var array<int, string> $tipos [id => nombre]
  * @var string[] $sugerencias unidades encargadas para el <datalist>
  * @var bool $editable

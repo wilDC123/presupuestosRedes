@@ -29,7 +29,7 @@ use yii\db\ActiveRecord;
  * @property int $id
  * @property int $idPresupuesto
  * @property int $idSubcatalogo
- * @property int|null $idCotizacionDetalle
+ * @property int|string|null $idCotizacionDetalle
  * @property string $cantidad
  * @property string|null $unidadMedida
  * @property string $precioUnitario
@@ -42,7 +42,7 @@ use yii\db\ActiveRecord;
  *
  * @property-read ProyectoItem|null $proyectoItem
  * @property-read Presupuesto $presupuesto
- * @property-read SubcatalogoItem $subcatalogoItem
+ * @property-read SubcatalogoItem|null $subcatalogoItem
  * @property-read CotizacionDetalle|null $cotizacionDetalle
  */
 class PresupuestoDetalle extends ActiveRecord
@@ -130,21 +130,33 @@ class PresupuestoDetalle extends ActiveRecord
         return empty($this->idCotizacionDetalle);
     }
 
+    /**
+     * @return ActiveQuery<ProyectoItem>
+     */
     public function getProyectoItem(): ActiveQuery
     {
         return $this->hasOne(ProyectoItem::class, ['id' => 'idProyectoItem']);
     }
 
+    /**
+     * @return ActiveQuery<Presupuesto>
+     */
     public function getPresupuesto(): ActiveQuery
     {
         return $this->hasOne(Presupuesto::class, ['id' => 'idPresupuesto']);
     }
 
+    /**
+     * @return ActiveQuery<SubcatalogoItem>
+     */
     public function getSubcatalogoItem(): ActiveQuery
     {
         return $this->hasOne(SubcatalogoItem::class, ['id' => 'idSubcatalogo']);
     }
 
+    /**
+     * @return ActiveQuery<CotizacionDetalle>
+     */
     public function getCotizacionDetalle(): ActiveQuery
     {
         return $this->hasOne(CotizacionDetalle::class, ['id' => 'idCotizacionDetalle']);

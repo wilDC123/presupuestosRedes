@@ -167,7 +167,7 @@ $columnas = 5 + count($proveedores);
                                 // Visible cuando el precio guardado no es el menor (en
                                 // borrador, para escribirla; despues, solo si hay texto).
                                 $noEsElMenor = $guardada !== '' && $fila['menor'] !== null && $guardada !== (string) $fila['menor'];
-                                $verJustificacion = $borrador ? $noEsElMenor : !empty($linea?->justificacion);
+                                $verJustificacion = $borrador ? $noEsElMenor : !empty($linea->justificacion);
                                 ?>
                                 <div class="elaborar-justificacion<?= $verJustificacion ? '' : ' d-none' ?> mt-1">
                                     <?php if ($borrador): ?>

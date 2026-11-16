@@ -75,6 +75,9 @@ class ProyectoMaterialDtic extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<SubcatalogoItem>
+     */
     public function getSubcatalogoItem(): ActiveQuery
     {
         return $this->hasOne(SubcatalogoItem::class, ['id' => 'idSubcatalogo']);

@@ -53,6 +53,9 @@ class ListaMaterialesAprobacion extends ActiveRecord
         return 'redes.ListaMaterialesAprobacion';
     }
 
+    /**
+     * @return ActiveQuery<Proyecto>
+     */
     public function getProyecto(): ActiveQuery
     {
         return $this->hasOne(Proyecto::class, ['id' => 'idProyecto']);

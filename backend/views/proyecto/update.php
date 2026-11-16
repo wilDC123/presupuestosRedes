@@ -10,6 +10,13 @@ use yii\helpers\Html;
  *
  * @var yii\web\View $this
  * @var backend\models\Proyecto $model
+ * @var array<int, string> $tipos
+ * @var array<int, string> $procesos
+ * @var string[] $sugerenciasUnidad
+ * @var array<int, array{id: string, nombre: string, usos: int}> $edificios
+ * @var array<int, array<string, mixed>> $areas
+ * @var string[] $personal
+ * @var array<int, string> $roles
  * @var bool $datosComunesFijos ver ProyectoService::datosComunesFijos()
  * @var string|null $avisoInfraestructura si UsfxGEO no responde (ver _form.php)
  */
