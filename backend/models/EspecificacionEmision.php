@@ -65,7 +65,7 @@ use yii\db\ActiveRecord;
  * @property string $fechaRegistro
  *
  * @property-read EspecificacionVersion $version
- * @property-read Proyecto $proyecto
+ * @property-read Proyecto|null $proyecto
  * @property-read ProyectoItem|null $proyectoItem
  * @property-read EspecificacionEmision|null $reemplazadaPor
  */
@@ -139,21 +139,33 @@ class EspecificacionEmision extends ActiveRecord
         ] + self::etiquetasFirmas();
     }
 
+    /**
+     * @return ActiveQuery<EspecificacionVersion>
+     */
     public function getVersion(): ActiveQuery
     {
         return $this->hasOne(EspecificacionVersion::class, ['id' => 'idVersion']);
     }
 
+    /**
+     * @return ActiveQuery<Proyecto>
+     */
     public function getProyecto(): ActiveQuery
     {
         return $this->hasOne(Proyecto::class, ['id' => 'idProyecto']);
     }
 
+    /**
+     * @return ActiveQuery<ProyectoItem>
+     */
     public function getProyectoItem(): ActiveQuery
     {
         return $this->hasOne(ProyectoItem::class, ['id' => 'idProyectoItem']);
     }
 
+    /**
+     * @return ActiveQuery<EspecificacionEmision>
+     */
     public function getReemplazadaPor(): ActiveQuery
     {
         return $this->hasOne(self::class, ['id' => 'idReemplazadaPor']);

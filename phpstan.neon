@@ -1,11 +1,10 @@
 # Analisis estatico (PHPStan): composer static  (o php vendor/bin/phpstan analyse)
 #
-# Linea base (2026-10-31):
-# phpstan-baseline.neon guarda los avisos que ya existian (casi todos falsas
-# alarmas de tipos, p. ej. ->all() sin "@var Modelo[]"), asi que el analisis
-# solo muestra los NUEVOS. Al corregir un aviso viejo (anotando el tipo cuando
-# se toca el archivo por otro motivo), PHPStan avisa que sobra en la linea
-# base: regenerarla con
+# Linea base: phpstan-baseline.neon guarda solo 3 avisos que PHPStan no puede
+# entender (una referencia & que crea la posicion con null, la propiedad de
+# una clase anonima en un test y el test de la plantilla de Yii en common/).
+# Todo lo demas se resolvio anotando tipos (2026-11-15): un aviso nuevo se
+# corrige, no se agrega a la linea base. Si se corrige uno de los 3, regenerarla:
 #   php vendor/bin/phpstan analyse --generate-baseline phpstan-baseline.neon
 # No se analiza frontend/ (sitio publico de la plantilla, no se usa).
 
@@ -50,5 +49,10 @@ parameters:
 
     ignoreErrors:
         - '#Access to an undefined property yii\\web\\IdentityInterface::\$username.#'
+        # Campos del paso a paso del area de intervencion SIN nombre (name = null) a proposito: el navegador
+        # no los envia con el formulario (los lee el JS). Yii acepta null, aunque su @param dice string.
+        -
+            message: '#^Parameter \#1 \$name of static method yii\\helpers\\BaseHtml::(hiddenInput|textInput|dropDownList)\(\) expects string, null given\.$#'
+            path: backend/views/proyecto/_form.php
 
     tmpDir: %currentWorkingDirectory%/runtime

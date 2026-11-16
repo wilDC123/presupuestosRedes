@@ -448,7 +448,7 @@ class EspecificacionEmisionTest extends Unit
     }
 
     /**
-     * @param array<int, array{nombre: string, valor: string}> $filas
+     * @param array<int, array{nombre?: string, valor: string}> $filas
      */
     private function ficha(string $titulo, array $filas, array $version = []): Especificacion
     {
@@ -465,7 +465,7 @@ class EspecificacionEmisionTest extends Unit
     private function fila(?ProyectoItem $item, float $cantidad, Especificacion $ficha): array
     {
         return [
-            'id' => $item?->id ?? '',
+            'id' => $item->id ?? '',
             'idSubcatalogo' => (string) $this->itemSubcatalogo->id,
             'cantidad' => (string) $cantidad,
             'observacion' => '',

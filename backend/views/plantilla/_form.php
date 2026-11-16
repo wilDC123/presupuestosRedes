@@ -54,7 +54,8 @@ $fila = static function (string $n, string $idSubcatalogo, string $nombre, strin
 
 <?php if ($model->hasErrors('categorias') || $model->hasErrors('items')): ?>
     <div class="alert alert-danger">
-        <?php foreach (array_merge($model->getErrors('categorias'), $model->getErrors('items')) as $error): ?>
+        <?php /** @var string[] $erroresGenerales */ $erroresGenerales = array_merge($model->getErrors('categorias'), $model->getErrors('items')); ?>
+        <?php foreach ($erroresGenerales as $error): ?>
             <div><?= Html::encode($error) ?></div>
         <?php endforeach; ?>
     </div>

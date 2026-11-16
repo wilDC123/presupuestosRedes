@@ -41,7 +41,7 @@ use yii\db\Expression;
  * @property string|null $copia
  * @property string|null $adjunto
  * @property string $fechaCreacion
- * @property string|null $fechaModificacion
+ * @property string|\yii\db\Expression|null $fechaModificacion
  *
  * @property-read Presupuesto $presupuesto
  */
@@ -141,6 +141,9 @@ class CartaPresupuesto extends ActiveRecord
         return $nombres;
     }
 
+    /**
+     * @return ActiveQuery<Presupuesto>
+     */
     public function getPresupuesto(): ActiveQuery
     {
         return $this->hasOne(Presupuesto::class, ['id' => 'idPresupuesto']);

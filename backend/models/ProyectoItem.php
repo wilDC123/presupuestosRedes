@@ -15,18 +15,18 @@ use yii\db\ActiveRecord;
  * La lista no es el presupuesto: el presupuesto es otro reporte, que nace de
  * esta lista mas los precios de las cotizaciones.
  *
- * @property int $id
+ * @property int|null $id null en un item nuevo de la lista, todavia sin guardar
  * @property int $idProyecto
- * @property int $idSubcatalogo
- * @property int $idCategoria Clasificacion del item en este proyecto.
+ * @property int|null $idSubcatalogo null solo en un item nuevo, antes de asignarle el del subcatalogo
+ * @property int|null $idCategoria Clasificacion del item en este proyecto (null igual que idSubcatalogo).
  * @property string $cantidad
  * @property string|null $unidadMedida
  * @property string|null $observacion Detalle de la linea ("de 1 metro", "segun especificacion").
  * @property int $orden
  * @property int|null $idEspecificacion Ficha de la libreria enlazada (opcional: NULL = no la necesita).
  *
- * @property-read Proyecto $proyecto
- * @property-read SubcatalogoItem $subcatalogoItem
+ * @property-read Proyecto|null $proyecto
+ * @property-read SubcatalogoItem|null $subcatalogoItem
  * @property-read Categoria $categoria
  * @property-read Especificacion|null $especificacion
  * @property-read EspecificacionEmision|null $emisionVigente El formulario NET vigente de su especificacion.
@@ -75,21 +75,33 @@ class ProyectoItem extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<Proyecto>
+     */
     public function getProyecto(): ActiveQuery
     {
         return $this->hasOne(Proyecto::class, ['id' => 'idProyecto']);
     }
 
+    /**
+     * @return ActiveQuery<SubcatalogoItem>
+     */
     public function getSubcatalogoItem(): ActiveQuery
     {
         return $this->hasOne(SubcatalogoItem::class, ['id' => 'idSubcatalogo']);
     }
 
+    /**
+     * @return ActiveQuery<Categoria>
+     */
     public function getCategoria(): ActiveQuery
     {
         return $this->hasOne(Categoria::class, ['id' => 'idCategoria']);
     }
 
+    /**
+     * @return ActiveQuery<Especificacion>
+     */
     public function getEspecificacion(): ActiveQuery
     {
         return $this->hasOne(Especificacion::class, ['id' => 'idEspecificacion']);
@@ -99,6 +111,8 @@ class ProyectoItem extends ActiveRecord
      * La emision NET VIGENTE de la especificacion del item (como maximo una:
      * lo garantiza un indice unico filtrado en la base). Las reemplazadas y
      * anuladas quedan en el historial de emisiones.
+     *
+     * @return ActiveQuery<EspecificacionEmision>
      */
     public function getEmisionVigente(): ActiveQuery
     {
@@ -132,8 +146,8 @@ class ProyectoItem extends ActiveRecord
             return null;
         }
 
-        $version = $this->emisionVigente?->version ?? $this->especificacion->versionActual;
-        $modelo = trim((string) ($version?->modeloSugerido ?? ''));
+        $version = $this->emisionVigente->version ?? $this->especificacion->versionActual;
+        $modelo = trim((string) ($version->modeloSugerido ?? ''));
 
         return $modelo !== '' ? $modelo : null;
     }
@@ -184,6 +198,8 @@ class ProyectoItem extends ActiveRecord
 
     /**
      * Linea del presupuesto que nacio de este item (null si aun no se presupuesto).
+     *
+     * @return ActiveQuery<PresupuestoDetalle>
      */
     public function getPresupuestoDetalle(): ActiveQuery
     {

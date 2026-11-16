@@ -95,6 +95,9 @@ lineamiento RD-GD-LI-001, historial, catálogos.
 - `declare(strict_types=1)` en todos los archivos PHP
 - Comentarios: explicar el **porqué** técnico de las decisiones
 - Atributos que pone un servicio: sin regla en `rules()` o con "!" (no deben llegar de un formulario)
+- Tipos para PHPStan: cada relación nueva de un modelo lleva `@return ActiveQuery<Modelo>` (así `->one()` y `->all()`
+  devuelven ese modelo); un atributo que puede llegar como `''` del formulario se declara `int|string|null`, y una
+  relación que puede no estar, `Modelo|null`
 - Textos de pantalla en español, sin abreviar; fechas dd/mm/aaaa (pantallas) y dd-mm-aaaa (impresos)
 - Sin `style="..."` en las vistas de pantalla: clases de `backend/web/css/redes.css` (`rd-*`; anchos `rd-ancho-*`,
   `rd-max-*`) o de Bootstrap (`text-end`…). Los PDF sí usan estilos en línea (mPDF entiende poco CSS). Ojo al buscar
@@ -107,9 +110,9 @@ lineamiento RD-GD-LI-001, historial, catálogos.
 - Tests: `php vendor/bin/codecept run -c backend` (Unit y Functional); solo unitarios:
   `php vendor/bin/codecept run Unit -c backend`. Usan la base LOCAL (`common/config/test-local.php`, no se sube a
   git); cada test corre en una transacción que se deshace al terminar
-- Análisis estático: `composer static` (PHPStan nivel 5; debe terminar en "No errors"). Usa una línea base
-  (`phpstan-baseline.neon`) con los avisos que ya existían: solo muestra los NUEVOS. Al corregir un aviso viejo:
-  `php vendor/bin/phpstan analyse --generate-baseline phpstan-baseline.neon`
+- Análisis estático: `composer static` (PHPStan nivel 5; debe terminar en "No errors"). La línea base
+  (`phpstan-baseline.neon`) solo guarda 3 avisos que PHPStan no entiende (ver `phpstan.neon`): un aviso nuevo se
+  corrige, no se agrega. Si se corrige uno de los 3: `php vendor/bin/phpstan analyse --generate-baseline phpstan-baseline.neon`
 - **Antes de cada PR**: tests y `composer static` sin errores
 - URL local: http://presupuestos-redes.test:8080 — usuario de prueba: admin / admin123
 - Usuarios temporales por consola: `php yii usuario` (lista), `usuario/crear <usuario>`, `usuario/clave`,

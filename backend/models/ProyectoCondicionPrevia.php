@@ -65,6 +65,9 @@ class ProyectoCondicionPrevia extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<TipoCondicionPrevia>
+     */
     public function getTipo(): ActiveQuery
     {
         return $this->hasOne(TipoCondicionPrevia::class, ['id' => 'idTipo']);

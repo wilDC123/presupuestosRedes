@@ -16,13 +16,13 @@ use yii\db\ActiveRecord;
  *
  * @property int $id
  * @property int $idPlantilla
- * @property int $idSubcatalogo
- * @property int $idCategoria
+ * @property int|string $idSubcatalogo
+ * @property int|string $idCategoria
  * @property string|null $cantidadSugerida
  * @property string|null $observacion
  * @property int $orden
  *
- * @property-read SubcatalogoItem $subcatalogoItem
+ * @property-read SubcatalogoItem|null $subcatalogoItem
  * @property-read Categoria $categoria
  */
 class PlantillaItem extends ActiveRecord
@@ -55,11 +55,17 @@ class PlantillaItem extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<SubcatalogoItem>
+     */
     public function getSubcatalogoItem(): ActiveQuery
     {
         return $this->hasOne(SubcatalogoItem::class, ['id' => 'idSubcatalogo']);
     }
 
+    /**
+     * @return ActiveQuery<Categoria>
+     */
     public function getCategoria(): ActiveQuery
     {
         return $this->hasOne(Categoria::class, ['id' => 'idCategoria']);

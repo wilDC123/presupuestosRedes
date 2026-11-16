@@ -20,9 +20,9 @@ use yii\web\UploadedFile;
  * activo). El contenido tecnico vive en sus VERSIONES, y lo que se entrega al
  * proveedor (codigo NET, cantidad, dependencia, fecha) en cada EMISION.
  *
- * @property int $id
- * @property int|null $idSubcatalogo Item de referencia (opcional): solo informativo.
- * @property int|null $idCategoria Clasificacion en la libreria (mismas categorias del subcatalogo).
+ * @property int|null $id null mientras no se guarda
+ * @property int|string|null $idSubcatalogo Item de referencia (opcional): solo informativo.
+ * @property int|string|null $idCategoria Clasificacion en la libreria (mismas categorias del subcatalogo).
  * @property string|null $titulo
  * @property bool $activo
  *
@@ -100,11 +100,17 @@ class Especificacion extends ActiveRecord
         return array_values(array_diff(parent::safeAttributes(), ['archivoEspecificacion']));
     }
 
+    /**
+     * @return ActiveQuery<SubcatalogoItem>
+     */
     public function getSubcatalogoItem(): ActiveQuery
     {
         return $this->hasOne(SubcatalogoItem::class, ['id' => 'idSubcatalogo']);
     }
 
+    /**
+     * @return ActiveQuery<Categoria>
+     */
     public function getCategoria(): ActiveQuery
     {
         return $this->hasOne(Categoria::class, ['id' => 'idCategoria']);
@@ -112,6 +118,8 @@ class Especificacion extends ActiveRecord
 
     /**
      * Items de listas de proyecto que tienen enlazada esta especificacion.
+     *
+     * @return ActiveQuery<ProyectoItem>
      */
     public function getProyectoItems(): ActiveQuery
     {
@@ -120,6 +128,8 @@ class Especificacion extends ActiveRecord
 
     /**
      * Lineas de cotizacion que citan esta especificacion.
+     *
+     * @return ActiveQuery<CotizacionDetalle>
      */
     public function getCotizacionDetalles(): ActiveQuery
     {
@@ -128,6 +138,8 @@ class Especificacion extends ActiveRecord
 
     /**
      * Versiones del contenido tecnico, de la mas nueva a la mas antigua.
+     *
+     * @return ActiveQuery<EspecificacionVersion>
      */
     public function getVersiones(): ActiveQuery
     {
@@ -139,6 +151,8 @@ class Especificacion extends ActiveRecord
      * La version mas nueva. Funciona tambien con with('versionActual'): en
      * una relacion hasOne, Yii se queda con la PRIMERA fila de cada ficha, y
      * el orden descendente hace que esa sea la de numero mas alto.
+     *
+     * @return ActiveQuery<EspecificacionVersion>
      */
     public function getVersionActual(): ActiveQuery
     {

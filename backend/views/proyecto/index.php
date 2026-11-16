@@ -43,7 +43,7 @@ $this->params['breadcrumbs'][] = $this->title;
             ],
             [
                 'label' => 'Tipo',
-                'value' => static fn ($model) => $model->tipoProyecto?->nombre ?? '—',
+                'value' => static fn ($model) => $model->tipoProyecto->nombre ?? '—',
             ],
             [
                 // Solo el codigo: el nombre completo sale al pasar el mouse.

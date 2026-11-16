@@ -24,7 +24,7 @@ use yii\web\UploadedFile;
  * @property string|null $numeroReferencia
  * @property string|null $fecha
  * @property string|null $documentoRuta
- * @property int|null $validezDias
+ * @property int|string|null $validezDias '' si llega vacio del formulario
  * @property int|null $idSolicitudCotizacion Solicitud del proyecto a la que responde (NULL = cotizacion suelta).
  *
  * @property-read Proveedor $proveedor
@@ -153,16 +153,25 @@ class Cotizacion extends ActiveRecord
             : Url::to(['/cotizacion/documento', 'id' => $this->id]);
     }
 
+    /**
+     * @return ActiveQuery<Proveedor>
+     */
     public function getProveedor(): ActiveQuery
     {
         return $this->hasOne(Proveedor::class, ['id' => 'idProveedor']);
     }
 
+    /**
+     * @return ActiveQuery<CotizacionDetalle>
+     */
     public function getCotizacionDetalles(): ActiveQuery
     {
         return $this->hasMany(CotizacionDetalle::class, ['idCotizacion' => 'id']);
     }
 
+    /**
+     * @return ActiveQuery<SolicitudCotizacion>
+     */
     public function getSolicitud(): ActiveQuery
     {
         return $this->hasOne(SolicitudCotizacion::class, ['id' => 'idSolicitudCotizacion']);

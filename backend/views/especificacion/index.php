@@ -93,7 +93,7 @@ $hayFiltros = $filtros['categoria'] !== '' || $filtros['buscar'] !== '' || $filt
                         <tr>
                             <td>
                                 <div class="rd-celda-titulo"><?= Html::a(Html::encode($especificacion->nombre()), ['view', 'id' => $especificacion->id]) ?></div>
-                                <?php if (!empty($versionActual?->modeloSugerido)): ?>
+                                <?php if (!empty($versionActual->modeloSugerido)): ?>
                                     <div class="rd-celda-sub">Modelo sugerido: <?= Html::encode($versionActual->modeloSugerido) ?></div>
                                 <?php endif; ?>
                             </td>

@@ -43,6 +43,9 @@ class ProyectoParticipante extends ActiveRecord
         ];
     }
 
+    /**
+     * @return ActiveQuery<RolProyecto>
+     */
     public function getRol(): ActiveQuery
     {
         return $this->hasOne(RolProyecto::class, ['id' => 'idRol']);

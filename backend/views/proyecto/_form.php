@@ -31,7 +31,8 @@ use yii\widgets\ActiveForm;
  * @var string[] $sugerenciasUnidad
  * @var array<int, array{id: string, nombre: string, usos: int}> $edificios vigentes de UsfxGEO, con cuantos proyectos los usan
  * @var string|null $avisoInfraestructura texto del aviso si UsfxGEO no responde (AreaIntervencionService::AVISO_INFRAESTRUCTURA); null si responde
- * @var array<int, array{idEdificio: string, idBloqueArea: ?int, numeroNivel: ?string, idEspacio: ?string, texto: string, grupo: string, detalle: string}> $areas Ver AreaIntervencionService::areasDelFormulario()
+ * @var array<int, array<string, mixed>> $areas Ver AreaIntervencionService::areasDelFormulario(): los 4 id de UsfxGEO (o, con manual = true,
+ *      los 4 nombres escritos a mano) y texto, grupo y detalle
  * @var string[] $personal nombres para el desplegable "Persona" (activos y los ya elegidos)
  * @var array<int, string> $roles [id => nombre] para el desplegable "Rol" (activos y los ya elegidos)
  * @var bool $datosComunesFijos los datos del proyecto no se cambian aqui (ProyectoService::datosComunesFijos())

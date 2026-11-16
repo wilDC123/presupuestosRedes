@@ -267,6 +267,7 @@ class EspecificacionImportacionService
         // cual pertenece) o si es mas nuevo: un formulario reciente sin modelo
         // con el titulo de otro suele ser una plantilla copiada (en el banco,
         // un NVR quedo titulado "CÁMARA PTZ").
+        /** @var array<string, array<string, array<int, int|string>>> $modelosPorTitulo [titulo => [familia => orden()]] */
         $modelosPorTitulo = [];
         foreach ($filas as $fila) {
             if ($fila['accion'] === self::ACCION_CREAR && !str_ends_with($fila['familia'], '|')) {
