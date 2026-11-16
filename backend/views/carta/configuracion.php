@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use backend\assets\ComunAsset;
 use yii\helpers\Html;
-use yii\web\JqueryAsset;
 use yii\widgets\ActiveForm;
 
 /**
@@ -22,7 +22,7 @@ $this->params['breadcrumbs'][] = ['label' => 'Configuración', 'url' => ['/confi
 $this->params['breadcrumbs'][] = 'Carta de entrega';
 
 // Agregar, quitar y ordenar las filas de "Tratamientos".
-$this->registerJsFile('@web/js/carta-configuracion.js', ['depends' => [JqueryAsset::class]]);
+$this->registerJsFile('@web/js/carta-configuracion.js', ['depends' => [ComunAsset::class]]);
 
 $nombreTratamientos = Html::getInputName($configuracion, 'tratamientos');
 $tratamientos = is_array($configuracion->tratamientos) ? $configuracion->tratamientos : [];

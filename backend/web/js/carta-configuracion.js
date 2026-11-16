@@ -9,10 +9,8 @@ $(function () {
     var siguiente = parseInt($tabla.data('siguiente'), 10) || 0;
 
     $('#carta-agregar-tratamiento').on('click', function () {
-        var html = $('#carta-tratamiento-fila-modelo').html().replace(/__n__/g, String(siguiente));
-        siguiente++;
-
-        $(html).appendTo($cuerpo).find('input[type="text"]').trigger('focus');
+        Redes.filaDesdeModelo($('#carta-tratamiento-fila-modelo').html(), siguiente++)
+            .appendTo($cuerpo).find('input[type="text"]').trigger('focus');
     });
 
     $cuerpo.on('click', '.rd-tratamiento-quitar', function () {

@@ -44,7 +44,9 @@ Lo que falta decidir va a `docs/pendientes.md`.
 
 ## Estructura del proyecto (Yii2 Advanced)
 - `backend/` → AQUÍ vive el módulo de redes: `controllers/` (delgados: reciben y responden), `services/` (reglas de
-  negocio y transacciones), `models/`, `views/` (no consultan la base), `components/`, `web/js`, `web/css/redes.css`
+  negocio y transacciones), `models/`, `views/` (no consultan la base), `components/`, `web/js` (lo que comparten
+  varios formularios va en `web/js/comun.js`, objeto `Redes`; el JS que lo use depende de `assets/ComunAsset`),
+  `web/css/redes.css`
 - `frontend/` → sitio público de la plantilla, no se usa
 - `common/` → configuración compartida; `common/config/main-local.php` tiene la conexión (NUNCA se sube a git)
 - `console/` → migraciones y comandos de consola

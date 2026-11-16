@@ -46,10 +46,8 @@ $(function () {
     var siguienteFila = parseInt($('#proyecto-equipo').data('siguiente'), 10) || 0;
     var siguienteArea = parseInt($areas.data('siguiente'), 10) || 0;
 
-    // Minusculas y sin tildes: "Tecnología" y "tecnologia" son lo mismo.
-    function normalizar(texto) {
-        return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    }
+    // Minusculas y sin tildes (comun.js).
+    var normalizar = Redes.normalizar;
 
     /**
      * Campo de texto que filtra una lista al escribir y la muestra debajo,
@@ -625,10 +623,7 @@ $(function () {
     }
 
     $('#proyecto-agregar-persona').on('click', function () {
-        var html = $('#proyecto-equipo-fila-modelo').html().replace(/__n__/g, String(siguienteFila));
-        siguienteFila++;
-
-        var $fila = $(html).appendTo($equipo);
+        var $fila = Redes.filaDesdeModelo($('#proyecto-equipo-fila-modelo').html(), siguienteFila++).appendTo($equipo);
         asegurarResponsable();
         $fila.find('select').first().trigger('focus');
     });

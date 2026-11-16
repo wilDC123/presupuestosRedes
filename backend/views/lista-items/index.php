@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use backend\assets\ComunAsset;
 use backend\components\Monto;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
@@ -70,7 +71,7 @@ use yii\web\JqueryAsset;
  */
 
 if ($editable) {
-    $this->registerJsFile('@web/js/lista-items.js', ['depends' => [JqueryAsset::class]]);
+    $this->registerJsFile('@web/js/lista-items.js', ['depends' => [ComunAsset::class]]);
     // La ventana "Ver detalle" usa el modal de Bootstrap, que necesita su JS
     // (el layout solo carga el CSS). Se registra solo en esta pantalla.
     BootstrapPluginAsset::register($this);

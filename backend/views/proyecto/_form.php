@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use backend\assets\ComunAsset;
 use yii\helpers\Html;
 use yii\helpers\Url;
-use yii\web\JqueryAsset;
 use yii\widgets\ActiveForm;
 
 /**
@@ -37,7 +37,7 @@ use yii\widgets\ActiveForm;
  * @var bool $datosComunesFijos los datos del proyecto no se cambian aqui (ProyectoService::datosComunesFijos())
  */
 
-$this->registerJsFile('@web/js/proyecto-form.js', ['depends' => [JqueryAsset::class]]);
+$this->registerJsFile('@web/js/proyecto-form.js', ['depends' => [ComunAsset::class]]);
 
 $nombreAreas = Html::getInputName($model, 'areas');
 $nombreEquipo = Html::getInputName($model, 'equipo');

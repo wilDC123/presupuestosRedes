@@ -197,7 +197,7 @@ edita para darle el estilo DTIC. También el PDF del presupuesto muestra SOLO el
   con estado y total, especificaciones vigentes, solicitudes de cotización); al pie, cuándo y quién la imprimió.
   "Es un reporte de control, no de la gestión documental": cabecera SIN código del lineamiento (la de la
   solicitud: código del proyecto | unidad / dependencia | fecha de impresión | página), sin firmas ni marca de agua
-- REVISIÓN DEL 2026-11-05, PARTE 1 (acta `Desktoprchivos guia\A1cuerdos_revision_ficha_proyecto.md`): VERSIÓN
+- REVISIÓN DEL 2026-11-05, PARTE 1 (acta `Desktop\archivos guia\A1\acuerdos_revision_ficha_proyecto.md`): VERSIÓN
   "1.0" en todos los documentos (`backend\components\VersionDocumento`: la versión 1 se escribe "1.0", la 2 "1.1"…;
   en la base sigue el número corrido; el buscador del registro entiende "v1.1" y "v02"; antes "01", "02").
   ÁREA DE INTERVENCIÓN en documentos = UNA línea por edificio, sin repetirlo, con bloque, piso y espacio juntos
