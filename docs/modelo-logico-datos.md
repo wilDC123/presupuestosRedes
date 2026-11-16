@@ -1,8 +1,8 @@
 # Modelo lógico de datos
 
 Módulo: Sistema de presupuestos de instalaciones de redes (Unidad de Redes y Telecomunicaciones, DTIC — USFX).
-Actualizado: 5 de noviembre de 2026, a partir de la base de desarrollo con todas las migraciones aplicadas
-(la última, `m261104_233000_crear_tratamiento_carta`).
+Actualizado: 15 de noviembre de 2026, a partir de una base con todas las migraciones aplicadas
+(la última, `m261115_000000_quitar_columnas_heredadas`).
 
 ## 1. Alcance y convenciones
 
@@ -1014,13 +1014,12 @@ CHECK: `([id]=(1))`
 
 #### redes.CorrelativoDocumento
 
-Siguiente número de cada tipo de documento: PT, LM, SC, PR, ET, y el número de proyecto (NP). `anio` solo para ET (vuelve a 001 cada año).
+Siguiente número de cada tipo de documento: PT, LM, SC, PR, ET, y el número de proyecto (NP). Ninguno se reinicia.
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
 | tipo | nvarchar(2) | no | PK |
 | siguiente | int | no |  |
-| anio | smallint | sí |  |
 
 CHECK: `([tipo]='ET' OR [tipo]='PR' OR [tipo]='SC' OR [tipo]='LM' OR [tipo]='PT' OR [tipo]='NP')`  
 CHECK: `([siguiente]>=(1))`

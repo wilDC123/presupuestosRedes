@@ -3,7 +3,8 @@
 Módulo: Sistema de presupuestos de instalaciones de redes (Unidad de Redes y Telecomunicaciones).
 Para: equipo técnico de DTIC — USFX. Fecha: 18 de octubre de 2026 (actualizada el 2 de noviembre de 2026: PHP 8.3;
 el 3 de noviembre de 2026: scripts SQL para 2012, datos del entorno de pruebas y pasos antes del primer documento;
-y el 5 de noviembre de 2026: tratamientos de la carta configurables, 40 tablas y 62 migraciones).
+el 5 de noviembre de 2026: tratamientos de la carta configurables; y el 15 de noviembre de 2026: 40 tablas y
+71 migraciones).
 
 Esta guía reúne lo que el servidor necesita para instalar el módulo y los puntos que conviene
 acordar antes. El módulo está hecho en PHP con Yii2 Advanced y usa la base SQL Server
@@ -61,7 +62,7 @@ registra qué cambios de estructura ya se aplicaron. En `dbo` no crea nada: solo
   - `01-estructura-y-catalogos.sql`: el esquema `redes`, sus tablas, índices, llaves y restricciones,
     y los datos sin los que el sistema no funciona (categorías, unidades de medida, tipos de proyecto,
     procesos, roles, tipos de trabajo complementario, las cuatro configuraciones `Configuracion*`, los
-    correlativos `CorrelativoDocumento` y el registro `redes.migration` con las 62 migraciones).
+    correlativos `CorrelativoDocumento` y el registro `redes.migration` con las 71 migraciones).
   - `02-datos-de-entorno-de-pruebas.sql` (opcional): datos para probar el sistema (ver el punto 4.8).
 
   Se comprobó que una base armada con los dos scripts es idéntica, columna por columna y fila por fila,
@@ -144,8 +145,8 @@ búsquedas.
 8. Datos para el entorno de pruebas. Dos formas:
 
    - **Con el script `02-datos-de-entorno-de-pruebas.sql`** (después del 01, sobre una base sin uso):
-     carga el subcatálogo de ítems de redes (34), la librería de especificaciones técnicas ya revisada y
-     ordenada (172 fichas, 175 versiones, 3.450 características), 1 plantilla, 2 proveedores de prueba,
+     carga el subcatálogo de ítems de redes (39), la librería de especificaciones técnicas ya revisada y
+     ordenada (172 fichas, 175 versiones, 3.450 características), 1 plantilla, 3 proveedores de prueba,
      el personal del proyecto, los textos y firmas de los documentos y el usuario `pruebas.redes`. No
      trae proyectos, presupuestos ni cotizaciones: los códigos empiezan en RD-PI-PT-001.
      Siete especificaciones tienen un documento adjunto: copiar la carpeta entregada
