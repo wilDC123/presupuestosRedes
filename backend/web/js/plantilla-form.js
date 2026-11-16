@@ -30,19 +30,13 @@ $(function () {
     }
 
     $('#plantilla-buscar').on('input', function () {
-        var texto = $.trim($(this).val()).toLowerCase();
-
-        $('#plantilla-subcatalogo .row-item').each(function () {
-            var coincide = String($(this).data('nombre')).toLowerCase().indexOf(texto) !== -1;
-
-            $(this).toggleClass('d-none', !coincide);
-        });
+        Redes.filtrarPorNombre($('#plantilla-subcatalogo .row-item'), $(this).val());
     });
 
     $('#plantilla-subcatalogo').on('click', '.addbtn', function () {
         var $origen = $(this).closest('.row-item');
         var idCategoria = String($origen.data('categoria'));
-        var $fila = $(modelo.replace(/__n__/g, String(siguiente++)));
+        var $fila = Redes.filaDesdeModelo(modelo, siguiente++);
 
         $fila.find('input[type="hidden"]').val($origen.data('id'));
         $fila.find('.plantilla-item-nombre').text($origen.data('nombre'));

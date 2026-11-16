@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use backend\assets\ComunAsset;
 use yii\helpers\Html;
-use yii\web\JqueryAsset;
 use yii\widgets\ActiveForm;
 
 /**
@@ -26,7 +26,7 @@ use yii\widgets\ActiveForm;
  * @var backend\models\SubcatalogoItem[] $subcatalogo items activos del subcatalogo
  */
 
-$this->registerJsFile('@web/js/plantilla-form.js', ['depends' => [JqueryAsset::class]]);
+$this->registerJsFile('@web/js/plantilla-form.js', ['depends' => [ComunAsset::class]]);
 
 // Nombre DTIC de cada item, para pintar las filas ya existentes.
 $nombres = [];

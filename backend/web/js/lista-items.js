@@ -92,13 +92,7 @@ $(function () {
     }
 
     $('#lista-buscar').on('input', function () {
-        var texto = $.trim($(this).val()).toLowerCase();
-
-        $('#lista-subcatalogo .row-item').each(function () {
-            var coincide = String($(this).data('nombre')).toLowerCase().indexOf(texto) !== -1;
-
-            $(this).toggleClass('d-none', !coincide);
-        });
+        Redes.filtrarPorNombre($('#lista-subcatalogo .row-item'), $(this).val());
     });
 
     // ---- "Cambiar ítem": otro item del subcatalogo en una fila ya guardada ----
@@ -214,7 +208,7 @@ $(function () {
             return;
         }
 
-        var $fila = $(filaModelo.replace(/__n__/g, String(siguiente++)));
+        var $fila = Redes.filaDesdeModelo(filaModelo, siguiente++);
 
         $fila.find('.lista-item-subcatalogo').val($origen.data('id'));
         $fila.find('.lista-item-nombre').text($origen.data('nombre'));
@@ -274,10 +268,8 @@ $(function () {
     $tabla.on('input', 'input', marcarCambios);
 
     // ---- Secciones sin precio: materiales que aporta la DTIC y trabajos complementarios ----
-    // Minusculas y sin tildes: "Canaleta" y "canaleta" son lo mismo.
-    function normalizar(texto) {
-        return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    }
+    // Minusculas y sin tildes (comun.js).
+    var normalizar = Redes.normalizar;
 
     $('.lista-seccion').each(function () {
         var $seccion = $(this);
@@ -287,7 +279,7 @@ $(function () {
         var siguienteFila = parseInt($seccion.data('siguiente'), 10) || 0;
 
         function nuevaFila(selectorModelo) {
-            return $($seccion.find(selectorModelo).html().replace(/__n__/g, String(siguienteFila++)));
+            return Redes.filaDesdeModelo($seccion.find(selectorModelo).html(), siguienteFila++);
         }
 
         // Grupo (subtitulo o tipo) con esa clave; si no existe, se crea al final.
