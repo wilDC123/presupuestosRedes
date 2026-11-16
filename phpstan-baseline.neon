@@ -11,9 +11,3 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: backend/tests/Unit/AreaIntervencionTest.php
-
-		-
-			message: '#^Property common\\tests\\Unit\\Models\\LoginFormTest\:\:\$tester has unknown class common\\tests\\Support\\UnitTester as its type\.$#'
-			identifier: class.notFound
-			count: 1
-			path: common/tests/Unit/Models/LoginFormTest.php
