@@ -6,7 +6,10 @@
 CLAUDE.md export-ignore
 .gitattributes export-ignore
 
-# Documentos para el tutor (la guia de instalacion SI se entrega)
+# Documentos internos o para el tutor. SI se entregan: la guia de instalacion,
+# el modelo logico de datos, docs/reglas/ y el glosario (sirven a quien mantenga
+# el sistema).
 spec_tecnica_sistema.md export-ignore
-docs/cambios-*.md export-ignore
-docs/plan-especificaciones.md export-ignore
+docs/historia export-ignore
+docs/historia/** export-ignore
+docs/pendientes.md export-ignore
