@@ -4,20 +4,15 @@ declare(strict_types=1);
 
 namespace backend\services;
 
-use backend\components\PresupuestoPdfGenerator;
-use backend\components\UsuarioActual;
-use backend\models\ConfiguracionPresupuesto;
 use backend\models\Especificacion;
 use backend\models\EspecificacionEmision;
 use backend\models\HistorialProyecto;
-use backend\models\ListaMaterialesAprobacion;
 use backend\models\OrdenCambio;
 use backend\models\Plantilla;
 use backend\models\PresupuestoDetalle;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
 use backend\models\SubcatalogoItem;
-use DateTimeImmutable;
 use DomainException;
 use Throwable;
 use Yii;
@@ -37,8 +32,12 @@ use Yii;
  *    desactivo despues se conserva donde ya estaba,
  *  - enlazar una especificacion EMITE su formulario de especificación; cambiarla o
  *    quitarla, o quitar el item, anula la emision vigente (las reglas de
- *    las emisiones viven en EspecificacionEmisionService),
+ *    las emisiones, y como se reemite al guardar, viven en
+ *    EspecificacionEmisionService),
  *  - estados: edicion -> en_cotizacion -> cerrada (al aprobar el presupuesto).
+ *
+ * Las VERSIONES emitidas de la lista (que version imprime el PDF, la copia de
+ * las firmas) estan en ListaVersionService.
  */
 class ListaItemsService
 {
@@ -192,7 +191,7 @@ class ListaItemsService
         $guardados = ProyectoItem::find()->andWhere(['idProyecto' => $proyecto->id])->with('subcatalogoItem')->indexBy('id')->all();
         $conservados = [];
         $numero = 0;
-        $especificacionesActivas = (new EspecificacionService())->idsActivas();
+        $especificacionesActivas = (new EspecificacionBusquedaService())->idsActivas();
         $emisiones = new EspecificacionEmisionService();
         $cambianEspecificacion = [];
         $cambianItem = [];
@@ -221,7 +220,7 @@ class ListaItemsService
                 // "Cambiar ítem": la fila guardada llega con OTRO item del subcatalogo.
                 $idNuevo = $this->texto($fila['idSubcatalogo'] ?? '');
                 if ($idNuevo !== '' && $idNuevo !== (string) $item->idSubcatalogo) {
-                    $antes = $this->nombreConUnidad($item);
+                    $antes = $item->nombreConUnidad();
                     $errorCambio = $this->cambiarItem($item, $idNuevo);
 
                     if ($errorCambio !== null) {
@@ -382,62 +381,6 @@ class ListaItemsService
     }
 
     /**
-     * El formulario de especificacion de un item CAMBIADO (misma ficha) o
-     * cuyo LUGAR DE ENTREGA se cambio en la lista: se reemite con el mismo
-     * codigo y la version siguiente, con el nombre y la unidad del item de
-     * hoy. Conserva validez y tiempo de entrega de la anterior; el lugar, el
-     * de la anterior salvo que haya cambiado ($lugarAntes = el que tenia; el
-     * nuevo esta en $item->lugarEntregaPedido). $antes = nombre del item
-     * anterior, o null si el item no cambio. Sin formulario vigente no hace
-     * nada. Devuelve el codigo nuevo ("RD-PI-ET-033 v1.1"), o null si no
-     * habia formulario.
-     *
-     * @throws DomainException si no se pudo reemitir
-     */
-    private function reemitirPorCambio(ProyectoItem $item, ?string $antes, ?string $usuario, ?string $lugarAntes = null): ?string
-    {
-        /** @var EspecificacionEmision|null $anterior */
-        $anterior = $item->getEmisionVigente()->one();
-
-        if ($anterior === null) {
-            return null;
-        }
-
-        $cambios = [];
-        if ($antes !== null) {
-            $cambios[] = 'Se cambió el ítem: ' . $antes . ' → ' . $this->nombreConUnidad($item) . '.';
-        }
-        if ($lugarAntes !== null) {
-            $cambios[] = 'Se cambió el lugar de entrega: ' . ($lugarAntes !== '' ? $lugarAntes : '(ninguno)') . ' → ' . $item->lugarEntregaPedido . '.';
-        }
-
-        // El motivo admite hasta 300 caracteres; los nombres DTIC pueden ser largos.
-        $motivo = mb_substr(implode(' ', $cambios), 0, 300);
-        $resultado = (new EspecificacionEmisionService())->reemitir($item, [
-            'motivo' => $motivo,
-            'lugarEntrega' => $lugarAntes !== null ? $item->lugarEntregaPedido : $anterior->lugarEntrega,
-            'validezOfertaDias' => $anterior->validezOfertaDias,
-            'tiempoEntregaDias' => $anterior->tiempoEntregaDias,
-        ], $usuario);
-
-        if ($resultado['error'] !== null) {
-            throw new DomainException(($antes ?? $this->nombreConUnidad($item)) . ': ' . $resultado['error']);
-        }
-
-        return $resultado['emision']->codigoConVersion();
-    }
-
-    /**
-     * "CABLE UTP (m)": nombre DTIC y unidad del item, para mensajes e historial.
-     */
-    private function nombreConUnidad(ProyectoItem $item): string
-    {
-        $nombre = $item->subcatalogoItem->descripcion ?? 'Ítem #' . $item->idSubcatalogo;
-
-        return $item->unidadMedida ? "$nombre ($item->unidadMedida)" : $nombre;
-    }
-
-    /**
      * Los items quitados que tienen linea en el presupuesto. Con el
      * presupuesto en borrador se borrara su linea (ver Presupuesto,
      * "las lineas siguen a la lista"); si no, no se pueden quitar: error, y
@@ -534,31 +477,24 @@ class ListaItemsService
                 $item->save(false);
 
                 if (isset($plan['cambianEspecificacion'][spl_object_id($item)])) {
-                    $emisiones->anularVigente($item->id, $item->idEspecificacion === null
-                        ? 'Se quitó la especificación del ítem.'
-                        : 'Se cambió la especificación del ítem.');
-
-                    if ($item->idEspecificacion !== null) {
-                        // Vacio = el del proyecto (ver EspecificacionEmisionService::emitir()).
-                        $emisiones->emitir($item, $usuario, ['lugarEntrega' => $item->lugarEntregaPedido]);
-                    }
+                    $emisiones->cambiarEspecificacion($item, $usuario);
                 }
 
                 $cambioDeItem = $plan['cambianItem'][spl_object_id($item)] ?? null;
                 if ($cambioDeItem !== null) {
-                    $texto = $cambioDeItem['antes'] . ' → ' . $this->nombreConUnidad($item);
+                    $texto = $cambioDeItem['antes'] . ' → ' . $item->nombreConUnidad();
 
                     // Otro item, la MISMA ficha: se corrige el mismo formulario
                     // (si cambio tambien la ficha, arriba se anulo y se emitio otro).
                     if (!isset($plan['cambianEspecificacion'][spl_object_id($item)])) {
-                        $codigo = $this->reemitirPorCambio($item, $cambioDeItem['antes'], $usuario, $plan['cambianLugar'][spl_object_id($item)] ?? null);
+                        $codigo = $emisiones->reemitirPorCambio($item, $cambioDeItem['antes'], $usuario, $plan['cambianLugar'][spl_object_id($item)] ?? null);
                         $texto .= $codigo === null ? '' : " · formulario $codigo";
                     }
 
                     $cambiosDeItem[] = $texto;
                 } elseif (isset($plan['cambianLugar'][spl_object_id($item)])) {
                     // Solo cambio el lugar de entrega: el mismo formulario, version siguiente.
-                    $this->reemitirPorCambio($item, null, $usuario, $plan['cambianLugar'][spl_object_id($item)]);
+                    $emisiones->reemitirPorCambio($item, null, $usuario, $plan['cambianLugar'][spl_object_id($item)]);
                 }
 
                 if ($presupuestoBorrador) {
@@ -567,7 +503,7 @@ class ListaItemsService
             }
 
             foreach ($plan['recordar'] as $idEspecificacion => $idSubcatalogo) {
-                (new EspecificacionService())->recordarItemDeReferencia($idEspecificacion, $idSubcatalogo);
+                (new EspecificacionBusquedaService())->recordarItemDeReferencia($idEspecificacion, $idSubcatalogo);
             }
 
             if ($plan['materiales'] !== null) {
@@ -607,11 +543,7 @@ class ListaItemsService
      * Cierra la orden de cambio que la habia reabierto, si habia una.
      *
      * Y EMITE la version siguiente de la "Lista de materiales y condiciones
-     * previas" (paso 8b, 2026-10-30): la 1.0 la primera vez, una mas despues
-     * de cada orden de cambio. Desde el 2026-11-05 la lista no se aprueba
-     * (solo lleva "Elaborado por"): la version queda emitida con la fecha del
-     * envio, el usuario y la COPIA de las firmas de la configuracion del
-     * presupuesto, y se anota en el historial del proyecto.
+     * previas" (ListaVersionService::emitir()), en la misma transaccion.
      *
      * Devuelve false si la lista no esta en edicion o no tiene items.
      */
@@ -626,7 +558,7 @@ class ListaItemsService
         try {
             $proyecto->updateAttributes(['estadoLista' => Proyecto::LISTA_EN_COTIZACION, 'listaIniciada' => true]);
             (new OrdenCambioService())->cerrarAbiertas($proyecto, OrdenCambio::ALCANCE_LISTA);
-            $this->emitirVersion($proyecto);
+            (new ListaVersionService())->emitir($proyecto);
 
             $transaccion->commit();
         } catch (Throwable $e) {
@@ -635,80 +567,6 @@ class ListaItemsService
         }
 
         return true;
-    }
-
-    /**
-     * Crea la version siguiente de la lista (emitida, sin aprobacion). Se
-     * llama dentro de la transaccion de enviarACotizacion().
-     */
-    private function emitirVersion(Proyecto $proyecto): ListaMaterialesAprobacion
-    {
-        $historial = new HistorialService();
-        $ultima = (int) ListaMaterialesAprobacion::find()->where(['idProyecto' => $proyecto->id])->max('version');
-
-        $aprobacion = new ListaMaterialesAprobacion([
-            'idProyecto' => $proyecto->id,
-            'version' => $ultima + 1,
-            'fechaAprobacion' => (new DateTimeImmutable('today'))->format('Y-m-d'),
-            'usuario' => UsuarioActual::nombre(),
-        ]);
-
-        // COPIA de las firmas: una version emitida no cambia aunque despues se edite la configuracion.
-        $configuracion = ConfiguracionPresupuesto::obtener();
-        foreach (ListaMaterialesAprobacion::atributosFirmas() as $atributo) {
-            $aprobacion->$atributo = $configuracion->$atributo;
-        }
-
-        $aprobacion->save(false);
-        unset($proyecto->aprobacionesLista);
-
-        $historial->registrar(
-            $proyecto,
-            HistorialProyecto::ACCION_LISTA_APROBADA,
-            'Versión ' . ListaMaterialesAprobacion::versionTexto($aprobacion->version) . ', enviada a cotización'
-        );
-
-        return $aprobacion;
-    }
-
-    /**
-     * Que version de la lista imprime el PDF y si es borrador: en edicion, la
-     * SIGUIENTE a la ultima emitida (todavia sin enviar: marca de agua
-     * BORRADOR, firmas de la configuracion de hoy); enviada o cerrada, la
-     * ultima emitida ('aprobacion' = su fila, con la fecha del envio).
-     *
-     * 'fechaCreacion' (dd/mm/aaaa) es la de la cabecera: "arriba va la fecha
-     * de creacion del documento" (revision del 2026-10-29, paso 9). La v01
-     * nace con el proyecto; cada version siguiente, con la orden de cambio que
-     * reabrio la lista (la 1.a orden crea la v02, la 2.a la v03...). '' si no
-     * se puede saber (listas enviadas antes de que hubiera ordenes).
-     *
-     * @return array{version: string, borrador: bool, aprobacion: ListaMaterialesAprobacion|null, fechaCreacion: string}
-     */
-    public function documento(Proyecto $proyecto): array
-    {
-        $ultima = $proyecto->ultimaAprobacionLista();
-        $borrador = $proyecto->estadoLista === Proyecto::LISTA_EDICION || $ultima === null;
-        $version = $borrador ? ($ultima?->version ?? 0) + 1 : (int) $ultima->version;
-
-        if ($version === 1) {
-            $creacion = $proyecto->fechaCreacion;
-        } else {
-            $creacion = OrdenCambio::find()
-                ->select('fecha')
-                ->where(['idProyecto' => $proyecto->id, 'alcance' => OrdenCambio::ALCANCE_LISTA])
-                ->orderBy(['fecha' => SORT_ASC, 'id' => SORT_ASC])
-                ->offset($version - 2)
-                ->limit(1)
-                ->scalar();
-        }
-
-        return [
-            'version' => ListaMaterialesAprobacion::versionTexto($version),
-            'borrador' => $borrador,
-            'aprobacion' => $borrador ? null : $ultima,
-            'fechaCreacion' => $creacion ? date('d/m/Y', strtotime((string) $creacion)) : '',
-        ];
     }
 
     /**
@@ -755,23 +613,6 @@ class ListaItemsService
     public function obtenerItem(int $id): ?ProyectoItem
     {
         return ProyectoItem::findOne($id);
-    }
-
-    /**
-     * Convierte el HTML de la vista "pdf" (la arma el controlador) en el PDF
-     * de la lista, con el mismo generador que usa el presupuesto. $borrador:
-     * marca de agua BORRADOR (version todavia sin enviar, ver documento()).
-     *
-     * @return array{contenido: string, nombreArchivo: string}
-     */
-    public function generarPdf(Proyecto $proyecto, string $html, bool $borrador = false): array
-    {
-        $referencia = $proyecto->codigoLista ?: ($proyecto->codigo ?: (string) $proyecto->id);
-
-        return [
-            'contenido' => (new PresupuestoPdfGenerator())->generarDesdeHtml($html, $borrador ? PresupuestoPdfGenerator::MARCA_BORRADOR : null),
-            'nombreArchivo' => 'lista_materiales_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $referencia) . '.pdf',
-        ];
     }
 
     /**
@@ -892,7 +733,7 @@ class ListaItemsService
      * ya tenia una que despues se desactivo, se conserva (el selector la
      * sigue mostrando) para no perderla al volver a guardar la lista.
      *
-     * @param array<int, true> $activas Ver EspecificacionService::idsActivas()
+     * @param array<int, true> $activas Ver EspecificacionBusquedaService::idsActivas()
      */
     private function asignarEspecificacion(ProyectoItem $item, string $valor, array $activas): ?string
     {

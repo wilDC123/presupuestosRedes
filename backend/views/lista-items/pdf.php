@@ -22,7 +22,7 @@ use yii\helpers\Html;
  * elaboracion. Desde la revision del 2026-11-05 (punto 7) tiene CODIGO
  * PROPIO (Proyecto.codigoLista, RD-PI-LM-NNN; antes el del proyecto) y NO se
  * aprueba: el control lleva solo "ELABORADO POR" y la version. Version,
- * borrador y firma salen de ListaItemsService::documento(): en edicion, la
+ * borrador y firma salen de ListaVersionService::documento(): en edicion, la
  * version siguiente con marca de agua BORRADOR (la pone el controlador) y la
  * firma de la configuracion de hoy; enviada o cerrada, la ultima emitida con
  * la COPIA de su firma. La "Fecha" de la cabecera es la de CREACION de la

@@ -16,7 +16,7 @@ use yii\helpers\Html;
  *
  * @var backend\models\CotizacionDetalle[] $modelsDetalle
  * @var array<int, string> $items Ver SubcatalogoItemService::opciones()
- * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>} $especificaciones Ver EspecificacionService::selector()
+ * @var array{grupos: array<int, array{nombre: string, opciones: array<int, string>}>, urls: array<int, string>} $especificaciones Ver EspecificacionBusquedaService::selector()
  */
 
 // Un <optgroup> por categoria de la libreria.

@@ -11,7 +11,7 @@ use yii\widgets\ActiveForm;
  * @var array<int, string> $proveedores [id => razon social], solo ACTIVOS (mas el de la cotizacion). Ver ProveedorService::opcionesActivos()
  * @var backend\models\CotizacionDetalle[]|null $modelsDetalle Solo se pasa desde update.php
  * @var array<int, string> $items Solo desde update.php. Ver SubcatalogoItemService::opciones()
- * @var array $especificaciones Solo desde update.php. Ver EspecificacionService::selector()
+ * @var array $especificaciones Solo desde update.php. Ver EspecificacionBusquedaService::selector()
  * @var yii\widgets\ActiveForm $form
  */
 ?>

@@ -126,7 +126,7 @@ class FichaTecnicaService
                 ->indexBy('idReemplazadaPor')
                 ->column(),
             'solicitudes' => (new SolicitudCotizacionService())->listar($proyecto),
-            'lista' => (new ListaItemsService())->documento($proyecto),
+            'lista' => (new ListaVersionService())->documento($proyecto),
         ];
     }
 

@@ -8,7 +8,7 @@ Esta tabla evita confusiones.
 | Proyecto / fase | `Proyecto` | `redes.Proyecto` | **Cada fila es una fase**; las fases de un proyecto comparten `numeroProyecto` |
 | Orden de cambio (FR-006) | `Proyecto` con `numeroOrdenCambio`, `OrdenCambioFaseService` | `redes.Proyecto` | Un presupuesto adicional de una fase aprobada |
 | Reabrir la lista / Reaperturas de la lista | `OrdenCambio`, `OrdenCambioService`, `lista-items/solicitar-cambio` | `redes.OrdenCambio` | **No** es la orden de cambio del FR-006 |
-| Versión emitida de la lista de materiales | `ListaMaterialesAprobacion`, `ListaItemsService::emitirVersion()` | `redes.ListaMaterialesAprobacion` | La lista ya no se aprueba: cada fila es una versión enviada a cotización |
+| Versión emitida de la lista de materiales | `ListaMaterialesAprobacion`, `ListaVersionService::emitir()` | `redes.ListaMaterialesAprobacion` | La lista ya no se aprueba: cada fila es una versión enviada a cotización |
 | Espacio (área de intervención) | `ambiente`, `idEspacio` | `redes.ProyectoAreaIntervencion` | En UsfxGEO, "Espacios" |
 | Formulario de especificación / ET | `EspecificacionEmision` | `redes.EspecificacionEmision` | La emisión de una ficha para un ítem de la lista |
 | Número del ET (RD-PI-ET-**033**) | `numeroNet` | `EspecificacionEmision.numeroNet` | Nombre de antes, cuando el formulario se llamaba "NET" |

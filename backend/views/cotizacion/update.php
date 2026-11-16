@@ -10,7 +10,7 @@ use yii\helpers\Html;
  * @var array<int, string> $proveedores Ver ProveedorService::opcionesActivos()
  * @var backend\models\CotizacionDetalle[] $modelsDetalle
  * @var array<int, string> $items Ver SubcatalogoItemService::opciones()
- * @var array $especificaciones Ver EspecificacionService::selector()
+ * @var array $especificaciones Ver EspecificacionBusquedaService::selector()
  */
 
 $this->title = 'Editar cotización #' . $model->id;

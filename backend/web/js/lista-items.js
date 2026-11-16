@@ -229,7 +229,7 @@ $(function () {
 
         // Y antes que todas, las sugeridas para este item: se MUEVEN a
         // "Sugeridas para este ítem", como en las filas que arma el servidor.
-        // CUALES son lo decide el servidor (EspecificacionService::selector(),
+        // CUALES son lo decide el servidor (EspecificacionBusquedaService::selector(),
         // mapa en #lista-sugeridas); aqui solo se acomodan. Los grupos que
         // quedan vacios se quitan.
         var idsSugeridas = ($('#lista-sugeridas').data('mapa') || {})[$origen.data('id')] || [];

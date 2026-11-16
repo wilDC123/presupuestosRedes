@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace backend\tests\Unit;
 
 use backend\models\ProyectoItem;
-use backend\services\EspecificacionService;
+use backend\services\EspecificacionBusquedaService;
 use Codeception\Test\Unit;
 
 /**
  * Orden del selector "Especificación técnica" de cada fila de la lista
- * (EspecificacionService::opcionesPorItem()): sugeridas, categoria del item,
+ * (EspecificacionBusquedaService::opcionesPorItem()): sugeridas, categoria del item,
  * resto. Usa un selector armado a mano: no toca la base.
  */
 class EspecificacionSelectorTest extends Unit
@@ -28,25 +28,25 @@ class EspecificacionSelectorTest extends Unit
 
     public function testSugeridasPrimeroLuegoLaCategoriaDelItemYSinRepetir(): void
     {
-        $mapa = (new EspecificacionService())->opcionesPorItem(self::SELECTOR, [
+        $mapa = (new EspecificacionBusquedaService())->opcionesPorItem(self::SELECTOR, [
             new ProyectoItem(['idCategoria' => 2, 'idSubcatalogo' => 65]),
         ]);
         $fila = $mapa['2|65'];
 
         $this->assertSame(
-            [EspecificacionService::GRUPO_SUGERIDAS, 'Dispositivos', 'Cableado'],
+            [EspecificacionBusquedaService::GRUPO_SUGERIDAS, 'Dispositivos', 'Cableado'],
             array_keys($fila['opciones'])
         );
-        $this->assertSame([20 => 'Switch PoE', 30 => 'Velcro'], $fila['opciones'][EspecificacionService::GRUPO_SUGERIDAS]);
+        $this->assertSame([20 => 'Switch PoE', 30 => 'Velcro'], $fila['opciones'][EspecificacionBusquedaService::GRUPO_SUGERIDAS]);
         // Se movieron: ya no estan en su categoria, y "Otros" quedo vacio y no sale.
         $this->assertSame([21 => 'Router'], $fila['opciones']['Dispositivos']);
         $this->assertArrayNotHasKey('Otros', $fila['opciones']);
-        $this->assertSame(['data-sugeridas' => 1], $fila['grupos'][EspecificacionService::GRUPO_SUGERIDAS]);
+        $this->assertSame(['data-sugeridas' => 1], $fila['grupos'][EspecificacionBusquedaService::GRUPO_SUGERIDAS]);
     }
 
     public function testItemSinSugeridasYFilaModelo(): void
     {
-        $mapa = (new EspecificacionService())->opcionesPorItem(self::SELECTOR, [
+        $mapa = (new EspecificacionBusquedaService())->opcionesPorItem(self::SELECTOR, [
             new ProyectoItem(['idCategoria' => 3, 'idSubcatalogo' => 99]),
         ]);
 
