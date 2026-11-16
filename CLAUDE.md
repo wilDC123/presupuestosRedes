@@ -111,8 +111,8 @@ lineamiento RD-GD-LI-001, historial, catálogos.
   `php vendor/bin/codecept run Unit -c backend`. Usan la base LOCAL (`common/config/test-local.php`, no se sube a
   git); cada test corre en una transacción que se deshace al terminar
 - Análisis estático: `composer static` (PHPStan nivel 5; debe terminar en "No errors"). La línea base
-  (`phpstan-baseline.neon`) solo guarda 3 avisos que PHPStan no entiende (ver `phpstan.neon`): un aviso nuevo se
-  corrige, no se agrega. Si se corrige uno de los 3: `php vendor/bin/phpstan analyse --generate-baseline phpstan-baseline.neon`
+  (`phpstan-baseline.neon`) solo guarda 2 avisos que PHPStan no entiende (ver `phpstan.neon`): un aviso nuevo se
+  corrige, no se agrega. Si se corrige uno de los 2: `php vendor/bin/phpstan analyse --generate-baseline phpstan-baseline.neon`
 - **Antes de cada PR**: tests y `composer static` sin errores
 - URL local: http://presupuestos-redes.test:8080 — usuario de prueba: admin / admin123
 - Usuarios temporales por consola: `php yii usuario` (lista), `usuario/crear <usuario>`, `usuario/clave`,
