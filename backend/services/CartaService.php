@@ -215,21 +215,15 @@ class CartaService
     /**
      * "RD-PI-ET-001, RD-PI-ET-004": el codigo de las especificaciones
      * VIGENTES de la lista del proyecto (las que se entregan), de menor a
-     * mayor. Las de antes del 2026-10-22 (serie NET) salen solo con su
-     * numero, sin "NET:" ni el año ("896, 897"), como se citaban entonces, y
-     * van primero. Vacio si no hay ninguna.
+     * mayor. Vacio si no hay ninguna.
      */
     public function codigosEspecificaciones(Presupuesto $presupuesto): string
     {
         $emisiones = (new EspecificacionEmisionService())->vigentesDelProyecto($presupuesto->proyecto);
 
-        $orden = static fn (EspecificacionEmision $e) => [$e->serie === EspecificacionEmision::SERIE_NET ? 0 : 1, $e->anio, $e->numeroNet];
-        usort($emisiones, static fn ($a, $b) => $orden($a) <=> $orden($b));
+        usort($emisiones, static fn (EspecificacionEmision $a, EspecificacionEmision $b) => $a->numeroNet <=> $b->numeroNet);
 
-        return implode(', ', array_map(
-            static fn (EspecificacionEmision $e) => $e->serie === EspecificacionEmision::SERIE_NET ? (string) $e->numeroNet : $e->codigo(),
-            $emisiones
-        ));
+        return implode(', ', array_map(static fn (EspecificacionEmision $e) => $e->codigo(), $emisiones));
     }
 
     /**

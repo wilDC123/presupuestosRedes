@@ -78,14 +78,12 @@ class CodificacionService
      * El mayor numero ya usado de un tipo (null si todavia no hay ninguno),
      * con cualquier proceso. Solo cuentan los
      * codigos con el formato del lineamiento: los numeros de presupuesto
-     * escritos a mano antes ("690") y los NET no son de esta serie.
+     * escritos a mano antes ("690") no son de esta serie.
      */
     public function ultimoUsado(string $tipo): ?int
     {
         if ($tipo === CorrelativoDocumento::TIPO_ESPECIFICACION) {
-            $maximo = EspecificacionEmision::find()
-                ->where(['serie' => EspecificacionEmision::SERIE_ET])
-                ->max('numeroNet');
+            $maximo = EspecificacionEmision::find()->max('numeroNet');
 
             return $maximo === null ? null : (int) $maximo;
         }

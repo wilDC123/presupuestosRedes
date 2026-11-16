@@ -157,8 +157,8 @@ $bloque = static function (array $fase, array $numeros) use ($texto, $carpeta, $
     // Area de intervencion: una casilla por edificio.
     $html = '<table class="ficha"><tr><th class="seccion">' . $titulo($numeros[0], 'Área de intervención') . '</th></tr>';
     if ($areas === []) {
-        // Proyectos de antes del 2026-10-28: la ubicacion que tenian.
-        $areas = [$p->ubicacionAnterior()];
+        // Sin areas: la casilla queda vacia (la tabla no sale sin filas).
+        $areas = [''];
     }
     foreach ($areas as $linea) {
         $html .= '<tr><td>' . $texto($linea) . '</td></tr>';

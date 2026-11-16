@@ -248,15 +248,6 @@ $formato = Yii::$app->formatter;
                                 <?php endforeach; ?>
                             </details>
                         <?php endif; ?>
-                    <?php elseif ($deLaFase->ubicacionAnterior() !== ''): ?>
-                        <?php // Proyectos registrados antes del 2026-10-28: edificio y bloques del JSON de entonces. ?>
-                        <div>
-                            <?= Html::encode($deLaFase->ubicacionAnterior()) ?>
-                            <span class="badge b-inactivo">ubicación anterior</span>
-                        </div>
-                        <div class="rd-nota">
-                            Registrada antes del cambio. Al <?= $puedeEditarArea ? Html::a('editar los datos', ['update', 'id' => $model->id]) : 'editar los datos' ?> puede elegir sus áreas.
-                        </div>
                     <?php else: ?>
                         <div>Sin área registrada.</div>
                         <?php if ($puedeEditarArea): ?>

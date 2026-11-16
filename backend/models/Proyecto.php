@@ -34,10 +34,6 @@ use yii\db\ActiveRecord;
  *                                    configuracion del formulario. Desde el 2026-11-10 se escribe ARRIBA DE LA
  *                                    LISTA DE ITEMS (ListaItemsService::guardar()), no en el formulario del
  *                                    proyecto (sin regla aqui). Ver lugarEntregaSugerido().
- * @property string|null $codigoFacultad Ubicacion ANTERIOR al 2026-10-28 (ya no se escribe).
- * @property string|null $facultad       Idem: los proyectos nuevos usan las unidades
- * @property string|null $codigoEdificio y las areas de intervencion.
- * @property string|null $edificio
  * @property int|null $idProyectoAnterior
  * @property int $numeroFase
  * @property int|null $numeroProyecto Numero del proyecto (revision del 2026-11-05): lo comparten TODAS sus
@@ -56,7 +52,6 @@ use yii\db\ActiveRecord;
  * @property-read TipoProyecto|null $tipoProyecto
  * @property-read Proceso|null $proceso
  * @property-read ProyectoAreaIntervencion[] $areasIntervencion
- * @property-read ProyectoBloque[] $bloques Ubicacion anterior al 2026-10-28.
  * @property-read ProyectoParticipante[] $participantes Equipo del proyecto, en orden.
  * @property-read Proyecto|null $proyectoAnterior
  * @property-read Proyecto[] $fasesSiguientes
@@ -123,7 +118,7 @@ class Proyecto extends ActiveRecord
     }
 
     /**
-     * codigo, facultad, edificio y numeroFase NO tienen regla a proposito:
+     * codigo y numeroFase NO tienen regla a proposito:
      * un atributo sin reglas no es "seguro" y load() lo ignora, asi que no
      * se pueden enviar desde el formulario. Los calcula ProyectoService.
      */
@@ -194,11 +189,6 @@ class Proyecto extends ActiveRecord
             'motivoCambio' => 'Motivo',
             'idTipoOrdenCambio' => 'Tipo de cambio',
             'areas' => 'Área de intervención',
-            'codigoFacultad' => 'Facultad',
-            'facultad' => 'Facultad',
-            'codigoEdificio' => 'Edificio',
-            'edificio' => 'Edificio',
-            'codigosBloque' => 'Bloques',
             'equipo' => 'Equipo del proyecto',
             'idProyectoAnterior' => 'Proyecto de fase anterior (opcional)',
             'numeroFase' => 'Fase',
@@ -220,15 +210,6 @@ class Proyecto extends ActiveRecord
     public function getAreasIntervencion(): ActiveQuery
     {
         return $this->hasMany(ProyectoAreaIntervencion::class, ['idProyecto' => 'id'])->orderBy(['orden' => SORT_ASC, 'id' => SORT_ASC]);
-    }
-
-    /**
-     * Ubicacion anterior al 2026-10-28 (facultad / edificio / bloques del
-     * JSON). Solo se lee, para los proyectos registrados antes.
-     */
-    public function getBloques(): ActiveQuery
-    {
-        return $this->hasMany(ProyectoBloque::class, ['idProyecto' => 'id'])->orderBy(['nombre' => SORT_ASC]);
     }
 
     public function getParticipantes(): ActiveQuery
@@ -396,28 +377,11 @@ class Proyecto extends ActiveRecord
     /**
      * Area de intervencion en un solo texto, para el historial: una linea por
      * edificio (ProyectoAreaIntervencion::lineasPorEdificio()) separadas por
-     * " | ". Un proyecto registrado antes del 2026-10-28 no tiene
-     * areas: muestra su ubicacion anterior (edificio y bloques). '' si no hay
-     * ninguna de las dos.
+     * " | ". '' si no tiene areas.
      */
     public function areaIntervencionTexto(): string
     {
-        if ($this->areasIntervencion !== []) {
-            return ProyectoAreaIntervencion::resumen($this->areasIntervencion);
-        }
-
-        return $this->ubicacionAnterior();
-    }
-
-    /**
-     * Ubicacion de los proyectos anteriores al 2026-10-28: "Edificio / Bloque
-     * A, Bloque B" (la facultad paso a ser la unidad solicitante).
-     */
-    public function ubicacionAnterior(): string
-    {
-        $bloques = implode(', ', array_map(static fn (ProyectoBloque $bloque) => $bloque->nombre, $this->bloques));
-
-        return implode(' / ', array_filter([$this->edificio, $bloques]));
+        return $this->areasIntervencion !== [] ? ProyectoAreaIntervencion::resumen($this->areasIntervencion) : '';
     }
 
     /**

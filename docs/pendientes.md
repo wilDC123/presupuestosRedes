@@ -46,8 +46,8 @@ Actualizar los diagramas UML (ver la sección "Diseño UML" de `CLAUDE.md`):
 - **Clases** — agregar: `TipoProyecto`, `Proceso`, `ConfiguracionSolicitudCotizacion`, `ConfiguracionPresupuesto`,
   `Presupuesto.manoDeObra`, `PresupuestoDetalle.fuentePrecio`, `CartaPresupuesto` (0..1 por presupuesto) y
   `ConfiguracionCarta`, `TratamientoCarta`, `CorrelativoDocumento`, los atributos de codificación
-  (`Presupuesto.fechaAprobacion`, `numeroAnterior`, firmas congeladas; `EspecificacionEmision.serie`, `codigoAnterior`,
-  `versionDocumento`, `proceso`), `ProyectoMaterialDtic`, `ProyectoCondicionPrevia`, `TipoCondicionPrevia`,
+  (`Presupuesto.fechaAprobacion`, firmas congeladas; `EspecificacionEmision.versionDocumento`, `proceso`),
+  `ProyectoMaterialDtic`, `ProyectoCondicionPrevia`, `TipoCondicionPrevia`,
   `ListaMaterialesAprobacion` (versión emitida), `Proyecto.unidadSolicitante` / `unidadDependencia`,
   `ProyectoAreaIntervencion`, `Personal`, `RolProyecto`, `ProyectoParticipante`, `HistorialProyecto`,
   `Proyecto.lugarEntrega`, `numeroProyecto`, `codigoLista`, `SolicitudCotizacion.codigoDocumento`, la orden de cambio

@@ -65,7 +65,7 @@ class CodificacionTest extends Unit
 
     public function testElUltimoUsadoDeEtEsElMayorDeTodos(): void
     {
-        $mayor = (int) EspecificacionEmision::find()->where(['serie' => EspecificacionEmision::SERIE_ET])->max('numeroNet');
+        $mayor = (int) EspecificacionEmision::find()->max('numeroNet');
         $correlativos = $this->service->correlativos();
 
         // Una ET de cualquier año cuenta: sin año en el codigo, el numero no se puede repetir.

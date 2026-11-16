@@ -7,7 +7,6 @@ namespace backend\tests\Unit;
 use backend\models\Personal;
 use backend\models\Proyecto;
 use backend\models\ProyectoAreaIntervencion;
-use backend\models\ProyectoBloque;
 use backend\services\AreaIntervencionService;
 use backend\services\contracts\InfraestructuraProvider;
 use backend\services\ProcesoService;
@@ -254,26 +253,6 @@ class AreaIntervencionTest extends Unit
         $datos['Proyecto']['areas'][] = ['idEdificio' => 'E1'];
         $this->assertFalse($this->service->actualizar($proyecto, $datos));
         $this->assertTrue($proyecto->hasErrors('areas'));
-    }
-
-    public function testUnProyectoAnteriorAlCambioMuestraSuUbicacionDeAntes(): void
-    {
-        $proyecto = new Proyecto(['nombre' => 'Proyecto test de antes', 'facultad' => 'Facultad de Medicina', 'edificio' => 'Anfiteatro de Anatomía', 'estadoLista' => Proyecto::LISTA_EDICION]);
-        $proyecto->save(false);
-        (new ProyectoBloque(['idProyecto' => $proyecto->id, 'codigo' => 'A', 'nombre' => 'Bloque A']))->save(false);
-
-        $this->assertSame('Anfiteatro de Anatomía / Bloque A', $proyecto->areaIntervencionTexto());
-
-        // Al elegirle areas, se muestran ellas; la ubicacion de antes queda guardada.
-        $proyecto->idProceso = $this->idProceso;
-        $proyecto->unidadDependencia = 'Facultad de Medicina';
-        $proyecto->unidadSolicitante = 'Facultad de Medicina';
-        $proyecto->equipo = $this->equipo;
-        $proyecto->equipoResponsable = '0';
-        $this->assertTrue($this->service->actualizar($proyecto, ['Proyecto' => ['areas' => [['idEdificio' => 'E1']]]]), json_encode($proyecto->errors));
-        $proyecto = Proyecto::findOne($proyecto->id);
-        $this->assertSame('Edificio Prueba', $proyecto->areaIntervencionTexto());
-        $this->assertCount(1, $proyecto->bloques);
     }
 
     public function testSugiereUnidadesYaEscritasYFacultadesSinRepetir(): void

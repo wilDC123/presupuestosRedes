@@ -78,8 +78,7 @@ $hayFiltros = implode('', $filtros) !== '';
                 'label' => 'Código',
                 'format' => 'raw',
                 'contentOptions' => ['class' => 'mono text-nowrap'],
-                'value' => static fn (EspecificacionEmision $e) => Html::a(Html::encode($e->codigoConVersion()), ['/especificacion/formulario', 'id' => $e->id], ['target' => '_blank'])
-                    . ($e->codigoAnterior !== null ? '<div class="rd-celda-sub">antes ' . Html::encode($e->codigoAnterior) . '</div>' : ''),
+                'value' => static fn (EspecificacionEmision $e) => Html::a(Html::encode($e->codigoConVersion()), ['/especificacion/formulario', 'id' => $e->id], ['target' => '_blank']),
             ],
             [
                 'label' => 'Fecha',

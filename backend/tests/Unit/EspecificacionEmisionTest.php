@@ -70,7 +70,6 @@ class EspecificacionEmisionTest extends Unit
         $item = $this->unicoItem();
         $emision = $item->emisionVigente;
         $this->assertNotNull($emision);
-        $this->assertSame(EspecificacionEmision::SERIE_ET, $emision->serie);
         $this->assertSame($siguiente, (int) $emision->numeroNet);
         $this->assertSame((int) date('y'), (int) $emision->anio);
         $this->assertSame($siguiente + 1, $this->siguienteEt());
@@ -103,23 +102,6 @@ class EspecificacionEmisionTest extends Unit
         Proyecto::updateAll(['lugarEntrega' => null], ['id' => $this->proyecto->id]);
         $vacio = $this->emisiones->reemitir($this->unicoItem(), ['motivo' => 'sin lugar', 'lugarEntrega' => ' '], 'encargado');
         $this->assertSame('Almacenes test USFX', $vacio['emision']->lugarEntrega);
-    }
-
-    public function testElNumeroEtPuedeCoincidirConElDeUnNetViejo(): void
-    {
-        // La serie ET empezo en 1 despues de los NET: el mismo numero en las
-        // dos series son dos documentos distintos (indice unico por serie).
-        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
-        $this->guardarLista([$this->fila(null, 5, $ficha)]);
-        $nueva = $this->unicoItem()->emisionVigente;
-
-        $vieja = new EspecificacionEmision($nueva->getAttributes(null, ['id', 'serie', 'idProyectoItem', 'estado', 'fechaRegistro']));
-        $vieja->serie = EspecificacionEmision::SERIE_NET;
-        $vieja->estado = EspecificacionEmision::ESTADO_ANULADA;
-        $this->assertTrue($vieja->save(false));
-
-        $this->assertSame(sprintf('NET:%03d/%s', $nueva->numeroNet, date('y')), $vieja->codigo());
-        $this->assertSame(sprintf('RD-PI-ET-%03d', $nueva->numeroNet), $nueva->codigo());
     }
 
     public function testFichaSinContenidoNoSeEnlaza(): void
@@ -416,8 +398,6 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d', $numero)]));
         $this->assertSame([$idPrimera], $deEsteProyecto(['buscar' => sprintf('RD-PI-ET-%03d/%s v1.0', $numero, date('y'))]));
         $this->assertSame([$idSegunda], $deEsteProyecto(['buscar' => sprintf('rd-pi-et-%03d V02', $numero)]));
-        // Es de la serie ET: buscarla como NET no la encuentra.
-        $this->assertSame([], $deEsteProyecto(['buscar' => sprintf('NET:%03d/%s', $numero, date('y'))]));
         // El titulo de la emision es el nombre DTIC del item.
         $this->assertSame([$idSegunda, $idPrimera], $deEsteProyecto(['buscar' => $this->itemSubcatalogo->descripcion, 'dependencia' => 'Carrera de Ingeniería de Sistemas']));
 
@@ -427,25 +407,9 @@ class EspecificacionEmisionTest extends Unit
         $this->assertSame([], $deEsteProyecto(['estado' => 'vigente']));
 
         $csv = $this->emisiones->exportarCsv(['buscar' => sprintf('RD-PI-ET-%03d v01', $numero)]);
-        $this->assertStringStartsWith("\xEF\xBB\xBF" . 'Código;Versión;"Código anterior";"Fecha de emisión"', $csv);
+        $this->assertStringStartsWith("\xEF\xBB\xBF" . 'Código;Versión;"Fecha de emisión"', $csv);
         $this->assertStringContainsString(sprintf('RD-PI-ET-%03d;1.0;', $numero), $csv);
         $this->assertStringContainsString(sprintf('Reemplazada;prueba;"RD-PI-ET-%03d v1.1"', $numero), $csv);
-    }
-
-    public function testUnaPasadaDeNetAEtSeBuscaPorSuCodigoAnterior(): void
-    {
-        $ficha = $this->ficha('Cable test', [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
-        $this->guardarLista([$this->fila(null, 5, $ficha)]);
-        $emision = $this->unicoItem()->emisionVigente;
-        // Como la deja la migracion m261022_144239 (un NET que no exista en la base local).
-        EspecificacionEmision::updateAll(['codigoAnterior' => 'NET:7777/26'], ['id' => $emision->id]);
-        $ids = fn (string $buscar) => array_map(static fn (EspecificacionEmision $e) => (int) $e->id, $this->emisiones->registro(['buscar' => $buscar], false)->getModels());
-
-        $this->assertSame([(int) $emision->id], $ids('NET:7777/26'));
-        $this->assertSame([(int) $emision->id], $ids('NET:7777'));
-        $this->assertSame([(int) $emision->id], $ids('7777'));
-        $this->assertSame([], $ids('NET:7777/25'));
-        $this->assertStringContainsString('NET:7777/26', $this->emisiones->exportarCsv(['buscar' => 'NET:7777/26']));
     }
 
     public function testCodigoProcesoUsaPiSiLaEmisionNoTieneProceso(): void

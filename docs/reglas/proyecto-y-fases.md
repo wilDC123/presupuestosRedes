@@ -75,8 +75,6 @@
   - En documentos: **una línea por edificio**, con bloque, piso y espacio juntos
     (`ProyectoAreaIntervencion::lineasPorEdificio()`). En pantallas, agrupadas por "edificio · bloque" (`grupo()`,
     `detalle()`).
-  - Los proyectos anteriores al 2026-10-28 conservan `facultad`, `edificio` y `redes.ProyectoBloque` ("ubicación
-    anterior") hasta que se les elijan áreas.
 
 ## Equipo del proyecto
 

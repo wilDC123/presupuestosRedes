@@ -106,8 +106,6 @@ class PresupuestoEstadoTest extends Unit
         if ($conCabecera) {
             $presupuesto->numeroPresupuesto = 'TEST-1';
             $presupuesto->oficioDtic = 'DTIC 1/26';
-            $presupuesto->areaIntervencion = 'Bloque A';
-            $presupuesto->fecha = '2026-10-20';
         }
         $presupuesto->save(false);
 

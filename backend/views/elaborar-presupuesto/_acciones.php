@@ -66,7 +66,7 @@ $botones = [
 
     <?php else: ?>
         <div class="rd-dato">
-            <strong>Código:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?><?= $presupuesto->numeroAnterior !== null ? ' (antes ' . Html::encode($presupuesto->numeroAnterior) . ')' : '' ?> ·
+            <strong>Código:</strong> <?= Html::encode($presupuesto->numeroPresupuesto ?: '—') ?> ·
             <strong>Oficio DTIC:</strong> <?= Html::encode($presupuesto->oficioDtic ?: '—') ?> ·
             <strong>Fecha de creación:</strong> <?= Html::encode($presupuesto->fechaFormateada() ?: '—') ?>
         </div>

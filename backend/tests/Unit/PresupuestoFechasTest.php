@@ -21,7 +21,6 @@ class PresupuestoFechasTest extends Unit
     public function testLaFechaDelDocumentoEsLaDeCreacion(): void
     {
         $presupuesto = $this->presupuesto();
-        $presupuesto->fecha = '2026-01-15';
 
         $this->assertSame(date('d/m/Y'), $presupuesto->fechaFormateada());
     }
@@ -29,7 +28,7 @@ class PresupuestoFechasTest extends Unit
     public function testEnviarARevisionYaNoPideFecha(): void
     {
         $presupuesto = $this->presupuesto();
-        $presupuesto->setAttributes(['numeroPresupuesto' => 'TEST-1', 'oficioDtic' => '1', 'areaIntervencion' => 'Bloque A'], false);
+        $presupuesto->setAttributes(['numeroPresupuesto' => 'TEST-1', 'oficioDtic' => '1'], false);
         $presupuesto->scenario = Presupuesto::SCENARIO_ENVIAR;
 
         $this->assertTrue($presupuesto->validate(), implode(' ', $presupuesto->getFirstErrors()));

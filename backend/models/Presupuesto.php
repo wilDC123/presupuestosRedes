@@ -20,13 +20,8 @@ use yii\db\ActiveRecord;
  * @property string|null $numeroPresupuesto Codigo RD-PI-PR-NNN, lo asigna el sistema al crear el
  *           presupuesto (ElaborarPresupuestoService). Los de antes del 2026-10-22 se escribian a mano ("690").
  * @property string|null $oficioDtic
- * @property string|null $areaIntervencion
  * @property string $estado
- * @property string|null $fecha Fecha escrita a mano al enviar a revision; YA NO SE USA desde el 2026-10-30
- *           (la del documento es fechaCreacion). Se conserva la de los presupuestos de antes.
  * @property string $fechaCreacion
- * @property string|null $numeroAnterior El numero escrito a mano que tenia antes de pasar a RD-PI-PR
- *           (migracion m261022_144239; ej. "690"). NULL en los que nacieron con codigo.
  * @property string|null $manoDeObra Mano de obra a cargo de la DTIC (null = no lleva)
  * @property string|null $fechaAprobacion aaaa-mm-dd; la pone PresupuestoService al aprobar (null en los
  *           aprobados antes del 2026-10-22, cuando no se guardaba).
@@ -193,9 +188,8 @@ class Presupuesto extends ActiveRecord
     {
         return [
             [['!idProyecto'], 'required'],
-            [['!numeroPresupuesto', '!oficioDtic', '!areaIntervencion', '!manoDeObra'], 'trim'],
-            // Sin area de intervencion desde el 2026-11-05: va en la ficha tecnica del proyecto, no en el
-            // presupuesto (revision del Ing., punto 5). La columna queda con lo de los ya enviados.
+            [['!numeroPresupuesto', '!oficioDtic', '!manoDeObra'], 'trim'],
+            // El area de intervencion es del proyecto (ficha tecnica), no del presupuesto.
             // Sin oficio DTIC desde el 2026-11-11: ya no se pide al enviar a revision; se escribe en la
             // carta de entrega, que lo exige para imprimirse (CartaService::faltaParaImprimir()).
             [['!numeroPresupuesto'], 'required', 'on' => self::SCENARIO_ENVIAR, 'message' => 'Complete «{attribute}» para enviar a revisión.'],
@@ -205,11 +199,9 @@ class Presupuesto extends ActiveRecord
             [['!estado'], 'default', 'value' => self::ESTADO_EN_PROCESO],
             [['!estado'], 'required'],
             [['!estado'], 'in', 'range' => array_keys(self::estados())],
-            // fecha: sin uso desde el 2026-10-30 (la del documento es fechaCreacion); queda la de los de antes.
-            [['!fecha'], 'date', 'format' => 'php:Y-m-d'],
             [['!numeroPresupuesto'], 'string', 'max' => 20],
             [['!oficioDtic'], 'string', 'max' => 100],
-            [['!areaIntervencion', '!manoDeObra'], 'string', 'max' => 300],
+            [['!manoDeObra'], 'string', 'max' => 300],
             [['!idProyecto'], 'exist', 'skipOnError' => true, 'targetClass' => Proyecto::class, 'targetAttribute' => ['idProyecto' => 'id']],
         ];
     }
@@ -221,13 +213,10 @@ class Presupuesto extends ActiveRecord
             'idProyecto' => 'Proyecto',
             'numeroPresupuesto' => 'Código de presupuesto',
             'oficioDtic' => 'Oficio DTIC',
-            'areaIntervencion' => 'Área de intervención',
             'estado' => 'Estado',
-            'fecha' => 'Fecha',
             'fechaCreacion' => 'Fecha de creación',
             'manoDeObra' => 'Mano de obra',
             'fechaAprobacion' => 'Fecha de aprobación',
-            'numeroAnterior' => 'Número anterior',
         ];
     }
 
@@ -249,20 +238,10 @@ class Presupuesto extends ActiveRecord
         return $this->hasOne(CartaPresupuesto::class, ['idPresupuesto' => 'id']);
     }
 
-    /**
-     * fecha permite NULL, pero el input tipo "date" envia '' cuando se deja
-     * en blanco. SQL Server no puede convertir '' a date, asi que hay que
-     * normalizar a null antes de guardar (mismo riesgo que idSigma en
-     * SubcatalogoItem).
-     */
     public function beforeSave($insert): bool
     {
         if (!parent::beforeSave($insert)) {
             return false;
-        }
-
-        if ($this->fecha === '') {
-            $this->fecha = null;
         }
 
         // '' tambien es "no lleva mano de obra": se guarda null.
@@ -274,24 +253,13 @@ class Presupuesto extends ActiveRecord
     }
 
     /**
-     * El formulario muestra y recibe fecha en dd/mm/aaaa (convencion local),
-     * pero el validador 'date' de rules() y la columna date de SQL Server
-     * esperan aaaa-mm-dd. Esto tiene que pasar en beforeValidate() -- no en
-     * beforeSave() -- porque el validador 'date' corre ANTES que
-     * beforeSave() y rechazaria "11/08/2026" como formato invalido.
-     */
-    public function beforeValidate(): bool
-    {
-        $this->fecha = self::convertirFechaFormularioABd($this->fecha);
-
-        return parent::beforeValidate();
-    }
-
-    /**
      * Convierte "dd/mm/aaaa" (o "d/m/aaaa") a "aaaa-mm-dd". Si el valor no
      * coincide con ese patron (ya viene en aaaa-mm-dd, esta vacio, o es
      * invalido) se devuelve sin cambios para que el validador 'date' decida.
-     * Publica: la usa tambien la carta de entrega (CartaPresupuesto).
+     * Los formularios muestran dd/mm/aaaa, pero el validador 'date' y la
+     * columna date de SQL Server esperan aaaa-mm-dd; por eso se llama en
+     * beforeValidate() (el validador corre ANTES que beforeSave()). La usan
+     * la carta de entrega (CartaPresupuesto) y la solicitud de cotizacion.
      */
     public static function convertirFechaFormularioABd(?string $valor): ?string
     {
