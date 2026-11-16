@@ -105,7 +105,7 @@ class FirmasPresupuestoAprobadoTest extends Unit
         $proyecto = new Proyecto(['nombre' => 'Proyecto test firmas', 'estadoLista' => Proyecto::LISTA_EDICION]);
         $proyecto->save(false);
 
-        $presupuesto = new Presupuesto(['idProyecto' => $proyecto->id, 'estado' => $estado, 'numeroPresupuesto' => 'TEST-1', 'fecha' => '2026-10-20']);
+        $presupuesto = new Presupuesto(['idProyecto' => $proyecto->id, 'estado' => $estado, 'numeroPresupuesto' => 'TEST-1']);
         $presupuesto->save(false);
 
         return $presupuesto;

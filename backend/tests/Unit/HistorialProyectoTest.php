@@ -91,7 +91,7 @@ class HistorialProyectoTest extends Unit
         $this->assertSame($nombre . ': 100.00 (precio directo: Mercado)', $precios[1]->detalle);
 
         // Revision -> observado -> corregir -> revision otra vez -> aprobado.
-        $presupuesto->setAttributes(['oficioDtic' => '1', 'areaIntervencion' => 'Test', 'fecha' => date('Y-m-d')], false);
+        $presupuesto->setAttributes(['oficioDtic' => '1'], false);
         $presupuesto->save(false);
         $estados = new PresupuestoService();
         foreach ([Presupuesto::ESTADO_EN_REVISION, Presupuesto::ESTADO_OBSERVADO, Presupuesto::ESTADO_EN_PROCESO, Presupuesto::ESTADO_EN_REVISION, Presupuesto::ESTADO_APROBADO] as $estado) {

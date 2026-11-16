@@ -17,7 +17,6 @@ use yii\db\ActiveRecord;
  * reimprimir solicitudes anteriores.
  *
  * @property int $id
- * @property string $textoCabecera Ya no se usa (2026-11-09): la cabecera del PDF es la de todos los documentos.
  * @property string $textoInstrucciones
  * @property string|null $textoNotaFinal
  */
@@ -46,13 +45,12 @@ class ConfiguracionSolicitudCotizacion extends ActiveRecord
     public function rules(): array
     {
         return [
-            [['textoCabecera', 'textoInstrucciones', 'textoNotaFinal'], 'trim'],
+            [['textoInstrucciones', 'textoNotaFinal'], 'trim'],
             [['textoNotaFinal'], 'default', 'value' => null],
             // Las instrucciones son obligatorias: el documento nunca sale sin
-            // ellas. textoCabecera ya no sale en el PDF (2026-11-09: la cabecera
-            // es la de todos los documentos).
+            // ellas.
             [['textoInstrucciones'], 'required'],
-            [['textoCabecera', 'textoNotaFinal'], 'string', 'max' => 500],
+            [['textoNotaFinal'], 'string', 'max' => 500],
             [['textoInstrucciones'], 'string', 'max' => 1000],
         ];
     }
@@ -60,7 +58,6 @@ class ConfiguracionSolicitudCotizacion extends ActiveRecord
     public function attributeLabels(): array
     {
         return [
-            'textoCabecera' => 'Cabecera',
             'textoInstrucciones' => 'Instrucciones al proveedor',
             'textoNotaFinal' => 'Nota final',
         ];

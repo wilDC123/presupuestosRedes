@@ -348,9 +348,6 @@ class ProyectoService
      * ORDEN (importa en Yii2): load() -> validar -> completar lo que calcula
      * el sistema -> guardar todo dentro de UNA transaccion, para que nunca
      * quede un proyecto guardado sin sus areas o su equipo.
-     *
-     * La ubicacion anterior (facultad, edificio, redes.ProyectoBloque) no se
-     * toca: queda como estaba en los proyectos registrados antes del cambio.
      */
     private function guardar(Proyecto $proyecto, array $datosFormulario): bool
     {

@@ -21,9 +21,7 @@ Según el lineamiento de la DTIC **RD-GD-LI-001**. La historia y las decisiones 
   versión + 1. El presupuesto guarda su código entero, y `Presupuesto::codigoProceso()` lo lee de ahí.
 - **La lista de materiales:** si se cambia el proceso antes del primer envío a cotización, el código LM cambia de
   proceso con el mismo número; después queda fijo.
-- Las ET emitidas antes del 2026-10-22 con `NET:880/26` se convirtieron a ET y guardan el código viejo en
-  `EspecificacionEmision.codigoAnterior` (se ve y se busca en el registro). La serie `'NET'` queda solo para esas.
-  `EspecificacionEmision.anio` queda como dato (filtro "Año" del registro); el registro también encuentra
+- `EspecificacionEmision.anio` queda como dato (filtro "Año" del registro); el registro también encuentra
   "RD-PI-ET-033/26", tal como se imprimió.
 - En **pantallas** la solicitud se muestra corta: "SC-01" (`SolicitudCotizacion::codigoCorto()`) o
   "001 · Fase 2 / SC-01" (`codigo()`). En el PDF y en la ficha técnica va su código RD-…-SC-NNN.

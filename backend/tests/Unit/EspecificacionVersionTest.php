@@ -141,12 +141,11 @@ class EspecificacionVersionTest extends Unit
     {
         // Las nuevas: codigo del lineamiento RD-GD-LI-001.
         // Con el proceso con el que se emitio (PI si no se dice) y SIN el año (2026-11-10).
-        $this->assertSame('RD-PI-ET-007', (new EspecificacionEmision(['serie' => EspecificacionEmision::SERIE_ET, 'numeroNet' => 7, 'anio' => 26]))->codigo());
-        $this->assertSame('RD-GR-ET-007 v1.1', (new EspecificacionEmision(['serie' => EspecificacionEmision::SERIE_ET, 'numeroNet' => 7, 'anio' => 27, 'proceso' => 'GR', 'versionDocumento' => 2]))->codigoConVersion());
+        $this->assertSame('RD-PI-ET-007', (new EspecificacionEmision(['numeroNet' => 7, 'anio' => 26]))->codigo());
+        $this->assertSame('RD-GR-ET-007 v1.1', (new EspecificacionEmision(['numeroNet' => 7, 'anio' => 27, 'proceso' => 'GR', 'versionDocumento' => 2]))->codigoConVersion());
 
-        // Las de antes del 2026-10-22 conservan su codigo NET.
+        // Vencimiento: fecha de emision + vigencia.
         $emision = new EspecificacionEmision([
-            'serie' => EspecificacionEmision::SERIE_NET,
             'numeroNet' => 13,
             'anio' => 23,
             'fechaEmision' => '2026-10-01',
@@ -154,7 +153,7 @@ class EspecificacionVersionTest extends Unit
             'estado' => EspecificacionEmision::ESTADO_VIGENTE,
         ]);
 
-        $this->assertSame('NET:013/23', $emision->codigo());
+        $this->assertSame('RD-PI-ET-013', $emision->codigo());
         $this->assertSame('2026-10-31', $emision->fechaVencimiento()->format('Y-m-d'));
         $this->assertFalse($emision->estaVencida(new DateTimeImmutable('2026-10-31')));
         $this->assertTrue($emision->estaVencida(new DateTimeImmutable('2026-11-01')));

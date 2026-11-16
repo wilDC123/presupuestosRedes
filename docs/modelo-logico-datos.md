@@ -54,7 +54,6 @@ erDiagram
     Proyecto |o--o{ Proyecto : "fase anterior"
     Plantilla |o--o{ Proyecto : "origen de la lista"
     Proyecto ||--o{ ProyectoAreaIntervencion : "se trabaja en"
-    Proyecto ||--o{ ProyectoBloque : "historico"
     Proyecto ||--o{ ProyectoParticipante : "equipo"
     RolProyecto ||--o{ ProyectoParticipante : "rol"
     Personal |o..o{ ProyectoParticipante : "copia del nombre"
@@ -221,7 +220,6 @@ erDiagram
     }
     EspecificacionEmision {
         int id PK
-        string serie "ET"
         string proceso "copia"
         int anio
         int numeroNet
@@ -349,7 +347,7 @@ erDiagram
   (`PresupuestoDetalle.idProyectoItem` único cuando no es NULL).
 - **Un ítem de la lista en una sola solicitud de cotización** (`SolicitudCotizacionItem.idProyectoItem` único).
 - **Una sola emisión vigente por ítem** (`EspecificacionEmision.idProyectoItem` único donde
-  `estado = 'vigente'`) y un código irrepetible (`serie` + `anio` + `numeroNet` + `versionDocumento`).
+  `estado = 'vigente'`) y un código irrepetible (`numeroNet` + `versionDocumento`).
 - **Una sola persona responsable por proyecto** (`ProyectoParticipante`, único filtrado por
   `esResponsable = 1`), y una persona no repite el mismo rol en el mismo proyecto.
 - **Código de proyecto único** cuando existe; código de proceso, nombres de catálogos y nombre de
@@ -371,19 +369,15 @@ Generado de la base de desarrollo. "Nulo: sí" = admite NULL.
 
 #### redes.Proyecto
 
-Proyecto de instalación de redes. Código RD-PI-PT-NNN. Puede ser la fase siguiente de otro (`idProyectoAnterior`). `facultad`, `edificio`, `codigoFacultad` y `codigoEdificio` son datos históricos (ya no se escriben).
+Proyecto de instalación de redes. Código RD-PI-PT-NNN. Puede ser la fase siguiente de otro (`idProyectoAnterior`).
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
 | id | int | no | PK |
 | codigo | nvarchar(50) | sí |  |
 | nombre | nvarchar(300) | no |  |
-| facultad | nvarchar(200) | sí |  |
-| edificio | nvarchar(200) | sí |  |
 | fechaCreacion | datetime | no | por defecto `GETDATE()` |
 | descripcion | nvarchar(1000) | sí |  |
-| codigoFacultad | nvarchar(30) | sí |  |
-| codigoEdificio | nvarchar(30) | sí |  |
 | idProyectoAnterior | int | sí | FK → Proyecto.id |
 | numeroFase | int | no | por defecto `1` |
 | idPlantillaOrigen | int | sí | FK → Plantilla.id |
@@ -448,17 +442,6 @@ Dónde se trabaja: edificio → bloque → nivel → ambiente. Guarda los id de 
 | idEspacio | nvarchar(10) | sí |  |
 | codigoAmbiente | nvarchar(30) | sí |  |
 | ambiente | nvarchar(250) | sí |  |
-
-#### redes.ProyectoBloque
-
-Histórico: bloques de los proyectos anteriores al área de intervención. Ya no se escribe.
-
-| Columna | Tipo | Nulo | Clave / regla |
-|---|---|---|---|
-| id | int | no | PK |
-| idProyecto | int | no | FK → Proyecto.id (borrado en cascada) |
-| codigo | nvarchar(30) | no |  |
-| nombre | nvarchar(100) | no |  |
 
 #### redes.ProyectoParticipante
 
@@ -735,7 +718,7 @@ Filas nombre / valor de una versión. El número de cada fila en el formulario (
 
 #### redes.EspecificacionEmision
 
-Formulario emitido (RD-<proceso>-ET-NNN/AA vNN). Copias congeladas de los textos y firmas; estado vigente | reemplazada | anulada. `serie` NET = códigos viejos convertidos.
+Formulario emitido (RD-<proceso>-ET-NNN vN.N). Copias congeladas de los textos y firmas; estado vigente | reemplazada | anulada. `numeroNet` es el número del código; `anio`, el año de emisión (filtro del registro, no va en el código).
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
@@ -763,8 +746,6 @@ Formulario emitido (RD-<proceso>-ET-NNN/AA vNN). Copias congeladas de los textos
 | motivo | nvarchar(300) | sí |  |
 | fechaRegistro | datetime | no | por defecto `GETDATE()` |
 | garantia | nvarchar(500) | sí |  |
-| serie | nvarchar(3) | no | por defecto `'NET'` |
-| codigoAnterior | nvarchar(20) | sí |  |
 | firma1Prefijo | nvarchar(20) | sí |  |
 | firma1Nombre | nvarchar(150) | sí |  |
 | firma1Cargo | nvarchar(200) | sí |  |
@@ -775,8 +756,7 @@ Formulario emitido (RD-<proceso>-ET-NNN/AA vNN). Copias congeladas de los textos
 | proceso | nvarchar(2) | no |  |
 
 Único: (idProyectoItem) donde ([estado]='vigente' AND [idProyectoItem] IS NOT NULL)  
-Único: (serie,anio,numeroNet,versionDocumento)  
-CHECK: `([serie]='ET' OR [serie]='NET')`  
+Único: (numeroNet,versionDocumento)  
 CHECK: `([estado]='anulada' OR [estado]='reemplazada' OR [estado]='vigente')`  
 CHECK: `([versionDocumento]>=(1))`
 
@@ -861,7 +841,7 @@ Precio ofertado por ítem. `precioTotal` es columna calculada.
 
 #### redes.Presupuesto
 
-Presupuesto del proyecto (uno por proyecto). Código RD-<proceso>-PR-NNN en `numeroPresupuesto`. Estado en_proceso | en_revision | observado | aprobado | cancelado. Firmas copiadas al aprobar. `fecha` ya no se usa.
+Presupuesto del proyecto (uno por proyecto). Código RD-<proceso>-PR-NNN en `numeroPresupuesto`. Estado en_proceso | en_revision | observado | aprobado | cancelado. Firmas copiadas al aprobar.
 
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
@@ -869,13 +849,10 @@ Presupuesto del proyecto (uno por proyecto). Código RD-<proceso>-PR-NNN en `num
 | idProyecto | int | no | FK → Proyecto.id |
 | numeroPresupuesto | nvarchar(20) | sí |  |
 | oficioDtic | nvarchar(100) | sí |  |
-| areaIntervencion | nvarchar(300) | sí |  |
 | estado | nvarchar(20) | no | por defecto `'en_proceso'` |
-| fecha | date | sí |  |
 | fechaCreacion | datetime | no | por defecto `GETDATE()` |
 | manoDeObra | nvarchar(300) | sí |  |
 | fechaAprobacion | date | sí |  |
-| numeroAnterior | nvarchar(20) | sí |  |
 | firma1Prefijo | nvarchar(20) | sí |  |
 | firma1Nombre | nvarchar(150) | sí |  |
 | firma1Cargo | nvarchar(200) | sí |  |
@@ -1030,7 +1007,6 @@ Una sola fila: textos fijos del PDF de la solicitud de proforma.
 | Columna | Tipo | Nulo | Clave / regla |
 |---|---|---|---|
 | id | int | no | PK |
-| textoCabecera | nvarchar(500) | no | ya no se usa (2026-11-09: la cabecera es la de todos los documentos) |
 | textoInstrucciones | nvarchar(1000) | no |  |
 | textoNotaFinal | nvarchar(500) | sí |  |
 

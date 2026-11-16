@@ -122,7 +122,6 @@ class EspecificacionEmisionService
             'fechaEmision' => $hoy->format('Y-m-d'),
             'vigenciaDias' => $configuracion->vigenciaDias,
             'estado' => EspecificacionEmision::ESTADO_VIGENTE,
-            'serie' => EspecificacionEmision::SERIE_ET,
             // Provisorio, para validar el resto: el numero real se toma recien
             // dentro de la transaccion, con la fila del correlativo bloqueada.
             'numeroNet' => 0,
@@ -134,12 +133,10 @@ class EspecificacionEmisionService
             // su proceso, que es parte del codigo, aunque el proyecto haya
             // cambiado de proceso (RD-PI-ET-850 v1.0 -> RD-PI-ET-850 v1.1), y
             // su año de emision.
-            $emision->serie = $corrige->serie;
             $emision->numeroNet = $corrige->numeroNet;
             $emision->versionDocumento = (int) $corrige->versionDocumento + 1;
             $emision->anio = $corrige->anio;
             $emision->proceso = $corrige->proceso;
-            $emision->codigoAnterior = $corrige->codigoAnterior;
         }
 
         // Control de elaboracion: tambien una copia, como los textos.
@@ -421,8 +418,7 @@ class EspecificacionEmisionService
             ->alias('e')
             ->joinWith('proyecto p', false)
             ->with(['version', 'proyecto', 'proyectoItem.subcatalogoItem', 'reemplazadaPor'])
-            // Por orden de emision: el numero no sirve, porque la serie ET
-            // empezo en 1 despues de los NET.
+            // Por orden de emision (de la mas nueva a la mas antigua).
             ->orderBy(['e.id' => SORT_DESC]);
 
         $anio = trim((string) ($filtros['anio'] ?? ''));
@@ -462,27 +458,16 @@ class EspecificacionEmisionService
         // año, solo si lo trae (los impresos del 29-10 al 10-11).
         $et = CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_ESPECIFICACION, mb_strtoupper($buscar));
         if ($et !== null) {
-            $query->andWhere(['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $et['numero']]);
+            $query->andWhere(['e.numeroNet' => $et['numero']]);
             if ($et['anio'] !== null) {
                 $query->andWhere(['e.anio' => $et['anio']]);
             }
-        } elseif (preg_match('/^(NET:\s*)?(\d+)(?:\/(\d{2}))?$/i', $buscar, $m) === 1) {
-            // Un NET que siga como NET, o una ya pasada a ET con ese codigo anterior.
-            $numero = (int) $m[2];
-            $anio = isset($m[3]) ? (int) $m[3] : null;
-            $net = ['and', ['e.serie' => EspecificacionEmision::SERIE_NET, 'e.numeroNet' => $numero]];
-            if ($anio !== null) {
-                $net[] = ['e.anio' => $anio];
+        } elseif (preg_match('/^(\d+)(?:\/(\d{2}))?$/', $buscar, $m) === 1) {
+            // Solo el numero ("7" o "7/26").
+            $query->andWhere(['e.numeroNet' => (int) $m[1]]);
+            if (isset($m[2])) {
+                $query->andWhere(['e.anio' => (int) $m[2]]);
             }
-            $anterior = ['like', 'e.codigoAnterior', sprintf('NET:%03d/', $numero) . ($anio !== null ? sprintf('%02d', $anio) : '%'), false];
-            $condiciones = ['or', $net, $anterior];
-            // Sin "NET:" tambien puede ser una ET ("7" o "7/26").
-            if ($m[1] === '') {
-                $condiciones[] = $anio === null
-                    ? ['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $numero]
-                    : ['e.serie' => EspecificacionEmision::SERIE_ET, 'e.numeroNet' => $numero, 'e.anio' => $anio];
-            }
-            $query->andWhere($condiciones);
         } elseif ($buscar !== '') {
             $query->andWhere(['or', ['like', 'e.titulo', $buscar], ['like', 'p.codigo', $buscar]]);
         }
@@ -529,14 +514,13 @@ class EspecificacionEmisionService
         $formato = Yii::$app->formatter;
         $salida = fopen('php://temp', 'r+');
         fwrite($salida, "\xEF\xBB\xBF");
-        fputcsv($salida, ['Código', 'Versión', 'Código anterior', 'Fecha de emisión', 'Dependencia', 'Especificación', 'Versión de la ficha', 'Ítem de la lista', 'Cantidad', 'Unidad', 'Modelo sugerido', 'Proyecto', 'Estado', 'Motivo', 'Reemplazada por', 'Elaborado por'], ';');
+        fputcsv($salida, ['Código', 'Versión', 'Fecha de emisión', 'Dependencia', 'Especificación', 'Versión de la ficha', 'Ítem de la lista', 'Cantidad', 'Unidad', 'Modelo sugerido', 'Proyecto', 'Estado', 'Motivo', 'Reemplazada por', 'Elaborado por'], ';');
 
         foreach ($this->registro($filtros, false)->getModels() as $emision) {
             /** @var EspecificacionEmision $emision */
             fputcsv($salida, [
                 $emision->codigo(),
                 $emision->versionTexto(),
-                $emision->codigoAnterior,
                 $formato->asDate($emision->fechaEmision, 'php:d/m/Y'),
                 $emision->dependencia,
                 $emision->titulo,
