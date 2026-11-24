@@ -116,9 +116,13 @@ class NavegacionProyectoService
         foreach ($fases as $fase) {
             $grupo = [];
             foreach (array_merge([$fase], $fase->ordenesCambio) as $fila) {
+                $texto = $fila->esOrdenCambio() ? $fila->textoOrdenCambio() : 'Fase ' . (int) $fila->numeroFase;
+                // Con mas de una version de esta fase, se ve cual es (VERSION DE UNA FASE APROBADA, 2026-11-24).
+                $texto = $fila->tieneVariasVersiones() ? $texto . ' · v' . $fila->numeroVersionTexto() : $texto;
+
                 $grupo[] = [
                     'id' => (int) $fila->id,
-                    'texto' => $fila->esOrdenCambio() ? $fila->textoOrdenCambio() : 'Fase ' . (int) $fila->numeroFase,
+                    'texto' => $texto,
                     'presupuesto' => $fila->presupuesto,
                     'monto' => $this->ficha->montoPresupuesto($fila),
                     'actual' => (int) $fila->id === (int) $proyecto->id,

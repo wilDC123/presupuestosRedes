@@ -53,6 +53,39 @@
     la fase; los códigos no se reutilizan. Una aprobada no se elimina.
 - Historial en la orden y en la fase. En la ficha técnica va dentro de la carpeta de su fase y suma al costo total.
 
+## Versión de una fase aprobada
+
+- Un presupuesto aprobado nunca se edita. Si hay que corregirlo (cotizaciones vencidas por la demora, cantidades,
+  especificaciones, agregar o quitar un ítem) y no alcanza con una orden de cambio (que solo agrega), se abre una
+  **versión nueva** de la misma fase: botón "Abrir nueva versión" (`proyecto/version?idFase=`,
+  `VersionProyectoService`).
+- Es, igual que la orden de cambio, **una fila más de `redes.Proyecto`**: mismo `numeroProyecto` y `numeroFase` que
+  la fase, con `idVersionAnterior` (la fila de la que se abrió) y `numeroVersionMayor`/`numeroVersionMenor`
+  ("1.0" → subversión "1.1", "1.2"… → versión nueva "2.0"). El encargado elige el tipo al abrirla y escribe
+  siempre el motivo (`motivoVersion`).
+- **Copia** de la fase: los datos del proyecto, el área de intervención, el equipo, el lugar de entrega, las
+  secciones sin precio (materiales DTIC y trabajos complementarios), la lista de ítems y el presupuesto, con sus
+  **precios copiados tal cual** (no se recalculan: el encargado los corrige a mano, o agrega y quita ítems).
+- **ET al copiar**: al momento de copiar, ningún ítem cambió todavía (es una copia exacta de lo aprobado). Si el
+  ítem ya tenía una ficha con ET **vigente**, se lleva la ficha y se **reemite** ese ET en el ítem nuevo (mismo
+  código, versión del documento + 1, mismas condiciones de entrega) — igual mecanismo que ya existe para "cambiar
+  el lugar de entrega" (`EspecificacionEmisionService::emitir()` con `$corrige`). El ET viejo queda "reemplazado
+  por" el nuevo. Así, abrir una versión solo para actualizar precios no le da trabajo extra al encargado. Si
+  **después**, ya en la versión nueva, cambia o quita un ítem, sigue el camino normal que ya existe (se anula o
+  se vuelve a emitir).
+- **No copia**: el código de la ficha técnica (PT, es del proyecto, no se repite: `Proyecto::codigoFicha()` sigue
+  encontrándolo en la fila que lo tenga, aunque esa fila ya no sea la vigente) ni la carta de entrega. Saca código
+  de lista (LM) y de presupuesto (PR) propios.
+- La fila vieja queda `esVersionVigente = false`: de solo lectura (`Proyecto::esEditable()`), pero **no se borra ni
+  se toca** — sus especificaciones emitidas y su carta de entrega quedan como estaban, consultables desde "Versiones
+  de esta fase".
+- `Proyecto::getFases()` solo trae la versión **vigente** de cada fase (`esVersionVigente = true`): la franja de
+  fases, el costo total y "los datos se editan en la Fase 1" no se enteran de que hay versiones viejas.
+  `Proyecto::getVersiones()` trae todas (vieja y vigente), para consultarlas.
+- Solo se versiona una **fase** (no una orden de cambio), y solo su **última** versión
+  (`Proyecto::esUltimaVersion()`).
+- Se anota en el historial de la fila vieja y de la nueva (`HistorialProyecto::ACCION_VERSION_CREADA`).
+
 ## Unidades y área de intervención
 
 - **Dos unidades**, las dos obligatorias, de texto libre (pueden ser la misma):

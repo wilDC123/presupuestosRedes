@@ -21,6 +21,7 @@ use backend\services\ProcesoService;
 use backend\services\RolProyectoService;
 use backend\services\TipoOrdenCambioService;
 use backend\services\TipoProyectoService;
+use backend\services\VersionProyectoService;
 use backend\services\contracts\InfraestructuraProvider;
 use Yii;
 use yii\filters\VerbFilter;
@@ -109,6 +110,8 @@ class ProyectoController extends Controller
             'franjaFases' => $this->navegacion->franjaFases($model),
             // "Registrar orden de cambio": en una fase con su presupuesto aprobado (parte 6).
             'puedeRegistrarOrden' => (new OrdenCambioFaseService())->puedeRegistrar($model),
+            // "Abrir nueva versión": una fase (no una orden de cambio) con su presupuesto aprobado, en su ultima version.
+            'puedeAbrirVersion' => (new VersionProyectoService())->puedeAbrir($model),
             // Fases 2+: la fase 1, solo si hoy deja cambiar los datos comunes (nota de "Datos generales").
             'faseDatosComunes' => (int) $model->numeroFase > 1 ? $this->service->faseParaDatosComunes($model) : null,
         ]);
@@ -200,6 +203,34 @@ class ProyectoController extends Controller
      * ?idAnterior= llega desde el boton "Crear fase siguiente" de un
      * proyecto aprobado: el formulario se abre ya enlazado a el.
      */
+    /**
+     * "Abrir nueva versión" de una fase aprobada (precios vencidos, corregir
+     * cantidades o especificaciones, agregar o quitar un item). Copia la
+     * lista y el presupuesto de la fase (precios tal cual, sin recalcular) a
+     * una fila nueva de Proyecto; la fase vieja queda de solo lectura.
+     */
+    public function actionVersion(int $idFase)
+    {
+        $fase = $this->findModel($idFase);
+        $versiones = new VersionProyectoService();
+
+        if (!$versiones->puedeAbrir($fase)) {
+            Yii::$app->session->setFlash('error', 'Una versión se abre sobre una fase (no una orden de cambio) con su presupuesto aprobado, en su última versión.');
+
+            return $this->redirect(['view', 'id' => $fase->id]);
+        }
+
+        $version = $versiones->nueva($fase);
+
+        if (Yii::$app->request->isPost && $versiones->crear($fase, $version, Yii::$app->request->post(), (string) Yii::$app->request->post('tipoVersion'))) {
+            Yii::$app->session->setFlash('success', 'Versión ' . $version->numeroVersionTexto() . ' abierta, con la lista y el presupuesto copiados.');
+
+            return $this->redirect(['view', 'id' => $version->id]);
+        }
+
+        return $this->render('version', ['version' => $version, 'fase' => $fase]);
+    }
+
     public function actionCreate(?int $idAnterior = null)
     {
         $model = $this->service->nuevo($idAnterior);

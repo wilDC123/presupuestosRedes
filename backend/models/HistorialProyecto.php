@@ -40,6 +40,8 @@ class HistorialProyecto extends ActiveRecord
     /** Orden de cambio (parte 6, 2026-11-09): se anota en la orden y en su fase. */
     public const ACCION_ORDEN_CAMBIO_CREADA = 'orden_cambio_creada';
     public const ACCION_ORDEN_CAMBIO_ELIMINADA = 'orden_cambio_eliminada';
+    /** Version de una fase aprobada (2026-11-24): se anota en la fila vieja y en la nueva. */
+    public const ACCION_VERSION_CREADA = 'version_creada';
 
     public static function tableName(): string
     {
@@ -62,6 +64,7 @@ class HistorialProyecto extends ActiveRecord
             self::ACCION_LISTA_ITEM_CAMBIADO => 'Ítem de la lista cambiado',
             self::ACCION_ORDEN_CAMBIO_CREADA => 'Orden de cambio registrada',
             self::ACCION_ORDEN_CAMBIO_ELIMINADA => 'Orden de cambio eliminada',
+            self::ACCION_VERSION_CREADA => 'Versión de la fase abierta',
             default => $this->accion,
         };
     }

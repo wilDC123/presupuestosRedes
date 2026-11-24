@@ -51,12 +51,14 @@ Actualizar los diagramas UML (ver la sección "Diseño UML" de `CLAUDE.md`):
   `ListaMaterialesAprobacion` (versión emitida), `Proyecto.unidadSolicitante` / `unidadDependencia`,
   `ProyectoAreaIntervencion`, `Personal`, `RolProyecto`, `ProyectoParticipante`, `HistorialProyecto`,
   `Proyecto.lugarEntrega`, `numeroProyecto`, `codigoLista`, `SolicitudCotizacion.codigoDocumento`, la orden de cambio
-  (auto-asociación `ordenesCambio`, `TipoOrdenCambio`). Dividir `Especificacion` en ficha, versión, característica y
+  (auto-asociación `ordenesCambio`, `TipoOrdenCambio`) y la VERSIÓN DE UNA FASE APROBADA (2026-11-24: auto-asociación
+  "versión anterior" en `Proyecto`, no en `Presupuesto`). Dividir `Especificacion` en ficha, versión, característica y
   emisión. **Quitar** `ComputoMetrico` (se eliminó del sistema) y la auto-relación "versión anterior" del presupuesto
-  (hoy un presupuesto por fase u orden de cambio).
+  (hoy un presupuesto por fase, orden de cambio o versión de fase).
 - **Casos de uso** — agregar: Gestionar procesos, tipos de proyecto, personal, roles, tipos de trabajo complementario y
   tipos de orden de cambio; Configurar codificación de documentos; Elaborar carta de entrega; Consultar historial;
-  Agregar fase; Registrar / eliminar orden de cambio. Quitar los de cómputos métricos.
+  Agregar fase; Registrar / eliminar orden de cambio; Abrir versión de una fase aprobada. Quitar los de cómputos
+  métricos.
 - **Secuencia y actividades** — el flujo "documento vivo" del presupuesto, la cotización opcional (precio directo), emitir
   y reemitir el formulario ET, enviar la lista a cotización (emite una versión), y que las operaciones terminan
   registrando en el historial.
@@ -67,6 +69,8 @@ Resúmenes para el tutor en `docs/historia/cambios-*.md`.
 
 ## Mejoras posibles
 
+- Versión de una fase aprobada (2026-11-24): por ahora no se puede **eliminar** una versión ya abierta (ni la vieja
+  ni la nueva, aunque se abandone sin aprobar) y una **orden de cambio** no se versiona (solo una fase).
 - Enlazar especificaciones desde las **plantillas** (`PlantillaItem`), para que se copien a la lista al cargarla.
 - Registrar en el **historial** las filas de la lista, las especificaciones y las cotizaciones.
 - Índice único sobre `SubcatalogoItem.descripcion` (después de ver cómo queda el subcatálogo).

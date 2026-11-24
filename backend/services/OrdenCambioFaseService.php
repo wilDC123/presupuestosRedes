@@ -232,8 +232,12 @@ class OrdenCambioFaseService
         return 1 + (int) Proyecto::find()->andWhere(['idFaseOrigen' => $fase->id])->max('numeroOrdenCambio');
     }
 
-    /** Copia del area de intervencion y del equipo de la fase (filas nuevas de la orden). */
-    private function copiarAreasYEquipo(Proyecto $fase, Proyecto $orden): void
+    /**
+     * Copia del area de intervencion y del equipo de una fase a una fila
+     * nueva de Proyecto (filas nuevas, propias de la fila destino). Publico:
+     * tambien lo usa VersionProyectoService al abrir una version.
+     */
+    public function copiarAreasYEquipo(Proyecto $fase, Proyecto $orden): void
     {
         foreach ($fase->areasIntervencion as $area) {
             $copia = new ProyectoAreaIntervencion($area->getAttributes(null, ['id', 'idProyecto']));

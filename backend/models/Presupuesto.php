@@ -11,9 +11,12 @@ use yii\db\ActiveRecord;
 /**
  * Modelo para la tabla "redes.Presupuesto".
  *
- * Cada proyecto tiene UN solo presupuesto (indice unico sobre idProyecto).
- * No hay versiones: una ampliacion es un proyecto nuevo de fase siguiente
- * (ver Proyecto::$idProyectoAnterior), con su propio presupuesto.
+ * Cada proyecto tiene UN solo presupuesto (indice unico sobre idProyecto). Un
+ * presupuesto nunca versiona su propia fila: una ampliacion es un proyecto
+ * nuevo de fase siguiente (ver Proyecto::$idProyectoAnterior) y una correccion
+ * de uno aprobado es una VERSION NUEVA de la fase (otra fila de redes.Proyecto,
+ * Proyecto::$idVersionAnterior, VersionProyectoService) -- en los dos casos,
+ * con su propio presupuesto.
  *
  * @property int $id
  * @property int $idProyecto

@@ -13,7 +13,9 @@ use yii\db\ActiveRecord;
  * REGLA DE NEGOCIO: una ampliacion (Fase 2, 3...) NO es una version del mismo
  * proyecto: es un proyecto NUEVO, con su propio codigo, enlazado al de la
  * fase anterior por idProyectoAnterior. Un proyecto cuyo presupuesto fue
- * aprobado nunca se modifica.
+ * aprobado nunca se modifica: si hay que corregirlo (precios vencidos,
+ * cantidades, agregar o quitar un item), se abre una VERSION NUEVA de la
+ * misma fase (otra fila, idVersionAnterior), no se edita esta.
  *
  * @property int $id
  * @property string|null $codigo Codigo de la FICHA TECNICA (RD-PI-PT-NNN): solo la fase 1 lo tiene (una ficha por
@@ -44,6 +46,14 @@ use yii\db\ActiveRecord;
  * @property string|null $descripcionCambio Orden de cambio: descripcion del cambio solicitado (FR-006).
  * @property string|null $motivoCambio Orden de cambio: motivo.
  * @property int|null $idTipoOrdenCambio Orden de cambio: FK a redes.TipoOrdenCambio (catalogo, FR-006 7.1.1).
+ * @property int|string|null $idVersionAnterior VERSION DE UNA FASE APROBADA: la fila de la que se abrio esta
+ *           version. NULL = esta fila es la primera version (1.0) de su fase. Ver esUltimaVersion().
+ * @property int $numeroVersionMayor 1, 2... Junto con numeroVersionMenor forman "1.0", "1.1", "2.0"... Ver
+ *           numeroVersionTexto().
+ * @property int $numeroVersionMenor
+ * @property bool $esVersionVigente false en la fila vieja desde que se abre una version nueva (VersionProyectoService).
+ *           Es lo que permite que getFases() siga devolviendo una sola fila por fase.
+ * @property string|null $motivoVersion Por que se abrio esta version (siempre a mano).
  * @property int|null $idPlantillaOrigen Plantilla de la que partio la lista (solo informativo).
  * @property bool $listaIniciada true si el paso "Plantilla" ya se resolvio (se uso una o se omitio).
  * @property string $estadoLista Estado de la lista de items: ver las constantes LISTA_*.
@@ -59,6 +69,9 @@ use yii\db\ActiveRecord;
  * @property-read Proyecto|null $faseOrigen La fase de una orden de cambio.
  * @property-read Proyecto[] $ordenesCambio Las ordenes de cambio de esta fase, en orden.
  * @property-read TipoOrdenCambio|null $tipoOrdenCambio
+ * @property-read Proyecto|null $versionAnterior
+ * @property-read Proyecto|null $versionSiguiente La que reemplazo a esta (null si esta es la vigente).
+ * @property-read Proyecto[] $versiones Todas las versiones de esta fase (viejas y la vigente), de la 1.0 en adelante.
  * @property-read Presupuesto|null $presupuesto
  * @property-read Plantilla|null $plantillaOrigen
  * @property-read ProyectoItem[] $items
@@ -130,14 +143,23 @@ class Proyecto extends ActiveRecord
     public const SCENARIO_ORDEN_CAMBIO = 'ordenCambio';
 
     /**
+     * Escenario del formulario para ABRIR UNA VERSION de una fase aprobada:
+     * solo el motivo llega del formulario (lo demas lo copia
+     * VersionProyectoService de la fase). Ver scenarios().
+     */
+    public const SCENARIO_VERSION = 'version';
+
+    /**
      * Las reglas sin 'on' valen en todos los escenarios: por eso el de la
      * orden de cambio se declara a mano, con SOLO sus tres campos (asi el
      * formulario de la orden no puede cambiar el nombre ni nada del proyecto).
+     * Lo mismo para la version, con solo el motivo.
      */
     public function scenarios(): array
     {
         $escenarios = parent::scenarios();
         $escenarios[self::SCENARIO_ORDEN_CAMBIO] = ['descripcionCambio', 'motivoCambio', 'idTipoOrdenCambio'];
+        $escenarios[self::SCENARIO_VERSION] = ['motivoVersion'];
 
         return $escenarios;
     }
@@ -150,6 +172,9 @@ class Proyecto extends ActiveRecord
             [['descripcionCambio', 'motivoCambio'], 'string', 'max' => 1000, 'on' => self::SCENARIO_ORDEN_CAMBIO],
             [['idTipoOrdenCambio'], 'integer', 'on' => self::SCENARIO_ORDEN_CAMBIO],
             TipoOrdenCambio::reglaElegible(self::SCENARIO_ORDEN_CAMBIO),
+            [['motivoVersion'], 'trim', 'on' => self::SCENARIO_VERSION],
+            [['motivoVersion'], 'required', 'on' => self::SCENARIO_VERSION],
+            [['motivoVersion'], 'string', 'max' => 1000, 'on' => self::SCENARIO_VERSION],
             [['nombre'], 'required'],
             [['nombre'], 'string', 'max' => 300],
             [['descripcion'], 'string', 'max' => 1000],
@@ -188,6 +213,7 @@ class Proyecto extends ActiveRecord
             'descripcionCambio' => 'Descripción del cambio',
             'motivoCambio' => 'Motivo',
             'idTipoOrdenCambio' => 'Tipo de cambio',
+            'motivoVersion' => 'Motivo de la versión',
             'areas' => 'Área de intervención',
             'equipo' => 'Equipo del proyecto',
             'idProyectoAnterior' => 'Proyecto de fase anterior (opcional)',
@@ -280,6 +306,71 @@ class Proyecto extends ActiveRecord
     public function esOrdenCambio(): bool
     {
         return $this->idFaseOrigen !== null;
+    }
+
+    /**
+     * La fila de la que se abrio esta version (null en la primera version, 1.0).
+     *
+     * @return ActiveQuery<Proyecto>
+     */
+    public function getVersionAnterior(): ActiveQuery
+    {
+        return $this->hasOne(self::class, ['id' => 'idVersionAnterior']);
+    }
+
+    /**
+     * La version que reemplazo a esta (null si esta es la vigente). Mientras
+     * alguna fila la tenga como idVersionAnterior, esta ya no se edita.
+     *
+     * @return ActiveQuery<Proyecto>
+     */
+    public function getVersionSiguiente(): ActiveQuery
+    {
+        return $this->hasOne(self::class, ['idVersionAnterior' => 'id']);
+    }
+
+    /**
+     * Todas las versiones de esta fase (mismo numeroProyecto y numeroFase,
+     * sin ordenes de cambio), de la 1.0 en adelante: a diferencia de getFases()
+     * (que solo trae la vigente), esta trae tambien las viejas, para
+     * consultarlas.
+     *
+     * @return ActiveQuery<Proyecto>
+     */
+    public function getVersiones(): ActiveQuery
+    {
+        return $this->hasMany(self::class, ['numeroProyecto' => 'numeroProyecto', 'numeroFase' => 'numeroFase'])
+            ->andOnCondition(['numeroOrdenCambio' => null])
+            ->orderBy(['numeroVersionMayor' => SORT_ASC, 'numeroVersionMenor' => SORT_ASC]);
+    }
+
+    /** true si ninguna version mas nueva reemplazo a esta. */
+    public function esUltimaVersion(): bool
+    {
+        return $this->versionSiguiente === null;
+    }
+
+    /** @var bool|null cache de tieneVariasVersiones() */
+    private ?bool $variasVersiones = null;
+
+    /**
+     * true si esta fase tiene mas de una version (mismo criterio que
+     * tieneVariasFases(): con una sola version no se muestra "Versión 1.0",
+     * da a entender que hay una 1.1).
+     */
+    public function tieneVariasVersiones(): bool
+    {
+        if ($this->variasVersiones === null) {
+            $this->variasVersiones = count($this->versiones) > 1;
+        }
+
+        return $this->variasVersiones;
+    }
+
+    /** "1.0", "1.1", "2.0"... */
+    public function numeroVersionTexto(): string
+    {
+        return $this->numeroVersionMayor . '.' . $this->numeroVersionMenor;
     }
 
     /** "Orden de cambio N.° 1" (vacio en una fase). */
@@ -449,7 +540,10 @@ class Proyecto extends ActiveRecord
         $linea = $this->tieneVariasFases() ? $linea . ' (FASE ' . (int) $this->numeroFase . ')' : $linea;
 
         // Una orden de cambio: "PROYECTO: 001 – NOMBRE (FASE 1) – ORDEN DE CAMBIO N.° 1" (propuesta del 2026-11-09).
-        return $this->esOrdenCambio() ? $linea . ' – ' . mb_strtoupper($this->textoOrdenCambio(), 'UTF-8') : $linea;
+        $linea = $this->esOrdenCambio() ? $linea . ' – ' . mb_strtoupper($this->textoOrdenCambio(), 'UTF-8') : $linea;
+
+        // Una fase con mas de una version: "... – VERSIÓN 2.0" (2026-11-23/24).
+        return $this->tieneVariasVersiones() ? $linea . ' – VERSIÓN ' . $this->numeroVersionTexto() : $linea;
     }
 
     /**
@@ -472,29 +566,39 @@ class Proyecto extends ActiveRecord
     public const ATRIBUTOS_COMUNES = ['nombre', 'descripcion', 'idTipoProyecto', 'idProceso', 'unidadDependencia', 'unidadSolicitante'];
 
     /**
-     * Todas las fases del proyecto (las filas con su mismo numero), de la 1 en
-     * adelante; incluye esta si es una fase. Sin las ordenes de cambio (parte
-     * 6): son filas con el mismo numero, pero no fases. Vacio si no tiene
-     * numero (filas de prueba).
+     * Todas las fases VIGENTES del proyecto (las filas con su mismo numero,
+     * cada una en su ultima version), de la 1 en adelante; incluye esta si es
+     * una fase. Sin las ordenes de cambio (parte 6) ni las versiones viejas de
+     * una fase (VERSION DE UNA FASE APROBADA): son filas con el mismo numero,
+     * pero no fases distintas. Vacio si no tiene numero (filas de prueba).
      *
      * @return ActiveQuery<Proyecto>
      */
     public function getFases(): ActiveQuery
     {
         return $this->hasMany(self::class, ['numeroProyecto' => 'numeroProyecto'])
-            ->andOnCondition(['numeroOrdenCambio' => null])
+            ->andOnCondition(['numeroOrdenCambio' => null, 'esVersionVigente' => true])
             ->orderBy(['numeroFase' => SORT_ASC, 'id' => SORT_ASC]);
     }
 
     /**
      * Codigo de la FICHA TECNICA del proyecto (RD-PI-PT-NNN): UNA por proyecto,
      * la que se codifico con su fase 1 (parte 5d). Las fases siguientes no
-     * tienen codigo propio (Proyecto.codigo NULL). null si no tiene.
+     * tienen codigo propio (Proyecto.codigo NULL), tampoco una version nueva de
+     * la fase 1 (el PT es del proyecto, no se repite). null si no tiene.
+     *
+     * Se busca por numeroProyecto directamente (no por getFases(), que solo
+     * trae la fase vigente): si la fase 1 se versiona, el PT se queda grabado
+     * en su fila VIEJA, que getFases() ya no devuelve.
      */
     public function codigoFicha(): ?string
     {
-        if (((int) $this->numeroFase <= 1 && !$this->esOrdenCambio()) || $this->numeroProyecto === null) {
+        if ($this->codigo !== null) {
             return $this->codigo;
+        }
+
+        if ($this->numeroProyecto === null) {
+            return null;
         }
 
         $codigo = self::find()->select('codigo')
@@ -503,18 +607,21 @@ class Proyecto extends ActiveRecord
             ->orderBy(['numeroFase' => SORT_ASC])
             ->scalar();
 
-        return is_string($codigo) ? $codigo : $this->codigo;
+        return is_string($codigo) ? $codigo : null;
     }
 
     /**
      * REGLA DE NEGOCIO: un proyecto (fase u orden de cambio) se edita mientras
      * su presupuesto se pueda editar (Presupuesto::puedeEditarse(): no aprobado
-     * ni cancelado) o no tenga presupuesto. Una ampliacion de uno aprobado se
-     * registra como fase siguiente u orden de cambio.
+     * ni cancelado) o no tenga presupuesto, y mientras no exista una VERSION
+     * mas nueva de la misma fase (esUltimaVersion()): una version vieja queda
+     * de solo lectura aunque su propio presupuesto se haya quedado "en
+     * proceso" (version abierta y abandonada). Una ampliacion de uno aprobado
+     * se registra como fase siguiente, orden de cambio o version nueva.
      */
     public function esEditable(): bool
     {
-        return $this->presupuesto === null || $this->presupuesto->puedeEditarse();
+        return $this->esUltimaVersion() && ($this->presupuesto === null || $this->presupuesto->puedeEditarse());
     }
 
     /** true si el presupuesto de esta fase (u orden de cambio) esta aprobado. */
@@ -600,8 +707,9 @@ class Proyecto extends ActiveRecord
         $texto = $this->numeroProyecto !== null ? 'Proyecto ' . $this->numeroTexto() : 'Proyecto #' . $this->id;
 
         $texto = $this->tieneVariasFases() ? $texto . ' · Fase ' . (int) $this->numeroFase : $texto;
+        $texto = $this->esOrdenCambio() ? $texto . ' · ' . $this->textoOrdenCambio() : $texto;
 
-        return $this->esOrdenCambio() ? $texto . ' · ' . $this->textoOrdenCambio() : $texto;
+        return $this->tieneVariasVersiones() ? $texto . ' · Versión ' . $this->numeroVersionTexto() : $texto;
     }
 
     /**
