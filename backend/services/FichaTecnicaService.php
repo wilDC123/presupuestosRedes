@@ -88,7 +88,8 @@ class FichaTecnicaService
         }
 
         return [
-            'codigo' => $fases[0]->codigo,
+            // codigoFicha(), no ->codigo: si la fase 1 tiene una version nueva, el PT se quedo en su fila vieja.
+            'codigo' => $fases[0]->codigoFicha(),
             'fases' => $porFase,
             'variasFases' => count($fases) > 1,
             'costo' => $this->costoTotal($proyecto),

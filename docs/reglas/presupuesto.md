@@ -4,8 +4,10 @@ Historia del "documento vivo": `docs/historia/cambios-presupuesto-vivo.md`.
 
 ## Un presupuesto por fase, como documento vivo
 
-- **Un solo presupuesto por fase u orden de cambio** (índice único `Presupuesto.idProyecto`). Lo que se agrega después
-  de aprobar va como **fase siguiente** u **orden de cambio**, cada una con su propio presupuesto. No hay "versiones" del
+- **Un solo presupuesto por fase u orden de cambio** (índice único `Presupuesto.idProyecto`). Un `Presupuesto` nunca
+  versiona su propia fila: lo que se agrega después de aprobar va como **fase siguiente** u **orden de cambio**, y lo
+  que hay que corregir (precios vencidos, cantidades, ítems) va como **versión nueva de la fase**
+  (`docs/reglas/proyecto-y-fases.md`) — las tres, filas nuevas de `redes.Proyecto`, cada una con su propio
   presupuesto.
 - Se elabora en **una pantalla**, el paso "Presupuesto" (`ElaborarPresupuestoController`, `ElaborarPresupuestoService`).
   No hay "crear presupuesto" ni "agregar líneas": **cada ítem de la lista es una línea** (`PresupuestoDetalle`, como

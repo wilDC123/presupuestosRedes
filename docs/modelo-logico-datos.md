@@ -52,6 +52,7 @@ erDiagram
     TipoProyecto |o--o{ Proyecto : "clasifica"
     Proceso |o--o{ Proyecto : "lleva"
     Proyecto |o--o{ Proyecto : "fase anterior"
+    Proyecto |o--o{ Proyecto : "versión anterior"
     Plantilla |o--o{ Proyecto : "origen de la lista"
     Proyecto ||--o{ ProyectoAreaIntervencion : "se trabaja en"
     Proyecto ||--o{ ProyectoParticipante : "equipo"
@@ -395,8 +396,14 @@ Proyecto de instalación de redes. Código RD-PI-PT-NNN. Puede ser la fase sigui
 | idTipoOrdenCambio | int | sí | FK → TipoOrdenCambio.id; orden de cambio: tipo (catálogo, FR-006 7.1.1) |
 | codigoLista | nvarchar(20) | sí | único (filtrado); código de la lista de materiales, RD-<proceso>-LM-NNN, puesto al crear el proyecto |
 | idProceso | int | sí | FK → Proceso.id |
+| idVersionAnterior | int | sí | FK → Proyecto.id; VERSIÓN DE UNA FASE APROBADA (2026-11-24): la fila de la que se abrió. NULL = primera versión (1.0) |
+| numeroVersionMayor | int | no | 1, 2... junto con numeroVersionMenor: "1.0", "1.1", "2.0"... (default 1) |
+| numeroVersionMenor | int | no | default 0 |
+| esVersionVigente | bit | no | false en la fila vieja desde que se abre una versión nueva (default 1) |
+| motivoVersion | nvarchar(1000) | sí | versión: por qué se abrió |
 
-Único: (codigo) donde ([codigo] IS NOT NULL)
+Único: (codigo) donde ([codigo] IS NOT NULL); (numeroProyecto, numeroFase, numeroOrdenCambio, numeroVersionMayor,
+numeroVersionMenor) donde ([numeroProyecto] IS NOT NULL)
 
 #### redes.TipoProyecto
 

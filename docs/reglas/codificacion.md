@@ -26,6 +26,15 @@ Según el lineamiento de la DTIC **RD-GD-LI-001**. La historia y las decisiones 
 - En **pantallas** la solicitud se muestra corta: "SC-01" (`SolicitudCotizacion::codigoCorto()`) o
   "001 · Fase 2 / SC-01" (`codigo()`). En el PDF y en la ficha técnica va su código RD-…-SC-NNN.
 
+## Versión de una fase aprobada
+
+- No es un código del lineamiento: `Proyecto.numeroVersionMayor`/`numeroVersionMenor` se muestran "1.0", "1.1",
+  "2.0"… (`Proyecto::numeroVersionTexto()`), por fuera de los correlativos PT/LM/ET/SC/PR/NP.
+- Al abrir una versión **no se repite** el código PT (es del proyecto, no se gasta un número nuevo) ni la carta de
+  entrega de la versión vieja. **Sí** saca código de lista (LM) y de presupuesto (PR) propios, con
+  `CodificacionService::tomar()` como cualquier fila nueva de `Proyecto`. Detalle en
+  `docs/reglas/proyecto-y-fases.md`.
+
 ## Correlativos
 
 - `redes.CorrelativoDocumento`: una fila por tipo (PT, PR, ET, LM, SC, NP). El formato está en

@@ -20,6 +20,7 @@ use yii\helpers\Html;
  * @var bool $puedeAgregarFase la ultima fase del proyecto (aprobada o no): se le puede agregar la siguiente
  * @var array<int, array<int, array{id: int, texto: string, presupuesto: ?backend\models\Presupuesto, monto: ?float, actual: bool}>> $franjaFases Ver NavegacionProyectoService::franjaFases()
  * @var bool $puedeRegistrarOrden una fase con su presupuesto aprobado: se le puede registrar una orden de cambio (parte 6)
+ * @var bool $puedeAbrirVersion una fase con su presupuesto aprobado, en su ultima version: se le puede abrir una version nueva
  * @var backend\models\Proyecto|null $faseDatosComunes la fase 1 si hoy deja cambiar los datos comunes (solo en fases 2+). Ver ProyectoService::faseParaDatosComunes()
  * @var int $totalItems items en la lista del proyecto
  * @var bool $listaEditable Ver ListaItemsService::puedeEditarse()
@@ -59,6 +60,12 @@ $formato = Yii::$app->formatter;
                 <?= Html::a('Registrar orden de cambio', ['orden-cambio', 'idFase' => $model->id], [
                     'class' => 'btn btn-outline',
                     'title' => 'Un presupuesto adicional de esta fase aprobada, solo con lo que se agrega (formato RD-GD-FR-006)',
+                ]) ?>
+            <?php endif; ?>
+            <?php if ($puedeAbrirVersion): ?>
+                <?= Html::a('Abrir nueva versión', ['version', 'idFase' => $model->id], [
+                    'class' => 'btn btn-outline',
+                    'title' => 'Corregir precios, cantidades o ítems de esta fase aprobada en una versión nueva, sin perder la actual',
                 ]) ?>
             <?php endif; ?>
             <?php // Con varias fases (o con ordenes de cambio) "Agregar fase" va en la franja FASES, no aqui. ?>
@@ -393,6 +400,22 @@ $formato = Yii::$app->formatter;
                     <div class="rd-nota mt-1">Fase única. La siguiente se agrega con "Agregar fase"; con el presupuesto aprobado, lo que falte se pide con una orden de cambio.</div>
                 <?php endif; ?>
             </div>
+
+            <?php // Versiones de ESTA fase (VERSION DE UNA FASE APROBADA, 2026-11-24): solo si se abrio alguna. ?>
+            <?php if ($model->tieneVariasVersiones()): ?>
+                <div class="card rd-card-pad mt-3">
+                    <div class="kicker mb-2">Versiones de esta fase</div>
+                    <?php foreach ($model->versiones as $fila): ?>
+                        <div class="rd-dato">
+                            <?= (int) $fila->id === (int) $model->id ? '<strong>Versión ' . Html::encode($fila->numeroVersionTexto()) . '</strong> (esta)' : Html::a('Versión ' . Html::encode($fila->numeroVersionTexto()), ['view', 'id' => $fila->id]) ?>
+                            · <?= $fila->presupuesto === null ? 'sin presupuesto' : Html::encode($fila->presupuesto->estadoLabel()) ?>
+                            <?php if ($fila->motivoVersion !== null && $fila->motivoVersion !== ''): ?>
+                                <div class="rd-nota"><?= Html::encode($fila->motivoVersion) ?></div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
 
     </div>
