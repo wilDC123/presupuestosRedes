@@ -359,7 +359,8 @@ $(function () {
                 id: String($item.data('id')),
                 nombre: String($item.data('nombre')),
                 unidad: String($item.data('unidad') || ''),
-                categoria: String($item.data('categoriaNombre') || 'Otros')
+                categoria: String($item.data('categoriaNombre') || 'Otros'),
+                sigma: String($item.data('sigma') || '')
             };
         }).get();
 
@@ -390,7 +391,9 @@ $(function () {
             $.each(encontrados.slice(0, 30), function (_, item) {
                 $resultados.append($('<li>').data('item', item)
                     .append($('<div class="rd-resultado-titulo">').text(item.nombre))
-                    .append($('<div class="rd-resultado-sub">').text(item.categoria + (item.unidad ? ' · ' + item.unidad : ''))));
+                    .append($('<div class="rd-resultado-sub">').text(item.categoria + (item.unidad ? ' · ' + item.unidad : '')))
+                    // Misma linea SIGMA/partida del panel "Subcatálogo de redes" (solo informativa).
+                    .append($('<div class="rd-resultado-sub rd-linea-sigma">').attr('title', item.sigma).text(item.sigma)));
             });
 
             if (encontrados.length > 30) {

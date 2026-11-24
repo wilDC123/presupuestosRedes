@@ -372,23 +372,25 @@ $grupoCierra = static fn (int $cantidad): string =>
                         </div>
                     <?php endif; ?>
                     <?php foreach ($subcatalogo as $itemSubcatalogo): ?>
+                        <?php
+                        // Linea SIGMA: a que item generico de SIGMA apunta y su partida, para
+                        // elegir sin ir al subcatalogo. Solo se muestra: el buscador sigue
+                        // buscando por el nombre DTIC. Nombre largo = recortado con "…" (CSS),
+                        // completo en el title. En data-sigma tambien, para el buscador de
+                        // "Otros materiales que proveerá la D.T.I.C." (lista-items.js).
+                        $sigma = $itemSubcatalogo->catalogoSigma;
+                        $lineaSigma = $sigma !== null ? 'SIGMA: ' . $sigma->Descripcion : 'Sin ítem SIGMA';
+                        if ($itemSubcatalogo->partida) {
+                            $lineaSigma .= ' · Partida ' . $itemSubcatalogo->partida;
+                        }
+                        ?>
                         <div class="row-item"
                              data-id="<?= $itemSubcatalogo->id ?>"
                              data-nombre="<?= Html::encode($itemSubcatalogo->descripcion) ?>"
                              data-unidad="<?= Html::encode((string) $itemSubcatalogo->abreviaturaUnidad()) ?>"
                              data-categoria="<?= $itemSubcatalogo->idCategoria ?>"
-                             data-categoria-nombre="<?= Html::encode($itemSubcatalogo->categoria->nombre ?? 'Sin clasificación') ?>">
-                            <?php
-                            // Linea SIGMA: a que item generico de SIGMA apunta y su partida, para
-                            // elegir sin ir al subcatalogo. Solo se muestra: el buscador sigue
-                            // buscando por el nombre DTIC. Nombre largo = recortado con "…" (CSS),
-                            // completo en el title.
-                            $sigma = $itemSubcatalogo->catalogoSigma;
-                            $lineaSigma = $sigma !== null ? 'SIGMA: ' . $sigma->Descripcion : 'Sin ítem SIGMA';
-                            if ($itemSubcatalogo->partida) {
-                                $lineaSigma .= ' · Partida ' . $itemSubcatalogo->partida;
-                            }
-                            ?>
+                             data-categoria-nombre="<?= Html::encode($itemSubcatalogo->categoria->nombre ?? 'Sin clasificación') ?>"
+                             data-sigma="<?= Html::encode($lineaSigma) ?>">
                             <div class="rd-row-item-texto">
                                 <div class="rd-celda-titulo"><?= Html::encode($itemSubcatalogo->descripcion) ?></div>
                                 <div class="rd-celda-sub">
