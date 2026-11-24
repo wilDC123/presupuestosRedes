@@ -285,7 +285,9 @@ body.rd {
 .rd .grid-view .summary { padding: 10px 14px; font-family: var(--rd-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--rd-texto-tenue); border-bottom: 1px solid var(--rd-borde); }
 .rd .grid-view .empty { padding: 22px 18px; color: var(--rd-texto-suave); }
 .rd .grid-view .pagination { margin: 12px 14px; }
-.rd .pagination { --bs-pagination-font-size: 12px; --bs-pagination-color: var(--rd-texto); --bs-pagination-active-bg: var(--rd-azul); --bs-pagination-active-border-color: var(--rd-azul); --bs-pagination-border-color: var(--rd-borde-fuerte); }
+/* Paginas separadas (no una tira pegada): cada numero es su propio boton, con espacio entre ellos. */
+.rd .pagination { --bs-pagination-font-size: 12px; --bs-pagination-color: var(--rd-texto); --bs-pagination-active-bg: var(--rd-azul); --bs-pagination-active-border-color: var(--rd-azul); --bs-pagination-border-color: var(--rd-borde-fuerte); gap: 4px; }
+.rd .pagination .page-link { border-radius: 6px; margin-left: 0; }
 .rd table.detail-view { border-collapse: separate; border-spacing: 0; overflow: hidden; }
 .rd table.detail-view th { width: 220px; font-family: var(--rd-sans); font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--rd-etiqueta); font-weight: 600; background: var(--rd-fila-hover); border-bottom: 1px solid var(--rd-fila); white-space: normal; }
 .rd table.detail-view tr:last-child th, .rd table.detail-view tr:last-child td { border-bottom: 0; }
