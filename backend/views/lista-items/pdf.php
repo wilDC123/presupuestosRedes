@@ -12,10 +12,13 @@ use yii\helpers\Html;
  *
  * SIN columnas de precio: la lista no es el presupuesto.
  *
- * Despues de los items, las dos secciones sin precio que hasta el 2026-10-29
- * salian al final del presupuesto, SOLO si tienen filas: "Otros materiales y
- * equipamiento que proveerá la D.T.I.C." (agrupados por subtitulo) y los
- * trabajos complementarios (agrupados por tipo).
+ * Los materiales de la DTIC (pedido del Ing. de DTIC, 2026-11-24) se UNEN a la
+ * misma tabla de items, como una banda mas al final ("Otros materiales y
+ * equipamiento que proveerá la D.T.I.C.", SIN agrupar por subtitulo: una sola
+ * banda para todos), con la numeracion corrida; el total de abajo los cuenta
+ * tambien. Despues va, aparte, la otra seccion sin precio que hasta el
+ * 2026-10-29 salia al final del presupuesto: los trabajos complementarios
+ * (agrupados por tipo), SOLO si tiene filas.
  *
  * Desde el 2026-10-30 (paso 8b) es un documento del lineamiento RD-GD-LI-001:
  * cabecera con su codigo, version y fecha, y al fondo el control de
@@ -41,12 +44,13 @@ use yii\helpers\Html;
  * @var array<int, array{nombre: string, items: backend\models\ProyectoItem[]}> $grupos Ver ListaItemsService::agrupar()
  * @var array{version: string, borrador: bool, aprobacion: backend\models\ListaMaterialesAprobacion|null, fechaCreacion: string} $documento
  * @var backend\models\ConfiguracionPresupuesto $configuracion firmas de hoy (mientras no se envia)
- * @var array<string, backend\models\ProyectoMaterialDtic[]> $materiales [subtitulo => materiales], ver MaterialDticService::agrupar()
+ * @var backend\models\ProyectoMaterialDtic[] $materiales ya en su orden (Proyecto::$materialesDtic), sin agrupar por subtitulo
  * @var array<string, backend\models\ProyectoCondicionPrevia[]> $trabajos [tipo => trabajos], ver CondicionPreviaService::agrupar()
  * @var string $proceso nombre del proceso para la cabecera, el del codigo de la lista; lo calcula el controlador
  */
 
 $totalItems = array_sum(array_map(static fn ($grupo) => count($grupo['items']), $grupos));
+$totalMateriales = count($materiales);
 $numero = 0;
 
 // Enviada: su firma copiada; borrador: la de la configuracion de hoy.
@@ -116,7 +120,8 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
         border-top: 2px solid #000;
         padding-top: 6px;
     }
-    /* Secciones sin precio (materiales de la DTIC, trabajos complementarios). */
+    /* Seccion sin precio aparte (trabajos complementarios; los materiales de la DTIC ya van dentro de la
+       tabla de items, ver mas abajo). */
     .seccion-titulo {
         font-weight: bold;
         margin-top: 16px;
@@ -152,12 +157,13 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
     </tr>
 </table>
 
-<?php if ($grupos === []): ?>
+<?php if ($grupos === [] && $materiales === []): ?>
     <p>Esta lista todavía no tiene ítems.</p>
 <?php else: ?>
     <?php // UNA sola tabla (2026-11-11): cada categoria es una banda gris sin subtotal; la PRIMERA va
     // arriba de los titulos de columnas (pedido del desarrollador), las demas entre los items.
-    // Por eso los titulos no van en <thead> y no se repiten en cada pagina. ?>
+    // Por eso los titulos no van en <thead> y no se repiten en cada pagina. Los materiales de la DTIC
+    // (2026-11-24) van como una banda mas, al final, sin agrupar por subtitulo. ?>
     <table class="items">
         <tbody>
             <?php foreach ($grupos as $g => $grupo): ?>
@@ -189,37 +195,32 @@ $firmas = $documento['aprobacion'] ?? $configuracion;
                     </tr>
                 <?php endforeach; ?>
             <?php endforeach; ?>
-        </tbody>
-    </table>
 
-    <div class="total-general">
-        TOTAL: <?= $totalItems ?> ÍTEM(S) EN <?= count($grupos) ?> CLASIFICACIÓN(ES)
-    </div>
-<?php endif; ?>
-
-<?php if ($materiales !== []): ?>
-    <div class="seccion-titulo"><?= Html::encode(backend\models\ProyectoMaterialDtic::TITULO) ?></div>
-    <table class="items">
-        <thead>
-            <tr>
-                <th>Descripción</th>
-                <th width="14%">Unidad</th>
-                <th width="14%">Cantidad</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($materiales as $subtitulo => $filas): ?>
-                <tr><td colspan="3" class="subtitulo"><?= Html::encode($subtitulo) ?></td></tr>
-                <?php foreach ($filas as $fila): ?>
+            <?php if ($materiales !== []): ?>
+                <tr><td colspan="4" class="categoria"><?= Html::encode(backend\models\ProyectoMaterialDtic::TITULO) ?></td></tr>
+                <?php if ($grupos === []): ?>
                     <tr>
+                        <th width="6%">N.°</th>
+                        <th>Descripción</th>
+                        <th width="14%">Unidad</th>
+                        <th width="14%">Cantidad</th>
+                    </tr>
+                <?php endif; ?>
+                <?php foreach ($materiales as $fila): ?>
+                    <tr>
+                        <td class="numero"><?= ++$numero ?></td>
                         <td><?= Html::encode($fila->descripcion) ?></td>
                         <td><?= Html::encode((string) $fila->unidadMedida) ?></td>
                         <td class="numero"><?= Yii::$app->formatter->asDecimal($fila->cantidad, 2) ?></td>
                     </tr>
                 <?php endforeach; ?>
-            <?php endforeach; ?>
+            <?php endif; ?>
         </tbody>
     </table>
+
+    <div class="total-general">
+        TOTAL: <?= $totalItems + $totalMateriales ?> ÍTEM(S) EN <?= count($grupos) + ($materiales !== [] ? 1 : 0) ?> CLASIFICACIÓN(ES)
+    </div>
 <?php endif; ?>
 
 <?php if ($trabajos !== []): ?>

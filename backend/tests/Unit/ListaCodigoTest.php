@@ -14,7 +14,6 @@ use backend\services\CodificacionService;
 use backend\services\CondicionPreviaService;
 use backend\services\ListaItemsService;
 use backend\services\ListaVersionService;
-use backend\services\MaterialDticService;
 use backend\services\ProcesoService;
 use backend\services\ProyectoService;
 use backend\services\RolProyectoService;
@@ -92,7 +91,7 @@ class ListaCodigoTest extends Unit
                 'grupos' => $this->lista->agrupar($proyecto),
                 'documento' => (new ListaVersionService())->documento($proyecto),
                 'configuracion' => ConfiguracionPresupuesto::obtener(),
-                'materiales' => (new MaterialDticService())->agrupar($proyecto),
+                'materiales' => $proyecto->materialesDtic,
                 'trabajos' => (new CondicionPreviaService())->agrupar($proyecto),
                 'proceso' => 'Proceso test',
             ]);

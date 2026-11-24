@@ -18,7 +18,6 @@ use backend\services\EspecificacionEmisionService;
 use backend\services\EspecificacionBusquedaService;
 use backend\services\ListaItemsService;
 use backend\services\ListaVersionService;
-use backend\services\MaterialDticService;
 use backend\services\OrdenCambioService;
 use backend\services\NavegacionProyectoService;
 use backend\services\ProyectoService;
@@ -194,8 +193,9 @@ class ListaItemsController extends Controller
             'grupos' => $this->service->agrupar($proyecto),
             'documento' => $documento,
             'configuracion' => ConfiguracionPresupuesto::obtener(),
-            // Secciones sin precio, agrupadas: [subtitulo => materiales] y [tipo => trabajos].
-            'materiales' => (new MaterialDticService())->agrupar($proyecto),
+            // Materiales de la DTIC (2026-11-24): se unen a la tabla de items, ya en su orden, sin agrupar por
+            // subtitulo. Los trabajos complementarios siguen agrupados por tipo, en su propia tabla.
+            'materiales' => $proyecto->materialesDtic,
             'trabajos' => (new CondicionPreviaService())->agrupar($proyecto),
             // El del codigo de la lista (RD-GR-LM-005 -> GR); PI si no tiene.
             'proceso' => Proceso::nombreDe(CorrelativoDocumento::partesDe(CorrelativoDocumento::TIPO_LISTA, $proyecto->codigoLista)['proceso'] ?? CorrelativoDocumento::PROCESO),

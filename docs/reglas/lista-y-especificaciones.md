@@ -37,8 +37,9 @@ Son del proyecto, se escriben en el mismo formulario y se guardan con el mismo b
 tienen filas. El presupuesto **no** las lleva ("el presupuesto es financiero").
 
 - **Materiales que aporta la DTIC** (`redes.ProyectoMaterialDtic`, `MaterialDticService`): ítems del subcatálogo (nombre
-  y unidad fijos, solo se pide la cantidad) o escritos a mano; agrupados por categoría ("Otros" para los escritos a
-  mano). Título oficial en `ProyectoMaterialDtic::TITULO`.
+  y unidad fijos, solo se pide la cantidad) o escritos a mano; `grupo` guarda la categoría del ítem ("Otros" para los
+  escritos a mano) y se usa en la pantalla de edición; en el PDF (2026-11-24) ya no se agrupan por `grupo` — ver
+  "PDF de la lista de materiales" más abajo. Título oficial en `ProyectoMaterialDtic::TITULO`.
 - **Trabajos complementarios** (`redes.ProyectoCondicionPrevia`, `CondicionPreviaService`): tipo (catálogo), descripción
   y unidad encargada. Título en `ProyectoCondicionPrevia::TITULO`.
 
@@ -50,8 +51,13 @@ tienen filas. El presupuesto **no** las lleva ("el presupuesto es financiero").
   la firma). La primera es 1.0; después de cada reapertura, la siguiente.
 - En edición imprime la versión siguiente con marca BORRADOR y la firma de hoy; enviada o cerrada, la última emitida.
 - La "Fecha" de la cabecera es la de **creación** de la versión.
-- Una sola tabla: cada categoría es una banda gris sin líneas; la primera va arriba de los títulos de columnas. Al final
-  "TOTAL: N ÍTEM(S) EN M CLASIFICACIÓN(ES)". Sin subtotales.
+- Una sola tabla: cada categoría es una banda gris sin líneas; la primera va arriba de los títulos de columnas. Los
+  **materiales que aporta la DTIC** (pedido del Ing. de DTIC, 2026-11-24) se **unen a esta misma tabla**, como una
+  banda más al final, con el título "Otros materiales y equipamiento que proveerá la D.T.I.C." — **sin** agrupar por
+  su propio `grupo` (una sola banda para todos, ya no una tabla aparte ni sub-bandas por categoría) — y con la
+  numeración corrida junto con los ítems. Al final "TOTAL: N ÍTEM(S) EN M CLASIFICACIÓN(ES)", contando también estos
+  materiales y esa banda. Sin subtotales. Los **trabajos complementarios** siguen en su propia tabla, aparte, sin
+  numeración (agrupados por tipo).
 - Solo "ELABORADO POR", a todo el ancho de la hoja.
 
 ## Librería de especificaciones técnicas
