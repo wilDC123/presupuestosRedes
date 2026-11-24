@@ -185,7 +185,7 @@ class ListaMaterialesTest extends Unit
             'grupos' => $this->lista->agrupar(Proyecto::findOne($proyecto->id)),
             'documento' => (new ListaVersionService())->documento(Proyecto::findOne($proyecto->id)),
             'configuracion' => ConfiguracionPresupuesto::obtener(),
-            'materiales' => (new MaterialDticService())->agrupar(Proyecto::findOne($proyecto->id)),
+            'materiales' => Proyecto::findOne($proyecto->id)->materialesDtic,
             'trabajos' => (new CondicionPreviaService())->agrupar(Proyecto::findOne($proyecto->id)),
             'proceso' => 'Proceso test',
         ]);
@@ -208,6 +208,45 @@ class ListaMaterialesTest extends Unit
         foreach ([ProyectoMaterialDtic::TITULO, 'Rack 42U usado', ProyectoCondicionPrevia::TITULO, 'Instalaciones eléctricas', 'Tomacorriente junto al rack'] as $esperado) {
             $this->assertStringContainsString($esperado, $impreso);
         }
+    }
+
+    /**
+     * 2026-11-24 (pedido del Ing. de DTIC): los materiales de la DTIC se unen
+     * a la MISMA tabla de items, en UNA sola banda (sin agrupar por su propio
+     * subtitulo), con la numeracion corrida; el total de abajo los cuenta.
+     */
+    public function testLosMaterialesDeLaDticSeUnenALaTablaDeItemsEnElImpreso(): void
+    {
+        $proyecto = $this->proyecto();
+        $errores = [];
+        $enviados = [];
+        $this->assertTrue($this->lista->guardar($proyecto, [$this->fila()], $errores, $enviados, null, null, [
+            ['grupo' => 'Cables', 'descripcion' => 'Rack 42U usado', 'cantidad' => '1'],
+            ['grupo' => 'Otros', 'descripcion' => 'Silla de oficina', 'cantidad' => '2'],
+        ]), implode(' ', $errores));
+
+        $proyecto = Proyecto::findOne($proyecto->id);
+        $html = Yii::$app->view->render('@backend/views/lista-items/pdf.php', [
+            'proyecto' => $proyecto,
+            'grupos' => $this->lista->agrupar($proyecto),
+            'documento' => (new ListaVersionService())->documento($proyecto),
+            'configuracion' => ConfiguracionPresupuesto::obtener(),
+            'materiales' => $proyecto->materialesDtic,
+            'trabajos' => (new CondicionPreviaService())->agrupar($proyecto),
+            'proceso' => 'Proceso test',
+        ]);
+
+        // Una sola tabla: los materiales no quedan en una tabla aparte.
+        $this->assertSame(1, substr_count($html, '<table class="items">'));
+        // Una sola banda para todos los materiales (el titulo de la seccion aparece una vez), sin agrupar
+        // por su propio subtitulo ("Cables" y "Otros" no salen como banda).
+        $this->assertSame(1, substr_count($html, ProyectoMaterialDtic::TITULO));
+        $this->assertStringNotContainsString('>Cables<', $html);
+        $this->assertStringNotContainsString('>Otros<', $html);
+        $this->assertStringContainsString('Rack 42U usado', $html);
+        $this->assertStringContainsString('Silla de oficina', $html);
+        // El total cuenta el item normal y los dos materiales, y una clasificacion mas (la banda de materiales).
+        $this->assertStringContainsString('TOTAL: 3 ÍTEM(S) EN 2 CLASIFICACIÓN(ES)', $html);
     }
 
     public function testElPresupuestoYaNoTieneSeccionesSinPrecio(): void

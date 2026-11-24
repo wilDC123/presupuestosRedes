@@ -54,3 +54,6 @@ phpunit.phar
 
 # archivos subidos por usuarios (cotizaciones, especificaciones)
 /backend/web/uploads/
+
+# ajustes personales de Claude Code (permisos propios, no del equipo)
+/.claude/settings.local.json
