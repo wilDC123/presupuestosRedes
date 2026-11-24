@@ -19,7 +19,7 @@ en el navegador para imprimir.
    - Costo total (`FichaTecnicaService::costoTotal()`): suma de los presupuestos **aprobados** de fases y órdenes de cambio.
      Con varias fases (u órdenes aprobadas), una fila por parte ("Fase 1 | Bs. 1,000.00", cada orden después de su fase)
      y al final "Total (presupuestos aprobados)".
-2. **UNIDADES / DEPENDENCIA**.
+2. **UNIDAD / DEPENDENCIA**.
 3. Con fase única: **3. ÁREA DE INTERVENCIÓN**, **4. PERSONAL ASIGNADO** (antes "Equipo"), **5. DOCUMENTACIÓN
    ASOCIADA**. Con varias fases: **3. FASES** y dentro "3.1 FASE 1" (3.1.1 Área de intervención, 3.1.2 Personal
    asignado, 3.1.3 Documentación asociada), "3.2 FASE 2"…
@@ -27,8 +27,9 @@ en el navegador para imprimir.
 
 ## Documentación asociada (antes "carpeta económica")
 
-Tabla Documento | Código | **Versión** | **Ítem / Descripción** (`FichaTecnicaService::carpeta()`; 2026-11-24: la
-columna Versión se movió junto a Código, y "Detalle" pasó a llamarse "Ítem / Descripción" solo en el título):
+Tabla Documento | Código | **Versión** | **Detalle / Ítem / Descripción** (`FichaTecnicaService::carpeta()`;
+2026-11-24: la columna Versión se movió junto a Código, y el título de la última columna pasó de "Detalle" a
+"Detalle / Ítem / Descripción" — solo el título; el contenido de las filas no cambió):
 
 - Lista de materiales y condiciones previas (BoM): "Elaborada el …".
 - Presupuesto: "Aprobado el … · Total Bs." o su estado.
@@ -36,8 +37,11 @@ columna Versión se movió junto a Código, y "Detalle" pasó a llamarse "Ítem 
   vacía por cada una — antes de 2026-11-24 parecía que el casillero era de una sola especificación), con cada código
   en su propia fila de la columna "Código"; "Reemitida el …: motivo" si se reemitieron (el motivo está en la emisión
   reemplazada).
-- Solicitudes de proforma: rubro · fecha.
-- Proformas recibidas (solo si hay): proveedor · fecha, y "ver proforma" si se guardó como enlace (Drive).
+- **Cada solicitud de proforma** (rubro · fecha) va seguida de **sus propias proformas recibidas**, también en un
+  solo casillero por solicitud; "Pendiente." si todavía no llegó ninguna, o cada proveedor · fecha (y "ver proforma"
+  si se guardó como enlace al Drive) si ya hay. Antes de 2026-11-24 iban todas las solicitudes juntas y, aparte,
+  todas las proformas de todas mezcladas al final; para saber cuál proforma respondía a cuál solicitud había que
+  cruzar por el código repetido.
 - Las **órdenes de cambio** de la fase van dentro de su documentación asociada: barra gris "Orden de cambio N.° 1 ·
   solicitada el … · aprobada el …", "Motivo: …" y sus documentos.
 

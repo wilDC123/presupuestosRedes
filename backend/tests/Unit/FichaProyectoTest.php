@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace backend\tests\Unit;
 
+use backend\models\Cotizacion;
 use backend\models\Especificacion;
 use backend\models\Personal;
 use backend\models\Presupuesto;
+use backend\models\Proveedor;
 use backend\models\Proyecto;
 use backend\models\ProyectoItem;
+use backend\models\SolicitudCotizacion;
 use backend\models\SubcatalogoItem;
 use backend\models\TipoOrdenCambio;
 use backend\services\EspecificacionEmisionService;
@@ -72,7 +75,7 @@ class FichaProyectoTest extends Unit
         $this->assertStringNotContainsString('FASE 1', $html);
         $this->assertStringNotContainsString('Lugar de entrega', $html);
         $this->assertStringNotContainsString('Reporte de control', $html);
-        $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Costo total del proyecto', 'Fecha de creación', '2. UNIDADES / DEPENDENCIA', '3. ÁREA DE INTERVENCIÓN', '4. PERSONAL ASIGNADO', '5. DOCUMENTACIÓN ASOCIADA', 'Lista de materiales y condiciones previas (BoM)']);
+        $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Costo total del proyecto', 'Fecha de creación', '2. UNIDAD / DEPENDENCIA', '3. ÁREA DE INTERVENCIÓN', '4. PERSONAL ASIGNADO', '5. DOCUMENTACIÓN ASOCIADA', 'Lista de materiales y condiciones previas (BoM)']);
     }
 
     /**
@@ -97,7 +100,7 @@ class FichaProyectoTest extends Unit
             $datos = $this->ficha->datosFicha(Proyecto::findOne($id));
             $this->assertSame([$fase1->codigo, '1.1', false, ''], [$datos['codigo'], $datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
             $html = $this->html(Proyecto::findOne($id), $datos);
-            $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Seguimiento', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. UNIDADES / DEPENDENCIA', '3. FASES', '3.1 FASE 1', '3.1.1 Área', 'Edificio test fase 1', '3.1.3 Documentación asociada', '3.2 FASE 2', '3.2.1 Área', 'Edificio test fase 2']);
+            $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Seguimiento', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. UNIDAD / DEPENDENCIA', '3. FASES', '3.1 FASE 1', '3.1.1 Área', 'Edificio test fase 1', '3.1.3 Documentación asociada', '3.2 FASE 2', '3.2.1 Área', 'Edificio test fase 2']);
             $this->assertStringNotContainsString('4. FASE', $html);
             $this->assertStringNotContainsString('5. DOCUMENTACIÓN', $html);
         }
@@ -217,6 +220,43 @@ class FichaProyectoTest extends Unit
         foreach ($emisiones as $emision) {
             $this->assertStringContainsString(Html::encode($emision->codigo()), $html);
         }
+    }
+
+    /**
+     * 2026-11-24: cada solicitud va seguida de SUS PROPIAS proformas
+     * recibidas (antes iban todas las solicitudes juntas y, aparte, todas
+     * las proformas de todas mezcladas al final).
+     */
+    public function testCadaSolicitudVaSeguidaDeSusPropiasProformas(): void
+    {
+        $proveedor = Proveedor::find()->one();
+        if ($proveedor === null) {
+            $this->markTestSkipped('La base local no tiene proveedores.');
+        }
+
+        $proyecto = $this->crear(null, 'Edificio test solicitudes ficha');
+
+        $conProformas = new SolicitudCotizacion(['idProyecto' => $proyecto->id, 'numero' => 1, 'nombre' => 'Ferretería test']);
+        $conProformas->save(false);
+        foreach (['2026-11-10', '2026-11-11'] as $fecha) {
+            (new Cotizacion(['idSolicitudCotizacion' => $conProformas->id, 'idProveedor' => $proveedor->id, 'fecha' => $fecha]))->save(false);
+        }
+
+        $sinProformas = new SolicitudCotizacion(['idProyecto' => $proyecto->id, 'numero' => 2, 'nombre' => 'Equipos test']);
+        $sinProformas->save(false);
+
+        $html = $this->html(Proyecto::findOne($proyecto->id), $this->ficha->datosFicha(Proyecto::findOne($proyecto->id)));
+
+        // "Proformas recibidas" aparece una vez por solicitud (un solo casillero cada una), no una vez por proforma.
+        $this->assertSame(2, substr_count($html, 'Proformas recibidas'));
+        $this->assertStringContainsString('rowspan="2">Proformas recibidas', $html);
+        // La solicitud sin respuestas queda "Pendiente.", no desaparece ni se mezcla con la otra.
+        $this->assertStringContainsString('Pendiente.', $html);
+        // Cada solicitud, inmediatamente seguida de sus propias proformas (no todas las solicitudes y despues todas las proformas).
+        $this->assertEnOrden($html, [
+            Html::encode($conProformas->codigoCorto()), 'rowspan="2">Proformas recibidas',
+            Html::encode($sinProformas->codigoCorto()), 'Pendiente.',
+        ]);
     }
 
     private function crear(?int $idAnterior, string $edificio): Proyecto

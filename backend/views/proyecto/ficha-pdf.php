@@ -36,7 +36,12 @@ use yii\helpers\Html;
  *    proforma y proformas recibidas). Las especificaciones van en UN SOLO
  *    casillero de la columna "Documento" (rowspan), con sus codigos cada uno
  *    en su fila de la columna "Codigo" (2026-11-24: antes parecia que el
- *    casillero era de una sola especificacion). Las ORDENES DE CAMBIO de la
+ *    casillero era de una sola especificacion). Cada SOLICITUD DE PROFORMA va
+ *    seguida de SUS PROPIAS proformas recibidas (o "Pendiente." si no llego
+ *    ninguna), tambien en un solo casillero por solicitud (2026-11-24: antes
+ *    iban todas las solicitudes juntas y despues, aparte, todas las proformas
+ *    de todas mezcladas; para saber cual proforma respondia a cual solicitud
+ *    habia que cruzar por el codigo repetido). Las ORDENES DE CAMBIO de la
  *    fase van dentro de su documentacion asociada, cada una con su barra
  *    (numero, fechas y motivo) y sus documentos.
  *  - SIN firmas (antes, del 2026-11-05 al 09, el control de elaboracion);
@@ -120,34 +125,36 @@ $carpeta = static function (array $c) use ($fila, $texto, $monto, $fecha, $guion
         }
     }
 
+    // Cada solicitud, seguida de SUS PROPIAS proformas recibidas (2026-11-24: antes iban todas las
+    // solicitudes juntas y, despues, en un bloque aparte, todas las proformas de todas mezcladas; para saber
+    // cual proforma respondia a cual solicitud habia que cruzar por el codigo repetido). "Proformas recibidas"
+    // va en UN SOLO casillero por solicitud (rowspan), como las especificaciones.
     /** @var SolicitudCotizacion[] $solicitudes */
     $solicitudes = $c['solicitudes'];
     if ($solicitudes === []) {
         $html .= $fila('Solicitud de proforma de cotización', '—', '—', 'Ninguna.');
     }
-    foreach ($solicitudes as $i => $solicitud) {
+    foreach ($solicitudes as $solicitud) {
         $html .= $fila(
-            $i === 0 ? 'Solicitud de proforma de cotización' : '',
+            'Solicitud de proforma de cotización',
             $texto($solicitud->codigoDocumento ?? $solicitud->codigoCorto()),
             Html::encode(SolicitudCotizacion::VERSION_DOCUMENTO),
             Html::encode($solicitud->nombre) . ' · ' . $guiones($solicitud->fechaDelDocumento())
         );
-    }
 
-    // Proformas recibidas (las cotizaciones de cada solicitud): solo si hay. La que se guardo
-    // como enlace lleva "ver proforma" (el PDF subido no: su enlace pide la sesion del sistema).
-    $primera = true;
-    foreach ($solicitudes as $solicitud) {
-        foreach ($solicitud->cotizaciones as $cotizacion) {
-            $html .= $fila(
-                $primera ? 'Proformas recibidas' : '',
-                $texto($solicitud->codigoDocumento ?? $solicitud->codigoCorto()),
-                '—',
-                $texto($cotizacion->proveedor->razonSocial ?? null) . ' · ' . $fecha($cotizacion->fecha)
-                    // Guardada en el Drive (2026-11-11): su enlace, para abrirla desde el PDF.
+        $cotizaciones = array_values($solicitud->cotizaciones);
+        if ($cotizaciones === []) {
+            $html .= $fila('Proformas recibidas', '—', '—', 'Pendiente.');
+            continue;
+        }
+        foreach ($cotizaciones as $i => $cotizacion) {
+            // La que se guardo como enlace lleva "ver proforma" (el PDF subido no: su enlace pide la sesion del sistema).
+            $html .= '<tr>'
+                . ($i === 0 ? '<th rowspan="' . count($cotizaciones) . '">Proformas recibidas</th>' : '')
+                . '<td>—</td><td class="centro">—</td>'
+                . '<td>' . $texto($cotizacion->proveedor->razonSocial ?? null) . ' · ' . $fecha($cotizacion->fecha)
                     . ($cotizacion->tieneEnlace() ? ' · ' . Html::a('ver proforma', $cotizacion->documentoRuta) : '')
-            );
-            $primera = false;
+                . '</td></tr>';
         }
     }
 
@@ -193,7 +200,7 @@ $bloque = static function (array $fase, array $numeros) use ($texto, $carpeta, $
 
     // Documentacion asociada (antes "carpeta economica"): la de la fase y, dentro, la de cada orden de cambio.
     $html .= '<table class="ficha carpeta"><tr><th class="seccion" colspan="4">' . $titulo($numeros[2], 'Documentación asociada') . '</th></tr>'
-        . '<tr><th style="width: 25.6%;">Documento</th><th style="width: 20.4%;">Código</th><th class="centro" style="width: 9.4%;">Versión</th><th style="width: 44.6%;">Ítem / Descripción</th></tr>'
+        . '<tr><th style="width: 25.6%;">Documento</th><th style="width: 20.4%;">Código</th><th class="centro" style="width: 9.4%;">Versión</th><th style="width: 44.6%;">Detalle / Ítem / Descripción</th></tr>'
         . $carpeta($fase);
     foreach ($fase['ordenes'] as $orden) {
         /** @var Proyecto $o */
@@ -394,7 +401,7 @@ $columnasFechas = count($fases);
 </table>
 
 <table class="ficha">
-    <tr><th class="seccion" colspan="2">2. UNIDADES / DEPENDENCIA</th></tr>
+    <tr><th class="seccion" colspan="2">2. UNIDAD / DEPENDENCIA</th></tr>
     <tr><th style="width: 28.4%;">Unidad / dependencia (beneficiaria)</th><td><?= $texto($proyecto->unidadDependencia) ?></td></tr>
     <tr><th>Unidad solicitante</th><td><?= $texto($proyecto->unidadSolicitante) ?></td></tr>
 </table>
