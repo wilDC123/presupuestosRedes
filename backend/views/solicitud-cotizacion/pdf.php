@@ -81,11 +81,6 @@ $numero = 0;
     table.items td.numero {
         text-align: right;
     }
-    .observacion {
-        font-style: italic;
-        font-size: 9pt;
-        color: #333;
-    }
     .nota-final {
         margin-top: 12px;
         font-weight: bold;
@@ -131,16 +126,10 @@ $numero = 0;
                     <td class="numero"><?= ++$numero ?></td>
                     <td>
                         <?= Html::encode($item->subcatalogoItem->descripcion ?? '') ?>
-                        <?php // Solo el NET de la emision VIGENTE; sin emision (o anulada) no sale nada. ?>
+                        <?php // Solo el item y su ET vigente (2026-11-24); sin emision (o anulada) no sale nada. ?>
                         <?php $codigoNet = $item->emisionVigente?->codigo(); ?>
                         <?php if ($codigoNet !== null): ?>
                             (<?= Html::encode($codigoNet) ?>)
-                        <?php endif; ?>
-                        <?php if (!empty($fila->marcaModeloReferencia)): ?>
-                            (<?= Html::encode($fila->marcaModeloReferencia) ?>)
-                        <?php endif; ?>
-                        <?php if (!empty($item->observacion)): ?>
-                            <br><span class="observacion"><?= Html::encode($item->observacion) ?></span>
                         <?php endif; ?>
                     </td>
                     <?php // El nombre de la unidad ("Metro", no "m"), para que el proveedor entienda; si no esta en el catalogo, la abreviatura. ?>

@@ -9,7 +9,9 @@ Paso "Cotización" del proyecto (`SolicitudCotizacionController`, `SolicitudCoti
 - **PDF** para el proveedor: título "SOLICITUD DE PROFORMA DE COTIZACIÓN", cabecera común, una tabla N.° | Descripción |
   Unidad | Cantidad.
   - La unidad con su **nombre** ("Metro", no "m"; `UnidadMedida::nombresPorAbreviatura()`).
-  - En la descripción: código ET vigente, marca / modelo de referencia y observación.
+  - En la descripción: **solo** el nombre DTIC del ítem y, entre paréntesis, el código ET vigente (2026-11-24: antes
+    también salían la marca/modelo de referencia y la observación; esos datos siguen en la pantalla, pero ya no en
+    este impreso).
   - Sin precios, sin total, sin espacio para el proveedor (todo eso lo trae la proforma). Sin la línea del proyecto.
   - Firma "ELABORADO POR" de la DTIC al fondo de la última página (la firma 1 de la configuración del presupuesto, la de
     hoy: la solicitud no guarda copia).
