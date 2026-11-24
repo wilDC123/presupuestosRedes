@@ -30,9 +30,11 @@ class PlantillaService
 {
     /**
      * Plantillas para el listado de administracion (todas) o para "Cargar
-     * plantilla" (solo activas), cada una con sus items ya agrupados.
+     * plantilla" (solo activas), cada una con sus items ya agrupados y en
+     * cuantos proyectos se uso como plantilla de origen (2026-11-24: antes
+     * ese conteo solo se calculaba al intentar eliminar, en eliminar()).
      *
-     * @return array<int, array{plantilla: Plantilla, totalItems: int, grupos: array<string, PlantillaItem[]>}>
+     * @return array<int, array{plantilla: Plantilla, totalItems: int, grupos: array<string, PlantillaItem[]>, usadaEn: int}>
      */
     public function listar(bool $soloActivas = false): array
     {
@@ -42,11 +44,31 @@ class PlantillaService
             ->orderBy(['nombre' => SORT_ASC])
             ->all();
 
+        $usos = $this->conteoDeUso();
+
         return array_map(fn (Plantilla $plantilla) => [
             'plantilla' => $plantilla,
             'totalItems' => count($plantilla->items),
             'grupos' => $this->agruparPorClasificacion($plantilla),
+            'usadaEn' => $usos[$plantilla->id] ?? 0,
         ], $plantillas);
+    }
+
+    /**
+     * Cuantos proyectos tienen a cada plantilla como su plantilla de origen,
+     * en UNA sola consulta agrupada (mismo patron que
+     * TipoProyectoService::conteoPorTipo()).
+     *
+     * @return array<int, int> [idPlantilla => cantidad]
+     */
+    private function conteoDeUso(): array
+    {
+        return array_map('intval', Proyecto::find()
+            ->select(['total' => 'COUNT(*)', 'idPlantillaOrigen'])
+            ->andWhere(['not', ['idPlantillaOrigen' => null]])
+            ->groupBy('idPlantillaOrigen')
+            ->indexBy('idPlantillaOrigen')
+            ->column());
     }
 
     public function obtener(int $id): ?Plantilla

@@ -45,6 +45,7 @@ class PlantillaController extends Controller
     {
         return $this->render('index', [
             'filas' => $this->service->listar(),
+            'tipos' => (new TipoProyectoService())->opciones(),
         ]);
     }
 
