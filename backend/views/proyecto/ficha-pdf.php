@@ -22,17 +22,22 @@ use yii\helpers\Html;
  *  - Cabecera de todos los documentos: codigo RD-PI-PT-NNN (el de la fase 1),
  *    version (1.0, 1.1 al aprobarse otra fase...), fecha de creacion de esa
  *    version y pagina. Ver FichaTecnicaService::datosFicha().
- *  - 1. INFORMACION GENERAL: datos del proyecto, "Fases" (si hay varias), el
- *    COSTO TOTAL DEL PROYECTO (presupuestos aprobados de fases y ordenes de
- *    cambio; con varias, una fila por cada una y el total al final) y las FECHAS en el mismo cuadro (con varias
- *    fases, una columna por fase). 2. UNIDADES.
+ *  - 1. INFORMACION GENERAL: datos del proyecto, "Cantidad de fases" (si hay
+ *    varias), el COSTO TOTAL DEL PROYECTO (presupuestos aprobados de fases y
+ *    ordenes de cambio; con varias, una fila por cada una y el total al final)
+ *    y el SEGUIMIENTO (fechas) en el mismo cuadro (con varias fases, una
+ *    columna por fase). 2. UNIDADES.
  *  - Despues lo de cada fase: con fase unica, 3 area de intervencion, 4 equipo
- *    y 5 carpeta economica; con varias (desde el 2026-11-11), "3. FASES" y dentro
- *    "3.1 FASE 1" (3.1.1, 3.1.2, 3.1.3), "3.2 FASE 2" (3.2.1...)...
- *  - CARPETA ECONOMICA: tabla Documento | Codigo | Detalle | Version (lista de
- *    materiales, presupuesto, especificaciones -con el motivo si se
- *    reemitieron-, solicitudes de proforma y proformas recibidas). Las ORDENES
- *    DE CAMBIO de la fase van dentro de su carpeta, cada una con su barra
+ *    y 5 documentacion asociada; con varias (desde el 2026-11-11), "3. FASES" y
+ *    dentro "3.1 FASE 1" (3.1.1, 3.1.2, 3.1.3), "3.2 FASE 2" (3.2.1...)...
+ *  - DOCUMENTACION ASOCIADA (antes "carpeta economica"): tabla Documento |
+ *    Codigo | Version | Ítem/Descripción (lista de materiales, presupuesto,
+ *    especificaciones -con el motivo si se reemitieron-, solicitudes de
+ *    proforma y proformas recibidas). Las especificaciones van en UN SOLO
+ *    casillero de la columna "Documento" (rowspan), con sus codigos cada uno
+ *    en su fila de la columna "Codigo" (2026-11-24: antes parecia que el
+ *    casillero era de una sola especificacion). Las ORDENES DE CAMBIO de la
+ *    fase van dentro de su documentacion asociada, cada una con su barra
  *    (numero, fechas y motivo) y sus documentos.
  *  - SIN firmas (antes, del 2026-11-05 al 09, el control de elaboracion);
  *    mientras alguna fase no este aprobada, marca de agua BORRADOR (la pone el
@@ -59,8 +64,8 @@ $costo = $datos['costo'];
 /** @var Proyecto $proyecto */
 $proyecto = $fases[0]['proyecto'];
 
-/** Una fila de la carpeta: rotulo (vacio = sigue el anterior) | codigo | detalle | version. */
-$fila = static fn (string $rotulo, string $codigo, string $detalle, string $version): string => '<tr><th>' . $rotulo . '</th><td>' . $codigo . '</td><td>' . $detalle . '</td><td class="centro">' . $version . '</td></tr>';
+/** Una fila de la documentacion asociada: rotulo (vacio = sigue el anterior) | codigo | version | detalle. */
+$fila = static fn (string $rotulo, string $codigo, string $version, string $detalle): string => '<tr><th>' . $rotulo . '</th><td>' . $codigo . '</td><td class="centro">' . $version . '</td><td>' . $detalle . '</td></tr>';
 
 /**
  * Las filas de la carpeta economica de una fase o de una orden de cambio
@@ -78,45 +83,54 @@ $carpeta = static function (array $c) use ($fila, $texto, $monto, $fecha, $guion
         // "BoM" (bill of materials), pedido del desarrollador el 2026-11-10.
         'Lista de materiales y condiciones previas (BoM)',
         $texto($p->codigoLista),
-        'Elaborada el ' . $guiones($lista['fechaCreacion']) . ($lista['borrador'] ? ' <em>· borrador: se emite al enviar a cotización</em>' : ''),
-        Html::encode($lista['version'])
+        Html::encode($lista['version']),
+        'Elaborada el ' . $guiones($lista['fechaCreacion']) . ($lista['borrador'] ? ' <em>· borrador: se emite al enviar a cotización</em>' : '')
     );
 
     if ($presupuesto === null) {
-        $html .= $fila('Presupuesto', '—', 'Todavía no tiene.', '—');
+        $html .= $fila('Presupuesto', '—', '—', 'Todavía no tiene.');
     } else {
         $estado = $presupuesto->estado === Presupuesto::ESTADO_APROBADO
             ? 'Aprobado el ' . $guiones($presupuesto->fechaAprobacionFormateada())
             : Html::encode($presupuesto->estadoLabel());
-        $html .= $fila('Presupuesto', $texto($presupuesto->numeroPresupuesto), $estado . ' · Total Bs. ' . $monto($c['monto']), Html::encode(Presupuesto::VERSION_DOCUMENTO));
+        $html .= $fila('Presupuesto', $texto($presupuesto->numeroPresupuesto), Html::encode(Presupuesto::VERSION_DOCUMENTO), $estado . ' · Total Bs. ' . $monto($c['monto']));
     }
 
+    // Especificaciones: UN SOLO casillero en "Documento" (rowspan), con cada codigo en su propia fila de
+    // "Codigo" (2026-11-24: antes se repetia una fila vacia por cada ET, parecia que el casillero era de una
+    // sola especificacion en vez de la seccion completa).
     /** @var EspecificacionEmision[] $especificaciones */
-    $especificaciones = $c['especificaciones'];
+    $especificaciones = array_values($c['especificaciones']);
     if ($especificaciones === []) {
-        $html .= $fila('Especificaciones técnicas', '—', 'Ninguna.', '—');
-    }
-    foreach (array_values($especificaciones) as $i => $emision) {
-        $detalle = Html::encode($emision->titulo);
-        // Reemitida: cuando y por que (el motivo quedo en la emision anterior).
-        if ((int) $emision->versionDocumento > 1) {
-            $motivo = $c['reemisiones'][$emision->id] ?? '';
-            $detalle .= '<br><em>Reemitida el ' . $fecha($emision->fechaEmision) . ($motivo !== '' ? ': ' . Html::encode($motivo) : '') . '</em>';
+        $html .= $fila('Especificaciones técnicas', '—', '—', 'Ninguna.');
+    } else {
+        foreach ($especificaciones as $i => $emision) {
+            $detalle = Html::encode($emision->titulo);
+            // Reemitida: cuando y por que (el motivo quedo en la emision anterior).
+            if ((int) $emision->versionDocumento > 1) {
+                $motivo = $c['reemisiones'][$emision->id] ?? '';
+                $detalle .= '<br><em>Reemitida el ' . $fecha($emision->fechaEmision) . ($motivo !== '' ? ': ' . Html::encode($motivo) : '') . '</em>';
+            }
+            $html .= '<tr>'
+                . ($i === 0 ? '<th rowspan="' . count($especificaciones) . '">Especificaciones técnicas</th>' : '')
+                . '<td>' . Html::encode($emision->codigo()) . '</td>'
+                . '<td class="centro">' . Html::encode($emision->versionTexto()) . '</td>'
+                . '<td>' . $detalle . '</td>'
+                . '</tr>';
         }
-        $html .= $fila($i === 0 ? 'Especificaciones técnicas' : '', Html::encode($emision->codigo()), $detalle, Html::encode($emision->versionTexto()));
     }
 
     /** @var SolicitudCotizacion[] $solicitudes */
     $solicitudes = $c['solicitudes'];
     if ($solicitudes === []) {
-        $html .= $fila('Solicitud de proforma de cotización', '—', 'Ninguna.', '—');
+        $html .= $fila('Solicitud de proforma de cotización', '—', '—', 'Ninguna.');
     }
     foreach ($solicitudes as $i => $solicitud) {
         $html .= $fila(
             $i === 0 ? 'Solicitud de proforma de cotización' : '',
             $texto($solicitud->codigoDocumento ?? $solicitud->codigoCorto()),
-            Html::encode($solicitud->nombre) . ' · ' . $guiones($solicitud->fechaDelDocumento()),
-            Html::encode(SolicitudCotizacion::VERSION_DOCUMENTO)
+            Html::encode(SolicitudCotizacion::VERSION_DOCUMENTO),
+            Html::encode($solicitud->nombre) . ' · ' . $guiones($solicitud->fechaDelDocumento())
         );
     }
 
@@ -128,10 +142,10 @@ $carpeta = static function (array $c) use ($fila, $texto, $monto, $fecha, $guion
             $html .= $fila(
                 $primera ? 'Proformas recibidas' : '',
                 $texto($solicitud->codigoDocumento ?? $solicitud->codigoCorto()),
+                '—',
                 $texto($cotizacion->proveedor->razonSocial ?? null) . ' · ' . $fecha($cotizacion->fecha)
                     // Guardada en el Drive (2026-11-11): su enlace, para abrirla desde el PDF.
-                    . ($cotizacion->tieneEnlace() ? ' · ' . Html::a('ver proforma', $cotizacion->documentoRuta) : ''),
-                '—'
+                    . ($cotizacion->tieneEnlace() ? ' · ' . Html::a('ver proforma', $cotizacion->documentoRuta) : '')
             );
             $primera = false;
         }
@@ -166,7 +180,7 @@ $bloque = static function (array $fase, array $numeros) use ($texto, $carpeta, $
     $html .= '</table>';
 
     // Equipo.
-    $html .= '<table class="ficha"><tr><th class="seccion" colspan="3">' . $titulo($numeros[1], 'Equipo del proyecto') . '</th></tr>'
+    $html .= '<table class="ficha"><tr><th class="seccion" colspan="3">' . $titulo($numeros[1], 'Personal asignado') . '</th></tr>'
         . '<tr><th style="width: 39.8%;">Persona</th><th style="width: 43.1%;">Rol</th><th class="centro" style="width: 17.1%;">Responsable</th></tr>';
     if ($p->participantes === []) {
         $html .= '<tr><td colspan="3">—</td></tr>';
@@ -177,9 +191,9 @@ $bloque = static function (array $fase, array $numeros) use ($texto, $carpeta, $
     }
     $html .= '</table>';
 
-    // Carpeta economica: la de la fase y, dentro, la de cada orden de cambio.
-    $html .= '<table class="ficha carpeta"><tr><th class="seccion" colspan="4">' . $titulo($numeros[2], 'Carpeta económica') . '</th></tr>'
-        . '<tr><th style="width: 25.6%;">Documento</th><th style="width: 20.4%;">Código</th><th style="width: 44.6%;">Detalle</th><th class="centro" style="width: 9.4%;">Versión</th></tr>'
+    // Documentacion asociada (antes "carpeta economica"): la de la fase y, dentro, la de cada orden de cambio.
+    $html .= '<table class="ficha carpeta"><tr><th class="seccion" colspan="4">' . $titulo($numeros[2], 'Documentación asociada') . '</th></tr>'
+        . '<tr><th style="width: 25.6%;">Documento</th><th style="width: 20.4%;">Código</th><th class="centro" style="width: 9.4%;">Versión</th><th style="width: 44.6%;">Ítem / Descripción</th></tr>'
         . $carpeta($fase);
     foreach ($fase['ordenes'] as $orden) {
         /** @var Proyecto $o */
@@ -333,7 +347,7 @@ $columnasFechas = count($fases);
     <tr><th>Tipo de proyecto</th><td colspan="<?= $span ?>"><?= $texto($proyecto->tipoProyecto->nombre ?? null) ?></td></tr>
     <tr><th>Proceso</th><td colspan="<?= $span ?>"><?= $texto($proyecto->proceso?->etiqueta()) ?></td></tr>
     <?php if ($variasFases): ?>
-        <tr><th>Fases</th><td colspan="<?= $span ?>"><?= count($fases) ?></td></tr>
+        <tr><th>Cantidad de fases</th><td colspan="<?= $span ?>"><?= count($fases) ?></td></tr>
     <?php endif; ?>
     <?php if ($costoPorFilas): ?>
         <?php // Una fila por fase u orden de cambio y el total al final; el monto alineado a la derecha. ?>
@@ -359,7 +373,7 @@ $columnasFechas = count($fases);
     <?php if ($variasFases): ?>
         <?php // Una columna por fase. ?>
         <tr>
-            <th>Fechas</th>
+            <th>Seguimiento</th>
             <?php foreach ($fases as $f): ?>
                 <th class="centro">Fase <?= (int) $f['proyecto']->numeroFase ?></th>
             <?php endforeach; ?>

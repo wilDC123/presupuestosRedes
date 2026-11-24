@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace backend\tests\Unit;
 
+use backend\models\Especificacion;
 use backend\models\Personal;
 use backend\models\Presupuesto;
 use backend\models\Proyecto;
+use backend\models\ProyectoItem;
+use backend\models\SubcatalogoItem;
 use backend\models\TipoOrdenCambio;
+use backend\services\EspecificacionEmisionService;
+use backend\services\EspecificacionService;
 use backend\services\FichaTecnicaService;
 use backend\services\OrdenCambioFaseService;
 use backend\services\ProcesoService;
@@ -15,6 +20,7 @@ use backend\services\ProyectoService;
 use backend\services\RolProyectoService;
 use Codeception\Test\Unit;
 use Yii;
+use yii\helpers\Html;
 
 /**
  * Ficha tecnica del proyecto: documento normado (revision del 2026-11-05,
@@ -66,7 +72,7 @@ class FichaProyectoTest extends Unit
         $this->assertStringNotContainsString('FASE 1', $html);
         $this->assertStringNotContainsString('Lugar de entrega', $html);
         $this->assertStringNotContainsString('Reporte de control', $html);
-        $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Costo total del proyecto', 'Fecha de creación', '2. UNIDADES / DEPENDENCIA', '3. ÁREA DE INTERVENCIÓN', '4. EQUIPO DEL PROYECTO', '5. CARPETA ECONÓMICA', 'Lista de materiales y condiciones previas (BoM)']);
+        $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Costo total del proyecto', 'Fecha de creación', '2. UNIDADES / DEPENDENCIA', '3. ÁREA DE INTERVENCIÓN', '4. PERSONAL ASIGNADO', '5. DOCUMENTACIÓN ASOCIADA', 'Lista de materiales y condiciones previas (BoM)']);
     }
 
     /**
@@ -91,9 +97,9 @@ class FichaProyectoTest extends Unit
             $datos = $this->ficha->datosFicha(Proyecto::findOne($id));
             $this->assertSame([$fase1->codigo, '1.1', false, ''], [$datos['codigo'], $datos['version'], $datos['aprobada'], $datos['fechaAprobacion']]);
             $html = $this->html(Proyecto::findOne($id), $datos);
-            $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Fechas', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. UNIDADES / DEPENDENCIA', '3. FASES', '3.1 FASE 1', '3.1.1 Área', 'Edificio test fase 1', '3.1.3 Carpeta económica', '3.2 FASE 2', '3.2.1 Área', 'Edificio test fase 2']);
+            $this->assertEnOrden($html, ['1. INFORMACIÓN GENERAL', 'Seguimiento', '<th class="centro">Fase 1</th>', '<th class="centro">Fase 2</th>', '2. UNIDADES / DEPENDENCIA', '3. FASES', '3.1 FASE 1', '3.1.1 Área', 'Edificio test fase 1', '3.1.3 Documentación asociada', '3.2 FASE 2', '3.2.1 Área', 'Edificio test fase 2']);
             $this->assertStringNotContainsString('4. FASE', $html);
-            $this->assertStringNotContainsString('5. CARPETA', $html);
+            $this->assertStringNotContainsString('5. DOCUMENTACIÓN', $html);
         }
 
         // Al aprobarse la fase 2, la 1.1 queda aprobada con su fecha.
@@ -162,7 +168,7 @@ class FichaProyectoTest extends Unit
 
         $html = $this->html($fase1, $datos);
         $this->assertEnOrden($html, [
-            '5. CARPETA ECONÓMICA', $fase1->codigoLista, 'Orden de cambio N.° 1 · solicitada el', 'aprobada el 09-11-2026',
+            '5. DOCUMENTACIÓN ASOCIADA', $fase1->codigoLista, 'Orden de cambio N.° 1 · solicitada el', 'aprobada el 09-11-2026',
             'Motivo: El sector de gradas queda sin cobertura', Proyecto::findOne($orden->id)->codigoLista,
         ]);
         // Costo total: una fila por presupuesto y el total al final (pedido del Ing., 2026-11-11).
@@ -171,6 +177,46 @@ class FichaProyectoTest extends Unit
         ]);
         $this->assertStringContainsString('rowspan="3">Costo total del proyecto', $html);
         $this->assertStringNotContainsString('Presupuesto: 0.00 +', $html);
+    }
+
+    /**
+     * 2026-11-24: con varias especificaciones, "Especificaciones técnicas" va
+     * en UN SOLO casillero (rowspan) de la columna Documento, no una vez por
+     * cada ET (antes de este cambio parecía que el casillero era de una sola).
+     */
+    public function testLasEspecificacionesVanEnUnSoloCasilleroConRowspan(): void
+    {
+        $itemSubcatalogo = SubcatalogoItem::find()->andWhere(['activo' => true])->one();
+        if ($itemSubcatalogo === null) {
+            $this->markTestSkipped('La base local no tiene ítems activos en el subcatálogo.');
+        }
+
+        $proyecto = $this->crear(null, 'Edificio test rowspan ET');
+        $emisiones = [];
+        foreach (['Ficha test rowspan A', 'Ficha test rowspan B'] as $i => $titulo) {
+            $ficha = new Especificacion(['titulo' => $titulo, 'activo' => true]);
+            $ficha->save(false);
+            (new EspecificacionService())->guardarVersion($ficha, [], [['nombre' => 'Calibre', 'valor' => '23 AWG']]);
+
+            $item = new ProyectoItem([
+                'idProyecto' => $proyecto->id,
+                'idSubcatalogo' => $itemSubcatalogo->id,
+                'idCategoria' => $itemSubcatalogo->idCategoria,
+                'idEspecificacion' => $ficha->id,
+                'cantidad' => 1,
+                'orden' => $i + 1,
+            ]);
+            $item->save(false);
+            $emisiones[] = (new EspecificacionEmisionService())->emitir($item, 'encargado test');
+        }
+
+        $html = $this->html(Proyecto::findOne($proyecto->id), $this->ficha->datosFicha(Proyecto::findOne($proyecto->id)));
+
+        $this->assertSame(1, substr_count($html, 'Especificaciones técnicas'));
+        $this->assertStringContainsString('rowspan="2">Especificaciones técnicas', $html);
+        foreach ($emisiones as $emision) {
+            $this->assertStringContainsString(Html::encode($emision->codigo()), $html);
+        }
     }
 
     private function crear(?int $idAnterior, string $edificio): Proyecto
