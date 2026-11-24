@@ -74,7 +74,7 @@ $indice = 0;
 ?>
 <aside class="rd-sidebar">
     <div class="rd-brand">
-        <div class="rd-brand-logo">eR</div>
+        <?= Html::img(Yii::getAlias('@web/images/logo-ecored.png'), ['class' => 'rd-brand-logo', 'alt' => 'ecoRED']) ?>
         <div>
             <div class="rd-brand-nombre"><?= Html::encode(Yii::$app->name) ?></div>
             <div class="rd-brand-sub">Redes y Telecom. — USFX</div>
