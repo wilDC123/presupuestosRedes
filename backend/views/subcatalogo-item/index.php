@@ -38,7 +38,8 @@ $formato = Yii::$app->formatter;
         </div>
         <div class="rd-acciones">
             <?= Html::a('Nuevo ítem sin SIGMA', ['create'], ['class' => 'btn btn-outline']) ?>
-            <?= Html::a('+ Buscar en SIGMA y agregar', '#buscar-sigma', ['class' => 'btn btn-primary']) ?>
+            <?php // '#q' (el campo, no el titulo): al llegar por ancla a un campo, el navegador lo deja enfocado listo para escribir. ?>
+            <?= Html::a('+ Buscar en SIGMA y agregar', '#q', ['class' => 'btn btn-primary']) ?>
         </div>
     </div>
 
@@ -122,6 +123,7 @@ $formato = Yii::$app->formatter;
         <?php // Sin '#' en la ruta: en un formulario GET, Yii pasa la ruta al campo oculto "r" y el ancla quedaria pegada a ella (404). ?>
         <?= Html::beginForm(['index'], 'get', ['class' => 'rd-filtros mb-0']) ?>
             <?= Html::textInput('q', $textoBusqueda, [
+                'id' => 'q',
                 'class' => 'form-control',
                 'placeholder' => 'Ej. jack cat 6, switch poe, cable utp...',
                 // Tras buscar, el foco lleva la pantalla hasta aqui (lo que hacia el ancla).

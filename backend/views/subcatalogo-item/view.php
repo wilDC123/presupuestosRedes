@@ -29,10 +29,11 @@ $this->params['breadcrumbs'][] = $this->title;
             ],
         ]) ?>
         <?php // ms-4 (Bootstrap 5: margin-left) separa este grupo de las acciones sobre el item. ?>
-        <?php // Con busqueda previa vuelve a sus resultados; sin ella, al buscador vacio. '#' esta bien aqui: es un enlace, no un formulario GET. ?>
+        <?php // Con busqueda previa vuelve a sus resultados; sin ella, al buscador vacio. '#' esta bien aqui: es un enlace, no un formulario GET.
+        // '#q' (el campo, no el titulo): al llegar por ancla a un campo, el navegador lo deja enfocado listo para escribir. ?>
         <?= Html::a(
             $textoBusqueda !== '' ? '+ Agregar otro desde SIGMA ("' . Html::encode($textoBusqueda) . '")' : '+ Agregar otro desde SIGMA',
-            ['index', 'q' => $textoBusqueda !== '' ? $textoBusqueda : null, '#' => 'buscar-sigma'],
+            ['index', 'q' => $textoBusqueda !== '' ? $textoBusqueda : null, '#' => 'q'],
             ['class' => 'btn btn-outline ms-4']
         ) ?>
         <?= Html::a('Nuevo ítem sin SIGMA', ['create'], ['class' => 'btn btn-outline']) ?>
